@@ -54,59 +54,41 @@
     </div>
   </div>
 
-  <!-- Activity Chart -->
-  <div class="chart-card mb-6">
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="text-lg font-semibold text-gray-900">Today's Activity</h3>
-      <div class="flex items-center space-x-4 text-sm text-gray-500">
-        <span class="flex items-center">
-          <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-          Success
-        </span>
-        <span class="flex items-center">
-          <span class="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
-          Failed
-        </span>
-      </div>
-    </div>
-    <div style="height: 280px;">
-      <%= line_chart @activity_chart,
-          colors: ["#10B981", "#EF4444"],
-          library: {
-            plugins: {
-              legend: { display: false },
-              tooltip: { mode: "index", intersect: false }
-            },
-            scales: {
-              y: { beginAtZero: true, ticks: { stepSize: 1 } }
-            },
-            elements: {
-              line: { tension: 0.3 },
-              point: { radius: 4, hoverRadius: 6 }
-            },
-            interaction: {
-              mode: "nearest",
-              axis: "x",
-              intersect: false
-            }
-          } %>
-    </div>
-  </div>
-
-  <!-- Recent Executions -->
+  <!-- Activity Feed -->
   <div class="bg-white rounded-xl shadow-sm border border-gray-100">
     <div class="px-6 py-4 border-b border-gray-100">
       <div class="flex justify-between items-center">
-        <h3 class="text-lg font-semibold text-gray-900">Recent Executions</h3>
+        <div class="flex items-center space-x-3">
+          <h3 class="text-lg font-semibold text-gray-900">Activity Feed</h3>
+          <div class="flex items-center space-x-3 text-xs text-gray-400">
+            <span class="flex items-center">
+              <span class="w-2 h-2 bg-blue-500 rounded-full mr-1 animate-pulse"></span>
+              running
+            </span>
+            <span class="flex items-center">
+              <span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+              success
+            </span>
+            <span class="flex items-center">
+              <span class="w-2 h-2 bg-red-500 rounded-full mr-1"></span>
+              error
+            </span>
+            <span class="flex items-center">
+              <span class="w-2 h-2 bg-yellow-500 rounded-full mr-1"></span>
+              timeout
+            </span>
+          </div>
+        </div>
         <%= link_to "View All", ruby_llm_agents.executions_path, class: "text-blue-600 hover:text-blue-700 text-sm font-medium" %>
       </div>
     </div>
-    <div class="divide-y divide-gray-100">
-      <% @recent_executions.each do |execution| %>
-        <%= render partial: "rubyllm/agents/executions/execution", locals: { execution: execution } %>
-      <% end %>
-      <% if @recent_executions.empty? %>
-        <div class="px-6 py-12 text-center text-gray-500">
+    <div id="activity-feed" class="px-6 py-2">
+      <% if @recent_executions.any? %>
+        <% @recent_executions.each do |execution| %>
+          <%= render partial: "rubyllm/agents/dashboard/execution_item", locals: { execution: execution } %>
+        <% end %>
+      <% else %>
+        <div id="empty-state" class="py-10 text-center text-gray-500">
           <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
           </svg>

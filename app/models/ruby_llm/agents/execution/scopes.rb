@@ -32,8 +32,11 @@ module RubyLLM
           scope :by_model, ->(model_id) { where(model_id: model_id.to_s) }
 
           # Status scopes
+          scope :running, -> { where(status: "running") }
+          scope :in_progress, -> { running }  # alias
+          scope :completed, -> { where.not(status: "running") }
           scope :successful, -> { where(status: "success") }
-          scope :failed, -> { where.not(status: "success") }
+          scope :failed, -> { where(status: %w[error timeout]) }
           scope :errors, -> { where(status: "error") }
           scope :timeouts, -> { where(status: "timeout") }
 

@@ -27,15 +27,21 @@ module RubyLLM
       end
 
       # Wrap agent execution with metrics tracking
+      # Creates execution record at start with 'running' status, updates on completion
       def instrument_execution(&block)
         started_at = Time.current
         @last_response = nil
 
+        # Create execution record immediately with running status
+        execution = create_running_execution(started_at)
+        self.execution_id = execution&.id
+
         begin
           result = yield
 
-          log_execution(
-            started_at: started_at,
+          # Update to success
+          complete_execution(
+            execution,
             completed_at: Time.current,
             status: "success",
             response: @last_response
@@ -43,16 +49,16 @@ module RubyLLM
 
           result
         rescue Timeout::Error => e
-          log_execution(
-            started_at: started_at,
+          complete_execution(
+            execution,
             completed_at: Time.current,
             status: "timeout",
             error: e
           )
           raise
         rescue => e
-          log_execution(
-            started_at: started_at,
+          complete_execution(
+            execution,
             completed_at: Time.current,
             status: "error",
             error: e
@@ -69,25 +75,42 @@ module RubyLLM
 
       private
 
-      def log_execution(started_at:, completed_at:, status:, response: nil, error: nil)
-        duration_ms = ((completed_at - started_at) * 1000).round
-
+      # Create execution record with running status at start
+      def create_running_execution(started_at)
         execution_data = {
           agent_type: self.class.name,
           agent_version: self.class.version,
           model_id: model,
           temperature: temperature,
           started_at: started_at,
-          completed_at: completed_at,
-          duration_ms: duration_ms,
-          status: status,
+          status: "running",
           parameters: sanitized_parameters,
           metadata: execution_metadata
         }
 
+        RubyLLM::Agents::Execution.create!(execution_data)
+      rescue StandardError => e
+        # Log error but don't fail the execution
+        Rails.logger.error("[RubyLLM::Agents] Failed to create execution record: #{e.message}")
+        nil
+      end
+
+      # Update execution record on completion
+      def complete_execution(execution, completed_at:, status:, response: nil, error: nil)
+        return legacy_log_execution(completed_at: completed_at, status: status, response: response, error: error) unless execution
+
+        started_at = execution.started_at
+        duration_ms = ((completed_at - started_at) * 1000).round
+
+        update_data = {
+          completed_at: completed_at,
+          duration_ms: duration_ms,
+          status: status
+        }
+
         # Add response data if available
         if response.is_a?(RubyLLM::Message)
-          execution_data.merge!(
+          update_data.merge!(
             input_tokens: response.input_tokens,
             output_tokens: response.output_tokens,
             cached_tokens: response.cached_tokens || 0,
@@ -99,13 +122,56 @@ module RubyLLM
 
         # Add error data if failed
         if error
+          update_data.merge!(
+            error_message: error.message,
+            error_class: error.class.name
+          )
+        end
+
+        execution.update!(update_data)
+
+        # Calculate costs if token data is available
+        if execution.input_tokens && execution.output_tokens
+          execution.calculate_costs!
+          execution.save!
+        end
+      rescue StandardError => e
+        Rails.logger.error("[RubyLLM::Agents] Failed to update execution record: #{e.message}")
+      end
+
+      # Fallback for when initial execution creation failed
+      def legacy_log_execution(completed_at:, status:, response: nil, error: nil)
+        execution_data = {
+          agent_type: self.class.name,
+          agent_version: self.class.version,
+          model_id: model,
+          temperature: temperature,
+          started_at: Time.current,
+          completed_at: completed_at,
+          duration_ms: 0,
+          status: status,
+          parameters: sanitized_parameters,
+          metadata: execution_metadata
+        }
+
+        if response.is_a?(RubyLLM::Message)
+          execution_data.merge!(
+            input_tokens: response.input_tokens,
+            output_tokens: response.output_tokens,
+            cached_tokens: response.cached_tokens || 0,
+            cache_creation_tokens: response.cache_creation_tokens || 0,
+            model_id: response.model_id || model,
+            response: serialize_response(response)
+          )
+        end
+
+        if error
           execution_data.merge!(
             error_message: error.message,
             error_class: error.class.name
           )
         end
 
-        # Log execution (async or sync based on configuration)
         if RubyLLM::Agents.configuration.async_logging
           RubyLLM::Agents::ExecutionLoggerJob.perform_later(execution_data)
         else

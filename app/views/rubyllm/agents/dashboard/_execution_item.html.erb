@@ -1,0 +1,56 @@
+<div id="execution-<%= execution.id %>" class="py-3 hover:bg-gray-50 -mx-2 px-2 rounded-lg transition-colors">
+  <%= link_to ruby_llm_agents.execution_path(execution), data: { turbo: false }, class: "block" do %>
+    <div class="flex items-start space-x-3">
+      <!-- Timeline indicator -->
+      <div class="flex flex-col items-center pt-1">
+        <% if execution.status_running? %>
+          <span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse flex-shrink-0"></span>
+        <% elsif execution.status_success? %>
+          <span class="w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0"></span>
+        <% elsif execution.status_timeout? %>
+          <span class="w-2.5 h-2.5 rounded-full bg-yellow-500 flex-shrink-0"></span>
+        <% else %>
+          <span class="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0"></span>
+        <% end %>
+      </div>
+
+      <!-- Content -->
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <p class="font-medium text-gray-900 text-sm">
+              <%= execution.agent_type.gsub(/Agent$/, '') %>
+            </p>
+            <span class="text-xs text-gray-400">v<%= execution.agent_version %></span>
+            <% if execution.status_running? %>
+              <span class="text-xs text-blue-600 font-medium">Running...</span>
+            <% end %>
+          </div>
+          <p class="text-xs text-gray-400">
+            <%= time_ago_in_words(execution.created_at) %> ago
+          </p>
+        </div>
+
+        <% if execution.status_running? %>
+          <p class="text-xs text-blue-500 mt-1">
+            In progress...
+          </p>
+        <% else %>
+          <p class="text-xs text-gray-500 mt-1">
+            <%= number_with_delimiter(execution.total_tokens || 0) %> tokens
+            <span class="text-gray-300 mx-1">&middot;</span>
+            $<%= number_with_precision(execution.total_cost || 0, precision: 4) %>
+            <span class="text-gray-300 mx-1">&middot;</span>
+            <%= number_with_delimiter(execution.duration_ms || 0) %>ms
+          </p>
+        <% end %>
+
+        <% if execution.status_error? && execution.error_message.present? %>
+          <p class="text-xs text-red-600 mt-1.5 bg-red-50 rounded px-2 py-1">
+            <%= execution.error_class %>: <%= truncate(execution.error_message, length: 80) %>
+          </p>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>

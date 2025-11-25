@@ -10,44 +10,144 @@
     <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Chart.js (required by Chartkick) -->
-    <script
-      src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
-    ></script>
-
-    <!-- Chart.js date adapter (required for time scales) -->
-    <script
-      src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"
-    ></script>
-
-    <!-- Chartkick JS -->
-    <script
-      src="https://cdn.jsdelivr.net/npm/chartkick@5.0.1/dist/chartkick.min.js"
-    ></script>
-
     <!-- Turbo -->
     <%= javascript_include_tag "turbo", type: "module" rescue nil %>
 
-    <!-- Live Poll Script (auto-starts on dashboard page) -->
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        const POLL_INTERVAL_MS = 30000; // 30 seconds
+    <!-- ActionCable (if available) -->
+    <%= action_cable_meta_tag rescue nil %>
 
-        function refreshDashboard() {
-          const frame = document.querySelector('turbo-frame#dashboard');
-          if (frame && frame.src) {
-            frame.reload();
-          } else if (frame) {
-            // If no src, use current URL
-            frame.src = window.location.href;
+    <!-- Real-Time Updates Script (ActionCable with polling fallback) -->
+    <script type="module">
+      document.addEventListener('DOMContentLoaded', function() {
+        const activityFeed = document.getElementById('activity-feed');
+        const liveIndicator = document.getElementById('live-indicator');
+        const dashboardFrame = document.querySelector('turbo-frame#dashboard');
+
+        // Only run on dashboard page
+        if (!activityFeed && !dashboardFrame) return;
+
+        let useWebSocket = true;
+        let pollInterval = null;
+        const POLL_INTERVAL_MS = 5000; // 5 seconds for polling fallback
+
+        // Try ActionCable WebSocket first
+        function tryWebSocket() {
+          const cableUrl = document.querySelector('meta[name="action-cable-url"]')?.content;
+          if (!cableUrl) {
+            console.log('[RubyLLM::Agents] No ActionCable URL found, using polling');
+            startPolling();
+            return;
+          }
+
+          try {
+            const wsUrl = cableUrl.replace(/^http/, 'ws');
+            const ws = new WebSocket(wsUrl);
+
+            ws.onopen = function() {
+              ws.send(JSON.stringify({
+                command: 'subscribe',
+                identifier: JSON.stringify({ channel: 'RubyLLM::Agents::ExecutionsChannel' })
+              }));
+            };
+
+            ws.onmessage = function(event) {
+              const data = JSON.parse(event.data);
+
+              if (data.type === 'confirm_subscription') {
+                updateIndicator('live');
+                if (pollInterval) {
+                  clearInterval(pollInterval);
+                  pollInterval = null;
+                }
+                return;
+              }
+
+              if (data.type === 'ping' || data.type === 'welcome') return;
+
+              if (data.message && activityFeed) {
+                handleExecutionUpdate(data.message);
+              }
+            };
+
+            ws.onclose = function() {
+              console.log('[RubyLLM::Agents] WebSocket closed, falling back to polling');
+              startPolling();
+            };
+
+            ws.onerror = function() {
+              console.log('[RubyLLM::Agents] WebSocket error, falling back to polling');
+              ws.close();
+            };
+
+            // Timeout - if not connected in 3 seconds, fall back to polling
+            setTimeout(() => {
+              if (ws.readyState !== WebSocket.OPEN) {
+                console.log('[RubyLLM::Agents] WebSocket timeout, falling back to polling');
+                ws.close();
+              }
+            }, 3000);
+
+          } catch (e) {
+            console.log('[RubyLLM::Agents] WebSocket not available:', e);
+            startPolling();
           }
         }
 
-        // Auto-start live polling if dashboard frame exists
-        const dashboardFrame = document.querySelector('turbo-frame#dashboard');
-        if (dashboardFrame) {
-          setInterval(refreshDashboard, POLL_INTERVAL_MS);
+        function handleExecutionUpdate(message) {
+          const { action, id, html } = message;
+          if (!html || !activityFeed) return;
+
+          const emptyState = document.getElementById('empty-state');
+          if (emptyState) emptyState.remove();
+
+          if (action === 'created') {
+            activityFeed.insertAdjacentHTML('afterbegin', html);
+            const items = activityFeed.querySelectorAll('[id^="execution-"]');
+            if (items.length > 10) {
+              items[items.length - 1].remove();
+            }
+          } else if (action === 'updated') {
+            const existing = document.getElementById(`execution-${id}`);
+            if (existing) existing.outerHTML = html;
+          }
         }
+
+        function startPolling() {
+          if (pollInterval) return;
+
+          updateIndicator('polling');
+
+          pollInterval = setInterval(function() {
+            if (dashboardFrame) {
+              if (dashboardFrame.src) {
+                dashboardFrame.reload();
+              } else {
+                dashboardFrame.src = window.location.href;
+              }
+            }
+          }, POLL_INTERVAL_MS);
+        }
+
+        function updateIndicator(status) {
+          if (!liveIndicator) return;
+
+          if (status === 'live') {
+            liveIndicator.innerHTML = `
+              <span class="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></span>
+              Live
+            `;
+            liveIndicator.className = 'flex items-center text-xs text-green-600';
+          } else if (status === 'polling') {
+            liveIndicator.innerHTML = `
+              <span class="w-2 h-2 bg-blue-500 rounded-full mr-1"></span>
+              Auto-refresh
+            `;
+            liveIndicator.className = 'flex items-center text-xs text-blue-600';
+          }
+        }
+
+        // Start by trying WebSocket
+        tryWebSocket();
       });
     </script>
 
@@ -81,6 +181,9 @@
     }
     .badge {
       @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    }
+    .badge-running {
+      @apply bg-blue-100 text-blue-800;
     }
     .badge-success {
       @apply bg-green-100 text-green-800;
@@ -142,8 +245,14 @@
             </nav>
           </div>
 
-          <div class="text-sm text-gray-500">
-            <%= Time.current.strftime("%B %d, %Y") %>
+          <div class="flex items-center space-x-4">
+            <span id="live-indicator" class="flex items-center text-xs text-gray-400">
+              <span class="w-2 h-2 bg-gray-300 rounded-full mr-1"></span>
+              Connecting...
+            </span>
+            <span class="text-sm text-gray-500">
+              <%= Time.current.strftime("%B %d, %Y") %>
+            </span>
           </div>
         </div>
       </div>
