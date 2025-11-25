@@ -1,4 +1,4 @@
-<%= turbo_frame_tag "dashboard" do %>
+<%= turbo_frame_tag "dashboard", data: { connection_target: "dashboardFrame" } do %>
   <!-- Stats Cards -->
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
     <%= render "rubyllm/agents/shared/stat_card",
@@ -88,7 +88,11 @@
       </div>
     </div>
 
-    <div id="activity-feed" class="px-6 py-2">
+    <div
+      id="activity-feed"
+      class="px-6 py-2"
+      data-connection-target="activityFeed"
+    >
       <% if @recent_executions.any? %>
         <% @recent_executions.each do |execution| %>
           <%= render partial: "rubyllm/agents/dashboard/execution_item", locals: { execution: execution } %>

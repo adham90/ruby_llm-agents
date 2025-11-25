@@ -12,8 +12,15 @@
 
     <!-- Chartkick for charts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/chartkick@5.0.1"></script>
+
+    <!-- Stimulus -->
+    <script
+      src="https://unpkg.com/@hotwired/stimulus@3.2.2/dist/stimulus.umd.js"
+    ></script>
 
     <!-- Turbo -->
     <%= javascript_include_tag "turbo", type: "module" rescue nil %>
@@ -21,9 +28,8 @@
     <!-- ActionCable (if available) -->
     <%= action_cable_meta_tag rescue nil %>
 
-    <!-- Real-Time Updates Script (ActionCable with polling fallback) -->
+    <!-- Live Clock Script -->
     <script type="module">
-      // Live clock - updates every second
       function updateClock() {
         const clock = document.getElementById('live-clock');
         if (clock) {
@@ -37,161 +43,88 @@
         }
       }
 
-      // Start clock immediately and on every turbo navigation
+      // Start clock on page load
       document.addEventListener('turbo:load', function() {
         if (window.rubyLLMAgentsClock) clearInterval(window.rubyLLMAgentsClock);
         updateClock();
         window.rubyLLMAgentsClock = setInterval(updateClock, 1000);
       });
+    </script>
 
-      // Use turbo:load instead of DOMContentLoaded to work with Turbo navigation
-      document.addEventListener('turbo:load', function() {
-        const activityFeed = document.getElementById('activity-feed');
-        const liveIndicator = document.getElementById('live-indicator');
-        const dashboardFrame = document.querySelector('turbo-frame#dashboard');
-
-        const POLL_INTERVAL_MS = 2000; // 2 seconds for polling fallback
-
-        // Clean up previous connection/polling on navigation
-        if (window.rubyLLMAgentsWS) {
-          window.rubyLLMAgentsWS.close();
-          window.rubyLLMAgentsWS = null;
-        }
-        if (window.rubyLLMAgentsPoll) {
-          clearInterval(window.rubyLLMAgentsPoll);
-          window.rubyLLMAgentsPoll = null;
+    <!-- Stimulus Connection Controller -->
+    <script>
+      (function() {
+        // Initialize Stimulus immediately (works with Turbo)
+        if (!window.Stimulus) {
+          window.Stimulus = {};
         }
 
-        // Only run on dashboard page
-        if (!activityFeed && !dashboardFrame) return;
+        const Stimulus = window.Stimulus;
 
-        // Try ActionCable WebSocket first
-        function tryWebSocket() {
-          const cableUrl = document.querySelector('meta[name="action-cable-url"]')?.content;
-          if (!cableUrl) {
-            console.log('[RubyLLM::Agents] No ActionCable URL found, using polling');
-            startPolling();
-            return;
-          }
+        // Only initialize once
+        if (!Stimulus.application) {
+          Stimulus.application = Stimulus.Application.start();
 
-          try {
-            const wsUrl = cableUrl.replace(/^http/, 'ws');
-            const ws = new WebSocket(wsUrl);
-            window.rubyLLMAgentsWS = ws;
+          // Polling Controller - simple auto-refresh
+          Stimulus.application.register("connection", class extends Stimulus.Controller {
+            static targets = ["indicator", "dashboardFrame"]
 
-            ws.onopen = function() {
-              ws.send(JSON.stringify({
-                command: 'subscribe',
-                identifier: JSON.stringify({ channel: 'RubyLLM::Agents::ExecutionsChannel' })
-              }));
-            };
+            static values = {
+              pollInterval: { type: Number, default: 4000 }
+            }
 
-            ws.onmessage = function(event) {
-              const data = JSON.parse(event.data);
+            connect() {
+              this.pollTimer = null;
+              this.startPolling();
+            }
 
-              if (data.type === 'confirm_subscription') {
-                updateIndicator('live');
-                if (window.rubyLLMAgentsPoll) {
-                  clearInterval(window.rubyLLMAgentsPoll);
-                  window.rubyLLMAgentsPoll = null;
+            disconnect() {
+              this.stopPolling();
+            }
+
+            startPolling() {
+              if (this.pollTimer) return;
+
+              this.updateIndicator('polling');
+
+              this.pollTimer = setInterval(() => {
+                this.poll();
+              }, this.pollIntervalValue);
+            }
+
+            stopPolling() {
+              if (this.pollTimer) {
+                clearInterval(this.pollTimer);
+                this.pollTimer = null;
+              }
+            }
+
+            poll() {
+              if (this.hasDashboardFrameTarget) {
+                const frame = this.dashboardFrameTarget;
+                if (frame.src) {
+                  frame.reload();
+                } else {
+                  frame.src = window.location.href;
                 }
-                return;
-              }
-
-              if (data.type === 'ping' || data.type === 'welcome') return;
-
-              // Re-query DOM elements in case they changed
-              const currentFeed = document.getElementById('activity-feed');
-              if (data.message && currentFeed) {
-                handleExecutionUpdate(data.message, currentFeed);
-              }
-            };
-
-            ws.onclose = function() {
-              if (window.rubyLLMAgentsWS === ws) {
-                console.log('[RubyLLM::Agents] WebSocket closed, falling back to polling');
-                window.rubyLLMAgentsWS = null;
-                startPolling();
-              }
-            };
-
-            ws.onerror = function() {
-              console.log('[RubyLLM::Agents] WebSocket error, falling back to polling');
-              ws.close();
-            };
-
-            // Timeout - if not connected in 3 seconds, fall back to polling
-            setTimeout(() => {
-              if (ws.readyState !== WebSocket.OPEN) {
-                console.log('[RubyLLM::Agents] WebSocket timeout, falling back to polling');
-                ws.close();
-              }
-            }, 3000);
-
-          } catch (e) {
-            console.log('[RubyLLM::Agents] WebSocket not available:', e);
-            startPolling();
-          }
-        }
-
-        function handleExecutionUpdate(message, feed) {
-          const { action, id, html } = message;
-          if (!html || !feed) return;
-
-          const emptyState = document.getElementById('empty-state');
-          if (emptyState) emptyState.remove();
-
-          if (action === 'created') {
-            feed.insertAdjacentHTML('afterbegin', html);
-            const items = feed.querySelectorAll('[id^="execution-"]');
-            if (items.length > 10) {
-              items[items.length - 1].remove();
-            }
-          } else if (action === 'updated') {
-            const existing = document.getElementById(`execution-${id}`);
-            if (existing) existing.outerHTML = html;
-          }
-        }
-
-        function startPolling() {
-          if (window.rubyLLMAgentsPoll) return;
-
-          updateIndicator('polling');
-
-          window.rubyLLMAgentsPoll = setInterval(function() {
-            const frame = document.querySelector('turbo-frame#dashboard');
-            if (frame) {
-              if (frame.src) {
-                frame.reload();
-              } else {
-                frame.src = window.location.href;
               }
             }
-          }, POLL_INTERVAL_MS);
+
+            updateIndicator(status) {
+              if (!this.hasIndicatorTarget) return;
+
+              const indicator = this.indicatorTarget;
+              indicator.innerHTML = `
+                <span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1"></span>
+                <span class="hidden sm:inline">Polling</span>
+              `;
+              indicator.className = 'flex items-center text-blue-600';
+            }
+          });
+
+          console.log('[RubyLLM::Agents] Stimulus initialized');
         }
-
-        function updateIndicator(status) {
-          const indicator = document.getElementById('live-indicator');
-          if (!indicator) return;
-
-          if (status === 'live') {
-            indicator.innerHTML = `
-              <span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-1 animate-pulse"></span>
-              <span class="hidden sm:inline">Live</span>
-            `;
-            indicator.className = 'flex items-center text-green-600';
-          } else if (status === 'polling') {
-            indicator.innerHTML = `
-              <span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1"></span>
-              <span class="hidden sm:inline">Polling</span>
-            `;
-            indicator.className = 'flex items-center text-blue-600';
-          }
-        }
-
-        // Start by trying WebSocket
-        tryWebSocket();
-      });
+      })();
     </script>
 
     <style>
@@ -240,7 +173,10 @@
   </style>
   </head>
 
-  <body class="bg-gray-50 min-h-screen flex flex-col">
+  <body
+    class="bg-gray-50 min-h-screen flex flex-col"
+    data-controller="connection"
+  >
     <!-- Header -->
     <header class="bg-white border-b border-gray-200 h-16 flex items-center">
       <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8">
@@ -308,7 +244,12 @@
           <div class="flex items-center space-x-2 text-xs text-gray-500">
             <span id="live-clock" class="tabular-nums"></span>
             <span class="text-gray-300">•</span>
-            <span id="live-indicator" class="flex items-center text-gray-400">
+
+            <span
+              id="live-indicator"
+              data-connection-target="indicator"
+              class="flex items-center text-gray-400"
+            >
               <span class="w-1.5 h-1.5 bg-gray-300 rounded-full mr-1"></span>
               <span class="hidden sm:inline">Connecting</span>
             </span>
