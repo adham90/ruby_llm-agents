@@ -23,17 +23,47 @@
 
     <!-- Real-Time Updates Script (ActionCable with polling fallback) -->
     <script type="module">
-      document.addEventListener('DOMContentLoaded', function() {
+      // Live clock - updates every second
+      function updateClock() {
+        const clock = document.getElementById('live-clock');
+        if (clock) {
+          const now = new Date();
+          clock.textContent = now.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+          });
+        }
+      }
+
+      // Start clock immediately and on every turbo navigation
+      document.addEventListener('turbo:load', function() {
+        if (window.rubyLLMAgentsClock) clearInterval(window.rubyLLMAgentsClock);
+        updateClock();
+        window.rubyLLMAgentsClock = setInterval(updateClock, 1000);
+      });
+
+      // Use turbo:load instead of DOMContentLoaded to work with Turbo navigation
+      document.addEventListener('turbo:load', function() {
         const activityFeed = document.getElementById('activity-feed');
         const liveIndicator = document.getElementById('live-indicator');
         const dashboardFrame = document.querySelector('turbo-frame#dashboard');
 
+        const POLL_INTERVAL_MS = 2000; // 2 seconds for polling fallback
+
+        // Clean up previous connection/polling on navigation
+        if (window.rubyLLMAgentsWS) {
+          window.rubyLLMAgentsWS.close();
+          window.rubyLLMAgentsWS = null;
+        }
+        if (window.rubyLLMAgentsPoll) {
+          clearInterval(window.rubyLLMAgentsPoll);
+          window.rubyLLMAgentsPoll = null;
+        }
+
         // Only run on dashboard page
         if (!activityFeed && !dashboardFrame) return;
-
-        let useWebSocket = true;
-        let pollInterval = null;
-        const POLL_INTERVAL_MS = 5000; // 5 seconds for polling fallback
 
         // Try ActionCable WebSocket first
         function tryWebSocket() {
@@ -47,6 +77,7 @@
           try {
             const wsUrl = cableUrl.replace(/^http/, 'ws');
             const ws = new WebSocket(wsUrl);
+            window.rubyLLMAgentsWS = ws;
 
             ws.onopen = function() {
               ws.send(JSON.stringify({
@@ -60,23 +91,28 @@
 
               if (data.type === 'confirm_subscription') {
                 updateIndicator('live');
-                if (pollInterval) {
-                  clearInterval(pollInterval);
-                  pollInterval = null;
+                if (window.rubyLLMAgentsPoll) {
+                  clearInterval(window.rubyLLMAgentsPoll);
+                  window.rubyLLMAgentsPoll = null;
                 }
                 return;
               }
 
               if (data.type === 'ping' || data.type === 'welcome') return;
 
-              if (data.message && activityFeed) {
-                handleExecutionUpdate(data.message);
+              // Re-query DOM elements in case they changed
+              const currentFeed = document.getElementById('activity-feed');
+              if (data.message && currentFeed) {
+                handleExecutionUpdate(data.message, currentFeed);
               }
             };
 
             ws.onclose = function() {
-              console.log('[RubyLLM::Agents] WebSocket closed, falling back to polling');
-              startPolling();
+              if (window.rubyLLMAgentsWS === ws) {
+                console.log('[RubyLLM::Agents] WebSocket closed, falling back to polling');
+                window.rubyLLMAgentsWS = null;
+                startPolling();
+              }
             };
 
             ws.onerror = function() {
@@ -98,16 +134,16 @@
           }
         }
 
-        function handleExecutionUpdate(message) {
+        function handleExecutionUpdate(message, feed) {
           const { action, id, html } = message;
-          if (!html || !activityFeed) return;
+          if (!html || !feed) return;
 
           const emptyState = document.getElementById('empty-state');
           if (emptyState) emptyState.remove();
 
           if (action === 'created') {
-            activityFeed.insertAdjacentHTML('afterbegin', html);
-            const items = activityFeed.querySelectorAll('[id^="execution-"]');
+            feed.insertAdjacentHTML('afterbegin', html);
+            const items = feed.querySelectorAll('[id^="execution-"]');
             if (items.length > 10) {
               items[items.length - 1].remove();
             }
@@ -118,36 +154,38 @@
         }
 
         function startPolling() {
-          if (pollInterval) return;
+          if (window.rubyLLMAgentsPoll) return;
 
           updateIndicator('polling');
 
-          pollInterval = setInterval(function() {
-            if (dashboardFrame) {
-              if (dashboardFrame.src) {
-                dashboardFrame.reload();
+          window.rubyLLMAgentsPoll = setInterval(function() {
+            const frame = document.querySelector('turbo-frame#dashboard');
+            if (frame) {
+              if (frame.src) {
+                frame.reload();
               } else {
-                dashboardFrame.src = window.location.href;
+                frame.src = window.location.href;
               }
             }
           }, POLL_INTERVAL_MS);
         }
 
         function updateIndicator(status) {
-          if (!liveIndicator) return;
+          const indicator = document.getElementById('live-indicator');
+          if (!indicator) return;
 
           if (status === 'live') {
-            liveIndicator.innerHTML = `
+            indicator.innerHTML = `
               <span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-1 animate-pulse"></span>
               <span class="hidden sm:inline">Live</span>
             `;
-            liveIndicator.className = 'flex items-center text-green-600';
+            indicator.className = 'flex items-center text-green-600';
           } else if (status === 'polling') {
-            liveIndicator.innerHTML = `
+            indicator.innerHTML = `
               <span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1"></span>
               <span class="hidden sm:inline">Polling</span>
             `;
-            liveIndicator.className = 'flex items-center text-blue-600';
+            indicator.className = 'flex items-center text-blue-600';
           }
         }
 
@@ -268,7 +306,7 @@
           </div>
 
           <div class="flex items-center space-x-2 text-xs text-gray-500">
-            <span><%= Time.current.strftime("%b %d") %></span>
+            <span id="live-clock" class="tabular-nums"></span>
             <span class="text-gray-300">•</span>
             <span id="live-indicator" class="flex items-center text-gray-400">
               <span class="w-1.5 h-1.5 bg-gray-300 rounded-full mr-1"></span>
