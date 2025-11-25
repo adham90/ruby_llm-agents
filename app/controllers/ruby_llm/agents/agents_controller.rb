@@ -16,20 +16,48 @@ module RubyLLM
         @stats = Execution.stats_for(@agent_type, period: :all_time)
         @stats_today = Execution.stats_for(@agent_type, period: :today)
 
-        # Get recent executions for this agent (paginated)
+        # Get available versions for this agent (for filter dropdown)
+        @versions = Execution.by_agent(@agent_type).distinct.pluck(:agent_version).compact.sort.reverse
+
+        # Build filtered scope
+        base_scope = Execution.by_agent(@agent_type)
+
+        # Apply status filter
+        if params[:statuses].present?
+          statuses = params[:statuses].is_a?(Array) ? params[:statuses] : params[:statuses].split(",")
+          base_scope = base_scope.where(status: statuses) if statuses.any?(&:present?)
+        end
+
+        # Apply version filter
+        if params[:versions].present?
+          versions = params[:versions].is_a?(Array) ? params[:versions] : params[:versions].split(",")
+          base_scope = base_scope.where(agent_version: versions) if versions.any?(&:present?)
+        end
+
+        # Apply time range filter
+        base_scope = base_scope.where("created_at >= ?", params[:days].to_i.days.ago) if params[:days].present?
+
+        # Paginate
         page = (params[:page] || 1).to_i
         per_page = 25
         offset = (page - 1) * per_page
 
-        base_scope = Execution.by_agent(@agent_type).order(created_at: :desc)
-        total_count = base_scope.count
-        @executions = base_scope.limit(per_page).offset(offset)
+        filtered_scope = base_scope.order(created_at: :desc)
+        total_count = filtered_scope.count
+        @executions = filtered_scope.limit(per_page).offset(offset)
 
         @pagination = {
           current_page: page,
           per_page: per_page,
           total_count: total_count,
           total_pages: (total_count.to_f / per_page).ceil
+        }
+
+        # Filter stats for summary display
+        @filter_stats = {
+          total_count: total_count,
+          total_cost: base_scope.sum(:total_cost),
+          total_tokens: base_scope.sum(:total_tokens)
         }
 
         # Get trend data for charts (30 days)

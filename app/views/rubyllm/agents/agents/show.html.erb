@@ -237,12 +237,241 @@
 
 <!-- Executions -->
 <div class="bg-white rounded-lg shadow p-6">
-  <div class="flex items-center justify-between mb-4">
-    <h3 class="text-lg font-semibold text-gray-900">Executions</h3>
-    <%= link_to "View all", ruby_llm_agents.executions_path(agent_type: @agent_type), class: "text-sm text-blue-600 hover:underline" %>
-  </div>
+  <h3 class="text-lg font-semibold text-gray-900 mb-4">Executions</h3>
 
   <%= turbo_frame_tag "executions_table" do %>
+    <%
+      has_filters = params[:statuses].present? || params[:versions].present? || params[:days].present?
+      selected_statuses = params[:statuses].present? ? (params[:statuses].is_a?(Array) ? params[:statuses] : params[:statuses].split(",")) : []
+      selected_versions = params[:versions].present? ? (params[:versions].is_a?(Array) ? params[:versions] : params[:versions].split(",")) : []
+    %>
+
+    <%= form_with url: ruby_llm_agents.agent_path(@agent_type), method: :get, data: { turbo_frame: "executions_table" }, id: "agent-filters-form" do |f| %>
+      <div class="flex flex-wrap items-center gap-3 mb-4 pb-4 border-b border-gray-100">
+        <!-- Status Filter (Multi-select) -->
+        <div class="relative filter-dropdown" data-filter="statuses">
+          <button type="button" onclick="toggleDropdown(this)" class="flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors <%= selected_statuses.any? ? 'ring-2 ring-blue-500 ring-offset-1' : '' %>">
+            <% if selected_statuses.length == 1
+                 status_color = case selected_statuses.first
+                   when 'success' then 'bg-green-500'
+                   when 'error' then 'bg-red-500'
+                   when 'running' then 'bg-blue-500'
+                   when 'timeout' then 'bg-yellow-500'
+                   else 'bg-gray-400'
+                 end
+               else
+                 status_color = 'bg-gray-400'
+               end %>
+            <span class="w-2 h-2 rounded-full <%= status_color %>"></span>
+            <span class="dropdown-label text-gray-700">
+              <% if selected_statuses.empty? %>
+                All Statuses
+              <% elsif selected_statuses.length == 1 %>
+                <%= selected_statuses.first.capitalize %>
+              <% else %>
+                <%= selected_statuses.length %> Statuses
+              <% end %>
+            </span>
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div class="dropdown-menu hidden absolute z-10 mt-1 w-44 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+            <div class="px-3 py-2 border-b border-gray-100">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" class="select-all-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="toggleAllOptions(this, 'statuses')" <%= selected_statuses.empty? ? 'checked' : '' %>>
+                <span class="text-sm font-medium text-gray-700">All Statuses</span>
+              </label>
+            </div>
+            <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+              <input type="checkbox" name="statuses[]" value="success" class="filter-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="updateMultiSelect('statuses')" <%= selected_statuses.include?('success') ? 'checked' : '' %>>
+              <span class="w-2 h-2 rounded-full bg-green-500"></span>
+              Success
+            </label>
+            <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+              <input type="checkbox" name="statuses[]" value="error" class="filter-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="updateMultiSelect('statuses')" <%= selected_statuses.include?('error') ? 'checked' : '' %>>
+              <span class="w-2 h-2 rounded-full bg-red-500"></span>
+              Error
+            </label>
+            <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+              <input type="checkbox" name="statuses[]" value="running" class="filter-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="updateMultiSelect('statuses')" <%= selected_statuses.include?('running') ? 'checked' : '' %>>
+              <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+              Running
+            </label>
+            <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+              <input type="checkbox" name="statuses[]" value="timeout" class="filter-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="updateMultiSelect('statuses')" <%= selected_statuses.include?('timeout') ? 'checked' : '' %>>
+              <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+              Timeout
+            </label>
+          </div>
+        </div>
+
+        <!-- Version Filter (Multi-select) -->
+        <% if @versions.any? %>
+          <div class="relative filter-dropdown" data-filter="versions">
+            <button type="button" onclick="toggleDropdown(this)" class="flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors <%= selected_versions.any? ? 'ring-2 ring-blue-500 ring-offset-1' : '' %>">
+              <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+              </svg>
+              <span class="dropdown-label text-gray-700">
+                <% if selected_versions.empty? %>
+                  All Versions
+                <% elsif selected_versions.length == 1 %>
+                  v<%= selected_versions.first %>
+                <% else %>
+                  <%= selected_versions.length %> Versions
+                <% end %>
+              </span>
+              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>
+            <div class="dropdown-menu hidden absolute z-10 mt-1 w-44 bg-white rounded-lg shadow-lg border border-gray-200 py-1 max-h-64 overflow-y-auto">
+              <div class="px-3 py-2 border-b border-gray-100">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" class="select-all-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="toggleAllOptions(this, 'versions')" <%= selected_versions.empty? ? 'checked' : '' %>>
+                  <span class="text-sm font-medium text-gray-700">All Versions</span>
+                </label>
+              </div>
+              <% @versions.each do |version| %>
+                <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                  <input type="checkbox" name="versions[]" value="<%= version %>" class="filter-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="updateMultiSelect('versions')" <%= selected_versions.include?(version.to_s) ? 'checked' : '' %>>
+                  v<%= version %>
+                </label>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- Time Range Filter -->
+        <div class="relative filter-dropdown" data-filter="days">
+          <button type="button" onclick="toggleDropdown(this)" class="flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors <%= params[:days].present? ? 'ring-2 ring-blue-500 ring-offset-1' : '' %>">
+            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            <span class="dropdown-label text-gray-700">
+              <% case params[:days]
+                 when '1' then %>Today<%
+                 when '7' then %>Last 7 Days<%
+                 when '30' then %>Last 30 Days<%
+                 else %>All Time<%
+                 end %>
+            </span>
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div class="dropdown-menu hidden absolute z-10 mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+            <a href="#" onclick="selectSingleFilter('days', '', 'All Time'); return false;" class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 <%= params[:days].blank? ? 'bg-blue-50 text-blue-700' : '' %>">
+              All Time
+            </a>
+            <a href="#" onclick="selectSingleFilter('days', '1', 'Today'); return false;" class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 <%= params[:days] == '1' ? 'bg-blue-50 text-blue-700' : '' %>">
+              Today
+            </a>
+            <a href="#" onclick="selectSingleFilter('days', '7', 'Last 7 Days'); return false;" class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 <%= params[:days] == '7' ? 'bg-blue-50 text-blue-700' : '' %>">
+              Last 7 Days
+            </a>
+            <a href="#" onclick="selectSingleFilter('days', '30', 'Last 30 Days'); return false;" class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 <%= params[:days] == '30' ? 'bg-blue-50 text-blue-700' : '' %>">
+              Last 30 Days
+            </a>
+          </div>
+          <%= f.hidden_field :days, value: params[:days], id: "filter_days" %>
+        </div>
+
+        <!-- Clear Filters -->
+        <% if has_filters %>
+          <%= link_to ruby_llm_agents.agent_path(@agent_type), data: { turbo_frame: "executions_table" }, class: "flex items-center gap-1 px-3 py-2 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" do %>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+            Clear
+          <% end %>
+        <% end %>
+
+        <!-- Stats Summary (right aligned) -->
+        <div class="ml-auto flex items-center gap-4 text-sm text-gray-500">
+          <span><%= number_with_delimiter(@filter_stats[:total_count]) %> executions</span>
+          <span class="text-gray-300">|</span>
+          <span>$<%= number_with_precision(@filter_stats[:total_cost] || 0, precision: 4) %></span>
+          <span class="text-gray-300">|</span>
+          <span><%= number_with_delimiter(@filter_stats[:total_tokens] || 0) %> tokens</span>
+        </div>
+      </div>
+    <% end %>
+
     <%= render "rubyllm/agents/shared/executions_table", executions: @executions, pagination: @pagination %>
   <% end %>
 </div>
+
+<script>
+  function toggleDropdown(button) {
+    document.querySelectorAll('.filter-dropdown .dropdown-menu').forEach(menu => {
+      if (menu !== button.nextElementSibling) {
+        menu.classList.add('hidden');
+      }
+    });
+    button.nextElementSibling.classList.toggle('hidden');
+  }
+
+  function selectSingleFilter(name, value, label) {
+    document.getElementById('filter_' + name).value = value;
+    const dropdown = document.querySelector(`[data-filter="${name}"]`);
+    dropdown.querySelector('.dropdown-label').textContent = label;
+    const button = dropdown.querySelector('button');
+    if (value) {
+      button.classList.add('ring-2', 'ring-blue-500', 'ring-offset-1');
+    } else {
+      button.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-1');
+    }
+    dropdown.querySelector('.dropdown-menu').classList.add('hidden');
+    document.getElementById('agent-filters-form').requestSubmit();
+  }
+
+  function toggleAllOptions(checkbox, filterName) {
+    const dropdown = document.querySelector(`[data-filter="${filterName}"]`);
+    const checkboxes = dropdown.querySelectorAll('.filter-checkbox');
+
+    if (checkbox.checked) {
+      checkboxes.forEach(cb => cb.checked = false);
+      updateMultiSelect(filterName);
+    }
+  }
+
+  function updateMultiSelect(filterName) {
+    const dropdown = document.querySelector(`[data-filter="${filterName}"]`);
+    const checkboxes = dropdown.querySelectorAll('.filter-checkbox:checked');
+    const selectAllCheckbox = dropdown.querySelector('.select-all-checkbox');
+    const button = dropdown.querySelector('button');
+    const label = dropdown.querySelector('.dropdown-label');
+
+    const count = checkboxes.length;
+
+    selectAllCheckbox.checked = (count === 0);
+
+    if (count === 0) {
+      label.textContent = filterName === 'statuses' ? 'All Statuses' : 'All Versions';
+      button.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-1');
+    } else if (count === 1) {
+      const value = checkboxes[0].value;
+      if (filterName === 'statuses') {
+        label.textContent = value.charAt(0).toUpperCase() + value.slice(1);
+      } else {
+        label.textContent = 'v' + value;
+      }
+      button.classList.add('ring-2', 'ring-blue-500', 'ring-offset-1');
+    } else {
+      label.textContent = `${count} ${filterName === 'statuses' ? 'Statuses' : 'Versions'}`;
+      button.classList.add('ring-2', 'ring-blue-500', 'ring-offset-1');
+    }
+
+    document.getElementById('agent-filters-form').requestSubmit();
+  }
+
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.filter-dropdown')) {
+      document.querySelectorAll('.filter-dropdown .dropdown-menu').forEach(menu => {
+        menu.classList.add('hidden');
+      });
+    }
+  });
+</script>
