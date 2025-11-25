@@ -1,0 +1,46 @@
+# frozen_string_literal: true
+
+class <%= class_name %>Agent < ApplicationAgent
+  model "<%= options[:model] %>"
+  temperature <%= options[:temperature] %>
+  version "1.0"
+<% if options[:cache] -%>
+  cache <%= options[:cache] %>
+<% else -%>
+  # cache 1.hour  # Uncomment to enable caching
+<% end -%>
+
+<% parsed_params.each do |param| -%>
+  param :<%= param.name %><%= ", required: true" if param.required? %><%= ", default: #{param.default.inspect}" if param.default && !param.required? %>
+<% end -%>
+
+  private
+
+  def system_prompt
+    <<~PROMPT
+      You are a helpful assistant.
+      # Define your system instructions here
+    PROMPT
+  end
+
+  def user_prompt
+    # Build the prompt from parameters
+<% if parsed_params.any? -%>
+    <%= parsed_params.first.name %>
+<% else -%>
+    "Your prompt here"
+<% end -%>
+  end
+
+  # Uncomment to use structured output with RubyLLM::Schema
+  # def schema
+  #   @schema ||= RubyLLM::Schema.create do
+  #     string :result, description: "The result"
+  #   end
+  # end
+
+  # Uncomment to add custom metadata to execution logs
+  # def execution_metadata
+  #   { custom_field: value }
+  # end
+end

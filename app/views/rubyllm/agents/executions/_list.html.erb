@@ -1,0 +1,13 @@
+<div class="bg-white rounded-lg shadow">
+  <div class="divide-y">
+    <% executions.each do |execution| %>
+      <%= render partial: "rubyllm/agents/executions/execution", locals: { execution: execution } %>
+    <% end %>
+    <% if executions.empty? %>
+      <div class="px-6 py-12 text-center text-gray-500">
+        <p class="text-lg">No executions found</p>
+        <p class="text-sm mt-1">Try adjusting your filters</p>
+      </div>
+    <% end %>
+  </div>
+</div>

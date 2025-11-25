@@ -1,0 +1,86 @@
+<h2 class="text-2xl font-bold text-gray-900 mb-6">Dashboard</h2>
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+  <div class="stat-card">
+    <p class="stat-label">Today's Executions</p>
+    <p class="stat-value"><%= @stats[:total_executions] %></p>
+  </div>
+
+  <div class="stat-card">
+    <p class="stat-label">Success Rate</p>
+    <p class="stat-value text-green-600"><%= @stats[:success_rate] %>%</p>
+  </div>
+
+  <div class="stat-card">
+    <p class="stat-label">Total Cost</p>
+    <p class="stat-value">$<%= number_with_precision(@stats[:total_cost], precision: 4) %></p>
+  </div>
+
+  <div class="stat-card">
+    <p class="stat-label">Avg Duration</p>
+    <p class="stat-value"><%= number_with_delimiter(@stats[:avg_duration_ms]) %>ms</p>
+  </div>
+</div>
+
+<!-- Two Column Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+  <!-- Cost by Agent -->
+  <div class="bg-white rounded-lg shadow p-6">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Cost by Agent (Today)</h3>
+    <% if @cost_by_agent.any? %>
+      <div class="space-y-3">
+        <% @cost_by_agent.each do |agent, cost| %>
+          <div class="flex justify-between items-center">
+            <span class="text-gray-700"><%= agent.gsub(/Agent$/, '') %></span>
+            <span class="font-mono text-gray-900">$<%= number_with_precision(cost, precision: 4) %></span>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="text-gray-500 text-sm">No executions today</p>
+    <% end %>
+  </div>
+
+  <!-- 7-Day Trend -->
+  <div class="bg-white rounded-lg shadow p-6">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">7-Day Trend</h3>
+    <div class="space-y-2">
+      <% @trend.each do |day| %>
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-gray-600 w-24"><%= day[:date].strftime("%b %d") %></span>
+          <div class="flex-1 mx-4">
+            <div class="bg-gray-100 rounded-full h-2">
+              <% max_count = [@trend.map { |d| d[:count] }.max, 1].max %>
+              <div class="bg-blue-500 h-2 rounded-full" style="width: <%= (day[:count].to_f / max_count * 100).round %>%"></div>
+            </div>
+          </div>
+          <span class="text-gray-900 w-12 text-right"><%= day[:count] %></span>
+          <% if day[:error_count] > 0 %>
+            <span class="text-red-500 text-xs ml-2">(<%= day[:error_count] %> errors)</span>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Executions -->
+<div class="bg-white rounded-lg shadow mt-8">
+  <div class="px-6 py-4 border-b">
+    <div class="flex justify-between items-center">
+      <h3 class="text-lg font-semibold text-gray-900">Recent Executions</h3>
+      <%= link_to "View All →", ruby_llm_agents.executions_path, class: "text-blue-600 hover:underline text-sm" %>
+    </div>
+  </div>
+  <div class="divide-y">
+    <% @recent_executions.each do |execution| %>
+      <%= render partial: "rubyllm/agents/executions/execution", locals: { execution: execution } %>
+    <% end %>
+    <% if @recent_executions.empty? %>
+      <div class="px-6 py-8 text-center text-gray-500">
+        No executions yet. Create an agent and make a call!
+      </div>
+    <% end %>
+  </div>
+</div>

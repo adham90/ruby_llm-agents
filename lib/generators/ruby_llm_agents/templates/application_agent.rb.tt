@@ -1,0 +1,22 @@
+# frozen_string_literal: true
+
+# ApplicationAgent - Base class for all agents in this application
+#
+# All agents should inherit from this class to share common configuration.
+#
+# Example:
+#   class MyAgent < ApplicationAgent
+#     param :query, required: true
+#
+#     def user_prompt
+#       query
+#     end
+#   end
+#
+class ApplicationAgent < RubyLLM::Agents::Base
+  # Shared configuration for all agents
+  # Uncomment and modify as needed:
+  #
+  # model "gemini-2.0-flash"
+  # temperature 0.0
+end

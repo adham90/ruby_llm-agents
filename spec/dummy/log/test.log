@@ -1,0 +1,804 @@
+  [1m[35m (4.2ms)[0m  [1m[35mDROP TABLE IF EXISTS "ruby_llm_agents_executions"[0m
+  [1m[35m (0.3ms)[0m  [1m[35mCREATE TABLE "ruby_llm_agents_executions" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "agent_type" varchar NOT NULL, "agent_version" varchar DEFAULT '1.0', "model_id" varchar NOT NULL, "model_provider" varchar, "temperature" decimal(3,2), "started_at" datetime(6) NOT NULL, "completed_at" datetime(6), "duration_ms" integer, "status" varchar DEFAULT 'success' NOT NULL, "input_tokens" integer, "output_tokens" integer, "total_tokens" integer, "cached_tokens" integer DEFAULT 0, "cache_creation_tokens" integer DEFAULT 0, "input_cost" decimal(12,6), "output_cost" decimal(12,6), "total_cost" decimal(12,6), "parameters" json DEFAULT '{}' NOT NULL, "response" json DEFAULT '{}', "metadata" json DEFAULT '{}' NOT NULL, "error_class" varchar, "error_message" text, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL)[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "index_ruby_llm_agents_executions_on_agent_type" ON "ruby_llm_agents_executions" ("agent_type")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "index_ruby_llm_agents_executions_on_status" ON "ruby_llm_agents_executions" ("status")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "index_ruby_llm_agents_executions_on_created_at" ON "ruby_llm_agents_executions" ("created_at")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "index_ruby_llm_agents_executions_on_agent_type_and_created_at" ON "ruby_llm_agents_executions" ("agent_type", "created_at")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "index_ruby_llm_agents_executions_on_agent_type_and_status" ON "ruby_llm_agents_executions" ("agent_type", "status")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "idx_on_agent_type_agent_version_6719e42ac5" ON "ruby_llm_agents_executions" ("agent_type", "agent_version")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "index_ruby_llm_agents_executions_on_duration_ms" ON "ruby_llm_agents_executions" ("duration_ms")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "index_ruby_llm_agents_executions_on_total_cost" ON "ruby_llm_agents_executions" ("total_cost")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE TABLE "schema_migrations" ("version" varchar NOT NULL PRIMARY KEY)[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE TABLE "ar_internal_metadata" ("key" varchar NOT NULL PRIMARY KEY, "value" varchar, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL)[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.1ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = ? ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1[0m  [[nil, "environment"]]
+  [1m[36mActiveRecord::InternalMetadata Create (0.0ms)[0m  [1m[32mINSERT INTO "ar_internal_metadata" ("key", "value", "created_at", "updated_at") VALUES ('environment', 'test', '2025-11-25 11:41:05.299103', '2025-11-25 11:41:05.299105') RETURNING "key"[0m
+  [1m[35m (0.0ms)[0m  [1m[35mPRAGMA foreign_keys[0m
+  [1m[35m (0.0ms)[0m  [1m[35mPRAGMA defer_foreign_keys[0m
+  [1m[35m (0.0ms)[0m  [1m[35mPRAGMA defer_foreign_keys = ON[0m
+  [1m[35m (0.0ms)[0m  [1m[35mPRAGMA foreign_keys = OFF[0m
+  [1m[35m (0.1ms)[0m  [1m[35mTRUNCATE TABLE "ruby_llm_agents_executions"[0m
+  [1m[35m (0.0ms)[0m  [1m[31mDELETE FROM "ruby_llm_agents_executions"[0m
+  [1m[35m (0.0ms)[0m  [1m[34mSELECT name FROM sqlite_master WHERE type='table' AND name='sqlite_sequence';[0m
+  [1m[35m (0.0ms)[0m  [1m[31mDELETE FROM sqlite_sequence where name = 'ruby_llm_agents_executions';[0m
+  [1m[35m (0.0ms)[0m  [1m[35mPRAGMA defer_foreign_keys = 0[0m
+  [1m[35m (0.0ms)[0m  [1m[35mPRAGMA foreign_keys = 1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.2ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[35m (3.9ms)[0m  [1m[35mDROP TABLE IF EXISTS "ruby_llm_agents_executions"[0m
+  [1m[35m (0.4ms)[0m  [1m[35mCREATE TABLE "ruby_llm_agents_executions" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "agent_type" varchar NOT NULL, "agent_version" varchar DEFAULT '1.0', "model_id" varchar NOT NULL, "model_provider" varchar, "temperature" decimal(3,2), "started_at" datetime(6) NOT NULL, "completed_at" datetime(6), "duration_ms" integer, "status" varchar DEFAULT 'success' NOT NULL, "input_tokens" integer, "output_tokens" integer, "total_tokens" integer, "cached_tokens" integer DEFAULT 0, "cache_creation_tokens" integer DEFAULT 0, "input_cost" decimal(12,6), "output_cost" decimal(12,6), "total_cost" decimal(12,6), "parameters" json DEFAULT '{}' NOT NULL, "response" json DEFAULT '{}', "metadata" json DEFAULT '{}' NOT NULL, "error_class" varchar, "error_message" text, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL)[0m
+  [1m[35m (0.1ms)[0m  [1m[35mCREATE INDEX "index_ruby_llm_agents_executions_on_agent_type" ON "ruby_llm_agents_executions" ("agent_type")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "index_ruby_llm_agents_executions_on_status" ON "ruby_llm_agents_executions" ("status")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "index_ruby_llm_agents_executions_on_created_at" ON "ruby_llm_agents_executions" ("created_at")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "index_ruby_llm_agents_executions_on_agent_type_and_created_at" ON "ruby_llm_agents_executions" ("agent_type", "created_at")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "index_ruby_llm_agents_executions_on_agent_type_and_status" ON "ruby_llm_agents_executions" ("agent_type", "status")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "idx_on_agent_type_agent_version_6719e42ac5" ON "ruby_llm_agents_executions" ("agent_type", "agent_version")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "index_ruby_llm_agents_executions_on_duration_ms" ON "ruby_llm_agents_executions" ("duration_ms")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "index_ruby_llm_agents_executions_on_total_cost" ON "ruby_llm_agents_executions" ("total_cost")[0m
+  [1m[35m (0.1ms)[0m  [1m[35mCREATE TABLE "schema_migrations" ("version" varchar NOT NULL PRIMARY KEY)[0m
+  [1m[35m (0.1ms)[0m  [1m[35mCREATE TABLE "ar_internal_metadata" ("key" varchar NOT NULL PRIMARY KEY, "value" varchar, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL)[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.1ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = ? ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1[0m  [[nil, "environment"]]
+  [1m[36mActiveRecord::InternalMetadata Create (0.0ms)[0m  [1m[32mINSERT INTO "ar_internal_metadata" ("key", "value", "created_at", "updated_at") VALUES ('environment', 'test', '2025-11-25 11:41:58.815636', '2025-11-25 11:41:58.815638') RETURNING "key"[0m
+  [1m[35m (0.0ms)[0m  [1m[35mPRAGMA foreign_keys[0m
+  [1m[35m (0.0ms)[0m  [1m[35mPRAGMA defer_foreign_keys[0m
+  [1m[35m (0.0ms)[0m  [1m[35mPRAGMA defer_foreign_keys = ON[0m
+  [1m[35m (0.0ms)[0m  [1m[35mPRAGMA foreign_keys = OFF[0m
+  [1m[35m (0.1ms)[0m  [1m[35mTRUNCATE TABLE "ruby_llm_agents_executions"[0m
+  [1m[35m (0.0ms)[0m  [1m[31mDELETE FROM "ruby_llm_agents_executions"[0m
+  [1m[35m (0.0ms)[0m  [1m[34mSELECT name FROM sqlite_master WHERE type='table' AND name='sqlite_sequence';[0m
+  [1m[35m (0.0ms)[0m  [1m[31mDELETE FROM sqlite_sequence where name = 'ruby_llm_agents_executions';[0m
+  [1m[35m (0.0ms)[0m  [1m[35mPRAGMA defer_foreign_keys = 0[0m
+  [1m[35m (0.0ms)[0m  [1m[35mPRAGMA foreign_keys = 1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.2ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.844863"], ["completed_at", "2025-11-25 11:41:58.844876"], ["duration_ms", 1500], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:41:58.845121"], ["updated_at", "2025-11-25 11:41:58.845121"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.846856"], ["completed_at", "2025-11-25 11:41:58.846878"], ["duration_ms", 1500], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.001], ["output_cost", 0.002], ["total_cost", 0.003], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:41:58.847136"], ["updated_at", "2025-11-25 11:41:58.847136"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.848049"], ["completed_at", "2025-11-25 11:41:58.848060"], ["duration_ms", 1500], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:41:58.848208"], ["updated_at", "2025-11-25 11:41:58.848208"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-24 11:40:58.848789"], ["completed_at", "2025-11-24 11:41:58.848872"], ["duration_ms", 1500], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-24 11:41:58.848904"], ["updated_at", "2025-11-25 11:41:58.849020"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.1ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE (created_at >= ?) AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [[nil, "2025-11-25 00:00:00"], ["id", 1], ["LIMIT", 1]]
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE (created_at >= ?) AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [[nil, "2025-11-25 00:00:00"], ["id", 2], ["LIMIT", 1]]
+  [1m[36mRubyLLM::Agents::Execution Load (0.1ms)[0m  [1m[34mSELECT "ruby_llm_agents_executions".* FROM "ruby_llm_agents_executions" WHERE (created_at >= ?)[0m  [[nil, "2025-11-25 00:00:00"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.857292"], ["completed_at", "2025-11-25 11:41:58.857314"], ["duration_ms", 1500], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:41:58.857538"], ["updated_at", "2025-11-25 11:41:58.857538"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.858282"], ["completed_at", "2025-11-25 11:41:58.858294"], ["duration_ms", 1500], ["status", "error"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", "StandardError"], ["error_message", "Something went wrong"], ["created_at", "2025-11-25 11:41:58.858472"], ["updated_at", "2025-11-25 11:41:58.858472"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE "ruby_llm_agents_executions"."status" = ? AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [["status", "success"], ["id", 1], ["LIMIT", 1]]
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE "ruby_llm_agents_executions"."status" = ? AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [["status", "success"], ["id", 2], ["LIMIT", 1]]
+  [1m[36mRubyLLM::Agents::Execution Load (0.1ms)[0m  [1m[34mSELECT "ruby_llm_agents_executions".* FROM "ruby_llm_agents_executions" WHERE "ruby_llm_agents_executions"."status" = ?[0m  [["status", "success"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.859881"], ["completed_at", "2025-11-25 11:41:58.859894"], ["duration_ms", 1500], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:41:58.860081"], ["updated_at", "2025-11-25 11:41:58.860081"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.860639"], ["completed_at", "2025-11-25 11:41:58.860650"], ["duration_ms", 1500], ["status", "error"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", "StandardError"], ["error_message", "Something went wrong"], ["created_at", "2025-11-25 11:41:58.860773"], ["updated_at", "2025-11-25 11:41:58.860773"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.861287"], ["completed_at", "2025-11-25 11:41:58.861297"], ["duration_ms", 1500], ["status", "timeout"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", "Timeout::Error"], ["error_message", "Request timed out"], ["created_at", "2025-11-25 11:41:58.861417"], ["updated_at", "2025-11-25 11:41:58.861417"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE "ruby_llm_agents_executions"."status" != ? AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [["status", "success"], ["id", 1], ["LIMIT", 1]]
+  [1m[36mRubyLLM::Agents::Execution Load (0.0ms)[0m  [1m[34mSELECT "ruby_llm_agents_executions".* FROM "ruby_llm_agents_executions" WHERE "ruby_llm_agents_executions"."status" != ?[0m  [["status", "success"]]
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE "ruby_llm_agents_executions"."status" != ? AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [["status", "success"], ["id", 2], ["LIMIT", 1]]
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE "ruby_llm_agents_executions"."status" != ? AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [["status", "success"], ["id", 3], ["LIMIT", 1]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.862954"], ["completed_at", "2025-11-25 11:41:58.862975"], ["duration_ms", 1500], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:41:58.863164"], ["updated_at", "2025-11-25 11:41:58.863164"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "OtherAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.863742"], ["completed_at", "2025-11-25 11:41:58.863754"], ["duration_ms", 1500], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:41:58.863890"], ["updated_at", "2025-11-25 11:41:58.863890"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE "ruby_llm_agents_executions"."agent_type" = ? AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [["agent_type", "TestAgent"], ["id", 1], ["LIMIT", 1]]
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE "ruby_llm_agents_executions"."agent_type" = ? AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [["agent_type", "TestAgent"], ["id", 2], ["LIMIT", 1]]
+  [1m[36mRubyLLM::Agents::Execution Load (0.1ms)[0m  [1m[34mSELECT "ruby_llm_agents_executions".* FROM "ruby_llm_agents_executions" WHERE "ruby_llm_agents_executions"."agent_type" = ?[0m  [["agent_type", "TestAgent"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.865436"], ["completed_at", "2025-11-25 11:41:58.865457"], ["duration_ms", 1500], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:41:58.865627"], ["updated_at", "2025-11-25 11:41:58.865627"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.866452"], ["completed_at", "2025-11-25 11:41:58.866473"], ["duration_ms", 1500], ["status", "success"], ["input_tokens", 50000], ["output_tokens", 10000], ["total_tokens", 60000], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 1.5], ["output_cost", 1.2], ["total_cost", 2.7], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:41:58.866675"], ["updated_at", "2025-11-25 11:41:58.866675"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE (total_cost >= ?) AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [[nil, 1.0], ["id", 1], ["LIMIT", 1]]
+  [1m[36mRubyLLM::Agents::Execution Load (0.1ms)[0m  [1m[34mSELECT "ruby_llm_agents_executions".* FROM "ruby_llm_agents_executions" WHERE (total_cost >= ?)[0m  [[nil, 1.0]]
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE (total_cost >= ?) AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [[nil, 1.0], ["id", 2], ["LIMIT", 1]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.868378"], ["completed_at", "2025-11-25 11:41:58.868392"], ["duration_ms", 1000], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:41:58.868529"], ["updated_at", "2025-11-25 11:41:58.868529"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.869079"], ["completed_at", "2025-11-25 11:41:58.869092"], ["duration_ms", 15000], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:41:58.869211"], ["updated_at", "2025-11-25 11:41:58.869211"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE (duration_ms >= ?) AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [[nil, 5000], ["id", 1], ["LIMIT", 1]]
+  [1m[36mRubyLLM::Agents::Execution Load (0.1ms)[0m  [1m[34mSELECT "ruby_llm_agents_executions".* FROM "ruby_llm_agents_executions" WHERE (duration_ms >= ?)[0m  [[nil, 5000]]
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE (duration_ms >= ?) AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [[nil, 5000], ["id", 2], ["LIMIT", 1]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.870820"], ["completed_at", "2025-11-25 11:41:58.870836"], ["duration_ms", 1000], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:41:58.870981"], ["updated_at", "2025-11-25 11:41:58.870981"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.871493"], ["completed_at", "2025-11-25 11:41:58.871503"], ["duration_ms", 2000], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:41:58.871619"], ["updated_at", "2025-11-25 11:41:58.871619"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Sum (0.3ms)[0m  [1m[34mSELECT SUM("ruby_llm_agents_executions"."total_cost") FROM "ruby_llm_agents_executions"[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.877472"], ["completed_at", "2025-11-25 11:41:58.877505"], ["duration_ms", 1000], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:41:58.877772"], ["updated_at", "2025-11-25 11:41:58.877772"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.878543"], ["completed_at", "2025-11-25 11:41:58.878557"], ["duration_ms", 2000], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:41:58.878712"], ["updated_at", "2025-11-25 11:41:58.878712"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Sum (0.0ms)[0m  [1m[34mSELECT SUM("ruby_llm_agents_executions"."total_tokens") FROM "ruby_llm_agents_executions"[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.2ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.880070"], ["completed_at", "2025-11-25 11:41:58.880094"], ["duration_ms", 1000], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:41:58.880374"], ["updated_at", "2025-11-25 11:41:58.880374"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.881154"], ["completed_at", "2025-11-25 11:41:58.881168"], ["duration_ms", 2000], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:41:58.881320"], ["updated_at", "2025-11-25 11:41:58.881320"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Average (0.0ms)[0m  [1m[34mSELECT AVG("ruby_llm_agents_executions"."duration_ms") FROM "ruby_llm_agents_executions"[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.2ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.882770"], ["completed_at", "2025-11-25 11:41:58.882790"], ["duration_ms", 1000], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:41:58.882974"], ["updated_at", "2025-11-25 11:41:58.882974"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:40:58.883821"], ["completed_at", "2025-11-25 11:41:58.883838"], ["duration_ms", 2000], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:41:58.884041"], ["updated_at", "2025-11-25 11:41:58.884041"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Average (0.0ms)[0m  [1m[34mSELECT AVG("ruby_llm_agents_executions"."total_tokens") FROM "ruby_llm_agents_executions"[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[35m (3.4ms)[0m  [1m[35mDROP TABLE IF EXISTS "ruby_llm_agents_executions"[0m
+  [1m[35m (0.2ms)[0m  [1m[35mCREATE TABLE "ruby_llm_agents_executions" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "agent_type" varchar NOT NULL, "agent_version" varchar DEFAULT '1.0', "model_id" varchar NOT NULL, "model_provider" varchar, "temperature" decimal(3,2), "started_at" datetime(6) NOT NULL, "completed_at" datetime(6), "duration_ms" integer, "status" varchar DEFAULT 'success' NOT NULL, "input_tokens" integer, "output_tokens" integer, "total_tokens" integer, "cached_tokens" integer DEFAULT 0, "cache_creation_tokens" integer DEFAULT 0, "input_cost" decimal(12,6), "output_cost" decimal(12,6), "total_cost" decimal(12,6), "parameters" json DEFAULT '{}' NOT NULL, "response" json DEFAULT '{}', "metadata" json DEFAULT '{}' NOT NULL, "error_class" varchar, "error_message" text, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL)[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "index_ruby_llm_agents_executions_on_agent_type" ON "ruby_llm_agents_executions" ("agent_type")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "index_ruby_llm_agents_executions_on_status" ON "ruby_llm_agents_executions" ("status")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "index_ruby_llm_agents_executions_on_created_at" ON "ruby_llm_agents_executions" ("created_at")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "index_ruby_llm_agents_executions_on_agent_type_and_created_at" ON "ruby_llm_agents_executions" ("agent_type", "created_at")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "index_ruby_llm_agents_executions_on_agent_type_and_status" ON "ruby_llm_agents_executions" ("agent_type", "status")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "idx_on_agent_type_agent_version_6719e42ac5" ON "ruby_llm_agents_executions" ("agent_type", "agent_version")[0m
+  [1m[35m (0.1ms)[0m  [1m[35mCREATE INDEX "index_ruby_llm_agents_executions_on_duration_ms" ON "ruby_llm_agents_executions" ("duration_ms")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE INDEX "index_ruby_llm_agents_executions_on_total_cost" ON "ruby_llm_agents_executions" ("total_cost")[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE TABLE "schema_migrations" ("version" varchar NOT NULL PRIMARY KEY)[0m
+  [1m[35m (0.0ms)[0m  [1m[35mCREATE TABLE "ar_internal_metadata" ("key" varchar NOT NULL PRIMARY KEY, "value" varchar, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL)[0m
+  [1m[36mActiveRecord::InternalMetadata Load (0.1ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = ? ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1[0m  [[nil, "environment"]]
+  [1m[36mActiveRecord::InternalMetadata Create (0.0ms)[0m  [1m[32mINSERT INTO "ar_internal_metadata" ("key", "value", "created_at", "updated_at") VALUES ('environment', 'test', '2025-11-25 11:42:39.805969', '2025-11-25 11:42:39.805971') RETURNING "key"[0m
+  [1m[35m (0.0ms)[0m  [1m[35mPRAGMA foreign_keys[0m
+  [1m[35m (0.0ms)[0m  [1m[35mPRAGMA defer_foreign_keys[0m
+  [1m[35m (0.0ms)[0m  [1m[35mPRAGMA defer_foreign_keys = ON[0m
+  [1m[35m (0.0ms)[0m  [1m[35mPRAGMA foreign_keys = OFF[0m
+  [1m[35m (0.1ms)[0m  [1m[35mTRUNCATE TABLE "ruby_llm_agents_executions"[0m
+  [1m[35m (0.0ms)[0m  [1m[31mDELETE FROM "ruby_llm_agents_executions"[0m
+  [1m[35m (0.1ms)[0m  [1m[34mSELECT name FROM sqlite_master WHERE type='table' AND name='sqlite_sequence';[0m
+  [1m[35m (0.0ms)[0m  [1m[31mDELETE FROM sqlite_sequence where name = 'ruby_llm_agents_executions';[0m
+  [1m[35m (0.0ms)[0m  [1m[35mPRAGMA defer_foreign_keys = 0[0m
+  [1m[35m (0.0ms)[0m  [1m[35mPRAGMA foreign_keys = 1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.2ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.837046"], ["completed_at", "2025-11-25 11:42:39.837070"], ["duration_ms", 1500], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:42:39.837376"], ["updated_at", "2025-11-25 11:42:39.837376"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.2ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.839068"], ["completed_at", "2025-11-25 11:42:39.839095"], ["duration_ms", 1500], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.001], ["output_cost", 0.002], ["total_cost", 0.003], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:42:39.839315"], ["updated_at", "2025-11-25 11:42:39.839315"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.840823"], ["completed_at", "2025-11-25 11:42:39.840852"], ["duration_ms", 1500], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:42:39.841121"], ["updated_at", "2025-11-25 11:42:39.841121"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-24 11:41:39.841938"], ["completed_at", "2025-11-24 11:42:39.842036"], ["duration_ms", 1500], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-24 11:42:39.842127"], ["updated_at", "2025-11-25 11:42:39.842269"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.1ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE (created_at >= ?) AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [[nil, "2025-11-25 00:00:00"], ["id", 1], ["LIMIT", 1]]
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE (created_at >= ?) AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [[nil, "2025-11-25 00:00:00"], ["id", 2], ["LIMIT", 1]]
+  [1m[36mRubyLLM::Agents::Execution Load (0.1ms)[0m  [1m[34mSELECT "ruby_llm_agents_executions".* FROM "ruby_llm_agents_executions" WHERE (created_at >= ?)[0m  [[nil, "2025-11-25 00:00:00"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.850664"], ["completed_at", "2025-11-25 11:42:39.850685"], ["duration_ms", 1500], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:42:39.850940"], ["updated_at", "2025-11-25 11:42:39.850940"]]
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.2ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.864204"], ["completed_at", "2025-11-25 11:42:39.864249"], ["duration_ms", 1500], ["status", "error"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", "StandardError"], ["error_message", "Something went wrong"], ["created_at", "2025-11-25 11:42:39.864598"], ["updated_at", "2025-11-25 11:42:39.864598"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE "ruby_llm_agents_executions"."status" = ? AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [["status", "success"], ["id", 1], ["LIMIT", 1]]
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE "ruby_llm_agents_executions"."status" = ? AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [["status", "success"], ["id", 2], ["LIMIT", 1]]
+  [1m[36mRubyLLM::Agents::Execution Load (0.1ms)[0m  [1m[34mSELECT "ruby_llm_agents_executions".* FROM "ruby_llm_agents_executions" WHERE "ruby_llm_agents_executions"."status" = ?[0m  [["status", "success"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.2ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.867573"], ["completed_at", "2025-11-25 11:42:39.867609"], ["duration_ms", 1500], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:42:39.867898"], ["updated_at", "2025-11-25 11:42:39.867898"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.868849"], ["completed_at", "2025-11-25 11:42:39.868864"], ["duration_ms", 1500], ["status", "error"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", "StandardError"], ["error_message", "Something went wrong"], ["created_at", "2025-11-25 11:42:39.869056"], ["updated_at", "2025-11-25 11:42:39.869056"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.2ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.869704"], ["completed_at", "2025-11-25 11:42:39.869721"], ["duration_ms", 1500], ["status", "timeout"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", "Timeout::Error"], ["error_message", "Request timed out"], ["created_at", "2025-11-25 11:42:39.869878"], ["updated_at", "2025-11-25 11:42:39.869878"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE "ruby_llm_agents_executions"."status" != ? AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [["status", "success"], ["id", 1], ["LIMIT", 1]]
+  [1m[36mRubyLLM::Agents::Execution Load (0.1ms)[0m  [1m[34mSELECT "ruby_llm_agents_executions".* FROM "ruby_llm_agents_executions" WHERE "ruby_llm_agents_executions"."status" != ?[0m  [["status", "success"]]
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE "ruby_llm_agents_executions"."status" != ? AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [["status", "success"], ["id", 2], ["LIMIT", 1]]
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE "ruby_llm_agents_executions"."status" != ? AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [["status", "success"], ["id", 3], ["LIMIT", 1]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.2ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.872604"], ["completed_at", "2025-11-25 11:42:39.872630"], ["duration_ms", 1500], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:42:39.872881"], ["updated_at", "2025-11-25 11:42:39.872881"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.2ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "OtherAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.874220"], ["completed_at", "2025-11-25 11:42:39.874242"], ["duration_ms", 1500], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:42:39.874456"], ["updated_at", "2025-11-25 11:42:39.874456"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE "ruby_llm_agents_executions"."agent_type" = ? AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [["agent_type", "TestAgent"], ["id", 1], ["LIMIT", 1]]
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE "ruby_llm_agents_executions"."agent_type" = ? AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [["agent_type", "TestAgent"], ["id", 2], ["LIMIT", 1]]
+  [1m[36mRubyLLM::Agents::Execution Load (0.1ms)[0m  [1m[34mSELECT "ruby_llm_agents_executions".* FROM "ruby_llm_agents_executions" WHERE "ruby_llm_agents_executions"."agent_type" = ?[0m  [["agent_type", "TestAgent"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.6ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.876359"], ["completed_at", "2025-11-25 11:42:39.876378"], ["duration_ms", 1500], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:42:39.876542"], ["updated_at", "2025-11-25 11:42:39.876542"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.877667"], ["completed_at", "2025-11-25 11:42:39.877681"], ["duration_ms", 1500], ["status", "success"], ["input_tokens", 50000], ["output_tokens", 10000], ["total_tokens", 60000], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 1.5], ["output_cost", 1.2], ["total_cost", 2.7], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:42:39.877839"], ["updated_at", "2025-11-25 11:42:39.877839"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE (total_cost >= ?) AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [[nil, 1.0], ["id", 1], ["LIMIT", 1]]
+  [1m[36mRubyLLM::Agents::Execution Load (0.1ms)[0m  [1m[34mSELECT "ruby_llm_agents_executions".* FROM "ruby_llm_agents_executions" WHERE (total_cost >= ?)[0m  [[nil, 1.0]]
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE (total_cost >= ?) AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [[nil, 1.0], ["id", 2], ["LIMIT", 1]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.879516"], ["completed_at", "2025-11-25 11:42:39.879542"], ["duration_ms", 1000], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:42:39.879751"], ["updated_at", "2025-11-25 11:42:39.879751"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.880769"], ["completed_at", "2025-11-25 11:42:39.880787"], ["duration_ms", 15000], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.003], ["output_cost", 0.006], ["total_cost", 0.009], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:42:39.880969"], ["updated_at", "2025-11-25 11:42:39.880969"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE (duration_ms >= ?) AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [[nil, 5000], ["id", 1], ["LIMIT", 1]]
+  [1m[36mRubyLLM::Agents::Execution Load (0.1ms)[0m  [1m[34mSELECT "ruby_llm_agents_executions".* FROM "ruby_llm_agents_executions" WHERE (duration_ms >= ?)[0m  [[nil, 5000]]
+  [1m[36mRubyLLM::Agents::Execution Exists? (0.0ms)[0m  [1m[34mSELECT 1 AS one FROM "ruby_llm_agents_executions" WHERE (duration_ms >= ?) AND "ruby_llm_agents_executions"."id" = ? LIMIT ?[0m  [[nil, 5000], ["id", 2], ["LIMIT", 1]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.883152"], ["completed_at", "2025-11-25 11:42:39.883175"], ["duration_ms", 1000], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.05], ["output_cost", 0.05], ["total_cost", 0.1], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:42:39.883392"], ["updated_at", "2025-11-25 11:42:39.883392"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.883994"], ["completed_at", "2025-11-25 11:42:39.884006"], ["duration_ms", 2000], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.1], ["output_cost", 0.1], ["total_cost", 0.2], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:42:39.884127"], ["updated_at", "2025-11-25 11:42:39.884127"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Sum (0.0ms)[0m  [1m[34mSELECT SUM("ruby_llm_agents_executions"."total_cost") FROM "ruby_llm_agents_executions"[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.885426"], ["completed_at", "2025-11-25 11:42:39.885438"], ["duration_ms", 1000], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.05], ["output_cost", 0.05], ["total_cost", 0.1], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:42:39.885564"], ["updated_at", "2025-11-25 11:42:39.885564"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.886225"], ["completed_at", "2025-11-25 11:42:39.886238"], ["duration_ms", 2000], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.1], ["output_cost", 0.1], ["total_cost", 0.2], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:42:39.886361"], ["updated_at", "2025-11-25 11:42:39.886361"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Sum (0.0ms)[0m  [1m[34mSELECT SUM("ruby_llm_agents_executions"."total_tokens") FROM "ruby_llm_agents_executions"[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.887327"], ["completed_at", "2025-11-25 11:42:39.887338"], ["duration_ms", 1000], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.05], ["output_cost", 0.05], ["total_cost", 0.1], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:42:39.887455"], ["updated_at", "2025-11-25 11:42:39.887455"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.888147"], ["completed_at", "2025-11-25 11:42:39.888158"], ["duration_ms", 2000], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.1], ["output_cost", 0.1], ["total_cost", 0.2], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:42:39.888273"], ["updated_at", "2025-11-25 11:42:39.888273"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Average (0.0ms)[0m  [1m[34mSELECT AVG("ruby_llm_agents_executions"."duration_ms") FROM "ruby_llm_agents_executions"[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.889210"], ["completed_at", "2025-11-25 11:42:39.889222"], ["duration_ms", 1000], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.05], ["output_cost", 0.05], ["total_cost", 0.1], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:42:39.889339"], ["updated_at", "2025-11-25 11:42:39.889339"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Create (0.1ms)[0m  [1m[32mINSERT INTO "ruby_llm_agents_executions" ("agent_type", "agent_version", "model_id", "model_provider", "temperature", "started_at", "completed_at", "duration_ms", "status", "input_tokens", "output_tokens", "total_tokens", "cached_tokens", "cache_creation_tokens", "input_cost", "output_cost", "total_cost", "parameters", "response", "metadata", "error_class", "error_message", "created_at", "updated_at") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING "id"[0m  [["agent_type", "TestAgent"], ["agent_version", "1.0"], ["model_id", "gpt-4"], ["model_provider", nil], ["temperature", 0.5], ["started_at", "2025-11-25 11:41:39.889942"], ["completed_at", "2025-11-25 11:42:39.889953"], ["duration_ms", 2000], ["status", "success"], ["input_tokens", 100], ["output_tokens", 50], ["total_tokens", 150], ["cached_tokens", 0], ["cache_creation_tokens", 0], ["input_cost", 0.1], ["output_cost", 0.1], ["total_cost", 0.2], ["parameters", "{\"query\":\"test query\"}"], ["response", "{\"content\":\"test response\"}"], ["metadata", "{\"query\":\"test query\"}"], ["error_class", nil], ["error_message", nil], ["created_at", "2025-11-25 11:42:39.890076"], ["updated_at", "2025-11-25 11:42:39.890076"]]
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mRELEASE SAVEPOINT active_record_2[0m
+  [1m[36mRubyLLM::Agents::Execution Average (0.0ms)[0m  [1m[34mSELECT AVG("ruby_llm_agents_executions"."total_tokens") FROM "ruby_llm_agents_executions"[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.1ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[36mBEGIN deferred TRANSACTION[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[35mSAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TO SAVEPOINT active_record_1[0m
+  [1m[36mTRANSACTION (0.0ms)[0m  [1m[31mROLLBACK TRANSACTION[0m

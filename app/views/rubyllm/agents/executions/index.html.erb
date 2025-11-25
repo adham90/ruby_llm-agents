@@ -1,0 +1,45 @@
+<h2 class="text-2xl font-bold text-gray-900 mb-6">Executions</h2>
+
+<!-- Filters -->
+<div class="bg-white rounded-lg shadow p-4 mb-6">
+  <%= form_with url: ruby_llm_agents.search_executions_path, method: :get, data: { turbo_frame: "executions_list", controller: "filter" } do |f| %>
+    <div class="flex flex-wrap gap-4 items-end">
+      <!-- Agent Type Filter -->
+      <div class="flex-1 min-w-[200px]">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Agent Type</label>
+        <%= f.select :agent_type,
+            options_for_select([["All Agents", ""]] + @agent_types.map { |t| [t.gsub(/Agent$/, ''), t] }, params[:agent_type]),
+            {},
+            class: "w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" %>
+      </div>
+
+      <!-- Status Filter -->
+      <div class="flex-1 min-w-[150px]">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+        <%= f.select :status,
+            options_for_select([["All Statuses", ""]] + @statuses.map { |s| [s.capitalize, s] }, params[:status]),
+            {},
+            class: "w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" %>
+      </div>
+
+      <!-- Days Filter -->
+      <div class="flex-1 min-w-[150px]">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Time Range</label>
+        <%= f.select :days,
+            options_for_select([["All Time", ""], ["Today", 1], ["Last 7 Days", 7], ["Last 30 Days", 30]], params[:days]),
+            {},
+            class: "w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" %>
+      </div>
+
+      <!-- Submit -->
+      <div>
+        <%= f.submit "Filter", class: "bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors cursor-pointer" %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<!-- Executions List -->
+<%= turbo_frame_tag "executions_list" do %>
+  <%= render partial: "rubyllm/agents/executions/list", locals: { executions: @executions } %>
+<% end %>

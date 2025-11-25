@@ -1,0 +1,36 @@
+# frozen_string_literal: true
+
+# Configuration for RubyLLM::Agents
+#
+# For more information, see: https://github.com/adham90/ruby_llm-agents
+
+RubyLLM::Agents.configure do |config|
+  # Default model for all agents (can be overridden per agent)
+  # config.default_model = "gemini-2.0-flash"
+
+  # Default temperature (0.0 = deterministic, 1.0 = creative)
+  # config.default_temperature = 0.0
+
+  # Default timeout in seconds
+  # config.default_timeout = 60
+
+  # Cache store for agent response caching (defaults to Rails.cache)
+  # config.cache_store = Rails.cache
+
+  # Async logging (set to false to log synchronously, useful for debugging)
+  # config.async_logging = true
+
+  # Retention period for execution records (used by cleanup tasks)
+  # config.retention_period = 30.days
+
+  # Anomaly detection thresholds (executions exceeding these are logged as warnings)
+  # config.anomaly_cost_threshold = 5.00        # dollars
+  # config.anomaly_duration_threshold = 10_000  # milliseconds
+
+  # Dashboard authentication
+  # Return true to allow access, false to deny
+  # config.dashboard_auth = ->(controller) { controller.current_user&.admin? }
+
+  # Parent controller for dashboard (for authentication/layout inheritance)
+  # config.dashboard_parent_controller = "ApplicationController"
+end
