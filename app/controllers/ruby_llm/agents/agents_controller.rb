@@ -16,8 +16,21 @@ module RubyLLM
         @stats = Execution.stats_for(@agent_type, period: :all_time)
         @stats_today = Execution.stats_for(@agent_type, period: :today)
 
-        # Get recent executions for this agent
-        @executions = Execution.by_agent(@agent_type).recent(20)
+        # Get recent executions for this agent (paginated)
+        page = (params[:page] || 1).to_i
+        per_page = 25
+        offset = (page - 1) * per_page
+
+        base_scope = Execution.by_agent(@agent_type).order(created_at: :desc)
+        total_count = base_scope.count
+        @executions = base_scope.limit(per_page).offset(offset)
+
+        @pagination = {
+          current_page: page,
+          per_page: per_page,
+          total_count: total_count,
+          total_pages: (total_count.to_f / per_page).ceil
+        }
 
         # Get trend data for charts (30 days)
         @trend_data = Execution.trend_analysis(agent_type: @agent_type, days: 30)

@@ -184,46 +184,14 @@
   </div>
 <% end %>
 
-<!-- Recent Executions -->
+<!-- Executions -->
 <div class="bg-white rounded-lg shadow p-6">
   <div class="flex items-center justify-between mb-4">
-    <h3 class="text-lg font-semibold text-gray-900">Recent Executions</h3>
+    <h3 class="text-lg font-semibold text-gray-900">Executions</h3>
     <%= link_to "View all", ruby_llm_agents.executions_path(agent_type: @agent_type), class: "text-sm text-blue-600 hover:underline" %>
   </div>
 
-  <% if @executions.empty? %>
-    <p class="text-gray-500 text-center py-4">No executions found for this agent.</p>
-  <% else %>
-    <div class="divide-y divide-gray-100">
-      <% @executions.each do |execution| %>
-        <%= link_to ruby_llm_agents.execution_path(execution), class: "block py-3 hover:bg-gray-50 -mx-2 px-2 rounded transition-colors", data: { turbo: false } do %>
-          <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-              <% case execution.status %>
-              <% when "running" %>
-                <span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
-              <% when "success" %>
-                <span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>
-              <% when "error" %>
-                <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
-              <% when "timeout" %>
-                <span class="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
-              <% end %>
-              <span class="text-sm font-medium text-gray-900"><%= execution.status %></span>
-              <span class="text-sm text-gray-500">v<%= execution.agent_version %></span>
-            </div>
-            <div class="flex items-center space-x-4 text-sm text-gray-500">
-              <span><%= number_with_delimiter(execution.total_tokens || 0) %> tokens</span>
-              <span>$<%= number_with_precision(execution.total_cost || 0, precision: 6) %></span>
-              <span><%= execution.duration_ms || 0 %>ms</span>
-              <span><%= time_ago_in_words(execution.created_at) %> ago</span>
-            </div>
-          </div>
-          <% if execution.status_error? && execution.error_message.present? %>
-            <p class="text-xs text-red-500 mt-1 truncate"><%= execution.error_message %></p>
-          <% end %>
-        <% end %>
-      <% end %>
-    </div>
+  <%= turbo_frame_tag "executions_table" do %>
+    <%= render "rubyllm/agents/shared/executions_table", executions: @executions, pagination: @pagination %>
   <% end %>
 </div>
