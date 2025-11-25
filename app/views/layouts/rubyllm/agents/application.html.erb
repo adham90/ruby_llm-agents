@@ -1,17 +1,19 @@
 <!DOCTYPE html>
+
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RubyLLM Agents Dashboard</title>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Tailwind CSS via CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
+    <title>RubyLLM Agents Dashboard</title>
 
-  <!-- Turbo -->
-  <%= javascript_include_tag "turbo", type: "module" rescue nil %>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
 
-  <style>
+    <!-- Turbo -->
+    <%= javascript_include_tag "turbo", type: "module" rescue nil %>
+
+    <style>
     /* Custom styles for the dashboard */
     .stat-card {
       @apply bg-white rounded-lg shadow p-6;
@@ -41,40 +43,44 @@
       @apply bg-yellow-100 text-yellow-800;
     }
   </style>
-</head>
-<body class="bg-gray-50 min-h-screen">
-  <!-- Header -->
-  <header class="bg-white shadow-sm border-b">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between items-center h-16">
-        <div class="flex items-center space-x-4">
-          <h1 class="text-xl font-semibold text-gray-900">
-            🤖 RubyLLM Agents
-          </h1>
-          <nav class="flex space-x-2">
-            <%= link_to "Dashboard", ruby_llm_agents.root_path, class: "nav-link #{current_page?(ruby_llm_agents.root_path) ? 'active' : ''}" %>
-            <%= link_to "Executions", ruby_llm_agents.executions_path, class: "nav-link #{current_page?(ruby_llm_agents.executions_path) ? 'active' : ''}" %>
-          </nav>
-        </div>
-        <div class="text-sm text-gray-500">
-          <%= Time.current.strftime("%B %d, %Y") %>
+  </head>
+
+  <body class="bg-gray-50 min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center h-16">
+          <div class="flex items-center space-x-4">
+            <h1 class="text-xl font-semibold text-gray-900">
+              🤖 RubyLLM Agents
+            </h1>
+
+            <nav class="flex space-x-2">
+              <%= link_to "Dashboard", ruby_llm_agents.root_path, class: "nav-link #{current_page?(ruby_llm_agents.root_path) ? 'active' : ''}" %>
+              <%= link_to "Executions", ruby_llm_agents.executions_path, class: "nav-link #{current_page?(ruby_llm_agents.executions_path) ? 'active' : ''}" %>
+            </nav>
+          </div>
+
+          <div class="text-sm text-gray-500">
+            <%= Time.current.strftime("%B %d, %Y") %>
+          </div>
         </div>
       </div>
-    </div>
-  </header>
+    </header>
 
-  <!-- Main content -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <%= yield %>
-  </main>
+    <!-- Main content -->
+    <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 h-full">
+      <%= yield %>
+    </main>
 
-  <!-- Footer -->
-  <footer class="border-t bg-white mt-auto">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-      <p class="text-center text-sm text-gray-500">
-        Powered by <a href="https://github.com/adham90/ruby_llm-agents" class="text-blue-600 hover:underline">ruby_llm-agents</a>
-      </p>
-    </div>
-  </footer>
-</body>
+    <!-- Footer -->
+    <footer class="border-t bg-white mt-auto">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <p class="text-center text-sm text-gray-500">
+          Powered by
+          <a href="https://github.com/adham90/ruby_llm-agents" class="text-blue-600 hover:underline">ruby_llm-agents</a>
+        </p>
+      </div>
+    </footer>
+  </body>
 </html>
