@@ -1,86 +1,135 @@
-<h2 class="text-2xl font-bold text-gray-900 mb-6">Dashboard</h2>
+<%= turbo_frame_tag "dashboard" do %>
+  <div data-controller="refresh" data-refresh-interval-value="30000" data-refresh-enabled-value="false">
+    <!-- Header with Time Range Selector and Live Poll Toggle -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+      <h2 class="text-2xl font-bold text-gray-900 mb-4 sm:mb-0">Dashboard</h2>
 
-<!-- Stats Cards -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-  <div class="stat-card">
-    <p class="stat-label">Today's Executions</p>
-    <p class="stat-value"><%= @stats[:total_executions] %></p>
-  </div>
+      <div class="flex items-center space-x-4">
+        <!-- Live Poll Toggle -->
+        <button type="button"
+                data-action="refresh#toggle"
+                data-refresh-target="button"
+                class="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors bg-gray-100 text-gray-600">
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          Live Poll: <span data-refresh-target="indicator" class="ml-1">Off</span>
+        </button>
 
-  <div class="stat-card">
-    <p class="stat-label">Success Rate</p>
-    <p class="stat-value text-green-600"><%= @stats[:success_rate] %>%</p>
-  </div>
+        <!-- Time Range Tabs -->
+        <div class="inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm">
+          <%= link_to "Today", ruby_llm_agents.root_path(period: :today),
+              class: "px-4 py-2 text-sm font-medium rounded-md transition-colors #{@period == :today ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}",
+              data: { turbo_frame: "dashboard" } %>
+          <%= link_to "7 Days", ruby_llm_agents.root_path(period: :this_week),
+              class: "px-4 py-2 text-sm font-medium rounded-md transition-colors #{@period == :this_week ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}",
+              data: { turbo_frame: "dashboard" } %>
+          <%= link_to "30 Days", ruby_llm_agents.root_path(period: :this_month),
+              class: "px-4 py-2 text-sm font-medium rounded-md transition-colors #{@period == :this_month ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}",
+              data: { turbo_frame: "dashboard" } %>
+        </div>
+      </div>
+    </div>
 
-  <div class="stat-card">
-    <p class="stat-label">Total Cost</p>
-    <p class="stat-value">$<%= number_with_precision(@stats[:total_cost], precision: 4) %></p>
-  </div>
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+      <!-- Executions -->
+      <div class="bg-white border border-gray-200 rounded-xl p-4">
+        <p class="text-xs text-gray-500 uppercase tracking-wide font-medium">Executions</p>
+        <p class="text-2xl font-bold text-gray-900 mt-2"><%= number_with_delimiter(@stats[:total_executions]) %></p>
+      </div>
 
-  <div class="stat-card">
-    <p class="stat-label">Avg Duration</p>
-    <p class="stat-value"><%= number_with_delimiter(@stats[:avg_duration_ms]) %>ms</p>
-  </div>
-</div>
+      <!-- Success Rate -->
+      <div class="bg-white border border-gray-200 rounded-xl p-4">
+        <p class="text-xs text-gray-500 uppercase tracking-wide font-medium">Success Rate</p>
+        <p class="text-2xl font-bold text-green-600 mt-2"><%= @stats[:success_rate] %>%</p>
+      </div>
 
-<!-- Two Column Layout -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-  <!-- Cost by Agent -->
-  <div class="bg-white rounded-lg shadow p-6">
-    <h3 class="text-lg font-semibold text-gray-900 mb-4">Cost by Agent (Today)</h3>
-    <% if @cost_by_agent.any? %>
-      <div class="space-y-3">
-        <% @cost_by_agent.each do |agent, cost| %>
-          <div class="flex justify-between items-center">
-            <span class="text-gray-700"><%= agent.gsub(/Agent$/, '') %></span>
-            <span class="font-mono text-gray-900">$<%= number_with_precision(cost, precision: 4) %></span>
+      <!-- Failed -->
+      <div class="bg-white border border-gray-200 rounded-xl p-4">
+        <p class="text-xs text-gray-500 uppercase tracking-wide font-medium">Failed</p>
+        <p class="text-2xl font-bold text-red-600 mt-2"><%= number_with_delimiter(@stats[:failed]) %></p>
+      </div>
+
+      <!-- Total Cost -->
+      <div class="bg-white border border-gray-200 rounded-xl p-4">
+        <p class="text-xs text-gray-500 uppercase tracking-wide font-medium">Total Cost</p>
+        <p class="text-2xl font-bold text-gray-900 mt-2">$<%= number_with_precision(@stats[:total_cost], precision: 4) %></p>
+      </div>
+
+      <!-- Total Tokens -->
+      <div class="bg-white border border-gray-200 rounded-xl p-4">
+        <p class="text-xs text-gray-500 uppercase tracking-wide font-medium">Total Tokens</p>
+        <p class="text-2xl font-bold text-gray-900 mt-2"><%= number_with_delimiter(@stats[:total_tokens]) %></p>
+      </div>
+
+      <!-- Avg Duration -->
+      <div class="bg-white border border-gray-200 rounded-xl p-4">
+        <p class="text-xs text-gray-500 uppercase tracking-wide font-medium">Avg Duration</p>
+        <p class="text-2xl font-bold text-gray-900 mt-2"><%= number_with_delimiter(@stats[:avg_duration_ms]) %>ms</p>
+      </div>
+    </div>
+
+    <!-- Activity Chart -->
+    <div class="chart-card mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-gray-900">Activity</h3>
+        <div class="flex items-center space-x-4 text-sm text-gray-500">
+          <span class="flex items-center">
+            <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+            Success
+          </span>
+          <span class="flex items-center">
+            <span class="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
+            Failed
+          </span>
+        </div>
+      </div>
+      <div style="height: 280px;">
+        <%= line_chart @activity_chart,
+            colors: ["#10B981", "#EF4444"],
+            library: {
+              plugins: {
+                legend: { display: false },
+                tooltip: { mode: "index", intersect: false }
+              },
+              scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 } }
+              },
+              elements: {
+                line: { tension: 0.3 },
+                point: { radius: 4, hoverRadius: 6 }
+              },
+              interaction: {
+                mode: "nearest",
+                axis: "x",
+                intersect: false
+              }
+            } %>
+      </div>
+    </div>
+
+    <!-- Recent Executions -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+      <div class="px-6 py-4 border-b border-gray-100">
+        <div class="flex justify-between items-center">
+          <h3 class="text-lg font-semibold text-gray-900">Recent Executions</h3>
+          <%= link_to "View All", ruby_llm_agents.executions_path, class: "text-blue-600 hover:text-blue-700 text-sm font-medium" %>
+        </div>
+      </div>
+      <div class="divide-y divide-gray-100">
+        <% @recent_executions.each do |execution| %>
+          <%= render partial: "rubyllm/agents/executions/execution", locals: { execution: execution } %>
+        <% end %>
+        <% if @recent_executions.empty? %>
+          <div class="px-6 py-12 text-center text-gray-500">
+            <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+            </svg>
+            <p>No executions yet. Create an agent and make a call!</p>
           </div>
         <% end %>
       </div>
-    <% else %>
-      <p class="text-gray-500 text-sm">No executions today</p>
-    <% end %>
-  </div>
-
-  <!-- 7-Day Trend -->
-  <div class="bg-white rounded-lg shadow p-6">
-    <h3 class="text-lg font-semibold text-gray-900 mb-4">7-Day Trend</h3>
-    <div class="space-y-2">
-      <% @trend.each do |day| %>
-        <div class="flex items-center justify-between text-sm">
-          <span class="text-gray-600 w-24"><%= day[:date].strftime("%b %d") %></span>
-          <div class="flex-1 mx-4">
-            <div class="bg-gray-100 rounded-full h-2">
-              <% max_count = [@trend.map { |d| d[:count] }.max, 1].max %>
-              <div class="bg-blue-500 h-2 rounded-full" style="width: <%= (day[:count].to_f / max_count * 100).round %>%"></div>
-            </div>
-          </div>
-          <span class="text-gray-900 w-12 text-right"><%= day[:count] %></span>
-          <% if day[:error_count] > 0 %>
-            <span class="text-red-500 text-xs ml-2">(<%= day[:error_count] %> errors)</span>
-          <% end %>
-        </div>
-      <% end %>
     </div>
   </div>
-</div>
-
-<!-- Recent Executions -->
-<div class="bg-white rounded-lg shadow mt-8">
-  <div class="px-6 py-4 border-b">
-    <div class="flex justify-between items-center">
-      <h3 class="text-lg font-semibold text-gray-900">Recent Executions</h3>
-      <%= link_to "View All →", ruby_llm_agents.executions_path, class: "text-blue-600 hover:underline text-sm" %>
-    </div>
-  </div>
-  <div class="divide-y">
-    <% @recent_executions.each do |execution| %>
-      <%= render partial: "rubyllm/agents/executions/execution", locals: { execution: execution } %>
-    <% end %>
-    <% if @recent_executions.empty? %>
-      <div class="px-6 py-8 text-center text-gray-500">
-        No executions yet. Create an agent and make a call!
-      </div>
-    <% end %>
-  </div>
-</div>
+<% end %>

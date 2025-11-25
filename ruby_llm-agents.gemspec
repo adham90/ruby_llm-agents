@@ -31,6 +31,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "ruby_llm", ">= 1.0"
   spec.add_dependency "turbo-rails", ">= 1.0"
   spec.add_dependency "stimulus-rails", ">= 1.0"
+  spec.add_dependency "chartkick", ">= 5.0"
 
   # Development dependencies are in Gemfile
 end

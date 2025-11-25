@@ -10,19 +10,45 @@
     <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
 
+    <!-- Chart.js (required by Chartkick) -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+    ></script>
+
+    <!-- Chart.js date adapter (required for time scales) -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"
+    ></script>
+
+    <!-- Chartkick JS -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/chartkick@5.0.1/dist/chartkick.min.js"
+    ></script>
+
     <!-- Turbo -->
     <%= javascript_include_tag "turbo", type: "module" rescue nil %>
 
     <style>
     /* Custom styles for the dashboard */
     .stat-card {
-      @apply bg-white rounded-lg shadow p-6;
+      @apply bg-white rounded-xl shadow-sm border border-gray-100 p-4 transition-shadow;
+    }
+    .stat-card:hover {
+      @apply shadow-md;
     }
     .stat-value {
-      @apply text-3xl font-bold text-gray-900;
+      @apply text-2xl font-bold text-gray-900 mt-2;
+    }
+    @media (min-width: 1024px) {
+      .stat-value {
+        font-size: 1.5rem;
+      }
     }
     .stat-label {
-      @apply text-sm text-gray-500 uppercase tracking-wide;
+      @apply text-xs text-gray-500 uppercase tracking-wide font-medium;
+    }
+    .chart-card {
+      @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6;
     }
     .nav-link {
       @apply px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors;
@@ -47,17 +73,49 @@
 
   <body class="bg-gray-50 min-h-screen flex flex-col">
     <!-- Header -->
-    <header class="bg-white shadow-sm border-b">
+    <header class="bg-white border-b border-gray-200">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
-          <div class="flex items-center space-x-4">
-            <h1 class="text-xl font-semibold text-gray-900">
-              🤖 RubyLLM Agents
-            </h1>
+          <div class="flex items-center space-x-8">
+            <%= link_to ruby_llm_agents.root_path, class: "flex items-center space-x-2" do %>
+              <span class="text-lg">🤖</span>
+              <span class="font-semibold text-gray-900">RubyLLM Agents</span>
+            <% end %>
 
-            <nav class="flex space-x-2">
-              <%= link_to "Dashboard", ruby_llm_agents.root_path, class: "nav-link #{current_page?(ruby_llm_agents.root_path) ? 'active' : ''}" %>
-              <%= link_to "Executions", ruby_llm_agents.executions_path, class: "nav-link #{current_page?(ruby_llm_agents.executions_path) ? 'active' : ''}" %>
+            <nav class="flex items-center space-x-1">
+              <%= link_to ruby_llm_agents.root_path, class: "inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md #{current_page?(ruby_llm_agents.root_path) ? 'bg-gray-200' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}" do %>
+                <svg
+                  class="w-4 h-4 mr-1.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                  />
+                </svg>
+                Dashboard
+              <% end %>
+
+              <%= link_to ruby_llm_agents.executions_path, class: "inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md #{current_page?(ruby_llm_agents.executions_path) ? 'bg-gray-200' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}" do %>
+                <svg
+                  class="w-4 h-4 mr-1.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                  />
+                </svg>
+                Executions
+              <% end %>
             </nav>
           </div>
 

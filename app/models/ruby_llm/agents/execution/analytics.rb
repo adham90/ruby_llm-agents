@@ -102,6 +102,25 @@ module RubyLLM
             end.reverse
           end
 
+          # Chart data: Activity chart showing success/failed stacked by time period
+          def activity_chart(days: 7)
+            data = trend_analysis(days: days)
+
+            success_data = {}
+            failed_data = {}
+
+            data.each do |day|
+              label = day[:date].strftime("%b %d")
+              success_data[label] = day[:count] - day[:error_count]
+              failed_data[label] = day[:error_count]
+            end
+
+            [
+              { name: "Success", data: success_data },
+              { name: "Failed", data: failed_data }
+            ]
+          end
+
           private
 
           def calculate_success_rate(scope)
