@@ -161,11 +161,11 @@
 
       <!-- Stats Summary (right aligned) -->
       <div class="ml-auto flex items-center gap-4 text-sm text-gray-500">
-        <span><%= number_with_delimiter(filter_stats[:total_count]) %> executions</span>
+        <span><%= number_to_human_short(filter_stats[:total_count]) %> executions</span>
         <span class="text-gray-300">|</span>
-        <span>$<%= number_with_precision(filter_stats[:total_cost], precision: 4) %></span>
+        <span><%= number_to_human_short(filter_stats[:total_cost], prefix: "$", precision: 2) %></span>
         <span class="text-gray-300">|</span>
-        <span><%= number_with_delimiter(filter_stats[:total_tokens]) %> tokens</span>
+        <span><%= number_to_human_short(filter_stats[:total_tokens]) %> tokens</span>
       </div>
     </div>
   <% end %>
