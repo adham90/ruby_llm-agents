@@ -3,15 +3,7 @@
     <div class="flex items-start space-x-3">
       <!-- Timeline indicator -->
       <div class="flex flex-col items-center pt-1">
-        <% if execution.status_running? %>
-          <span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse flex-shrink-0"></span>
-        <% elsif execution.status_success? %>
-          <span class="w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0"></span>
-        <% elsif execution.status_timeout? %>
-          <span class="w-2.5 h-2.5 rounded-full bg-yellow-500 flex-shrink-0"></span>
-        <% else %>
-          <span class="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0"></span>
-        <% end %>
+        <%= render "rubyllm/agents/shared/status_dot", status: execution.status %>
       </div>
 
       <!-- Content -->
@@ -37,11 +29,11 @@
           </p>
         <% else %>
           <p class="text-xs text-gray-500 mt-1">
-            <%= number_with_delimiter(execution.total_tokens || 0) %> tokens
+            <%= number_to_human_short(execution.total_tokens || 0) %> tokens
             <span class="text-gray-300 mx-1">&middot;</span>
-            $<%= number_with_precision(execution.total_cost || 0, precision: 4) %>
+            <%= number_to_human_short(execution.total_cost || 0, prefix: "$", precision: 2) %>
             <span class="text-gray-300 mx-1">&middot;</span>
-            <%= number_with_delimiter(execution.duration_ms || 0) %>ms
+            <%= number_to_human_short(execution.duration_ms || 0) %>ms
           </p>
         <% end %>
 

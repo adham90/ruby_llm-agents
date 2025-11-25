@@ -1,0 +1,18 @@
+<%
+  # Simple status dot indicator
+  # Usage: render "rubyllm/agents/shared/status_dot", status: execution.status
+
+  config = case status.to_s
+    when "running"
+      { color: "bg-blue-500", animate: true }
+    when "success"
+      { color: "bg-green-500", animate: false }
+    when "error"
+      { color: "bg-red-500", animate: false }
+    when "timeout"
+      { color: "bg-yellow-500", animate: false }
+    else
+      { color: "bg-gray-500", animate: false }
+    end
+%>
+<span class="w-2.5 h-2.5 rounded-full <%= config[:color] %> <%= config[:animate] ? 'animate-pulse' : '' %> flex-shrink-0"></span>

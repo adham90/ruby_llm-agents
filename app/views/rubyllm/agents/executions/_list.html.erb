@@ -94,28 +94,7 @@
               </td>
 
               <td class="px-4 py-3 whitespace-nowrap">
-                <div class="flex items-center space-x-2">
-                  <% case execution.status %>
-                  <% when "running" %>
-                    <span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
-                    <span class="text-sm font-medium text-blue-700">
-                      running
-                    </span>
-                  <% when "success" %>
-                    <span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>
-                    <span class="text-sm font-medium text-green-700">
-                      success
-                    </span>
-                  <% when "error" %>
-                    <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
-                    <span class="text-sm font-medium text-red-700">error</span>
-                  <% when "timeout" %>
-                    <span class="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
-                    <span class="text-sm font-medium text-yellow-700">
-                      timeout
-                    </span>
-                  <% end %>
-                </div>
+                <%= render "rubyllm/agents/shared/status_badge", status: execution.status %>
               </td>
 
               <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
