@@ -72,56 +72,55 @@
 </div>
 
 <!-- Token Breakdown -->
-<div class="bg-white rounded-lg shadow p-6 mb-6">
-  <h3 class="text-lg font-semibold text-gray-900 mb-4">Token Usage</h3>
+<div class="bg-white border border-gray-200 rounded-xl p-6 mb-6">
+  <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">Token Usage</h3>
 
-  <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+  <!-- Token Distribution Bar -->
+  <%
+    input_tokens = @execution.input_tokens || 0
+    output_tokens = @execution.output_tokens || 0
+    total = input_tokens + output_tokens
+    input_pct = total > 0 ? (input_tokens.to_f / total * 100).round(1) : 0
+    output_pct = total > 0 ? (output_tokens.to_f / total * 100).round(1) : 0
+  %>
+  <div class="mb-6">
+    <div class="flex justify-between text-xs mb-1.5">
+      <span class="text-blue-600 font-medium">Input: <%= number_to_human_short(input_tokens) %> (<%= input_pct %>%)</span>
+      <span class="text-green-600 font-medium">Output: <%= number_to_human_short(output_tokens) %> (<%= output_pct %>%)</span>
+    </div>
+    <div class="h-2.5 bg-gray-100 rounded-full overflow-hidden flex">
+      <div class="bg-blue-500 transition-all" style="width: <%= input_pct %>%"></div>
+      <div class="bg-green-500 transition-all" style="width: <%= output_pct %>%"></div>
+    </div>
+  </div>
+
+  <!-- Detailed Metrics -->
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-6 pt-4 border-t border-gray-100">
     <div>
-      <p class="text-sm text-gray-500">Input Tokens</p>
-
-      <p class="text-xl font-semibold">
-        <%= number_with_delimiter(@execution.input_tokens || 0) %>
-      </p>
-
-      <p class="text-xs text-gray-400">
-        $<%= number_with_precision(@execution.input_cost || 0, precision: 6) %>
-      </p>
+      <p class="text-xs text-gray-500 uppercase tracking-wide">Input</p>
+      <p class="text-lg font-semibold text-gray-900"><%= number_to_human_short(@execution.input_tokens || 0) %></p>
+      <p class="text-xs text-gray-400"><%= number_to_human_short(@execution.input_cost || 0, prefix: "$", precision: 4) %></p>
     </div>
 
     <div>
-      <p class="text-sm text-gray-500">Output Tokens</p>
-
-      <p class="text-xl font-semibold">
-        <%= number_with_delimiter(@execution.output_tokens || 0) %>
-      </p>
-
-      <p class="text-xs text-gray-400">
-        $<%= number_with_precision(@execution.output_cost || 0, precision: 6) %>
-      </p>
+      <p class="text-xs text-gray-500 uppercase tracking-wide">Output</p>
+      <p class="text-lg font-semibold text-gray-900"><%= number_to_human_short(@execution.output_tokens || 0) %></p>
+      <p class="text-xs text-gray-400"><%= number_to_human_short(@execution.output_cost || 0, prefix: "$", precision: 4) %></p>
     </div>
 
     <div>
-      <p class="text-sm text-gray-500">Cached Tokens</p>
-
-      <p class="text-xl font-semibold">
-        <%= number_with_delimiter(@execution.cached_tokens || 0) %>
-      </p>
+      <p class="text-xs text-gray-500 uppercase tracking-wide">Cached</p>
+      <p class="text-lg font-semibold text-gray-900"><%= number_to_human_short(@execution.cached_tokens || 0) %></p>
     </div>
 
     <div>
-      <p class="text-sm text-gray-500">Cache Creation</p>
-
-      <p class="text-xl font-semibold">
-        <%= number_with_delimiter(@execution.cache_creation_tokens || 0) %>
-      </p>
+      <p class="text-xs text-gray-500 uppercase tracking-wide">Cache Creation</p>
+      <p class="text-lg font-semibold text-gray-900"><%= number_to_human_short(@execution.cache_creation_tokens || 0) %></p>
     </div>
 
     <div>
-      <p class="text-sm text-gray-500">Tokens/Second</p>
-
-      <p class="text-xl font-semibold">
-        <%= @execution.tokens_per_second || 'N/A' %>
-      </p>
+      <p class="text-xs text-gray-500 uppercase tracking-wide">Tokens/Sec</p>
+      <p class="text-lg font-semibold text-gray-900"><%= @execution.tokens_per_second || 'N/A' %></p>
     </div>
   </div>
 </div>
