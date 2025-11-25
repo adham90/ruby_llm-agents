@@ -68,61 +68,43 @@
 </div>
 
 <!-- Stats Grid -->
+<% success_rate = @stats[:success_rate] || 0 %>
+<% success_rate_color = success_rate >= 95 ? 'text-green-600' : success_rate >= 80 ? 'text-yellow-600' : 'text-red-600' %>
 <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-  <div class="bg-white rounded-lg shadow p-4">
-    <p class="text-sm text-gray-500 uppercase">Executions</p>
+  <%= render "rubyllm/agents/shared/stat_card",
+      title: "Executions",
+      value: number_with_delimiter(@stats[:count]),
+      subtitle: "Today: #{@stats_today[:count]}",
+      icon: "M13 10V3L4 14h7v7l9-11h-7z",
+      icon_color: "text-blue-500" %>
 
-    <p class="text-2xl font-bold text-gray-900">
-      <%= number_with_delimiter(@stats[:count]) %>
-    </p>
+  <%= render "rubyllm/agents/shared/stat_card",
+      title: "Success Rate",
+      value: "#{success_rate}%",
+      subtitle: "Error rate: #{@stats[:error_rate] || 0}%",
+      icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",
+      icon_color: "text-green-500",
+      value_color: success_rate_color %>
 
-    <p class="text-xs text-gray-400">Today: <%= @stats_today[:count] %></p>
-  </div>
+  <%= render "rubyllm/agents/shared/stat_card",
+      title: "Total Cost",
+      value: "$#{number_with_precision(@stats[:total_cost] || 0, precision: 4)}",
+      subtitle: "Avg: $#{number_with_precision(@stats[:avg_cost] || 0, precision: 6)}",
+      icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+      icon_color: "text-amber-500" %>
 
-  <div class="bg-white rounded-lg shadow p-4">
-    <p class="text-sm text-gray-500 uppercase">Success Rate</p>
-    <% success_rate = @stats[:success_rate] || 0 %>
+  <%= render "rubyllm/agents/shared/stat_card",
+      title: "Total Tokens",
+      value: number_with_delimiter(@stats[:total_tokens] || 0),
+      subtitle: "Avg: #{number_with_delimiter(@stats[:avg_tokens] || 0)}",
+      icon: "M7 20l4-16m2 16l4-16M6 9h14M4 15h14",
+      icon_color: "text-indigo-500" %>
 
-    <p class="text-2xl font-bold <%= success_rate >= 95 ? 'text-green-600' : success_rate >= 80 ? 'text-yellow-600' : 'text-red-600' %>">
-      <%= success_rate %>%
-    </p>
-
-    <p class="text-xs text-gray-400">
-      Error rate: <%= @stats[:error_rate] || 0 %>%
-    </p>
-  </div>
-
-  <div class="bg-white rounded-lg shadow p-4">
-    <p class="text-sm text-gray-500 uppercase">Total Cost</p>
-
-    <p class="text-2xl font-bold text-gray-900">
-      $<%= number_with_precision(@stats[:total_cost] || 0, precision: 4) %>
-    </p>
-
-    <p class="text-xs text-gray-400">
-      Avg: $<%= number_with_precision(@stats[:avg_cost] || 0, precision: 6) %>
-    </p>
-  </div>
-
-  <div class="bg-white rounded-lg shadow p-4">
-    <p class="text-sm text-gray-500 uppercase">Total Tokens</p>
-
-    <p class="text-2xl font-bold text-gray-900">
-      <%= number_with_delimiter(@stats[:total_tokens] || 0) %>
-    </p>
-
-    <p class="text-xs text-gray-400">
-      Avg: <%= number_with_delimiter(@stats[:avg_tokens] || 0) %>
-    </p>
-  </div>
-
-  <div class="bg-white rounded-lg shadow p-4">
-    <p class="text-sm text-gray-500 uppercase">Avg Duration</p>
-
-    <p class="text-2xl font-bold text-gray-900">
-      <%= number_with_delimiter(@stats[:avg_duration_ms] || 0) %> ms
-    </p>
-  </div>
+  <%= render "rubyllm/agents/shared/stat_card",
+      title: "Avg Duration",
+      value: "#{number_with_delimiter(@stats[:avg_duration_ms] || 0)} ms",
+      icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
+      icon_color: "text-purple-500" %>
 </div>
 
 <!-- Charts Section -->

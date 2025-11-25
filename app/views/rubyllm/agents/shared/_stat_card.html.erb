@@ -1,0 +1,14 @@
+<div class="bg-white border border-gray-200 rounded-xl p-4">
+  <div class="flex items-center justify-between">
+    <p class="text-xs text-gray-500 uppercase tracking-wide font-medium"><%= title %></p>
+    <span class="<%= local_assigns[:icon_color] || 'text-gray-400' %>">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<%= icon %>"/>
+      </svg>
+    </span>
+  </div>
+  <p class="text-2xl font-bold <%= local_assigns[:value_color] || 'text-gray-900' %> mt-2"><%= value %></p>
+  <% if local_assigns[:subtitle].present? %>
+    <p class="text-xs text-gray-400"><%= subtitle %></p>
+  <% end %>
+</div>
