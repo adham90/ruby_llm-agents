@@ -27,34 +27,67 @@
         icon_color: "text-indigo-500" %>
   </div>
 
+  <!-- Activity Chart -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-8 pb-24">
+    <div class="px-6 py-4 border-b border-gray-100">
+      <div class="flex justify-between items-center">
+        <h3 class="text-lg font-semibold text-gray-900">Today's Activity</h3>
+        <span class="text-xs text-gray-400">Hourly executions</span>
+      </div>
+    </div>
+
+    <div class="p-6">
+      <div style="height: 200px;">
+        <%= area_chart @hourly_activity,
+            stacked: true,
+            colors: ["#10B981", "#EF4444"],
+            library: {
+              maintainAspectRatio: false,
+              scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 } }
+              },
+              plugins: {
+                legend: { position: "bottom" }
+              }
+            } %>
+      </div>
+    </div>
+  </div>
+
   <!-- Activity Feed -->
   <div class="bg-white rounded-xl shadow-sm border border-gray-100">
     <div class="px-6 py-4 border-b border-gray-100">
       <div class="flex justify-between items-center">
         <div class="flex items-center space-x-3">
           <h3 class="text-lg font-semibold text-gray-900">Activity Feed</h3>
+
           <div class="flex items-center space-x-3 text-xs text-gray-400">
             <span class="flex items-center">
               <span class="w-2 h-2 bg-blue-500 rounded-full mr-1 animate-pulse"></span>
               running
             </span>
+
             <span class="flex items-center">
               <span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
               success
             </span>
+
             <span class="flex items-center">
               <span class="w-2 h-2 bg-red-500 rounded-full mr-1"></span>
               error
             </span>
+
             <span class="flex items-center">
               <span class="w-2 h-2 bg-yellow-500 rounded-full mr-1"></span>
               timeout
             </span>
           </div>
         </div>
+
         <%= link_to "View All", ruby_llm_agents.executions_path, class: "text-blue-600 hover:text-blue-700 text-sm font-medium" %>
       </div>
     </div>
+
     <div id="activity-feed" class="px-6 py-2">
       <% if @recent_executions.any? %>
         <% @recent_executions.each do |execution| %>
@@ -62,9 +95,20 @@
         <% end %>
       <% else %>
         <div id="empty-state" class="py-10 text-center text-gray-500">
-          <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+          <svg
+            class="w-12 h-12 mx-auto mb-3 text-gray-300"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+            />
           </svg>
+
           <p>No executions yet. Create an agent and make a call!</p>
         </div>
       <% end %>

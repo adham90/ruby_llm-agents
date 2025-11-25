@@ -6,6 +6,7 @@ module RubyLLM
       def index
         @stats = daily_stats
         @recent_executions = Execution.recent(10)
+        @hourly_activity = Execution.hourly_activity_chart
       end
 
       private
