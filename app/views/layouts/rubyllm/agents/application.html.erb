@@ -7,8 +7,25 @@
 
     <title>RubyLLM Agents Dashboard</title>
 
+    <!-- Prevent flash of wrong theme - must run before any rendering -->
+    <script>
+      (function() {
+        const preference = localStorage.getItem('ruby_llm_agents_theme') || 'auto';
+        const isDark = preference === 'dark' ||
+          (preference === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
+
     <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class'
+      }
+    </script>
 
     <!-- Chartkick for charts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
@@ -122,6 +139,49 @@
             }
           });
 
+          // Theme Controller - handles dark mode switching
+          Stimulus.application.register("theme", class extends Stimulus.Controller {
+            static targets = ["select"]
+
+            connect() {
+              this.mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+              this.applyTheme(this.getPreference())
+              this.boundHandleSystemChange = this.handleSystemChange.bind(this)
+              this.mediaQuery.addEventListener('change', this.boundHandleSystemChange)
+
+              // Set the select value to match stored preference
+              if (this.hasSelectTarget) {
+                this.selectTarget.value = this.getPreference()
+              }
+            }
+
+            disconnect() {
+              this.mediaQuery.removeEventListener('change', this.boundHandleSystemChange)
+            }
+
+            change(event) {
+              const preference = event.target.value
+              localStorage.setItem('ruby_llm_agents_theme', preference)
+              this.applyTheme(preference)
+            }
+
+            getPreference() {
+              return localStorage.getItem('ruby_llm_agents_theme') || 'auto'
+            }
+
+            applyTheme(preference) {
+              const isDark = preference === 'dark' ||
+                (preference === 'auto' && this.mediaQuery.matches)
+              document.documentElement.classList.toggle('dark', isDark)
+            }
+
+            handleSystemChange() {
+              if (this.getPreference() === 'auto') {
+                this.applyTheme('auto')
+              }
+            }
+          });
+
           console.log('[RubyLLM::Agents] Stimulus initialized');
         }
       })();
@@ -130,13 +190,13 @@
     <style>
     /* Custom styles for the dashboard */
     .stat-card {
-      @apply bg-white rounded-xl shadow-sm border border-gray-100 p-4 transition-shadow;
+      @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 transition-shadow;
     }
     .stat-card:hover {
       @apply shadow-md;
     }
     .stat-value {
-      @apply text-2xl font-bold text-gray-900 mt-2;
+      @apply text-2xl font-bold text-gray-900 dark:text-gray-100 mt-2;
     }
     @media (min-width: 1024px) {
       .stat-value {
@@ -144,51 +204,51 @@
       }
     }
     .stat-label {
-      @apply text-xs text-gray-500 uppercase tracking-wide font-medium;
+      @apply text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-medium;
     }
     .chart-card {
-      @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6;
+      @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6;
     }
     .nav-link {
-      @apply px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors;
+      @apply px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors;
     }
     .nav-link.active {
-      @apply bg-blue-50 text-blue-700;
+      @apply bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300;
     }
     .badge {
       @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
     }
     .badge-running {
-      @apply bg-blue-100 text-blue-800;
+      @apply bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200;
     }
     .badge-success {
-      @apply bg-green-100 text-green-800;
+      @apply bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200;
     }
     .badge-error {
-      @apply bg-red-100 text-red-800;
+      @apply bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200;
     }
     .badge-timeout {
-      @apply bg-yellow-100 text-yellow-800;
+      @apply bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200;
     }
   </style>
   </head>
 
   <body
-    class="bg-gray-50 min-h-screen flex flex-col"
+    class="bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col"
     data-controller="connection"
   >
     <!-- Header -->
-    <header class="bg-white border-b border-gray-200 h-16 flex items-center">
+    <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 h-16 flex items-center">
       <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center">
           <div class="flex items-center space-x-8">
             <%= link_to ruby_llm_agents.root_path, class: "flex items-center space-x-2" do %>
               <span class="text-lg">🤖</span>
-              <span class="font-semibold text-gray-900">RubyLLM Agents</span>
+              <span class="font-semibold text-gray-900 dark:text-gray-100">RubyLLM Agents</span>
             <% end %>
 
             <nav class="flex items-center space-x-1">
-              <%= link_to ruby_llm_agents.root_path, class: "inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md #{current_page?(ruby_llm_agents.root_path) ? 'bg-gray-200' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}" do %>
+              <%= link_to ruby_llm_agents.root_path, class: "inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md #{current_page?(ruby_llm_agents.root_path) ? 'bg-gray-200 dark:bg-gray-700 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'}" do %>
                 <svg
                   class="w-4 h-4 mr-1.5"
                   fill="none"
@@ -205,7 +265,7 @@
                 Dashboard
               <% end %>
 
-              <%= link_to ruby_llm_agents.agents_path, class: "inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md #{request.path.start_with?(ruby_llm_agents.agents_path) ? 'bg-gray-200' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}" do %>
+              <%= link_to ruby_llm_agents.agents_path, class: "inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md #{request.path.start_with?(ruby_llm_agents.agents_path) ? 'bg-gray-200 dark:bg-gray-700 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'}" do %>
                 <svg
                   class="w-4 h-4 mr-1.5"
                   fill="none"
@@ -222,7 +282,7 @@
                 Agents
               <% end %>
 
-              <%= link_to ruby_llm_agents.executions_path, class: "inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md #{current_page?(ruby_llm_agents.executions_path) ? 'bg-gray-200' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}" do %>
+              <%= link_to ruby_llm_agents.executions_path, class: "inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md #{current_page?(ruby_llm_agents.executions_path) ? 'bg-gray-200 dark:bg-gray-700 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'}" do %>
                 <svg
                   class="w-4 h-4 mr-1.5"
                   fill="none"
@@ -241,16 +301,16 @@
             </nav>
           </div>
 
-          <div class="flex items-center space-x-2 text-xs text-gray-500">
+          <div class="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
             <span id="live-clock" class="tabular-nums"></span>
-            <span class="text-gray-300">•</span>
+            <span class="text-gray-300 dark:text-gray-600">•</span>
 
             <span
               id="live-indicator"
               data-connection-target="indicator"
-              class="flex items-center text-gray-400"
+              class="flex items-center text-gray-400 dark:text-gray-500"
             >
-              <span class="w-1.5 h-1.5 bg-gray-300 rounded-full mr-1"></span>
+              <span class="w-1.5 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full mr-1"></span>
               <span class="hidden sm:inline">Connecting</span>
             </span>
           </div>
@@ -264,12 +324,27 @@
     </main>
 
     <!-- Footer -->
-    <footer class="border-t bg-white mt-auto">
+    <footer class="border-t bg-white dark:bg-gray-800 dark:border-gray-700 mt-auto" data-controller="theme">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <p class="text-center text-sm text-gray-500">
-          Powered by
-          <a href="https://github.com/adham90/ruby_llm-agents" class="text-blue-600 hover:underline">ruby_llm-agents</a>
-        </p>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <label for="theme-select" class="text-sm text-gray-500 dark:text-gray-400">Theme:</label>
+            <select
+              id="theme-select"
+              data-theme-target="select"
+              data-action="change->theme#change"
+              class="text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1 px-2"
+            >
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+              <option value="auto">Auto</option>
+            </select>
+          </div>
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            Powered by
+            <a href="https://github.com/adham90/ruby_llm-agents" class="text-blue-600 dark:text-blue-400 hover:underline">ruby_llm-agents</a>
+          </p>
+        </div>
       </div>
     </footer>
   </body>

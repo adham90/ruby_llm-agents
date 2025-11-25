@@ -1,18 +1,18 @@
-<div class="bg-white rounded-lg shadow overflow-hidden">
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
   <% if executions.empty? %>
-    <div class="px-6 py-12 text-center text-gray-500">
+    <div class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
       <p class="text-lg">No executions found</p>
       <p class="text-sm mt-1">Try adjusting your filters</p>
     </div>
   <% else %>
     <div class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
+      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead class="bg-gray-50 dark:bg-gray-900">
           <tr>
             <th
               scope="col"
               class="
-                px-4 py-3 text-left text-xs font-medium text-gray-500
+                px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400
                 uppercase tracking-wider
               "
             >
@@ -22,7 +22,7 @@
             <th
               scope="col"
               class="
-                px-4 py-3 text-left text-xs font-medium text-gray-500
+                px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400
                 uppercase tracking-wider
               "
             >
@@ -32,7 +32,7 @@
             <th
               scope="col"
               class="
-                px-4 py-3 text-left text-xs font-medium text-gray-500
+                px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400
                 uppercase tracking-wider
               "
             >
@@ -42,7 +42,7 @@
             <th
               scope="col"
               class="
-                px-4 py-3 text-right text-xs font-medium text-gray-500
+                px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400
                 uppercase tracking-wider
               "
             >
@@ -52,7 +52,7 @@
             <th
               scope="col"
               class="
-                px-4 py-3 text-right text-xs font-medium text-gray-500
+                px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400
                 uppercase tracking-wider
               "
             >
@@ -62,7 +62,7 @@
             <th
               scope="col"
               class="
-                px-4 py-3 text-right text-xs font-medium text-gray-500
+                px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400
                 uppercase tracking-wider
               "
             >
@@ -72,7 +72,7 @@
             <th
               scope="col"
               class="
-                px-4 py-3 text-right text-xs font-medium text-gray-500
+                px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400
                 uppercase tracking-wider
               "
             >
@@ -81,14 +81,14 @@
           </tr>
         </thead>
 
-        <tbody class="bg-white divide-y divide-gray-100">
+        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
           <% executions.each do |execution| %>
             <tr
-              class="hover:bg-gray-50 transition-colors cursor-pointer"
+              class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
               onclick="window.location='<%= ruby_llm_agents.execution_path(execution) %>'"
             >
               <td class="px-4 py-3 whitespace-nowrap">
-                <span class="text-sm font-medium text-gray-900">
+                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
                   <%= execution.agent_type.gsub(/Agent$/, '') %>
                 </span>
               </td>
@@ -97,13 +97,13 @@
                 <%= render "rubyllm/agents/shared/status_badge", status: execution.status %>
               </td>
 
-              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                 v<%= execution.agent_version %>
               </td>
 
               <td
                 class="
-                  px-4 py-3 whitespace-nowrap text-sm text-gray-900
+                  px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100
                   text-right font-medium
                 "
               >
@@ -112,7 +112,7 @@
 
               <td
                 class="
-                  px-4 py-3 whitespace-nowrap text-sm text-gray-900
+                  px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100
                   text-right font-medium
                 "
               >
@@ -121,22 +121,22 @@
 
               <td
                 class="
-                  px-4 py-3 whitespace-nowrap text-sm text-gray-900
+                  px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100
                   text-right font-medium
                 "
               >
                 <%= number_with_delimiter(execution.duration_ms || 0) %>ms
               </td>
 
-              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
                 <%= time_ago_in_words(execution.created_at) %> ago
               </td>
             </tr>
 
             <% if execution.status_error? && execution.error_message.present? %>
-              <tr class="bg-red-50">
+              <tr class="bg-red-50 dark:bg-red-900/30">
                 <td colspan="7" class="px-4 py-2">
-                  <p class="text-xs text-red-600">
+                  <p class="text-xs text-red-600 dark:text-red-400">
                     <span class="font-medium">
                       <%= execution.error_class %>:
                     </span>
@@ -158,20 +158,20 @@
 
         from_record = ((current_page - 1) * per_page) + 1
         to_record = [current_page * per_page, total_count].min %>
-      <div class="px-4 py-4 flex items-center justify-between border-t border-gray-100">
-        <p class="text-sm text-gray-500">
+      <div class="px-4 py-4 flex items-center justify-between border-t border-gray-100 dark:border-gray-700">
+        <p class="text-sm text-gray-500 dark:text-gray-400">
           Showing <%= from_record %>-<%= to_record %> of
           <%= number_with_delimiter(total_count) %> executions
         </p>
 
         <nav class="flex items-center space-x-1">
           <% if current_page > 1 %>
-            <%= link_to "Previous", url_for(page: current_page - 1), data: { turbo_frame: "executions_content", turbo_action: "advance" }, class: "px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50" %>
+            <%= link_to "Previous", url_for(page: current_page - 1), data: { turbo_frame: "executions_content", turbo_action: "advance" }, class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
           <% else %>
             <span
               class="
-                px-3 py-1.5 text-sm font-medium text-gray-400 bg-gray-100
-                border border-gray-200 rounded-md cursor-not-allowed
+                px-3 py-1.5 text-sm font-medium text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800
+                border border-gray-200 dark:border-gray-700 rounded-md cursor-not-allowed
               "
             >
               Previous
@@ -195,7 +195,7 @@
 
           <% pages_to_show.each do |page| %>
             <% if page == :gap %>
-              <span class="px-2 py-1.5 text-sm text-gray-500">...</span>
+              <span class="px-2 py-1.5 text-sm text-gray-500 dark:text-gray-400">...</span>
             <% elsif page == current_page %>
               <span
                 class="
@@ -206,17 +206,17 @@
                 <%= page %>
               </span>
             <% else %>
-              <%= link_to page, url_for(page: page), data: { turbo_frame: "executions_content", turbo_action: "advance" }, class: "px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50" %>
+              <%= link_to page, url_for(page: page), data: { turbo_frame: "executions_content", turbo_action: "advance" }, class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
             <% end %>
           <% end %>
 
           <% if current_page < total_pages %>
-            <%= link_to "Next", url_for(page: current_page + 1), data: { turbo_frame: "executions_content", turbo_action: "advance" }, class: "px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50" %>
+            <%= link_to "Next", url_for(page: current_page + 1), data: { turbo_frame: "executions_content", turbo_action: "advance" }, class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
           <% else %>
             <span
               class="
-                px-3 py-1.5 text-sm font-medium text-gray-400 bg-gray-100
-                border border-gray-200 rounded-md cursor-not-allowed
+                px-3 py-1.5 text-sm font-medium text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800
+                border border-gray-200 dark:border-gray-700 rounded-md cursor-not-allowed
               "
             >
               Next

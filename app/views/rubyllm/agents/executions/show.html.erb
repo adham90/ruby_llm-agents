@@ -1,5 +1,5 @@
 <div class="mb-6">
-  <%= link_to ruby_llm_agents.executions_path, class: "inline-flex items-center text-sm text-gray-500 hover:text-gray-700" do %>
+  <%= link_to ruby_llm_agents.executions_path, class: "inline-flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" do %>
     <svg
       class="w-4 h-4 mr-1"
       fill="none"
@@ -18,26 +18,26 @@
 </div>
 
 <!-- Header -->
-<div class="bg-white border border-gray-200 rounded-xl p-6 mb-6">
+<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6">
   <div class="flex items-center justify-between">
     <div>
       <div class="flex items-center gap-3">
-        <h2 class="text-xl font-bold text-gray-900">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">
           <%= @execution.agent_type.gsub(/Agent$/, '') %>
         </h2>
 
         <%= render "rubyllm/agents/shared/status_badge", status: @execution.status, size: :md %>
       </div>
 
-      <p class="text-sm text-gray-500 mt-1">
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
         Execution #<%= @execution.id %> · v<%= @execution.agent_version %>
       </p>
     </div>
 
-    <div class="text-right text-sm text-gray-500">
+    <div class="text-right text-sm text-gray-500 dark:text-gray-400">
       <p><%= @execution.created_at.strftime("%b %d, %Y at %H:%M") %></p>
 
-      <p class="text-xs text-gray-400">
+      <p class="text-xs text-gray-400 dark:text-gray-500">
         <%= time_ago_in_words(@execution.created_at) %> ago
       </p>
     </div>
@@ -72,8 +72,8 @@
 </div>
 
 <!-- Token Breakdown -->
-<div class="bg-white border border-gray-200 rounded-xl p-6 mb-6">
-  <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">Token Usage</h3>
+<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6">
+  <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">Token Usage</h3>
 
   <!-- Token Distribution Bar -->
   <%
@@ -85,67 +85,67 @@
   %>
   <div class="mb-6">
     <div class="flex justify-between text-xs mb-1.5">
-      <span class="text-blue-600 font-medium">Input: <%= number_to_human_short(input_tokens) %> (<%= input_pct %>%)</span>
-      <span class="text-green-600 font-medium">Output: <%= number_to_human_short(output_tokens) %> (<%= output_pct %>%)</span>
+      <span class="text-blue-600 dark:text-blue-400 font-medium">Input: <%= number_to_human_short(input_tokens) %> (<%= input_pct %>%)</span>
+      <span class="text-green-600 dark:text-green-400 font-medium">Output: <%= number_to_human_short(output_tokens) %> (<%= output_pct %>%)</span>
     </div>
-    <div class="h-2.5 bg-gray-100 rounded-full overflow-hidden flex">
+    <div class="h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden flex">
       <div class="bg-blue-500 transition-all" style="width: <%= input_pct %>%"></div>
       <div class="bg-green-500 transition-all" style="width: <%= output_pct %>%"></div>
     </div>
   </div>
 
   <!-- Detailed Metrics -->
-  <div class="grid grid-cols-2 md:grid-cols-5 gap-6 pt-4 border-t border-gray-100">
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-6 pt-4 border-t border-gray-100 dark:border-gray-700">
     <div>
-      <p class="text-xs text-gray-500 uppercase tracking-wide">Input</p>
-      <p class="text-lg font-semibold text-gray-900"><%= number_to_human_short(@execution.input_tokens || 0) %></p>
-      <p class="text-xs text-gray-400"><%= number_to_human_short(@execution.input_cost || 0, prefix: "$", precision: 4) %></p>
+      <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Input</p>
+      <p class="text-lg font-semibold text-gray-900 dark:text-gray-100"><%= number_to_human_short(@execution.input_tokens || 0) %></p>
+      <p class="text-xs text-gray-400 dark:text-gray-500"><%= number_to_human_short(@execution.input_cost || 0, prefix: "$", precision: 4) %></p>
     </div>
 
     <div>
-      <p class="text-xs text-gray-500 uppercase tracking-wide">Output</p>
-      <p class="text-lg font-semibold text-gray-900"><%= number_to_human_short(@execution.output_tokens || 0) %></p>
-      <p class="text-xs text-gray-400"><%= number_to_human_short(@execution.output_cost || 0, prefix: "$", precision: 4) %></p>
+      <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Output</p>
+      <p class="text-lg font-semibold text-gray-900 dark:text-gray-100"><%= number_to_human_short(@execution.output_tokens || 0) %></p>
+      <p class="text-xs text-gray-400 dark:text-gray-500"><%= number_to_human_short(@execution.output_cost || 0, prefix: "$", precision: 4) %></p>
     </div>
 
     <div>
-      <p class="text-xs text-gray-500 uppercase tracking-wide">Cached</p>
-      <p class="text-lg font-semibold text-gray-900"><%= number_to_human_short(@execution.cached_tokens || 0) %></p>
+      <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Cached</p>
+      <p class="text-lg font-semibold text-gray-900 dark:text-gray-100"><%= number_to_human_short(@execution.cached_tokens || 0) %></p>
     </div>
 
     <div>
-      <p class="text-xs text-gray-500 uppercase tracking-wide">Cache Creation</p>
-      <p class="text-lg font-semibold text-gray-900"><%= number_to_human_short(@execution.cache_creation_tokens || 0) %></p>
+      <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Cache Creation</p>
+      <p class="text-lg font-semibold text-gray-900 dark:text-gray-100"><%= number_to_human_short(@execution.cache_creation_tokens || 0) %></p>
     </div>
 
     <div>
-      <p class="text-xs text-gray-500 uppercase tracking-wide">Tokens/Sec</p>
-      <p class="text-lg font-semibold text-gray-900"><%= @execution.tokens_per_second || 'N/A' %></p>
+      <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Tokens/Sec</p>
+      <p class="text-lg font-semibold text-gray-900 dark:text-gray-100"><%= @execution.tokens_per_second || 'N/A' %></p>
     </div>
   </div>
 </div>
 
 <% if @execution.status_error? %>
   <!-- Error Details -->
-  <div class="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
-    <h3 class="text-lg font-semibold text-red-800 mb-2">Error Details</h3>
+  <div class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-6 mb-6">
+    <h3 class="text-lg font-semibold text-red-800 dark:text-red-300 mb-2">Error Details</h3>
 
-    <p class="font-mono text-sm text-red-700 mb-2">
+    <p class="font-mono text-sm text-red-700 dark:text-red-400 mb-2">
       <%= @execution.error_class %>
     </p>
 
-    <pre class="bg-red-100 rounded p-4 text-sm text-red-900 overflow-x-auto"><%= @execution.error_message %></pre>
+    <pre class="bg-red-100 dark:bg-red-900/50 rounded p-4 text-sm text-red-900 dark:text-red-200 overflow-x-auto"><%= @execution.error_message %></pre>
   </div>
 <% end %>
 
 <!-- Parameters -->
-<div class="bg-white border border-gray-200 rounded-xl p-6 mb-6">
+<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6">
   <div class="flex items-center justify-between mb-4">
-    <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Parameters</h3>
+    <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Parameters</h3>
     <button
       type="button"
       data-copy-json="<%= Base64.strict_encode64(JSON.pretty_generate(@execution.parameters || {})) %>"
-      class="copy-json-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+      class="copy-json-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
     >
       <svg class="w-4 h-4 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
@@ -156,18 +156,18 @@
       <span>Copy</span>
     </button>
   </div>
-  <pre class="bg-gray-50 rounded-lg p-4 text-sm overflow-x-auto font-mono"><%= highlight_json(@execution.parameters || {}) %></pre>
+  <pre class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 text-sm overflow-x-auto font-mono"><%= highlight_json(@execution.parameters || {}) %></pre>
 </div>
 
 <!-- Response -->
 <% if @execution.response.present? %>
-  <div class="bg-white border border-gray-200 rounded-xl p-6 mb-6">
+  <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6">
     <div class="flex items-center justify-between mb-4">
-      <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Response</h3>
+      <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Response</h3>
       <button
         type="button"
         data-copy-json="<%= Base64.strict_encode64(JSON.pretty_generate(@execution.response)) %>"
-        class="copy-json-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+        class="copy-json-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
       >
         <svg class="w-4 h-4 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
@@ -178,19 +178,19 @@
         <span>Copy</span>
       </button>
     </div>
-    <pre class="bg-gray-50 rounded-lg p-4 text-sm overflow-x-auto max-h-96 font-mono"><%= highlight_json(@execution.response) %></pre>
+    <pre class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 text-sm overflow-x-auto max-h-96 font-mono"><%= highlight_json(@execution.response) %></pre>
   </div>
 <% end %>
 
 <!-- Metadata -->
 <% if @execution.metadata.present? && @execution.metadata.any? %>
-  <div class="bg-white border border-gray-200 rounded-xl p-6 mb-6">
+  <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6">
     <div class="flex items-center justify-between mb-4">
-      <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Metadata</h3>
+      <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Metadata</h3>
       <button
         type="button"
         data-copy-json="<%= Base64.strict_encode64(JSON.pretty_generate(@execution.metadata)) %>"
-        class="copy-json-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+        class="copy-json-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
       >
         <svg class="w-4 h-4 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
@@ -201,7 +201,7 @@
         <span>Copy</span>
       </button>
     </div>
-    <pre class="bg-gray-50 rounded-lg p-4 text-sm overflow-x-auto font-mono"><%= highlight_json(@execution.metadata) %></pre>
+    <pre class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 text-sm overflow-x-auto font-mono"><%= highlight_json(@execution.metadata) %></pre>
   </div>
 <% end %>
 

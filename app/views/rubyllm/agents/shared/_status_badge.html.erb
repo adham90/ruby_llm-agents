@@ -8,40 +8,40 @@
   config = case status.to_s
     when "running"
       {
-        bg: "bg-blue-50",
-        text: "text-blue-700",
+        bg: "bg-blue-50 dark:bg-blue-900/50",
+        text: "text-blue-700 dark:text-blue-300",
         dot: "bg-blue-500",
         icon: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15",
         animate: true
       }
     when "success"
       {
-        bg: "bg-green-50",
-        text: "text-green-700",
+        bg: "bg-green-50 dark:bg-green-900/50",
+        text: "text-green-700 dark:text-green-300",
         dot: "bg-green-500",
         icon: "M5 13l4 4L19 7",
         animate: false
       }
     when "error"
       {
-        bg: "bg-red-50",
-        text: "text-red-700",
+        bg: "bg-red-50 dark:bg-red-900/50",
+        text: "text-red-700 dark:text-red-300",
         dot: "bg-red-500",
         icon: "M6 18L18 6M6 6l12 12",
         animate: false
       }
     when "timeout"
       {
-        bg: "bg-yellow-50",
-        text: "text-yellow-700",
+        bg: "bg-yellow-50 dark:bg-yellow-900/50",
+        text: "text-yellow-700 dark:text-yellow-300",
         dot: "bg-yellow-500",
         icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
         animate: false
       }
     else
       {
-        bg: "bg-gray-50",
-        text: "text-gray-700",
+        bg: "bg-gray-50 dark:bg-gray-700",
+        text: "text-gray-700 dark:text-gray-300",
         dot: "bg-gray-500",
         icon: "M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
         animate: false

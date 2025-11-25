@@ -1,5 +1,5 @@
 <div class="mb-6">
-  <%= link_to ruby_llm_agents.agents_path, class: "text-blue-600 hover:underline" do %>
+  <%= link_to ruby_llm_agents.agents_path, class: "text-blue-600 dark:text-blue-400 hover:underline" do %>
     <span class="inline-flex items-center">
       <svg
         class="w-4 h-4 mr-1"
@@ -20,11 +20,11 @@
 </div>
 
 <!-- Header -->
-<div class="bg-white rounded-lg shadow p-6 mb-6">
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
   <div class="flex items-start justify-between">
     <div>
       <div class="flex items-center space-x-3">
-        <h1 class="text-2xl font-bold text-gray-900">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
           <%= @agent_type.gsub(/Agent$/, '') %>
         </h1>
 
@@ -32,7 +32,7 @@
           <span
             class="
               inline-flex items-center px-2.5 py-0.5 rounded-full text-xs
-              font-medium bg-green-100 text-green-800
+              font-medium bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300
             "
           >
             Active
@@ -41,7 +41,7 @@
           <span
             class="
               inline-flex items-center px-2.5 py-0.5 rounded-full text-xs
-              font-medium bg-gray-100 text-gray-600
+              font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400
             "
           >
             Deleted
@@ -49,19 +49,19 @@
         <% end %>
 
         <% if @config %>
-          <span class="text-sm text-gray-500">v<%= @config[:version] %></span>
+          <span class="text-sm text-gray-500 dark:text-gray-400">v<%= @config[:version] %></span>
         <% end %>
       </div>
 
       <% if @config %>
-        <p class="text-gray-500 mt-1">
+        <p class="text-gray-500 dark:text-gray-400 mt-1">
           <%= @config[:model] %> &middot; temp <%= @config[:temperature] %>
           &middot; timeout <%= @config[:timeout] %>s
         </p>
       <% end %>
     </div>
 
-    <div class="text-right text-sm text-gray-500">
+    <div class="text-right text-sm text-gray-500 dark:text-gray-400">
       <p><%= @stats[:count] %> total executions</p>
     </div>
   </div>
@@ -110,8 +110,8 @@
 <!-- Charts Section -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
   <!-- Executions Over Time -->
-  <div class="bg-white rounded-lg shadow p-6 pb-20 overflow-hidden">
-    <h3 class="text-lg font-semibold text-gray-900 mb-4">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 pb-20 overflow-hidden">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
       Executions (30 days)
     </h3>
 
@@ -127,8 +127,8 @@
   </div>
 
   <!-- Cost Over Time -->
-  <div class="bg-white rounded-lg shadow p-6 pb-8 overflow-hidden">
-    <h3 class="text-lg font-semibold text-gray-900 mb-4">Cost (30 days)</h3>
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 pb-8 overflow-hidden">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Cost (30 days)</h3>
 
     <div id="cost-chart" style="height: 250px;">
       <% cost_data = @trend_data.map { |d| [d[:date].strftime("%b %d"), d[:total_cost].to_f.round(4)] }.to_h %>
@@ -139,9 +139,9 @@
 </div>
 
 <!-- Status Distribution (compact) -->
-<div class="bg-white rounded-lg shadow p-4 mb-6">
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
   <div class="flex items-center justify-between">
-    <p class="text-sm text-gray-500 uppercase">Status Distribution</p>
+    <p class="text-sm text-gray-500 dark:text-gray-400 uppercase">Status Distribution</p>
 
     <div class="flex flex-wrap gap-4">
       <% status_colors = {
@@ -158,9 +158,9 @@
             style="background-color: <%= status_colors[status] || '#6B7280' %>"
           ></span>
 
-          <span class="text-sm text-gray-700 capitalize"><%= status %></span>
+          <span class="text-sm text-gray-700 dark:text-gray-300 capitalize"><%= status %></span>
 
-          <span class="text-sm font-medium text-gray-900 ml-1">
+          <span class="text-sm font-medium text-gray-900 dark:text-gray-100 ml-1">
             (<%= number_with_delimiter(count) %>)
           </span>
         </div>
@@ -171,29 +171,29 @@
 
 <% if @config %>
   <!-- Configuration -->
-  <div class="bg-white rounded-lg shadow p-6 mb-6">
-    <h3 class="text-lg font-semibold text-gray-900 mb-4">Configuration</h3>
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Configuration</h3>
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
       <div>
-        <p class="text-sm text-gray-500">Model</p>
-        <p class="font-medium"><%= @config[:model] %></p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Model</p>
+        <p class="font-medium text-gray-900 dark:text-gray-100"><%= @config[:model] %></p>
       </div>
 
       <div>
-        <p class="text-sm text-gray-500">Temperature</p>
-        <p class="font-medium"><%= @config[:temperature] %></p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Temperature</p>
+        <p class="font-medium text-gray-900 dark:text-gray-100"><%= @config[:temperature] %></p>
       </div>
 
       <div>
-        <p class="text-sm text-gray-500">Timeout</p>
-        <p class="font-medium"><%= @config[:timeout] %> seconds</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Timeout</p>
+        <p class="font-medium text-gray-900 dark:text-gray-100"><%= @config[:timeout] %> seconds</p>
       </div>
 
       <div>
-        <p class="text-sm text-gray-500">Cache</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Cache</p>
 
-        <p class="font-medium">
+        <p class="font-medium text-gray-900 dark:text-gray-100">
           <% if @config[:cache_enabled] %>
             Enabled (
             <%= @config[:cache_ttl].inspect %>
@@ -206,26 +206,26 @@
     </div>
 
     <% if @config[:params].present? && @config[:params].any? %>
-      <div class="border-t border-gray-100 pt-4">
-        <p class="text-sm text-gray-500 mb-2">Parameters</p>
+      <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Parameters</p>
 
         <div class="space-y-2">
           <% @config[:params].each do |name, opts| %>
             <div class="flex items-center text-sm">
-              <code class="bg-gray-100 px-2 py-0.5 rounded font-mono">
+              <code class="bg-gray-100 dark:bg-gray-700 dark:text-gray-200 px-2 py-0.5 rounded font-mono">
                 <%= name %>
               </code>
 
               <% if opts[:required] %>
-                <span class="ml-2 text-xs text-red-500 font-medium">
+                <span class="ml-2 text-xs text-red-500 dark:text-red-400 font-medium">
                   required
                 </span>
               <% elsif opts[:default].present? %>
-                <span class="ml-2 text-xs text-gray-400">
+                <span class="ml-2 text-xs text-gray-400 dark:text-gray-500">
                   default: <%= opts[:default].inspect %>
                 </span>
               <% else %>
-                <span class="ml-2 text-xs text-gray-400">optional</span>
+                <span class="ml-2 text-xs text-gray-400 dark:text-gray-500">optional</span>
               <% end %>
             </div>
           <% end %>
@@ -236,8 +236,8 @@
 <% end %>
 
 <!-- Executions -->
-<div class="bg-white rounded-lg shadow p-6">
-  <h3 class="text-lg font-semibold text-gray-900 mb-4">Executions</h3>
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+  <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Executions</h3>
 
   <%= turbo_frame_tag "executions_table" do %>
     <%
@@ -249,10 +249,10 @@
     %>
 
     <%= form_with url: ruby_llm_agents.agent_path(@agent_type), method: :get, data: { turbo_frame: "executions_table" }, id: "agent-filters-form" do |f| %>
-      <div class="flex flex-wrap items-center gap-3 mb-4 pb-4 border-b border-gray-100">
+      <div class="flex flex-wrap items-center gap-3 mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
         <!-- Status Filter (Multi-select) -->
         <div class="relative filter-dropdown" data-filter="statuses">
-          <button type="button" onclick="toggleDropdown(this)" class="flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors <%= selected_statuses.any? ? 'ring-2 ring-blue-500 ring-offset-1' : '' %>">
+          <button type="button" onclick="toggleDropdown(this)" class="flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors <%= selected_statuses.any? ? 'ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-gray-800' : '' %>">
             <% if selected_statuses.length == 1
                  status_color = case selected_statuses.first
                    when 'success' then 'bg-green-500'
@@ -265,7 +265,7 @@
                  status_color = 'bg-gray-400'
                end %>
             <span class="w-2 h-2 rounded-full <%= status_color %>"></span>
-            <span class="dropdown-label text-gray-700">
+            <span class="dropdown-label text-gray-700 dark:text-gray-200">
               <% if selected_statuses.empty? %>
                 All Statuses
               <% elsif selected_statuses.length == 1 %>
@@ -274,34 +274,34 @@
                 <%= selected_statuses.length %> Statuses
               <% end %>
             </span>
-            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
             </svg>
           </button>
-          <div class="dropdown-menu hidden absolute z-10 mt-1 w-44 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
-            <div class="px-3 py-2 border-b border-gray-100">
+          <div class="dropdown-menu hidden absolute z-10 mt-1 w-44 bg-white dark:bg-gray-700 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 py-1">
+            <div class="px-3 py-2 border-b border-gray-100 dark:border-gray-600">
               <label class="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" class="select-all-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="toggleAllOptions(this, 'statuses')" <%= selected_statuses.empty? ? 'checked' : '' %>>
-                <span class="text-sm font-medium text-gray-700">All Statuses</span>
+                <input type="checkbox" class="select-all-checkbox rounded border-gray-300 dark:border-gray-500 text-blue-600 focus:ring-blue-500 dark:bg-gray-600" onchange="toggleAllOptions(this, 'statuses')" <%= selected_statuses.empty? ? 'checked' : '' %>>
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-200">All Statuses</span>
               </label>
             </div>
-            <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-              <input type="checkbox" name="statuses[]" value="success" class="filter-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="updateMultiSelect('statuses')" <%= selected_statuses.include?('success') ? 'checked' : '' %>>
+            <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer">
+              <input type="checkbox" name="statuses[]" value="success" class="filter-checkbox rounded border-gray-300 dark:border-gray-500 text-blue-600 focus:ring-blue-500 dark:bg-gray-600" onchange="updateMultiSelect('statuses')" <%= selected_statuses.include?('success') ? 'checked' : '' %>>
               <span class="w-2 h-2 rounded-full bg-green-500"></span>
               Success
             </label>
-            <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-              <input type="checkbox" name="statuses[]" value="error" class="filter-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="updateMultiSelect('statuses')" <%= selected_statuses.include?('error') ? 'checked' : '' %>>
+            <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer">
+              <input type="checkbox" name="statuses[]" value="error" class="filter-checkbox rounded border-gray-300 dark:border-gray-500 text-blue-600 focus:ring-blue-500 dark:bg-gray-600" onchange="updateMultiSelect('statuses')" <%= selected_statuses.include?('error') ? 'checked' : '' %>>
               <span class="w-2 h-2 rounded-full bg-red-500"></span>
               Error
             </label>
-            <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-              <input type="checkbox" name="statuses[]" value="running" class="filter-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="updateMultiSelect('statuses')" <%= selected_statuses.include?('running') ? 'checked' : '' %>>
+            <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer">
+              <input type="checkbox" name="statuses[]" value="running" class="filter-checkbox rounded border-gray-300 dark:border-gray-500 text-blue-600 focus:ring-blue-500 dark:bg-gray-600" onchange="updateMultiSelect('statuses')" <%= selected_statuses.include?('running') ? 'checked' : '' %>>
               <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
               Running
             </label>
-            <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-              <input type="checkbox" name="statuses[]" value="timeout" class="filter-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="updateMultiSelect('statuses')" <%= selected_statuses.include?('timeout') ? 'checked' : '' %>>
+            <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer">
+              <input type="checkbox" name="statuses[]" value="timeout" class="filter-checkbox rounded border-gray-300 dark:border-gray-500 text-blue-600 focus:ring-blue-500 dark:bg-gray-600" onchange="updateMultiSelect('statuses')" <%= selected_statuses.include?('timeout') ? 'checked' : '' %>>
               <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
               Timeout
             </label>
@@ -311,11 +311,11 @@
         <!-- Version Filter (Multi-select) -->
         <% if @versions.any? %>
           <div class="relative filter-dropdown" data-filter="versions">
-            <button type="button" onclick="toggleDropdown(this)" class="flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors <%= selected_versions.any? ? 'ring-2 ring-blue-500 ring-offset-1' : '' %>">
+            <button type="button" onclick="toggleDropdown(this)" class="flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors <%= selected_versions.any? ? 'ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-gray-800' : '' %>">
               <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
               </svg>
-              <span class="dropdown-label text-gray-700">
+              <span class="dropdown-label text-gray-700 dark:text-gray-200">
                 <% if selected_versions.empty? %>
                   All Versions
                 <% elsif selected_versions.length == 1 %>
@@ -324,20 +324,20 @@
                   <%= selected_versions.length %> Versions
                 <% end %>
               </span>
-              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
               </svg>
             </button>
-            <div class="dropdown-menu hidden absolute z-10 mt-1 w-44 bg-white rounded-lg shadow-lg border border-gray-200 py-1 max-h-64 overflow-y-auto">
-              <div class="px-3 py-2 border-b border-gray-100">
+            <div class="dropdown-menu hidden absolute z-10 mt-1 w-44 bg-white dark:bg-gray-700 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 py-1 max-h-64 overflow-y-auto">
+              <div class="px-3 py-2 border-b border-gray-100 dark:border-gray-600">
                 <label class="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" class="select-all-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="toggleAllOptions(this, 'versions')" <%= selected_versions.empty? ? 'checked' : '' %>>
-                  <span class="text-sm font-medium text-gray-700">All Versions</span>
+                  <input type="checkbox" class="select-all-checkbox rounded border-gray-300 dark:border-gray-500 text-blue-600 focus:ring-blue-500 dark:bg-gray-600" onchange="toggleAllOptions(this, 'versions')" <%= selected_versions.empty? ? 'checked' : '' %>>
+                  <span class="text-sm font-medium text-gray-700 dark:text-gray-200">All Versions</span>
                 </label>
               </div>
               <% @versions.each do |version| %>
-                <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-                  <input type="checkbox" name="versions[]" value="<%= version %>" class="filter-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="updateMultiSelect('versions')" <%= selected_versions.include?(version.to_s) ? 'checked' : '' %>>
+                <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer">
+                  <input type="checkbox" name="versions[]" value="<%= version %>" class="filter-checkbox rounded border-gray-300 dark:border-gray-500 text-blue-600 focus:ring-blue-500 dark:bg-gray-600" onchange="updateMultiSelect('versions')" <%= selected_versions.include?(version.to_s) ? 'checked' : '' %>>
                   v<%= version %>
                 </label>
               <% end %>
@@ -348,11 +348,11 @@
         <!-- Model Filter (Multi-select) -->
         <% if @models.length > 1 %>
           <div class="relative filter-dropdown" data-filter="models">
-            <button type="button" onclick="toggleDropdown(this)" class="flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors <%= selected_models.any? ? 'ring-2 ring-blue-500 ring-offset-1' : '' %>">
+            <button type="button" onclick="toggleDropdown(this)" class="flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors <%= selected_models.any? ? 'ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-gray-800' : '' %>">
               <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
               </svg>
-              <span class="dropdown-label text-gray-700">
+              <span class="dropdown-label text-gray-700 dark:text-gray-200">
                 <% if selected_models.empty? %>
                   All Models
                 <% elsif selected_models.length == 1 %>
@@ -361,20 +361,20 @@
                   <%= selected_models.length %> Models
                 <% end %>
               </span>
-              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
               </svg>
             </button>
-            <div class="dropdown-menu hidden absolute z-10 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 max-h-64 overflow-y-auto">
-              <div class="px-3 py-2 border-b border-gray-100">
+            <div class="dropdown-menu hidden absolute z-10 mt-1 w-56 bg-white dark:bg-gray-700 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 py-1 max-h-64 overflow-y-auto">
+              <div class="px-3 py-2 border-b border-gray-100 dark:border-gray-600">
                 <label class="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" class="select-all-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="toggleAllOptions(this, 'models')" <%= selected_models.empty? ? 'checked' : '' %>>
-                  <span class="text-sm font-medium text-gray-700">All Models</span>
+                  <input type="checkbox" class="select-all-checkbox rounded border-gray-300 dark:border-gray-500 text-blue-600 focus:ring-blue-500 dark:bg-gray-600" onchange="toggleAllOptions(this, 'models')" <%= selected_models.empty? ? 'checked' : '' %>>
+                  <span class="text-sm font-medium text-gray-700 dark:text-gray-200">All Models</span>
                 </label>
               </div>
               <% @models.each do |model| %>
-                <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-                  <input type="checkbox" name="models[]" value="<%= model %>" class="filter-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="updateMultiSelect('models')" <%= selected_models.include?(model) ? 'checked' : '' %>>
+                <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer">
+                  <input type="checkbox" name="models[]" value="<%= model %>" class="filter-checkbox rounded border-gray-300 dark:border-gray-500 text-blue-600 focus:ring-blue-500 dark:bg-gray-600" onchange="updateMultiSelect('models')" <%= selected_models.include?(model) ? 'checked' : '' %>>
                   <%= model %>
                 </label>
               <% end %>
@@ -385,11 +385,11 @@
         <!-- Temperature Filter (Multi-select) -->
         <% if @temperatures.length > 1 %>
           <div class="relative filter-dropdown" data-filter="temperatures">
-            <button type="button" onclick="toggleDropdown(this)" class="flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors <%= selected_temperatures.any? ? 'ring-2 ring-blue-500 ring-offset-1' : '' %>">
+            <button type="button" onclick="toggleDropdown(this)" class="flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors <%= selected_temperatures.any? ? 'ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-gray-800' : '' %>">
               <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
               </svg>
-              <span class="dropdown-label text-gray-700">
+              <span class="dropdown-label text-gray-700 dark:text-gray-200">
                 <% if selected_temperatures.empty? %>
                   All Temps
                 <% elsif selected_temperatures.length == 1 %>
@@ -398,20 +398,20 @@
                   <%= selected_temperatures.length %> Temps
                 <% end %>
               </span>
-              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
               </svg>
             </button>
-            <div class="dropdown-menu hidden absolute z-10 mt-1 w-36 bg-white rounded-lg shadow-lg border border-gray-200 py-1 max-h-64 overflow-y-auto">
-              <div class="px-3 py-2 border-b border-gray-100">
+            <div class="dropdown-menu hidden absolute z-10 mt-1 w-36 bg-white dark:bg-gray-700 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 py-1 max-h-64 overflow-y-auto">
+              <div class="px-3 py-2 border-b border-gray-100 dark:border-gray-600">
                 <label class="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" class="select-all-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="toggleAllOptions(this, 'temperatures')" <%= selected_temperatures.empty? ? 'checked' : '' %>>
-                  <span class="text-sm font-medium text-gray-700">All Temps</span>
+                  <input type="checkbox" class="select-all-checkbox rounded border-gray-300 dark:border-gray-500 text-blue-600 focus:ring-blue-500 dark:bg-gray-600" onchange="toggleAllOptions(this, 'temperatures')" <%= selected_temperatures.empty? ? 'checked' : '' %>>
+                  <span class="text-sm font-medium text-gray-700 dark:text-gray-200">All Temps</span>
                 </label>
               </div>
               <% @temperatures.each do |temp| %>
-                <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-                  <input type="checkbox" name="temperatures[]" value="<%= temp %>" class="filter-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="updateMultiSelect('temperatures')" <%= selected_temperatures.include?(temp.to_s) ? 'checked' : '' %>>
+                <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer">
+                  <input type="checkbox" name="temperatures[]" value="<%= temp %>" class="filter-checkbox rounded border-gray-300 dark:border-gray-500 text-blue-600 focus:ring-blue-500 dark:bg-gray-600" onchange="updateMultiSelect('temperatures')" <%= selected_temperatures.include?(temp.to_s) ? 'checked' : '' %>>
                   <%= temp %>
                 </label>
               <% end %>
@@ -421,11 +421,11 @@
 
         <!-- Time Range Filter -->
         <div class="relative filter-dropdown" data-filter="days">
-          <button type="button" onclick="toggleDropdown(this)" class="flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors <%= params[:days].present? ? 'ring-2 ring-blue-500 ring-offset-1' : '' %>">
+          <button type="button" onclick="toggleDropdown(this)" class="flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors <%= params[:days].present? ? 'ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-gray-800' : '' %>">
             <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
             </svg>
-            <span class="dropdown-label text-gray-700">
+            <span class="dropdown-label text-gray-700 dark:text-gray-200">
               <% case params[:days]
                  when '1' then %>Today<%
                  when '7' then %>Last 7 Days<%
@@ -433,21 +433,21 @@
                  else %>All Time<%
                  end %>
             </span>
-            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
             </svg>
           </button>
-          <div class="dropdown-menu hidden absolute z-10 mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
-            <a href="#" onclick="selectSingleFilter('days', '', 'All Time'); return false;" class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 <%= params[:days].blank? ? 'bg-blue-50 text-blue-700' : '' %>">
+          <div class="dropdown-menu hidden absolute z-10 mt-1 w-40 bg-white dark:bg-gray-700 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 py-1">
+            <a href="#" onclick="selectSingleFilter('days', '', 'All Time'); return false;" class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 <%= params[:days].blank? ? 'bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' : '' %>">
               All Time
             </a>
-            <a href="#" onclick="selectSingleFilter('days', '1', 'Today'); return false;" class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 <%= params[:days] == '1' ? 'bg-blue-50 text-blue-700' : '' %>">
+            <a href="#" onclick="selectSingleFilter('days', '1', 'Today'); return false;" class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 <%= params[:days] == '1' ? 'bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' : '' %>">
               Today
             </a>
-            <a href="#" onclick="selectSingleFilter('days', '7', 'Last 7 Days'); return false;" class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 <%= params[:days] == '7' ? 'bg-blue-50 text-blue-700' : '' %>">
+            <a href="#" onclick="selectSingleFilter('days', '7', 'Last 7 Days'); return false;" class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 <%= params[:days] == '7' ? 'bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' : '' %>">
               Last 7 Days
             </a>
-            <a href="#" onclick="selectSingleFilter('days', '30', 'Last 30 Days'); return false;" class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 <%= params[:days] == '30' ? 'bg-blue-50 text-blue-700' : '' %>">
+            <a href="#" onclick="selectSingleFilter('days', '30', 'Last 30 Days'); return false;" class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 <%= params[:days] == '30' ? 'bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' : '' %>">
               Last 30 Days
             </a>
           </div>
@@ -456,7 +456,7 @@
 
         <!-- Clear Filters -->
         <% if has_filters %>
-          <%= link_to ruby_llm_agents.agent_path(@agent_type), data: { turbo_frame: "executions_table" }, class: "flex items-center gap-1 px-3 py-2 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" do %>
+          <%= link_to ruby_llm_agents.agent_path(@agent_type), data: { turbo_frame: "executions_table" }, class: "flex items-center gap-1 px-3 py-2 text-sm text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors" do %>
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
@@ -465,11 +465,11 @@
         <% end %>
 
         <!-- Stats Summary (right aligned) -->
-        <div class="ml-auto flex items-center gap-4 text-sm text-gray-500">
+        <div class="ml-auto flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
           <span><%= number_with_delimiter(@filter_stats[:total_count]) %> executions</span>
-          <span class="text-gray-300">|</span>
+          <span class="text-gray-300 dark:text-gray-600">|</span>
           <span>$<%= number_with_precision(@filter_stats[:total_cost] || 0, precision: 4) %></span>
-          <span class="text-gray-300">|</span>
+          <span class="text-gray-300 dark:text-gray-600">|</span>
           <span><%= number_with_delimiter(@filter_stats[:total_tokens] || 0) %> tokens</span>
         </div>
       </div>

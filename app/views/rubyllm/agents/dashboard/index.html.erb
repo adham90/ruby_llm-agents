@@ -28,11 +28,11 @@
   </div>
 
   <!-- Activity Chart -->
-  <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-8 pb-24">
-    <div class="px-6 py-4 border-b border-gray-100">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mb-8 pb-24">
+    <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
       <div class="flex justify-between items-center">
-        <h3 class="text-lg font-semibold text-gray-900">Today's Activity</h3>
-        <span class="text-xs text-gray-400">Hourly executions</span>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Today's Activity</h3>
+        <span class="text-xs text-gray-400 dark:text-gray-500">Hourly executions</span>
       </div>
     </div>
 
@@ -55,13 +55,13 @@
   </div>
 
   <!-- Activity Feed -->
-  <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-    <div class="px-6 py-4 border-b border-gray-100">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+    <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
       <div class="flex justify-between items-center">
         <div class="flex items-center space-x-3">
-          <h3 class="text-lg font-semibold text-gray-900">Activity Feed</h3>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Activity Feed</h3>
 
-          <div class="flex items-center space-x-3 text-xs text-gray-400">
+          <div class="flex items-center space-x-3 text-xs text-gray-400 dark:text-gray-500">
             <span class="flex items-center">
               <span class="w-2 h-2 bg-blue-500 rounded-full mr-1 animate-pulse"></span>
               running
@@ -84,7 +84,7 @@
           </div>
         </div>
 
-        <%= link_to "View All", ruby_llm_agents.executions_path, data: { turbo: false }, class: "text-blue-600 hover:text-blue-700 text-sm font-medium" %>
+        <%= link_to "View All", ruby_llm_agents.executions_path, data: { turbo: false }, class: "text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium" %>
       </div>
     </div>
 
@@ -98,9 +98,9 @@
           <%= render partial: "rubyllm/agents/dashboard/execution_item", locals: { execution: execution } %>
         <% end %>
       <% else %>
-        <div id="empty-state" class="py-10 text-center text-gray-500">
+        <div id="empty-state" class="py-10 text-center text-gray-500 dark:text-gray-400">
           <svg
-            class="w-12 h-12 mx-auto mb-3 text-gray-300"
+            class="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

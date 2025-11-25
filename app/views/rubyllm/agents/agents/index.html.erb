@@ -1,48 +1,48 @@
 <div class="mb-6">
-  <h1 class="text-2xl font-bold text-gray-900">Agents</h1>
-  <p class="text-gray-500 mt-1">All available agents and their execution statistics</p>
+  <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Agents</h1>
+  <p class="text-gray-500 dark:text-gray-400 mt-1">All available agents and their execution statistics</p>
 </div>
 
 <% if @agents.empty? %>
-  <div class="bg-white rounded-lg shadow p-8 text-center">
-    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
+    <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
     </svg>
-    <h3 class="mt-2 text-sm font-medium text-gray-900">No agents found</h3>
-    <p class="mt-1 text-sm text-gray-500">Create an agent by running <code class="bg-gray-100 px-1 rounded">rails g ruby_llm_agents:agent YourAgentName</code></p>
+    <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No agents found</h3>
+    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Create an agent by running <code class="bg-gray-100 dark:bg-gray-700 dark:text-gray-200 px-1 rounded">rails g ruby_llm_agents:agent YourAgentName</code></p>
   </div>
 <% else %>
   <div class="space-y-4">
     <% @agents.each do |agent| %>
-      <%= link_to ruby_llm_agents.agent_path(agent[:name]), class: "block bg-white rounded-lg shadow hover:shadow-md transition-shadow" do %>
+      <%= link_to ruby_llm_agents.agent_path(agent[:name]), class: "block bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow" do %>
         <div class="p-5">
           <!-- Header Row -->
           <div class="flex items-start justify-between mb-3">
             <div class="flex items-center space-x-3">
-              <h3 class="text-lg font-semibold text-gray-900">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 <%= agent[:name].gsub(/Agent$/, '') %>
               </h3>
-              <span class="text-sm text-gray-500">v<%= agent[:version] %></span>
+              <span class="text-sm text-gray-500 dark:text-gray-400">v<%= agent[:version] %></span>
               <% if agent[:active] %>
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300">
                   Active
                 </span>
               <% else %>
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
                   Deleted
                 </span>
               <% end %>
             </div>
             <div class="text-right">
-              <p class="text-sm text-gray-500"><%= agent[:model] %></p>
+              <p class="text-sm text-gray-500 dark:text-gray-400"><%= agent[:model] %></p>
             </div>
           </div>
 
           <!-- Stats Row -->
-          <div class="flex items-center justify-between text-sm border-t border-gray-100 pt-3">
+          <div class="flex items-center justify-between text-sm border-t border-gray-100 dark:border-gray-700 pt-3">
             <div class="flex items-center space-x-6">
               <!-- Executions -->
-              <div class="flex items-center text-gray-600">
+              <div class="flex items-center text-gray-600 dark:text-gray-300">
                 <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
@@ -50,7 +50,7 @@
               </div>
 
               <!-- Cost -->
-              <div class="flex items-center text-gray-600">
+              <div class="flex items-center text-gray-600 dark:text-gray-300">
                 <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -62,19 +62,19 @@
                 <% success_rate = agent[:success_rate] || 0 %>
                 <% if success_rate >= 95 %>
                   <span class="w-2 h-2 rounded-full bg-green-500 mr-1.5"></span>
-                  <span class="text-green-600"><%= success_rate %>%</span>
+                  <span class="text-green-600 dark:text-green-400"><%= success_rate %>%</span>
                 <% elsif success_rate >= 80 %>
                   <span class="w-2 h-2 rounded-full bg-yellow-500 mr-1.5"></span>
-                  <span class="text-yellow-600"><%= success_rate %>%</span>
+                  <span class="text-yellow-600 dark:text-yellow-400"><%= success_rate %>%</span>
                 <% else %>
                   <span class="w-2 h-2 rounded-full bg-red-500 mr-1.5"></span>
-                  <span class="text-red-600"><%= success_rate %>%</span>
+                  <span class="text-red-600 dark:text-red-400"><%= success_rate %>%</span>
                 <% end %>
               </div>
             </div>
 
             <!-- Last Executed -->
-            <div class="text-gray-400">
+            <div class="text-gray-400 dark:text-gray-500">
               <% if agent[:last_executed] %>
                 <%= time_ago_in_words(agent[:last_executed]) %> ago
               <% else %>
