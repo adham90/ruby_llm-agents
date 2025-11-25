@@ -80,33 +80,33 @@
 <!-- Charts Section -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
   <!-- Executions Over Time -->
-  <div class="bg-white rounded-lg shadow p-6">
+  <div class="bg-white rounded-lg shadow p-6 overflow-hidden">
     <h3 class="text-lg font-semibold text-gray-900 mb-4">Executions (30 days)</h3>
     <div id="executions-chart" style="height: 250px;">
       <%
         executions_data = @trend_data.map { |d| [d[:date].strftime("%b %d"), d[:count]] }.to_h
       %>
-      <%= bar_chart executions_data, colors: ["#3B82F6"], library: { plugins: { legend: { display: false } } } %>
+      <%= bar_chart executions_data, colors: ["#3B82F6"], library: { maintainAspectRatio: false, plugins: { legend: { display: false } } } %>
     </div>
   </div>
 
   <!-- Cost Over Time -->
-  <div class="bg-white rounded-lg shadow p-6">
+  <div class="bg-white rounded-lg shadow p-6 overflow-hidden">
     <h3 class="text-lg font-semibold text-gray-900 mb-4">Cost (30 days)</h3>
     <div id="cost-chart" style="height: 250px;">
       <%
         cost_data = @trend_data.map { |d| [d[:date].strftime("%b %d"), d[:total_cost].to_f.round(4)] }.to_h
       %>
-      <%= line_chart cost_data, colors: ["#10B981"], prefix: "$", library: { plugins: { legend: { display: false } } } %>
+      <%= line_chart cost_data, colors: ["#10B981"], prefix: "$", library: { maintainAspectRatio: false, plugins: { legend: { display: false } } } %>
     </div>
   </div>
 </div>
 
-<!-- Status Distribution -->
-<div class="bg-white rounded-lg shadow p-6 mb-6">
-  <h3 class="text-lg font-semibold text-gray-900 mb-4">Status Distribution</h3>
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <div style="height: 250px;">
+<!-- Status Distribution (compact) -->
+<div class="bg-white rounded-lg shadow p-4 mb-6">
+  <div class="flex items-center justify-between">
+    <p class="text-sm text-gray-500 uppercase">Status Distribution</p>
+    <div class="flex flex-wrap gap-4">
       <%
         status_colors = {
           "success" => "#10B981",
@@ -114,19 +114,12 @@
           "timeout" => "#F59E0B",
           "running" => "#3B82F6"
         }
-        pie_data = @status_distribution.map { |status, count| [status.capitalize, count] }
-        pie_colors = @status_distribution.keys.map { |s| status_colors[s] || "#6B7280" }
       %>
-      <%= pie_chart pie_data, colors: pie_colors, donut: true %>
-    </div>
-    <div class="flex flex-col justify-center">
       <% @status_distribution.each do |status, count| %>
-        <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-          <div class="flex items-center">
-            <span class="w-3 h-3 rounded-full mr-2" style="background-color: <%= status_colors[status] || '#6B7280' %>"></span>
-            <span class="capitalize text-gray-700"><%= status %></span>
-          </div>
-          <span class="font-semibold text-gray-900"><%= number_with_delimiter(count) %></span>
+        <div class="flex items-center">
+          <span class="w-2 h-2 rounded-full mr-1.5" style="background-color: <%= status_colors[status] || '#6B7280' %>"></span>
+          <span class="text-sm text-gray-700 capitalize"><%= status %></span>
+          <span class="text-sm font-medium text-gray-900 ml-1">(<%= number_with_delimiter(count) %>)</span>
         </div>
       <% end %>
     </div>
