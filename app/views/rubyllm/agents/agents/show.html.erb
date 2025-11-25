@@ -1,0 +1,229 @@
+<div class="mb-6">
+  <%= link_to ruby_llm_agents.agents_path, class: "text-blue-600 hover:underline" do %>
+    <span class="inline-flex items-center">
+      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+      </svg>
+      Back to Agents
+    </span>
+  <% end %>
+</div>
+
+<!-- Header -->
+<div class="bg-white rounded-lg shadow p-6 mb-6">
+  <div class="flex items-start justify-between">
+    <div>
+      <div class="flex items-center space-x-3">
+        <h1 class="text-2xl font-bold text-gray-900">
+          <%= @agent_type.gsub(/Agent$/, '') %>
+        </h1>
+        <% if @agent_active %>
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            Active
+          </span>
+        <% else %>
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+            Deleted
+          </span>
+        <% end %>
+        <% if @config %>
+          <span class="text-sm text-gray-500">v<%= @config[:version] %></span>
+        <% end %>
+      </div>
+      <% if @config %>
+        <p class="text-gray-500 mt-1">
+          <%= @config[:model] %> &middot; temp <%= @config[:temperature] %> &middot; timeout <%= @config[:timeout] %>s
+        </p>
+      <% end %>
+    </div>
+    <div class="text-right text-sm text-gray-500">
+      <p><%= @stats[:count] %> total executions</p>
+    </div>
+  </div>
+</div>
+
+<!-- Stats Grid -->
+<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+  <div class="bg-white rounded-lg shadow p-4">
+    <p class="text-sm text-gray-500 uppercase">Executions</p>
+    <p class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@stats[:count]) %></p>
+    <p class="text-xs text-gray-400">Today: <%= @stats_today[:count] %></p>
+  </div>
+
+  <div class="bg-white rounded-lg shadow p-4">
+    <p class="text-sm text-gray-500 uppercase">Success Rate</p>
+    <% success_rate = @stats[:success_rate] || 0 %>
+    <p class="text-2xl font-bold <%= success_rate >= 95 ? 'text-green-600' : success_rate >= 80 ? 'text-yellow-600' : 'text-red-600' %>">
+      <%= success_rate %>%
+    </p>
+    <p class="text-xs text-gray-400">Error rate: <%= @stats[:error_rate] || 0 %>%</p>
+  </div>
+
+  <div class="bg-white rounded-lg shadow p-4">
+    <p class="text-sm text-gray-500 uppercase">Total Cost</p>
+    <p class="text-2xl font-bold text-gray-900">$<%= number_with_precision(@stats[:total_cost] || 0, precision: 4) %></p>
+    <p class="text-xs text-gray-400">Avg: $<%= number_with_precision(@stats[:avg_cost] || 0, precision: 6) %></p>
+  </div>
+
+  <div class="bg-white rounded-lg shadow p-4">
+    <p class="text-sm text-gray-500 uppercase">Total Tokens</p>
+    <p class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@stats[:total_tokens] || 0) %></p>
+    <p class="text-xs text-gray-400">Avg: <%= number_with_delimiter(@stats[:avg_tokens] || 0) %></p>
+  </div>
+
+  <div class="bg-white rounded-lg shadow p-4">
+    <p class="text-sm text-gray-500 uppercase">Avg Duration</p>
+    <p class="text-2xl font-bold text-gray-900"><%= number_with_delimiter(@stats[:avg_duration_ms] || 0) %> ms</p>
+  </div>
+</div>
+
+<!-- Charts Section -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <!-- Executions Over Time -->
+  <div class="bg-white rounded-lg shadow p-6">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Executions (30 days)</h3>
+    <div id="executions-chart" style="height: 250px;">
+      <%
+        executions_data = @trend_data.map { |d| [d[:date].strftime("%b %d"), d[:count]] }.to_h
+      %>
+      <%= bar_chart executions_data, colors: ["#3B82F6"], library: { plugins: { legend: { display: false } } } %>
+    </div>
+  </div>
+
+  <!-- Cost Over Time -->
+  <div class="bg-white rounded-lg shadow p-6">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Cost (30 days)</h3>
+    <div id="cost-chart" style="height: 250px;">
+      <%
+        cost_data = @trend_data.map { |d| [d[:date].strftime("%b %d"), d[:total_cost].to_f.round(4)] }.to_h
+      %>
+      <%= line_chart cost_data, colors: ["#10B981"], prefix: "$", library: { plugins: { legend: { display: false } } } %>
+    </div>
+  </div>
+</div>
+
+<!-- Status Distribution -->
+<div class="bg-white rounded-lg shadow p-6 mb-6">
+  <h3 class="text-lg font-semibold text-gray-900 mb-4">Status Distribution</h3>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div style="height: 250px;">
+      <%
+        status_colors = {
+          "success" => "#10B981",
+          "error" => "#EF4444",
+          "timeout" => "#F59E0B",
+          "running" => "#3B82F6"
+        }
+        pie_data = @status_distribution.map { |status, count| [status.capitalize, count] }
+        pie_colors = @status_distribution.keys.map { |s| status_colors[s] || "#6B7280" }
+      %>
+      <%= pie_chart pie_data, colors: pie_colors, donut: true %>
+    </div>
+    <div class="flex flex-col justify-center">
+      <% @status_distribution.each do |status, count| %>
+        <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+          <div class="flex items-center">
+            <span class="w-3 h-3 rounded-full mr-2" style="background-color: <%= status_colors[status] || '#6B7280' %>"></span>
+            <span class="capitalize text-gray-700"><%= status %></span>
+          </div>
+          <span class="font-semibold text-gray-900"><%= number_with_delimiter(count) %></span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<% if @config %>
+  <!-- Configuration -->
+  <div class="bg-white rounded-lg shadow p-6 mb-6">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Configuration</h3>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+      <div>
+        <p class="text-sm text-gray-500">Model</p>
+        <p class="font-medium"><%= @config[:model] %></p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Temperature</p>
+        <p class="font-medium"><%= @config[:temperature] %></p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Timeout</p>
+        <p class="font-medium"><%= @config[:timeout] %> seconds</p>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Cache</p>
+        <p class="font-medium">
+          <% if @config[:cache_enabled] %>
+            Enabled (<%= @config[:cache_ttl].inspect %>)
+          <% else %>
+            Disabled
+          <% end %>
+        </p>
+      </div>
+    </div>
+
+    <% if @config[:params].present? && @config[:params].any? %>
+      <div class="border-t border-gray-100 pt-4">
+        <p class="text-sm text-gray-500 mb-2">Parameters</p>
+        <div class="space-y-2">
+          <% @config[:params].each do |name, opts| %>
+            <div class="flex items-center text-sm">
+              <code class="bg-gray-100 px-2 py-0.5 rounded font-mono"><%= name %></code>
+              <% if opts[:required] %>
+                <span class="ml-2 text-xs text-red-500 font-medium">required</span>
+              <% elsif opts[:default].present? %>
+                <span class="ml-2 text-xs text-gray-400">default: <%= opts[:default].inspect %></span>
+              <% else %>
+                <span class="ml-2 text-xs text-gray-400">optional</span>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+
+<!-- Recent Executions -->
+<div class="bg-white rounded-lg shadow p-6">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="text-lg font-semibold text-gray-900">Recent Executions</h3>
+    <%= link_to "View all", ruby_llm_agents.executions_path(agent_type: @agent_type), class: "text-sm text-blue-600 hover:underline" %>
+  </div>
+
+  <% if @executions.empty? %>
+    <p class="text-gray-500 text-center py-4">No executions found for this agent.</p>
+  <% else %>
+    <div class="divide-y divide-gray-100">
+      <% @executions.each do |execution| %>
+        <%= link_to ruby_llm_agents.execution_path(execution), class: "block py-3 hover:bg-gray-50 -mx-2 px-2 rounded transition-colors", data: { turbo: false } do %>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+              <% case execution.status %>
+              <% when "running" %>
+                <span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
+              <% when "success" %>
+                <span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+              <% when "error" %>
+                <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+              <% when "timeout" %>
+                <span class="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
+              <% end %>
+              <span class="text-sm font-medium text-gray-900"><%= execution.status %></span>
+              <span class="text-sm text-gray-500">v<%= execution.agent_version %></span>
+            </div>
+            <div class="flex items-center space-x-4 text-sm text-gray-500">
+              <span><%= number_with_delimiter(execution.total_tokens || 0) %> tokens</span>
+              <span>$<%= number_with_precision(execution.total_cost || 0, precision: 6) %></span>
+              <span><%= execution.duration_ms || 0 %>ms</span>
+              <span><%= time_ago_in_words(execution.created_at) %> ago</span>
+            </div>
+          </div>
+          <% if execution.status_error? && execution.error_message.present? %>
+            <p class="text-xs text-red-500 mt-1 truncate"><%= execution.error_message %></p>
+          <% end %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

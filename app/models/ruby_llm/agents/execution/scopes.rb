@@ -20,6 +20,7 @@ module RubyLLM
           # Time-based scopes
           scope :recent, ->(limit = 100) { order(created_at: :desc).limit(limit) }
           scope :oldest, ->(limit = 100) { order(created_at: :asc).limit(limit) }
+          scope :all_time, -> { all }  # Explicit scope for all-time queries (used by analytics)
           scope :today, -> { where("created_at >= ?", Time.current.beginning_of_day) }
           scope :yesterday, -> { where(created_at: 1.day.ago.beginning_of_day..1.day.ago.end_of_day) }
           scope :this_week, -> { where("created_at >= ?", Time.current.beginning_of_week) }
