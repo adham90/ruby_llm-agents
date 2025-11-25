@@ -138,16 +138,16 @@
 
           if (status === 'live') {
             liveIndicator.innerHTML = `
-              <span class="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></span>
-              Live
+              <span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-1 animate-pulse"></span>
+              <span class="hidden sm:inline">Live</span>
             `;
-            liveIndicator.className = 'flex items-center text-xs text-green-600';
+            liveIndicator.className = 'flex items-center text-green-600';
           } else if (status === 'polling') {
             liveIndicator.innerHTML = `
-              <span class="w-2 h-2 bg-blue-500 rounded-full mr-1"></span>
-              Auto-refresh
+              <span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1"></span>
+              <span class="hidden sm:inline">Polling</span>
             `;
-            liveIndicator.className = 'flex items-center text-xs text-blue-600';
+            liveIndicator.className = 'flex items-center text-blue-600';
           }
         }
 
@@ -267,13 +267,12 @@
             </nav>
           </div>
 
-          <div class="flex items-center space-x-4">
-            <span id="live-indicator" class="flex items-center text-xs text-gray-400">
-              <span class="w-2 h-2 bg-gray-300 rounded-full mr-1"></span>
-              Connecting...
-            </span>
-            <span class="text-sm text-gray-500">
-              <%= Time.current.strftime("%B %d, %Y") %>
+          <div class="flex items-center space-x-2 text-xs text-gray-500">
+            <span><%= Time.current.strftime("%b %d") %></span>
+            <span class="text-gray-300">•</span>
+            <span id="live-indicator" class="flex items-center text-gray-400">
+              <span class="w-1.5 h-1.5 bg-gray-300 rounded-full mr-1"></span>
+              <span class="hidden sm:inline">Connecting</span>
             </span>
           </div>
         </div>
