@@ -1,0 +1,12 @@
+# frozen_string_literal: true
+
+class AddPromptsToRubyLLMAgentsExecutions < ActiveRecord::Migration<%= migration_version %>
+  def change
+    unless column_exists?(:ruby_llm_agents_executions, :system_prompt)
+      add_column :ruby_llm_agents_executions, :system_prompt, :text
+    end
+    unless column_exists?(:ruby_llm_agents_executions, :user_prompt)
+      add_column :ruby_llm_agents_executions, :user_prompt, :text
+    end
+  end
+end

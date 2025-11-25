@@ -41,6 +41,10 @@ class CreateRubyLlmAgentsExecutions < ActiveRecord::Migration<%= migration_versi
       t.string :error_class
       t.text :error_message
 
+      # Prompts (for history/changelog)
+      t.text :system_prompt
+      t.text :user_prompt
+
       t.timestamps
     end
 

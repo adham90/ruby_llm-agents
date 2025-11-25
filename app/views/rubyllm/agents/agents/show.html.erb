@@ -241,9 +241,11 @@
 
   <%= turbo_frame_tag "executions_table" do %>
     <%
-      has_filters = params[:statuses].present? || params[:versions].present? || params[:days].present?
+      has_filters = params[:statuses].present? || params[:versions].present? || params[:models].present? || params[:temperatures].present? || params[:days].present?
       selected_statuses = params[:statuses].present? ? (params[:statuses].is_a?(Array) ? params[:statuses] : params[:statuses].split(",")) : []
       selected_versions = params[:versions].present? ? (params[:versions].is_a?(Array) ? params[:versions] : params[:versions].split(",")) : []
+      selected_models = params[:models].present? ? (params[:models].is_a?(Array) ? params[:models] : params[:models].split(",")) : []
+      selected_temperatures = params[:temperatures].present? ? (params[:temperatures].is_a?(Array) ? params[:temperatures] : params[:temperatures].split(",")).map(&:to_s) : []
     %>
 
     <%= form_with url: ruby_llm_agents.agent_path(@agent_type), method: :get, data: { turbo_frame: "executions_table" }, id: "agent-filters-form" do |f| %>
@@ -337,6 +339,80 @@
                 <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
                   <input type="checkbox" name="versions[]" value="<%= version %>" class="filter-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="updateMultiSelect('versions')" <%= selected_versions.include?(version.to_s) ? 'checked' : '' %>>
                   v<%= version %>
+                </label>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- Model Filter (Multi-select) -->
+        <% if @models.length > 1 %>
+          <div class="relative filter-dropdown" data-filter="models">
+            <button type="button" onclick="toggleDropdown(this)" class="flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors <%= selected_models.any? ? 'ring-2 ring-blue-500 ring-offset-1' : '' %>">
+              <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+              </svg>
+              <span class="dropdown-label text-gray-700">
+                <% if selected_models.empty? %>
+                  All Models
+                <% elsif selected_models.length == 1 %>
+                  <%= selected_models.first %>
+                <% else %>
+                  <%= selected_models.length %> Models
+                <% end %>
+              </span>
+              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>
+            <div class="dropdown-menu hidden absolute z-10 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 max-h-64 overflow-y-auto">
+              <div class="px-3 py-2 border-b border-gray-100">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" class="select-all-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="toggleAllOptions(this, 'models')" <%= selected_models.empty? ? 'checked' : '' %>>
+                  <span class="text-sm font-medium text-gray-700">All Models</span>
+                </label>
+              </div>
+              <% @models.each do |model| %>
+                <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                  <input type="checkbox" name="models[]" value="<%= model %>" class="filter-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="updateMultiSelect('models')" <%= selected_models.include?(model) ? 'checked' : '' %>>
+                  <%= model %>
+                </label>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- Temperature Filter (Multi-select) -->
+        <% if @temperatures.length > 1 %>
+          <div class="relative filter-dropdown" data-filter="temperatures">
+            <button type="button" onclick="toggleDropdown(this)" class="flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors <%= selected_temperatures.any? ? 'ring-2 ring-blue-500 ring-offset-1' : '' %>">
+              <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+              </svg>
+              <span class="dropdown-label text-gray-700">
+                <% if selected_temperatures.empty? %>
+                  All Temps
+                <% elsif selected_temperatures.length == 1 %>
+                  <%= selected_temperatures.first %>
+                <% else %>
+                  <%= selected_temperatures.length %> Temps
+                <% end %>
+              </span>
+              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>
+            <div class="dropdown-menu hidden absolute z-10 mt-1 w-36 bg-white rounded-lg shadow-lg border border-gray-200 py-1 max-h-64 overflow-y-auto">
+              <div class="px-3 py-2 border-b border-gray-100">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" class="select-all-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="toggleAllOptions(this, 'temperatures')" <%= selected_temperatures.empty? ? 'checked' : '' %>>
+                  <span class="text-sm font-medium text-gray-700">All Temps</span>
+                </label>
+              </div>
+              <% @temperatures.each do |temp| %>
+                <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                  <input type="checkbox" name="temperatures[]" value="<%= temp %>" class="filter-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" onchange="updateMultiSelect('temperatures')" <%= selected_temperatures.include?(temp.to_s) ? 'checked' : '' %>>
+                  <%= temp %>
                 </label>
               <% end %>
             </div>
@@ -448,19 +524,28 @@
 
     selectAllCheckbox.checked = (count === 0);
 
+    const labelMap = {
+      'statuses': { all: 'All Statuses', plural: 'Statuses' },
+      'versions': { all: 'All Versions', plural: 'Versions' },
+      'models': { all: 'All Models', plural: 'Models' },
+      'temperatures': { all: 'All Temps', plural: 'Temps' }
+    };
+
     if (count === 0) {
-      label.textContent = filterName === 'statuses' ? 'All Statuses' : 'All Versions';
+      label.textContent = labelMap[filterName]?.all || 'All';
       button.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-1');
     } else if (count === 1) {
       const value = checkboxes[0].value;
       if (filterName === 'statuses') {
         label.textContent = value.charAt(0).toUpperCase() + value.slice(1);
-      } else {
+      } else if (filterName === 'versions') {
         label.textContent = 'v' + value;
+      } else {
+        label.textContent = value;
       }
       button.classList.add('ring-2', 'ring-blue-500', 'ring-offset-1');
     } else {
-      label.textContent = `${count} ${filterName === 'statuses' ? 'Statuses' : 'Versions'}`;
+      label.textContent = `${count} ${labelMap[filterName]?.plural || 'Items'}`;
       button.classList.add('ring-2', 'ring-blue-500', 'ring-offset-1');
     }
 

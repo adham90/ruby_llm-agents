@@ -85,7 +85,9 @@ module RubyLLM
           started_at: started_at,
           status: "running",
           parameters: sanitized_parameters,
-          metadata: execution_metadata
+          metadata: execution_metadata,
+          system_prompt: safe_system_prompt,
+          user_prompt: safe_user_prompt
         }
 
         RubyLLM::Agents::Execution.create!(execution_data)
@@ -151,7 +153,9 @@ module RubyLLM
           duration_ms: 0,
           status: status,
           parameters: sanitized_parameters,
-          metadata: execution_metadata
+          metadata: execution_metadata,
+          system_prompt: safe_system_prompt,
+          user_prompt: safe_user_prompt
         }
 
         if response.is_a?(RubyLLM::Message)
@@ -219,6 +223,22 @@ module RubyLLM
       # Hook for subclasses to add custom metadata
       def execution_metadata
         {}
+      end
+
+      # Safely capture system prompt (may raise or return nil)
+      def safe_system_prompt
+        respond_to?(:system_prompt) ? system_prompt.to_s : nil
+      rescue StandardError => e
+        Rails.logger.warn("[RubyLLM::Agents] Could not capture system_prompt: #{e.message}")
+        nil
+      end
+
+      # Safely capture user prompt (may raise or return nil)
+      def safe_user_prompt
+        respond_to?(:user_prompt) ? user_prompt.to_s : nil
+      rescue StandardError => e
+        Rails.logger.warn("[RubyLLM::Agents] Could not capture user_prompt: #{e.message}")
+        nil
       end
     end
   end

@@ -16,8 +16,10 @@ module RubyLLM
         @stats = Execution.stats_for(@agent_type, period: :all_time)
         @stats_today = Execution.stats_for(@agent_type, period: :today)
 
-        # Get available versions for this agent (for filter dropdown)
+        # Get available filter options for this agent
         @versions = Execution.by_agent(@agent_type).distinct.pluck(:agent_version).compact.sort.reverse
+        @models = Execution.by_agent(@agent_type).distinct.pluck(:model_id).compact.sort
+        @temperatures = Execution.by_agent(@agent_type).distinct.pluck(:temperature).compact.sort
 
         # Build filtered scope
         base_scope = Execution.by_agent(@agent_type)
@@ -32,6 +34,18 @@ module RubyLLM
         if params[:versions].present?
           versions = params[:versions].is_a?(Array) ? params[:versions] : params[:versions].split(",")
           base_scope = base_scope.where(agent_version: versions) if versions.any?(&:present?)
+        end
+
+        # Apply model filter
+        if params[:models].present?
+          models = params[:models].is_a?(Array) ? params[:models] : params[:models].split(",")
+          base_scope = base_scope.where(model_id: models) if models.any?(&:present?)
+        end
+
+        # Apply temperature filter
+        if params[:temperatures].present?
+          temps = params[:temperatures].is_a?(Array) ? params[:temperatures] : params[:temperatures].split(",")
+          base_scope = base_scope.where(temperature: temps) if temps.any?(&:present?)
         end
 
         # Apply time range filter
