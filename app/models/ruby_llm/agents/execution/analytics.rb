@@ -102,17 +102,23 @@ module RubyLLM
             end.reverse
           end
 
-          # Chart data: Activity chart showing success/failed stacked by time period
-          def activity_chart(days: 7)
-            data = trend_analysis(days: days)
-
+          # Chart data: Hourly activity chart for today showing success/failed
+          def hourly_activity_chart
             success_data = {}
             failed_data = {}
 
-            data.each do |day|
-              label = day[:date].strftime("%b %d")
-              success_data[label] = day[:count] - day[:error_count]
-              failed_data[label] = day[:error_count]
+            # Create entries for each hour of the day (0-23)
+            (0..23).each do |hour|
+              time_label = format("%02d:00", hour)
+              start_time = Time.current.beginning_of_day + hour.hours
+              end_time = start_time + 1.hour
+
+              hour_scope = where(created_at: start_time...end_time)
+              total = hour_scope.count
+              failed = hour_scope.failed.count
+
+              success_data[time_label] = total - failed
+              failed_data[time_label] = failed
             end
 
             [

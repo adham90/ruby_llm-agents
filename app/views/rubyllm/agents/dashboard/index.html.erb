@@ -1,79 +1,63 @@
-<!-- Header with Time Range Selector and Live Poll Toggle (outside turbo frame) -->
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-  <h2 class="text-2xl font-bold text-gray-900 mb-4 sm:mb-0">Dashboard</h2>
-
-  <div class="flex items-center space-x-4">
-    <!-- Live Poll Toggle (outside frame so state persists) -->
-    <button type="button"
-            id="live-poll-btn"
-            data-enabled="false"
-            onclick="toggleLivePoll()"
-            class="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors bg-gray-100 text-gray-600">
-      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-      </svg>
-      Live Poll: <span id="live-poll-indicator" class="ml-1">Off</span>
-    </button>
-
-    <!-- Time Range Tabs -->
-    <div class="inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm">
-      <%= link_to "Today", ruby_llm_agents.root_path(period: :today),
-          class: "px-4 py-2 text-sm font-medium rounded-md transition-colors #{@period == :today ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}",
-          data: { turbo_frame: "dashboard" } %>
-      <%= link_to "7 Days", ruby_llm_agents.root_path(period: :this_week),
-          class: "px-4 py-2 text-sm font-medium rounded-md transition-colors #{@period == :this_week ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}",
-          data: { turbo_frame: "dashboard" } %>
-      <%= link_to "30 Days", ruby_llm_agents.root_path(period: :this_month),
-          class: "px-4 py-2 text-sm font-medium rounded-md transition-colors #{@period == :this_month ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}",
-          data: { turbo_frame: "dashboard" } %>
-    </div>
-  </div>
-</div>
-
 <%= turbo_frame_tag "dashboard" do %>
   <!-- Stats Cards -->
-  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-    <!-- Executions -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <!-- Executions - Blue -->
     <div class="bg-white border border-gray-200 rounded-xl p-4">
-      <p class="text-xs text-gray-500 uppercase tracking-wide font-medium">Executions</p>
+      <div class="flex items-center justify-between">
+        <p class="text-xs text-gray-500 uppercase tracking-wide font-medium">Executions</p>
+        <span class="text-blue-500">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+        </span>
+      </div>
       <p class="text-2xl font-bold text-gray-900 mt-2"><%= number_with_delimiter(@stats[:total_executions]) %></p>
     </div>
 
-    <!-- Success Rate -->
+    <!-- Failed - Red -->
     <div class="bg-white border border-gray-200 rounded-xl p-4">
-      <p class="text-xs text-gray-500 uppercase tracking-wide font-medium">Success Rate</p>
-      <p class="text-2xl font-bold text-green-600 mt-2"><%= @stats[:success_rate] %>%</p>
-    </div>
-
-    <!-- Failed -->
-    <div class="bg-white border border-gray-200 rounded-xl p-4">
-      <p class="text-xs text-gray-500 uppercase tracking-wide font-medium">Failed</p>
+      <div class="flex items-center justify-between">
+        <p class="text-xs text-gray-500 uppercase tracking-wide font-medium">Failed</p>
+        <span class="text-red-500">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </span>
+      </div>
       <p class="text-2xl font-bold text-red-600 mt-2"><%= number_with_delimiter(@stats[:failed]) %></p>
     </div>
 
-    <!-- Total Cost -->
+    <!-- Total Cost - Amber -->
     <div class="bg-white border border-gray-200 rounded-xl p-4">
-      <p class="text-xs text-gray-500 uppercase tracking-wide font-medium">Total Cost</p>
+      <div class="flex items-center justify-between">
+        <p class="text-xs text-gray-500 uppercase tracking-wide font-medium">Total Cost</p>
+        <span class="text-amber-500">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </span>
+      </div>
       <p class="text-2xl font-bold text-gray-900 mt-2">$<%= number_with_precision(@stats[:total_cost], precision: 4) %></p>
     </div>
 
-    <!-- Total Tokens -->
+    <!-- Total Tokens - Indigo -->
     <div class="bg-white border border-gray-200 rounded-xl p-4">
-      <p class="text-xs text-gray-500 uppercase tracking-wide font-medium">Total Tokens</p>
+      <div class="flex items-center justify-between">
+        <p class="text-xs text-gray-500 uppercase tracking-wide font-medium">Total Tokens</p>
+        <span class="text-indigo-500">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+          </svg>
+        </span>
+      </div>
       <p class="text-2xl font-bold text-gray-900 mt-2"><%= number_with_delimiter(@stats[:total_tokens]) %></p>
-    </div>
-
-    <!-- Avg Duration -->
-    <div class="bg-white border border-gray-200 rounded-xl p-4">
-      <p class="text-xs text-gray-500 uppercase tracking-wide font-medium">Avg Duration</p>
-      <p class="text-2xl font-bold text-gray-900 mt-2"><%= number_with_delimiter(@stats[:avg_duration_ms]) %>ms</p>
     </div>
   </div>
 
   <!-- Activity Chart -->
   <div class="chart-card mb-6">
     <div class="flex items-center justify-between mb-4">
-      <h3 class="text-lg font-semibold text-gray-900">Activity</h3>
+      <h3 class="text-lg font-semibold text-gray-900">Today's Activity</h3>
       <div class="flex items-center space-x-4 text-sm text-gray-500">
         <span class="flex items-center">
           <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>

@@ -4,29 +4,17 @@ module RubyLLM
   module Agents
     class DashboardController < ApplicationController
       def index
-        @period = params[:period]&.to_sym || :today
-        @days = period_to_days(@period)
-
         @stats = daily_stats
         @recent_executions = Execution.recent(10)
 
-        # Single activity chart showing success/failed over time
-        @activity_chart = Execution.activity_chart(days: @days)
+        # Hourly activity chart for today
+        @activity_chart = Execution.hourly_activity_chart
       end
 
       private
 
-      def period_to_days(period)
-        case period
-        when :today then 1
-        when :this_week then 7
-        when :this_month then 30
-        else 7
-        end
-      end
-
       def daily_stats
-        scope = Execution.public_send(@period)
+        scope = Execution.today
         {
           total_executions: scope.count,
           successful: scope.successful.count,
