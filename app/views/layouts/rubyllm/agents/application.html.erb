@@ -28,6 +28,50 @@
     <!-- Turbo -->
     <%= javascript_include_tag "turbo", type: "module" rescue nil %>
 
+    <!-- Live Poll Script -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        let pollInterval = null;
+        const POLL_INTERVAL_MS = 30000; // 30 seconds
+
+        window.toggleLivePoll = function() {
+          const button = document.getElementById('live-poll-btn');
+          const indicator = document.getElementById('live-poll-indicator');
+          const isEnabled = button.dataset.enabled === 'true';
+
+          if (isEnabled) {
+            // Turn off
+            button.dataset.enabled = 'false';
+            button.classList.remove('bg-green-100', 'text-green-700');
+            button.classList.add('bg-gray-100', 'text-gray-600');
+            indicator.textContent = 'Off';
+            if (pollInterval) {
+              clearInterval(pollInterval);
+              pollInterval = null;
+            }
+          } else {
+            // Turn on
+            button.dataset.enabled = 'true';
+            button.classList.remove('bg-gray-100', 'text-gray-600');
+            button.classList.add('bg-green-100', 'text-green-700');
+            indicator.textContent = 'On';
+            refreshDashboard(); // Immediate refresh
+            pollInterval = setInterval(refreshDashboard, POLL_INTERVAL_MS);
+          }
+        };
+
+        function refreshDashboard() {
+          const frame = document.querySelector('turbo-frame#dashboard');
+          if (frame && frame.src) {
+            frame.reload();
+          } else if (frame) {
+            // If no src, use current URL
+            frame.src = window.location.href;
+          }
+        }
+      });
+    </script>
+
     <style>
     /* Custom styles for the dashboard */
     .stat-card {
