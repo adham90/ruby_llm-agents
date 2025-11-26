@@ -6,7 +6,7 @@
 # reliability features (retries, fallbacks, circuit breakers).
 #
 # Run with: rails db:migrate
-class AddAttemptsToRubyLlmAgentsExecutions < ActiveRecord::Migration<%= migration_version %>
+class AddAttemptsToRubyLLMAgentsExecutions < ActiveRecord::Migration<%= migration_version %>
   def change
     # Add attempts JSONB array for storing per-attempt details
     add_column :ruby_llm_agents_executions, :attempts, :jsonb, null: false, default: []

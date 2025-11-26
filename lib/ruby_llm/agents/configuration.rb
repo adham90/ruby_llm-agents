@@ -118,6 +118,22 @@ module RubyLLM
       #   Can be overridden per-agent using the `total_timeout` DSL method.
       #   @return [Integer, nil] Total timeout in seconds, or nil for no limit
 
+      # @!attribute [rw] default_streaming
+      #   Whether streaming mode is enabled by default for all agents.
+      #   When enabled and a block is passed to call, chunks are yielded as they arrive.
+      #   Can be overridden per-agent using the `streaming` DSL method.
+      #   @return [Boolean] Enable streaming (default: false)
+      #   @example
+      #     config.default_streaming = true
+
+      # @!attribute [rw] default_tools
+      #   Default tools available to all agents.
+      #   Should be an array of RubyLLM::Tool classes.
+      #   Can be overridden or extended per-agent using the `tools` DSL method.
+      #   @return [Array<Class>] Tool classes (default: [])
+      #   @example
+      #     config.default_tools = [WeatherTool, SearchTool]
+
       # @!attribute [rw] budgets
       #   Budget configuration for cost governance.
       #   @return [Hash, nil] Budget config with :global_daily, :global_monthly, :per_agent_daily, :per_agent_monthly, :enforcement keys
@@ -179,6 +195,8 @@ module RubyLLM
                     :default_retries,
                     :default_fallback_models,
                     :default_total_timeout,
+                    :default_streaming,
+                    :default_tools,
                     :budgets,
                     :alerts,
                     :persist_prompts,
@@ -212,6 +230,10 @@ module RubyLLM
         @default_retries = { max: 0, backoff: :exponential, base: 0.4, max_delay: 3.0, on: [] }
         @default_fallback_models = []
         @default_total_timeout = nil
+
+        # Streaming and tools defaults
+        @default_streaming = false
+        @default_tools = []
 
         # Governance defaults
         @budgets = nil

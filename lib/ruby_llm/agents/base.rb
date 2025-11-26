@@ -50,6 +50,8 @@ module RubyLLM
         # @param kwargs [Hash] Named parameters for the agent
         # @option kwargs [Boolean] :dry_run Return prompt info without API call
         # @option kwargs [Boolean] :skip_cache Bypass caching even if enabled
+        # @yield [chunk] Yields chunks when streaming is enabled
+        # @yieldparam chunk [RubyLLM::Chunk] A streaming chunk with content
         # @return [Object] The processed response from the agent
         #
         # @example Basic usage
@@ -57,8 +59,13 @@ module RubyLLM
         #
         # @example Debug mode
         #   SearchAgent.call(query: "red dress", dry_run: true)
-        def call(*args, **kwargs)
-          new(*args, **kwargs).call
+        #
+        # @example Streaming mode
+        #   ChatAgent.call(message: "Hello") do |chunk|
+        #     print chunk.content
+        #   end
+        def call(*args, **kwargs, &block)
+          new(*args, **kwargs).call(&block)
         end
 
         # @!group Configuration DSL
@@ -250,6 +257,49 @@ module RubyLLM
 
         # @!endgroup
 
+        # @!group Streaming DSL
+
+        # Enables or returns streaming mode for this agent
+        #
+        # When streaming is enabled and a block is passed to call,
+        # chunks will be yielded to the block as they arrive.
+        #
+        # @param value [Boolean, nil] Whether to enable streaming
+        # @return [Boolean] The current streaming setting
+        # @example
+        #   streaming true
+        def streaming(value = nil)
+          @streaming = value unless value.nil?
+          return @streaming unless @streaming.nil?
+
+          inherited_or_default(:streaming, RubyLLM::Agents.configuration.default_streaming)
+        end
+
+        # @!endgroup
+
+        # @!group Tools DSL
+
+        # Sets or returns the tools available to this agent
+        #
+        # Tools are RubyLLM::Tool classes that the model can invoke.
+        # The agent will automatically execute tool calls and continue
+        # until the model produces a final response.
+        #
+        # @param tool_classes [Array<Class>] Tool classes to make available
+        # @return [Array<Class>] The current tools
+        # @example Single tool
+        #   tools WeatherTool
+        # @example Multiple tools
+        #   tools WeatherTool, SearchTool, CalculatorTool
+        def tools(*tool_classes)
+          if tool_classes.any?
+            @tools = tool_classes.flatten
+          end
+          @tools || inherited_or_default(:tools, RubyLLM::Agents.configuration.default_tools)
+        end
+
+        # @!endgroup
+
         private
 
         # Looks up setting from superclass or uses default
@@ -268,7 +318,9 @@ module RubyLLM
       #   @return [Float] The temperature setting
       # @!attribute [r] client
       #   @return [RubyLLM::Chat] The configured RubyLLM client
-      attr_reader :model, :temperature, :client
+      # @!attribute [r] time_to_first_token_ms
+      #   @return [Integer, nil] Time to first token in milliseconds (streaming only)
+      attr_reader :model, :temperature, :client, :time_to_first_token_ms
 
       # Creates a new agent instance
       #
@@ -289,13 +341,16 @@ module RubyLLM
       # Handles caching, dry-run mode, and delegates to uncached_call
       # for actual LLM execution.
       #
+      # @yield [chunk] Yields chunks when streaming is enabled
+      # @yieldparam chunk [RubyLLM::Chunk] A streaming chunk with content
       # @return [Object] The processed LLM response
-      def call
+      def call(&block)
         return dry_run_response if @options[:dry_run]
-        return uncached_call if @options[:skip_cache] || !self.class.cache_enabled?
+        return uncached_call(&block) if @options[:skip_cache] || !self.class.cache_enabled?
 
+        # Note: Cached responses don't stream (already complete)
         cache_store.fetch(cache_key, expires_in: self.class.cache_ttl) do
-          uncached_call
+          uncached_call(&block)
         end
       end
 
@@ -374,7 +429,9 @@ module RubyLLM
           timeout: self.class.timeout,
           system_prompt: system_prompt,
           user_prompt: user_prompt,
-          schema: schema&.class&.name
+          schema: schema&.class&.name,
+          streaming: self.class.streaming,
+          tools: self.class.tools.map { |t| t.respond_to?(:name) ? t.name : t.to_s }
         }
       end
 
@@ -385,35 +442,67 @@ module RubyLLM
       # Routes to reliability-enabled execution if configured, otherwise
       # uses simple single-attempt execution.
       #
+      # @yield [chunk] Yields chunks when streaming is enabled
       # @return [Object] The processed response
-      def uncached_call
+      def uncached_call(&block)
         if reliability_enabled?
-          execute_with_reliability
+          execute_with_reliability(&block)
         else
-          instrument_execution { execute_single_attempt }
+          instrument_execution { execute_single_attempt(&block) }
         end
       end
 
       # Executes a single LLM attempt with timeout
       #
       # @param model_override [String, nil] Optional model to use instead of default
+      # @yield [chunk] Yields chunks when streaming is enabled
       # @return [Object] The processed response
-      def execute_single_attempt(model_override: nil)
+      def execute_single_attempt(model_override: nil, &block)
         current_client = model_override ? build_client_with_model(model_override) : client
+        @execution_started_at ||= Time.current
 
         Timeout.timeout(self.class.timeout) do
-          response = current_client.ask(user_prompt)
-          process_response(capture_response(response))
+          if self.class.streaming && block_given?
+            execute_with_streaming(current_client, &block)
+          else
+            response = current_client.ask(user_prompt)
+            process_response(capture_response(response))
+          end
         end
+      end
+
+      # Executes an LLM request with streaming enabled
+      #
+      # Yields chunks to the provided block as they arrive and tracks
+      # time to first token for latency analysis.
+      #
+      # @param current_client [RubyLLM::Chat] The configured client
+      # @yield [chunk] Yields each chunk as it arrives
+      # @yieldparam chunk [RubyLLM::Chunk] A streaming chunk
+      # @return [Object] The processed response
+      def execute_with_streaming(current_client, &block)
+        first_chunk_at = nil
+
+        response = current_client.ask(user_prompt) do |chunk|
+          first_chunk_at ||= Time.current
+          yield chunk if block_given?
+        end
+
+        if first_chunk_at && @execution_started_at
+          @time_to_first_token_ms = ((first_chunk_at - @execution_started_at) * 1000).to_i
+        end
+
+        process_response(capture_response(response))
       end
 
       # Executes the agent with retry/fallback/circuit breaker support
       #
+      # @yield [chunk] Yields chunks when streaming is enabled
       # @return [Object] The processed response
       # @raise [Reliability::AllModelsExhaustedError] If all models fail
       # @raise [Reliability::BudgetExceededError] If budget limits exceeded
       # @raise [Reliability::TotalTimeoutError] If total timeout exceeded
-      def execute_with_reliability
+      def execute_with_reliability(&block)
         config = reliability_config
         models_to_try = [model, *config[:fallback_models]].uniq
         total_deadline = config[:total_timeout] ? Time.current + config[:total_timeout] : nil
@@ -446,7 +535,7 @@ module RubyLLM
               attempt = attempt_tracker.start_attempt(current_model)
 
               begin
-                result = execute_single_attempt(model_override: current_model)
+                result = execute_single_attempt(model_override: current_model, &block)
                 attempt_tracker.complete_attempt(attempt, success: true, response: @last_response)
 
                 # Record success in circuit breaker
@@ -572,6 +661,7 @@ module RubyLLM
           .with_temperature(temperature)
         client = client.with_instructions(system_prompt) if system_prompt
         client = client.with_schema(schema) if schema
+        client = client.with_tools(*self.class.tools) if self.class.tools.any?
         client
       end
 
@@ -624,6 +714,7 @@ module RubyLLM
           .with_temperature(temperature)
         client = client.with_instructions(system_prompt) if system_prompt
         client = client.with_schema(schema) if schema
+        client = client.with_tools(*self.class.tools) if self.class.tools.any?
         client
       end
 

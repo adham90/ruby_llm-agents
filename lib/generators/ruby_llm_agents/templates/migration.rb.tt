@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class CreateRubyLlmAgentsExecutions < ActiveRecord::Migration<%= migration_version %>
+class CreateRubyLLMAgentsExecutions < ActiveRecord::Migration<%= migration_version %>
   def change
     create_table :ruby_llm_agents_executions do |t|
       # Agent identification
@@ -16,6 +16,10 @@ class CreateRubyLlmAgentsExecutions < ActiveRecord::Migration<%= migration_versi
       t.datetime :started_at, null: false
       t.datetime :completed_at
       t.integer :duration_ms
+
+      # Streaming
+      t.boolean :streaming, default: false
+      t.integer :time_to_first_token_ms
 
       # Status
       t.string :status, default: "success", null: false

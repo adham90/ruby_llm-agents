@@ -66,6 +66,65 @@ RSpec.describe RubyLLM::Agents::Base do
         expect(klass.cache_ttl).to eq(1.hour)
       end
     end
+
+    describe ".streaming" do
+      it "sets and gets streaming mode" do
+        klass = Class.new(described_class) do
+          streaming true
+        end
+        expect(klass.streaming).to be true
+      end
+
+      it "defaults to false" do
+        klass = Class.new(described_class)
+        expect(klass.streaming).to be false
+      end
+
+      it "inherits streaming from parent" do
+        parent = Class.new(described_class) { streaming true }
+        child = Class.new(parent)
+        expect(child.streaming).to be true
+      end
+    end
+
+    describe ".tools" do
+      let(:mock_tool) do
+        Class.new do
+          def self.name
+            "MockTool"
+          end
+        end
+      end
+
+      it "sets and gets tools" do
+        tool = mock_tool
+        klass = Class.new(described_class) do
+          tools tool
+        end
+        expect(klass.tools).to include(tool)
+      end
+
+      it "defaults to empty array" do
+        klass = Class.new(described_class)
+        expect(klass.tools).to eq([])
+      end
+
+      it "allows multiple tools" do
+        tool1 = mock_tool
+        tool2 = Class.new { def self.name; "AnotherTool"; end }
+        klass = Class.new(described_class) do
+          tools tool1, tool2
+        end
+        expect(klass.tools).to include(tool1, tool2)
+      end
+
+      it "inherits tools from parent" do
+        tool = mock_tool
+        parent = Class.new(described_class) { tools tool }
+        child = Class.new(parent)
+        expect(child.tools).to include(tool)
+      end
+    end
   end
 
   describe "instance initialization" do
@@ -101,6 +160,14 @@ RSpec.describe RubyLLM::Agents::Base do
   end
 
   describe "dry_run mode" do
+    let(:mock_tool) do
+      Class.new do
+        def self.name
+          "TestTool"
+        end
+      end
+    end
+
     let(:agent_class) do
       Class.new(described_class) do
         model "gpt-4"
@@ -123,6 +190,37 @@ RSpec.describe RubyLLM::Agents::Base do
       expect(result[:dry_run]).to be true
       expect(result[:model]).to eq("gpt-4")
       expect(result[:user_prompt]).to eq("test")
+    end
+
+    it "includes streaming in dry run response" do
+      streaming_class = Class.new(described_class) do
+        model "gpt-4"
+        streaming true
+        param :query, required: true
+
+        def user_prompt
+          query
+        end
+      end
+
+      result = streaming_class.call(query: "test", dry_run: true)
+      expect(result[:streaming]).to be true
+    end
+
+    it "includes tools in dry run response" do
+      tool = mock_tool
+      tools_class = Class.new(described_class) do
+        model "gpt-4"
+        param :query, required: true
+
+        def user_prompt
+          query
+        end
+      end
+      tools_class.tools(tool)
+
+      result = tools_class.call(query: "test", dry_run: true)
+      expect(result[:tools]).to include("TestTool")
     end
   end
 

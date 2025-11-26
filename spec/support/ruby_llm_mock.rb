@@ -39,6 +39,11 @@ module RubyLLM
       self
     end
 
+    def with_tools(*tools)
+      @tools = tools
+      self
+    end
+
     def with_message(role, content)
       @messages << { role: role, content: content }
       self

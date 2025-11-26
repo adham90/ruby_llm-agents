@@ -42,6 +42,19 @@ module RubyLlmAgents
       )
     end
 
+    def create_add_streaming_migration
+      # Check if columns already exist
+      if column_exists?(:ruby_llm_agents_executions, :streaming)
+        say_status :skip, "streaming column already exists", :yellow
+        return
+      end
+
+      migration_template(
+        "add_streaming_migration.rb.tt",
+        File.join(db_migrate_path, "add_streaming_to_ruby_llm_agents_executions.rb")
+      )
+    end
+
     def show_post_upgrade_message
       say ""
       say "RubyLLM::Agents upgrade migration created!", :green

@@ -243,7 +243,8 @@ module RubyLLM
           parameters: redacted_parameters,
           metadata: execution_metadata,
           system_prompt: config.persist_prompts ? redacted_system_prompt : nil,
-          user_prompt: config.persist_prompts ? redacted_user_prompt : nil
+          user_prompt: config.persist_prompts ? redacted_user_prompt : nil,
+          streaming: self.class.streaming
         }
 
         # Add fallback chain if provided (for reliability-enabled executions)
@@ -282,6 +283,9 @@ module RubyLLM
           duration_ms: duration_ms,
           status: status
         }
+
+        # Add streaming metrics if available
+        update_data[:time_to_first_token_ms] = time_to_first_token_ms if respond_to?(:time_to_first_token_ms) && time_to_first_token_ms
 
         # Add response data if available (using safe extraction)
         response_data = safe_extract_response_data(response)
@@ -354,6 +358,9 @@ module RubyLLM
           total_tokens: attempt_tracker.total_tokens,
           cached_tokens: attempt_tracker.total_cached_tokens
         }
+
+        # Add streaming metrics if available
+        update_data[:time_to_first_token_ms] = time_to_first_token_ms if respond_to?(:time_to_first_token_ms) && time_to_first_token_ms
 
         # Add response data if we have a last response
         if @last_response && config.persist_responses

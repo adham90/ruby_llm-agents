@@ -1,0 +1,8 @@
+# frozen_string_literal: true
+
+class AddStreamingToRubyLLMAgentsExecutions < ActiveRecord::Migration<%= migration_version %>
+  def change
+    add_column :ruby_llm_agents_executions, :streaming, :boolean, default: false
+    add_column :ruby_llm_agents_executions, :time_to_first_token_ms, :integer
+  end
+end
