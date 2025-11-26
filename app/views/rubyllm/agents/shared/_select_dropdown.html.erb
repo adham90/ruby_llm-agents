@@ -1,0 +1,75 @@
+<%
+  # Single-select filter dropdown
+  # Usage:
+  #   render "rubyllm/agents/shared/select_dropdown",
+  #     name: "days",
+  #     filter_id: "days",
+  #     options: [
+  #       { value: "", label: "All Time" },
+  #       { value: "1", label: "Today" },
+  #       { value: "7", label: "Last 7 Days" },
+  #       { value: "30", label: "Last 30 Days" }
+  #     ],
+  #     selected: "7",
+  #     icon: "M8 7V3m8 4V3...", # optional SVG path
+  #     width: "w-40",           # optional, default w-40
+  #     full_width: false        # optional, for mobile
+
+  selected = local_assigns[:selected].to_s
+  width = local_assigns[:width] || "w-40"
+  full_width = local_assigns[:full_width] || false
+
+  # Find current option
+  current_option = options.find { |o| o[:value].to_s == selected } || options.first
+  current_label = current_option[:label]
+
+  has_selection = selected.present?
+%>
+<div class="relative filter-dropdown" data-filter="<%= filter_id %>">
+  <button type="button" onclick="toggleDropdown(this)"
+    class="<%= full_width ? 'w-full justify-between' : '' %> flex items-center gap-2 px-3 py-2 text-sm
+           bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg
+           hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors
+           <%= has_selection ? 'ring-2 ring-blue-500 dark:ring-offset-gray-900' : '' %>">
+    <div class="flex items-center gap-2">
+      <% if local_assigns[:icon].present? %>
+        <svg class="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<%= icon %>"/>
+        </svg>
+      <% end %>
+      <span class="dropdown-label text-gray-700 dark:text-gray-200"><%= current_label %></span>
+    </div>
+    <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+    </svg>
+  </button>
+
+  <div class="dropdown-menu hidden absolute z-20 mt-1 <%= full_width ? 'left-0 right-0' : width %>
+              bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
+    <% options.each do |option| %>
+      <%
+        is_selected = option[:value].to_s == selected
+        item_classes = is_selected ?
+          "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" :
+          "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+      %>
+      <button type="button"
+              onclick="selectSingleFilter('<%= filter_id %>', '<%= option[:value] %>', '<%= option[:label] %>'); return false;"
+              class="w-full flex items-center gap-2 px-3 py-2 text-sm text-left <%= item_classes %>">
+        <% if option[:icon].present? %>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<%= option[:icon] %>"/>
+          </svg>
+        <% end %>
+        <%= option[:label] %>
+        <% if is_selected %>
+          <svg class="w-4 h-4 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+        <% end %>
+      </button>
+    <% end %>
+  </div>
+
+  <input type="hidden" name="<%= name %>" value="<%= selected %>" id="filter_<%= filter_id %>">
+</div>

@@ -1,0 +1,100 @@
+<%
+  # Multi-select filter dropdown
+  # Usage:
+  #   render "rubyllm/agents/shared/filter_dropdown",
+  #     name: "statuses[]",
+  #     filter_id: "statuses",
+  #     label: "Status",
+  #     all_label: "All Statuses",
+  #     options: [
+  #       { value: "success", label: "Success", color: "bg-green-500" },
+  #       { value: "error", label: "Error", color: "bg-red-500" }
+  #     ],
+  #     selected: ["success"],
+  #     icon: "M9.75 17L9 20l-1...", # optional SVG path
+  #     width: "w-48",               # optional, default w-48
+  #     full_width: false            # optional, for mobile
+
+  selected = local_assigns[:selected] || []
+  width = local_assigns[:width] || "w-48"
+  full_width = local_assigns[:full_width] || false
+  show_all = local_assigns.fetch(:show_all_option, true)
+  all_label = local_assigns[:all_label] || "All"
+
+  # Determine current label
+  current_label = if selected.empty?
+    label
+  elsif selected.length == 1
+    opt = options.find { |o| o[:value].to_s == selected.first.to_s }
+    opt ? opt[:label] : selected.first
+  else
+    "#{selected.length} #{label}"
+  end
+
+  # Get color for single selection (if applicable)
+  current_color = if selected.length == 1
+    opt = options.find { |o| o[:value].to_s == selected.first.to_s }
+    opt&.dig(:color)
+  end
+
+  has_selection = selected.any?
+%>
+<div class="relative filter-dropdown" data-filter="<%= filter_id %>">
+  <button type="button" onclick="toggleDropdown(this)"
+    class="<%= full_width ? 'w-full justify-between' : '' %> flex items-center gap-2 px-3 py-2 text-sm
+           bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg
+           hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors
+           <%= has_selection ? 'ring-2 ring-blue-500 dark:ring-offset-gray-900' : '' %>">
+    <div class="flex items-center gap-2">
+      <% if current_color.present? %>
+        <span class="w-2 h-2 rounded-full <%= current_color %> <%= current_color.include?('blue') && selected.first == 'running' ? 'animate-pulse' : '' %>"></span>
+      <% elsif local_assigns[:icon].present? %>
+        <svg class="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<%= icon %>"/>
+        </svg>
+      <% elsif !has_selection && options.first&.dig(:color) %>
+        <span class="w-2 h-2 rounded-full bg-gray-400"></span>
+      <% end %>
+      <span class="dropdown-label text-gray-700 dark:text-gray-200"><%= current_label %></span>
+    </div>
+    <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+    </svg>
+  </button>
+
+  <div class="dropdown-menu hidden absolute z-20 mt-1 <%= full_width ? 'left-0 right-0' : width %>
+              bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1
+              max-h-64 overflow-y-auto">
+    <% if show_all %>
+      <div class="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox"
+                 class="select-all-checkbox rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
+                 onchange="toggleAllOptions(this, '<%= filter_id %>')"
+                 <%= selected.empty? ? 'checked' : '' %>>
+          <span class="text-sm font-medium text-gray-700 dark:text-gray-200"><%= all_label %></span>
+        </label>
+      </div>
+    <% end %>
+
+    <% options.each do |option| %>
+      <label class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200
+                    hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
+        <input type="checkbox"
+               name="<%= name %>"
+               value="<%= option[:value] %>"
+               class="filter-checkbox rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
+               onchange="updateMultiSelect('<%= filter_id %>')"
+               <%= selected.include?(option[:value].to_s) ? 'checked' : '' %>>
+        <% if option[:color].present? %>
+          <span class="w-2 h-2 rounded-full <%= option[:color] %> <%= option[:color].include?('blue') && option[:value] == 'running' ? 'animate-pulse' : '' %>"></span>
+        <% elsif option[:icon].present? %>
+          <svg class="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<%= option[:icon] %>"/>
+          </svg>
+        <% end %>
+        <%= option[:label] %>
+      </label>
+    <% end %>
+  </div>
+</div>
