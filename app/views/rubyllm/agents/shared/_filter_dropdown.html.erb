@@ -68,7 +68,7 @@
        x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
        x-transition:leave="transition ease-in duration-75"
        x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-       class="absolute z-20 mt-1 <%= full_width ? 'left-0 right-0' : width %>
+       class="absolute z-20 mt-1 <%= full_width ? 'left-0 right-0 md:left-auto md:right-auto md:min-w-max' : 'min-w-max' %>
               bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1
               max-h-64 overflow-y-auto">
 
