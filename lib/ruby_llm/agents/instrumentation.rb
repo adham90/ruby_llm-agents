@@ -33,6 +33,70 @@ module RubyLLM
         attr_accessor :execution_id
       end
 
+      # Wraps agent execution with comprehensive metrics tracking (for reliability-enabled agents)
+      #
+      # Creates a single execution record and tracks multiple attempts within it.
+      # Used by execute_with_reliability for retry/fallback scenarios.
+      #
+      # @param models_to_try [Array<String>] List of models in the fallback chain
+      # @yield [AttemptTracker] Block receives attempt tracker for recording attempts
+      # @return [Object] The result from the yielded block
+      # @raise [Timeout::Error] Re-raised after logging timeout status
+      # @raise [StandardError] Re-raised after logging error status
+      def instrument_execution_with_attempts(models_to_try:, &block)
+        started_at = Time.current
+        @last_response = nil
+        @status_update_completed = false
+        raised_exception = nil
+
+        attempt_tracker = AttemptTracker.new
+
+        # Create execution record with running status and fallback chain
+        execution = create_running_execution(started_at, fallback_chain: models_to_try)
+        self.execution_id = execution&.id
+
+        begin
+          result = yield(attempt_tracker)
+
+          # Update to success with attempts
+          complete_execution_with_attempts(
+            execution,
+            attempt_tracker: attempt_tracker,
+            completed_at: Time.current,
+            status: "success"
+          )
+          @status_update_completed = true
+
+          result
+        rescue Timeout::Error, Reliability::TotalTimeoutError => e
+          raised_exception = e
+          complete_execution_with_attempts(
+            execution,
+            attempt_tracker: attempt_tracker,
+            completed_at: Time.current,
+            status: "timeout",
+            error: e
+          )
+          @status_update_completed = true
+          raise
+        rescue => e
+          raised_exception = e
+          complete_execution_with_attempts(
+            execution,
+            attempt_tracker: attempt_tracker,
+            completed_at: Time.current,
+            status: "error",
+            error: e
+          )
+          @status_update_completed = true
+          raise
+        ensure
+          unless @status_update_completed
+            mark_execution_failed!(execution, error: raised_exception)
+          end
+        end
+      end
+
       # Wraps agent execution with comprehensive metrics tracking
       #
       # Execution lifecycle:
@@ -114,8 +178,11 @@ module RubyLLM
       # Creates initial execution record with 'running' status
       #
       # @param started_at [Time] When the execution started
+      # @param fallback_chain [Array<String>] Optional list of models in fallback chain
       # @return [RubyLLM::Agents::Execution, nil] The created record, or nil on failure
-      def create_running_execution(started_at)
+      def create_running_execution(started_at, fallback_chain: [])
+        config = RubyLLM::Agents.configuration
+
         execution_data = {
           agent_type: self.class.name,
           agent_version: self.class.version,
@@ -123,11 +190,18 @@ module RubyLLM
           temperature: temperature,
           started_at: started_at,
           status: "running",
-          parameters: sanitized_parameters,
+          parameters: redacted_parameters,
           metadata: execution_metadata,
-          system_prompt: safe_system_prompt,
-          user_prompt: safe_user_prompt
+          system_prompt: config.persist_prompts ? redacted_system_prompt : nil,
+          user_prompt: config.persist_prompts ? redacted_user_prompt : nil
         }
+
+        # Add fallback chain if provided (for reliability-enabled executions)
+        if fallback_chain.any?
+          execution_data[:fallback_chain] = fallback_chain
+          execution_data[:attempts] = []
+          execution_data[:attempts_count] = 0
+        end
 
         RubyLLM::Agents::Execution.create!(execution_data)
       rescue StandardError => e
@@ -190,6 +264,67 @@ module RubyLLM
         raise # Re-raise so ensure block can handle emergency update
       end
 
+      # Updates execution record with completion data and attempt tracking
+      #
+      # Similar to complete_execution but handles multi-attempt scenarios with
+      # aggregated token counts and costs from all attempts.
+      #
+      # @param execution [Execution, nil] The execution record to update
+      # @param attempt_tracker [AttemptTracker] The attempt tracker with attempt data
+      # @param completed_at [Time] When the execution completed
+      # @param status [String] Final status ("success", "error", "timeout")
+      # @param error [Exception, nil] The exception (if failed)
+      # @return [void]
+      def complete_execution_with_attempts(execution, attempt_tracker:, completed_at:, status:, error: nil)
+        return unless execution
+
+        started_at = execution.started_at
+        duration_ms = ((completed_at - started_at) * 1000).round
+
+        config = RubyLLM::Agents.configuration
+
+        update_data = {
+          completed_at: completed_at,
+          duration_ms: duration_ms,
+          status: status,
+          attempts: attempt_tracker.to_json_array,
+          attempts_count: attempt_tracker.attempts_count,
+          chosen_model_id: attempt_tracker.chosen_model_id,
+          input_tokens: attempt_tracker.total_input_tokens,
+          output_tokens: attempt_tracker.total_output_tokens,
+          total_tokens: attempt_tracker.total_tokens,
+          cached_tokens: attempt_tracker.total_cached_tokens
+        }
+
+        # Add response data if we have a last response
+        if @last_response && config.persist_responses
+          update_data[:response] = redacted_response(@last_response)
+        end
+
+        # Add error data if failed
+        if error
+          update_data.merge!(
+            error_message: error.message.to_s.truncate(65535),
+            error_class: error.class.name
+          )
+        end
+
+        execution.update!(update_data)
+
+        # Calculate costs from all attempts
+        if attempt_tracker.attempts_count > 0
+          begin
+            execution.aggregate_attempt_costs!
+            execution.save!
+          rescue StandardError => cost_error
+            Rails.logger.warn("[RubyLLM::Agents] Cost calculation failed: #{cost_error.message}")
+          end
+        end
+      rescue StandardError => e
+        Rails.logger.error("[RubyLLM::Agents] Failed to update execution record: #{e.message}")
+        raise
+      end
+
       # Fallback logging when initial execution record creation failed
       #
       # Creates execution via background job or synchronously based on configuration.
@@ -239,33 +374,51 @@ module RubyLLM
 
       # Sanitizes parameters by removing sensitive data
       #
-      # Removes common sensitive keys (password, token, api_key, etc.)
-      # and converts ActiveRecord objects to ID references to avoid
-      # storing full objects in JSON.
-      #
+      # @deprecated Use {#redacted_parameters} instead
       # @return [Hash] Sanitized parameters safe for logging
       def sanitized_parameters
-        params = @options.dup
+        redacted_parameters
+      end
 
-        # Remove sensitive keys
-        sensitive_keys = %i[password token api_key secret credential auth key]
-        sensitive_keys.each { |key| params.delete(key) }
+      # Returns parameters with sensitive data redacted using the Redactor
+      #
+      # Uses the configured redaction rules to remove sensitive fields and
+      # apply pattern-based redaction. Also converts ActiveRecord objects
+      # to ID references.
+      #
+      # @return [Hash] Redacted parameters safe for logging
+      def redacted_parameters
+        params = @options.except(:skip_cache, :dry_run)
+        Redactor.redact(params)
+      end
 
-        # Convert ActiveRecord objects to IDs
-        params.transform_values do |value|
-          case value
-          when defined?(ActiveRecord::Base) && ActiveRecord::Base
-            { id: value.id, type: value.class.name }
-          when Array
-            if value.first.is_a?(ActiveRecord::Base)
-              { ids: value.first(10).map(&:id), type: value.first.class.name, count: value.size }
-            else
-              value.first(10)
-            end
-          else
-            value
-          end
-        end
+      # Returns the system prompt with redaction applied
+      #
+      # @return [String, nil] The redacted system prompt
+      def redacted_system_prompt
+        prompt = safe_system_prompt
+        return nil unless prompt
+
+        Redactor.redact_string(prompt)
+      end
+
+      # Returns the user prompt with redaction applied
+      #
+      # @return [String, nil] The redacted user prompt
+      def redacted_user_prompt
+        prompt = safe_user_prompt
+        return nil unless prompt
+
+        Redactor.redact_string(prompt)
+      end
+
+      # Returns the response with redaction applied
+      #
+      # @param response [RubyLLM::Message] The LLM response
+      # @return [Hash] Redacted response data
+      def redacted_response(response)
+        data = safe_serialize_response(response)
+        Redactor.redact(data)
       end
 
       # Hook for subclasses to add custom metadata to executions

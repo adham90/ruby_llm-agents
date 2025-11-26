@@ -67,6 +67,54 @@
   </div>
 </div>
 
+<!-- Circuit Breaker Status (if reliability enabled) -->
+<% if @config && @circuit_breaker_status.present? %>
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Circuit Breaker Status</h3>
+      <span class="text-xs text-gray-400 dark:text-gray-500">Auto-refreshes every 30s</span>
+    </div>
+
+    <div class="flex flex-wrap gap-3">
+      <% @circuit_breaker_status.each do |model_id, status| %>
+        <div class="flex items-center gap-2 px-3 py-2 rounded-lg border <%= status[:open] ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' %>">
+          <% if status[:open] %>
+            <!-- Open/Tripped indicator -->
+            <span class="relative flex h-3 w-3">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+            </span>
+            <span class="text-sm font-medium text-red-700 dark:text-red-300"><%= model_id %></span>
+            <span class="text-xs text-red-500 dark:text-red-400 ml-1">OPEN</span>
+            <% if status[:cooldown_remaining] %>
+              <span class="text-xs text-red-400 dark:text-red-500 ml-1">
+                (resets in <%= status[:cooldown_remaining] %>s)
+              </span>
+            <% end %>
+          <% else %>
+            <!-- Closed/Healthy indicator -->
+            <span class="inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+            <span class="text-sm font-medium text-green-700 dark:text-green-300"><%= model_id %></span>
+            <span class="text-xs text-green-500 dark:text-green-400 ml-1">OK</span>
+            <% if status[:failure_count] && status[:failure_count] > 0 %>
+              <span class="text-xs text-yellow-500 dark:text-yellow-400 ml-1">
+                (<%= status[:failure_count] %>/<%= status[:threshold] %> failures)
+              </span>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <% if @circuit_breaker_status.values.any? { |s| s[:open] } %>
+      <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+        Open circuit breakers will skip the model and try fallbacks (if configured).
+        They automatically reset after the cooldown period.
+      </p>
+    <% end %>
+  </div>
+<% end %>
+
 <!-- Stats Grid -->
 <% success_rate = @stats[:success_rate] || 0 %>
 <% success_rate_color = success_rate >= 95 ? 'text-green-600' : success_rate >= 80 ? 'text-yellow-600' : 'text-red-600' %>

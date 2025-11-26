@@ -72,6 +72,80 @@ module RubyLLM
       before_save :calculate_total_cost, if: -> { input_cost_changed? || output_cost_changed? }
       after_commit :broadcast_execution, on: %i[create update]
 
+      # Aggregates costs from all attempts using each attempt's model pricing
+      #
+      # Used for multi-attempt executions (retries/fallbacks) where different models
+      # may have been used. Calculates total cost by summing individual attempt costs.
+      #
+      # @return [void]
+      def aggregate_attempt_costs!
+        return if attempts.blank?
+
+        total_input_cost = 0
+        total_output_cost = 0
+
+        attempts.each do |attempt|
+          # Skip short-circuited attempts (no actual API call made)
+          next if attempt["short_circuited"]
+
+          model_info = resolve_model_info(attempt["model_id"])
+          next unless model_info&.pricing
+
+          input_price = model_info.pricing.text_tokens&.input || 0
+          output_price = model_info.pricing.text_tokens&.output || 0
+
+          input_tokens = attempt["input_tokens"] || 0
+          output_tokens = attempt["output_tokens"] || 0
+
+          total_input_cost += (input_tokens / 1_000_000.0) * input_price
+          total_output_cost += (output_tokens / 1_000_000.0) * output_price
+        end
+
+        self.input_cost = total_input_cost.round(6)
+        self.output_cost = total_output_cost.round(6)
+      end
+
+      # Returns whether this execution had multiple attempts
+      #
+      # @return [Boolean] true if more than one attempt was made
+      def has_retries?
+        (attempts_count || 0) > 1
+      end
+
+      # Returns whether this execution used fallback models
+      #
+      # @return [Boolean] true if a different model than requested succeeded
+      def used_fallback?
+        chosen_model_id.present? && chosen_model_id != model_id
+      end
+
+      # Returns the successful attempt data (if any)
+      #
+      # @return [Hash, nil] The successful attempt or nil
+      def successful_attempt
+        return nil if attempts.blank?
+
+        attempts.find { |a| a["error_class"].nil? && !a["short_circuited"] }
+      end
+
+      # Returns failed attempts
+      #
+      # @return [Array<Hash>] Failed attempt data
+      def failed_attempts
+        return [] if attempts.blank?
+
+        attempts.select { |a| a["error_class"].present? }
+      end
+
+      # Returns short-circuited attempts (circuit breaker blocked)
+      #
+      # @return [Array<Hash>] Short-circuited attempt data
+      def short_circuited_attempts
+        return [] if attempts.blank?
+
+        attempts.select { |a| a["short_circuited"] }
+      end
+
       # Broadcasts execution changes via ActionCable for real-time dashboard updates
       #
       # Sends to "ruby_llm_agents:executions" channel with action, id, status, and HTML.
@@ -118,6 +192,18 @@ module RubyLLM
       # @return [BigDecimal] The calculated total
       def calculate_total_cost
         self.total_cost = (input_cost || 0) + (output_cost || 0)
+      end
+
+      # Resolves model info for cost calculation
+      #
+      # @param model_id [String] The model identifier
+      # @return [Object, nil] Model info or nil
+      def resolve_model_info(model_id)
+        return nil unless model_id
+
+        RubyLLM::Models.resolve(model_id)
+      rescue StandardError
+        nil
       end
     end
   end

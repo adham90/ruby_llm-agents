@@ -29,6 +29,19 @@ module RubyLlmAgents
       )
     end
 
+    def create_add_attempts_migration
+      # Check if columns already exist
+      if column_exists?(:ruby_llm_agents_executions, :attempts)
+        say_status :skip, "attempts column already exists", :yellow
+        return
+      end
+
+      migration_template(
+        "add_attempts_migration.rb.tt",
+        File.join(db_migrate_path, "add_attempts_to_ruby_llm_agents_executions.rb")
+      )
+    end
+
     def show_post_upgrade_message
       say ""
       say "RubyLLM::Agents upgrade migration created!", :green

@@ -101,6 +101,67 @@ module RubyLLM
       #   Falls back to Rails.cache if not set.
       #   @return [ActiveSupport::Cache::Store, nil]
 
+      # @!attribute [rw] default_retries
+      #   Default retry configuration for all agents.
+      #   Can be overridden per-agent using the `retries` DSL method.
+      #   @return [Hash] Retry config with :max, :backoff, :base, :max_delay, :on keys
+      #   @example
+      #     config.default_retries = { max: 2, backoff: :exponential, base: 0.4, max_delay: 3.0, on: [] }
+
+      # @!attribute [rw] default_fallback_models
+      #   Default fallback models for all agents.
+      #   Can be overridden per-agent using the `fallback_models` DSL method.
+      #   @return [Array<String>] List of model identifiers to try on failure
+
+      # @!attribute [rw] default_total_timeout
+      #   Default total timeout across all retry attempts.
+      #   Can be overridden per-agent using the `total_timeout` DSL method.
+      #   @return [Integer, nil] Total timeout in seconds, or nil for no limit
+
+      # @!attribute [rw] budgets
+      #   Budget configuration for cost governance.
+      #   @return [Hash, nil] Budget config with :global_daily, :global_monthly, :per_agent_daily, :per_agent_monthly, :enforcement keys
+      #   @example
+      #     config.budgets = {
+      #       global_daily: 25.0,
+      #       global_monthly: 300.0,
+      #       per_agent_daily: { "ContentAgent" => 5.0 },
+      #       per_agent_monthly: { "ContentAgent" => 120.0 },
+      #       enforcement: :soft
+      #     }
+
+      # @!attribute [rw] alerts
+      #   Alert configuration for notifications.
+      #   @return [Hash, nil] Alert config with :slack_webhook_url, :webhook_url, :on_events, :custom keys
+      #   @example
+      #     config.alerts = {
+      #       slack_webhook_url: ENV["SLACK_WEBHOOK"],
+      #       webhook_url: ENV["AGENTS_WEBHOOK"],
+      #       on_events: [:budget_soft_cap, :budget_hard_cap, :breaker_open],
+      #       custom: ->(event, payload) { Rails.logger.info("Alert: #{event}") }
+      #     }
+
+      # @!attribute [rw] persist_prompts
+      #   Whether to persist system and user prompts in execution records.
+      #   Set to false to reduce storage or for privacy compliance.
+      #   @return [Boolean] Enable prompt persistence (default: true)
+
+      # @!attribute [rw] persist_responses
+      #   Whether to persist LLM responses in execution records.
+      #   Set to false to reduce storage or for privacy compliance.
+      #   @return [Boolean] Enable response persistence (default: true)
+
+      # @!attribute [rw] redaction
+      #   Redaction configuration for PII and sensitive data.
+      #   @return [Hash, nil] Redaction config with :fields, :patterns, :placeholder, :max_value_length keys
+      #   @example
+      #     config.redaction = {
+      #       fields: %w[password api_key email ssn],
+      #       patterns: [/\b\d{3}-\d{2}-\d{4}\b/],
+      #       placeholder: "[REDACTED]",
+      #       max_value_length: 5000
+      #     }
+
       attr_accessor :default_model,
                     :default_temperature,
                     :default_timeout,
@@ -114,7 +175,15 @@ module RubyLLM
                     :basic_auth_password,
                     :per_page,
                     :recent_executions_limit,
-                    :job_retry_attempts
+                    :job_retry_attempts,
+                    :default_retries,
+                    :default_fallback_models,
+                    :default_total_timeout,
+                    :budgets,
+                    :alerts,
+                    :persist_prompts,
+                    :persist_responses,
+                    :redaction
 
       attr_writer :cache_store
 
@@ -138,6 +207,18 @@ module RubyLLM
         @per_page = 25
         @recent_executions_limit = 10
         @job_retry_attempts = 3
+
+        # Reliability defaults (all disabled by default for backward compatibility)
+        @default_retries = { max: 0, backoff: :exponential, base: 0.4, max_delay: 3.0, on: [] }
+        @default_fallback_models = []
+        @default_total_timeout = nil
+
+        # Governance defaults
+        @budgets = nil
+        @alerts = nil
+        @persist_prompts = true
+        @persist_responses = true
+        @redaction = nil
       end
 
       # Returns the configured cache store, falling back to Rails.cache
@@ -147,6 +228,68 @@ module RubyLLM
       #   config.cache_store = ActiveSupport::Cache::MemoryStore.new
       def cache_store
         @cache_store || Rails.cache
+      end
+
+      # Returns whether budgets are configured and enforcement is enabled
+      #
+      # @return [Boolean] true if budgets are configured with enforcement
+      def budgets_enabled?
+        budgets.is_a?(Hash) && budgets[:enforcement] && budgets[:enforcement] != :none
+      end
+
+      # Returns the budget enforcement mode
+      #
+      # @return [Symbol] :none, :soft, or :hard
+      def budget_enforcement
+        budgets&.dig(:enforcement) || :none
+      end
+
+      # Returns whether alerts are configured
+      #
+      # @return [Boolean] true if any alert destination is configured
+      def alerts_enabled?
+        return false unless alerts.is_a?(Hash)
+
+        alerts[:slack_webhook_url].present? ||
+          alerts[:webhook_url].present? ||
+          alerts[:custom].present?
+      end
+
+      # Returns the list of events to alert on
+      #
+      # @return [Array<Symbol>] Event names to trigger alerts
+      def alert_events
+        alerts&.dig(:on_events) || []
+      end
+
+      # Returns merged redaction fields (default sensitive keys + configured)
+      #
+      # @return [Array<String>] Field names to redact
+      def redaction_fields
+        default_fields = %w[password token api_key secret credential auth key access_token]
+        configured_fields = redaction&.dig(:fields) || []
+        (default_fields + configured_fields).map(&:downcase).uniq
+      end
+
+      # Returns redaction patterns
+      #
+      # @return [Array<Regexp>] Patterns to match and redact
+      def redaction_patterns
+        redaction&.dig(:patterns) || []
+      end
+
+      # Returns the redaction placeholder string
+      #
+      # @return [String] Placeholder to replace redacted values
+      def redaction_placeholder
+        redaction&.dig(:placeholder) || "[REDACTED]"
+      end
+
+      # Returns the maximum value length before truncation
+      #
+      # @return [Integer, nil] Max length, or nil for no limit
+      def redaction_max_value_length
+        redaction&.dig(:max_value_length)
       end
     end
   end

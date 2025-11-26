@@ -5,13 +5,17 @@ require "rails_helper"
 RSpec.describe RubyLLM::Agents::Instrumentation do
   let(:test_agent_class) do
     Class.new(RubyLLM::Agents::Base) do
-      agent_name "InstrumentationTestAgent"
       version "1.0.0"
       model "gpt-4"
-      param :query, type: :string, required: true
+      param :query, required: true
 
       def user_prompt
         "Test: #{params[:query]}"
+      end
+
+      # Anonymous classes don't have good names, so we define one
+      def self.name
+        "InstrumentationTestAgent"
       end
     end
   end
@@ -105,15 +109,18 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
   describe "parameter sanitization" do
     let(:sensitive_agent_class) do
       Class.new(RubyLLM::Agents::Base) do
-        agent_name "SensitiveAgent"
         version "1.0.0"
         model "gpt-4"
-        param :password, type: :string
-        param :api_key, type: :string
-        param :query, type: :string
+        param :password
+        param :api_key
+        param :query
 
         def user_prompt
           "Test"
+        end
+
+        def self.name
+          "SensitiveAgent"
         end
       end
     end

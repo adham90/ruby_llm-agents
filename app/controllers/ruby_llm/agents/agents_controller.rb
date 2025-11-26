@@ -48,7 +48,10 @@ module RubyLLM
         load_filtered_executions
         load_chart_data
 
-        load_agent_config if @agent_class
+        if @agent_class
+          load_agent_config
+          load_circuit_breaker_status
+        end
       rescue StandardError => e
         Rails.logger.error("[RubyLLM::Agents] Error loading agent #{@agent_type}: #{e.message}")
         redirect_to ruby_llm_agents.agents_path, alert: "Error loading agent details"
@@ -159,6 +162,62 @@ module RubyLLM
           cache_ttl: @agent_class.cache_ttl,
           params: @agent_class.params
         }
+      end
+
+      # Loads circuit breaker status for the agent's models
+      #
+      # Checks the primary model and any fallback models configured.
+      # Only returns data if reliability features are enabled.
+      #
+      # @return [void]
+      def load_circuit_breaker_status
+        return unless @agent_class.respond_to?(:reliability_config)
+
+        config = @agent_class.reliability_config rescue nil
+        return unless config
+
+        # Collect all models: primary + fallbacks
+        models_to_check = [@agent_class.model]
+        models_to_check.concat(config[:fallback_models]) if config[:fallback_models].present?
+        models_to_check = models_to_check.compact.uniq
+
+        return if models_to_check.empty?
+
+        breaker_config = config[:circuit_breaker] || {}
+        errors_threshold = breaker_config[:errors] || 10
+        window = breaker_config[:within] || 60
+        cooldown = breaker_config[:cooldown] || 300
+
+        @circuit_breaker_status = {}
+
+        models_to_check.each do |model_id|
+          breaker = CircuitBreaker.new(
+            @agent_type,
+            model_id,
+            errors: errors_threshold,
+            within: window,
+            cooldown: cooldown
+          )
+
+          status = {
+            open: breaker.open?,
+            threshold: errors_threshold
+          }
+
+          # Get additional details
+          if breaker.open?
+            # Calculate remaining cooldown (approximate)
+            status[:cooldown_remaining] = cooldown
+          else
+            # Get current failure count if available
+            status[:failure_count] = breaker.failure_count
+          end
+
+          @circuit_breaker_status[model_id] = status
+        end
+      rescue StandardError => e
+        Rails.logger.debug("[RubyLLM::Agents] Could not load circuit breaker status: #{e.message}")
+        @circuit_breaker_status = {}
       end
     end
   end

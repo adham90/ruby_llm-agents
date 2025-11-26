@@ -12,6 +12,10 @@ A powerful Rails engine for building, managing, and monitoring LLM-powered agent
 - **🛠️ Generators** - Quickly scaffold new agents with customizable templates
 - **🔍 Anomaly Detection** - Automatic warnings for unusual cost or duration patterns
 - **🎯 Type Safety** - Structured output with RubyLLM::Schema integration
+- **🔄 Reliability** - Automatic retries, model fallbacks, and circuit breakers for resilient agents
+- **💵 Budget Controls** - Daily/monthly spending limits with hard and soft enforcement
+- **🔔 Alerts** - Slack, webhook, and custom notifications for budget and circuit breaker events
+- **🔒 PII Redaction** - Automatic sanitization of sensitive data in execution logs
 
 ## Requirements
 
@@ -394,6 +398,269 @@ class RecommendationAgent < ApplicationAgent
 end
 ```
 
+## Reliability Features
+
+RubyLLM::Agents provides built-in reliability features to make your agents resilient against API failures, rate limits, and transient errors.
+
+### Automatic Retries
+
+Configure retry behavior for transient failures:
+
+```ruby
+class ReliableAgent < ApplicationAgent
+  model "gpt-4o"
+
+  # Retry up to 3 times with exponential backoff
+  retries max: 3, backoff: :exponential, base: 0.5, max_delay: 10.0
+
+  # Only retry on specific errors (defaults include timeout, network errors)
+  retries max: 3, on: [Timeout::Error, Net::ReadTimeout, Faraday::TimeoutError]
+
+  param :query, required: true
+
+  def user_prompt
+    query
+  end
+end
+```
+
+Backoff strategies:
+- `:exponential` - Delay doubles each retry (0.5s, 1s, 2s, 4s...)
+- `:constant` - Same delay each retry
+- Jitter is automatically added to prevent thundering herd
+
+### Model Fallbacks
+
+Automatically try alternative models if the primary fails:
+
+```ruby
+class FallbackAgent < ApplicationAgent
+  model "gpt-4o"
+
+  # Try these models in order if primary fails
+  fallback_models "gpt-4o-mini", "claude-3-5-sonnet", "gemini-2.0-flash"
+
+  # Combine with retries
+  retries max: 2
+  fallback_models "gpt-4o-mini", "claude-3-sonnet"
+
+  param :query, required: true
+
+  def user_prompt
+    query
+  end
+end
+```
+
+The agent will try `gpt-4o` (with 2 retries), then `gpt-4o-mini` (with 2 retries), and so on.
+
+### Circuit Breaker
+
+Prevent cascading failures by temporarily blocking requests to failing models:
+
+```ruby
+class ProtectedAgent < ApplicationAgent
+  model "gpt-4o"
+  fallback_models "claude-3-sonnet"
+
+  # Open circuit after 10 errors within 60 seconds
+  # Keep circuit open for 5 minutes before retrying
+  circuit_breaker errors: 10, within: 60, cooldown: 300
+
+  param :query, required: true
+
+  def user_prompt
+    query
+  end
+end
+```
+
+Circuit breaker states:
+- **Closed** - Normal operation, requests pass through
+- **Open** - Model is blocked, requests skip to fallback or fail fast
+- **Half-Open** - After cooldown, one request is allowed to test recovery
+
+### Total Timeout
+
+Set a maximum time for the entire operation including all retries:
+
+```ruby
+class TimeBoundAgent < ApplicationAgent
+  model "gpt-4o"
+  retries max: 5
+  fallback_models "gpt-4o-mini"
+
+  # Abort everything after 30 seconds total
+  total_timeout 30
+
+  param :query, required: true
+
+  def user_prompt
+    query
+  end
+end
+```
+
+### Viewing Attempt Details
+
+When reliability features are enabled, the dashboard shows all attempts:
+
+```ruby
+execution = RubyLLM::Agents::Execution.last
+
+# Check if retries/fallbacks were used
+execution.has_retries?      # => true
+execution.used_fallback?    # => true
+execution.attempts_count    # => 3
+
+# Get attempt details
+execution.attempts.each do |attempt|
+  puts "Model: #{attempt['model_id']}"
+  puts "Duration: #{attempt['duration_ms']}ms"
+  puts "Error: #{attempt['error_class']}" if attempt['error_class']
+  puts "Short-circuited: #{attempt['short_circuited']}"
+end
+
+# Find the successful attempt
+execution.successful_attempt  # => Hash with attempt data
+execution.chosen_model_id     # => "claude-3-sonnet" (the model that succeeded)
+```
+
+## Governance & Cost Controls
+
+### Budget Limits
+
+Set spending limits at global and per-agent levels:
+
+```ruby
+# config/initializers/ruby_llm_agents.rb
+RubyLLM::Agents.configure do |config|
+  config.budgets = {
+    # Global limits apply to all agents combined
+    global_daily: 100.0,      # $100/day across all agents
+    global_monthly: 2000.0,   # $2000/month across all agents
+
+    # Per-agent limits
+    per_agent_daily: {
+      "ExpensiveAgent" => 50.0,  # $50/day for this agent
+      "CheapAgent" => 5.0        # $5/day for this agent
+    },
+    per_agent_monthly: {
+      "ExpensiveAgent" => 500.0
+    },
+
+    # Enforcement mode
+    # :hard - Block requests when budget exceeded
+    # :soft - Allow requests but log warnings
+    enforcement: :hard
+  }
+end
+```
+
+Querying budget status:
+
+```ruby
+# Get current budget status
+status = RubyLLM::Agents::BudgetTracker.status(agent_type: "MyAgent")
+# => {
+#   global_daily: { limit: 100.0, current: 45.50, remaining: 54.50, percentage_used: 45.5 },
+#   global_monthly: { limit: 2000.0, current: 890.0, remaining: 1110.0, percentage_used: 44.5 }
+# }
+
+# Check remaining budget
+RubyLLM::Agents::BudgetTracker.remaining_budget(:global, :daily)
+# => 54.50
+```
+
+### Alerts
+
+Get notified when important events occur:
+
+```ruby
+# config/initializers/ruby_llm_agents.rb
+RubyLLM::Agents.configure do |config|
+  config.alerts = {
+    # Events to alert on
+    on_events: [
+      :budget_soft_cap,   # Budget threshold reached (configurable %)
+      :budget_hard_cap,   # Budget exceeded (with hard enforcement)
+      :breaker_open       # Circuit breaker opened
+    ],
+
+    # Slack webhook
+    slack_webhook_url: ENV['SLACK_WEBHOOK_URL'],
+
+    # Generic webhook (receives JSON payload)
+    webhook_url: "https://your-app.com/webhooks/llm-alerts",
+
+    # Custom handler
+    custom: ->(event, payload) {
+      # event: :budget_hard_cap
+      # payload: { scope: :global_daily, limit: 100.0, current: 105.0 }
+
+      MyNotificationService.notify(
+        title: "LLM Budget Alert",
+        message: "#{event}: #{payload}"
+      )
+    }
+  }
+end
+```
+
+Alert payload examples:
+
+```ruby
+# Budget alert
+{
+  event: :budget_hard_cap,
+  scope: :global_daily,
+  limit: 100.0,
+  current: 105.50,
+  agent_type: "ExpensiveAgent"
+}
+
+# Circuit breaker alert
+{
+  event: :breaker_open,
+  agent_type: "MyAgent",
+  model_id: "gpt-4o",
+  failure_count: 10,
+  window_seconds: 60
+}
+```
+
+### PII Redaction
+
+Automatically redact sensitive data from execution logs:
+
+```ruby
+# config/initializers/ruby_llm_agents.rb
+RubyLLM::Agents.configure do |config|
+  config.redaction = {
+    # Fields to redact (applied to parameters)
+    # Default: password, token, api_key, secret, credential, auth, key, access_token
+    fields: %w[ssn credit_card phone_number],
+
+    # Regex patterns to redact from prompts/responses
+    patterns: [
+      /\b\d{3}-\d{2}-\d{4}\b/,  # SSN
+      /\b\d{16}\b/,              # Credit card
+      /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i  # Email
+    ],
+
+    # Replacement text
+    placeholder: "[REDACTED]",
+
+    # Truncate long values
+    max_value_length: 1000
+  }
+
+  # Control what gets persisted
+  config.persist_prompts = true    # Store system/user prompts
+  config.persist_responses = true  # Store LLM responses
+end
+```
+
 ## Configuration
 
 Edit `config/initializers/ruby_llm_agents.rb`:
@@ -689,7 +956,13 @@ rails generate ruby_llm_agents:install
 ```bash
 # Upgrade to latest schema (when gem is updated)
 rails generate ruby_llm_agents:upgrade
+rails db:migrate
 ```
+
+This creates migrations for new features like:
+- `system_prompt` and `user_prompt` columns for prompt persistence
+- `attempts` JSONB column for reliability tracking
+- `chosen_model_id` for fallback model tracking
 
 ## Background Jobs
 
