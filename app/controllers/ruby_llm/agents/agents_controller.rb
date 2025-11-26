@@ -149,6 +149,8 @@ module RubyLLM
 
       # Loads version comparison data if multiple versions exist
       #
+      # Includes trend data for sparkline charts.
+      #
       # @return [void]
       def load_version_comparison
         return unless @versions.size >= 2
@@ -157,10 +159,18 @@ module RubyLLM
         v1 = params[:compare_v1] || @versions[0]
         v2 = params[:compare_v2] || @versions[1]
 
+        comparison_data = Execution.compare_versions(@agent_type, v1, v2, period: :this_month)
+
+        # Fetch trend data for sparklines
+        v1_trend = Execution.version_trend_data(@agent_type, v1, days: 14)
+        v2_trend = Execution.version_trend_data(@agent_type, v2, days: 14)
+
         @version_comparison = {
           v1: v1,
           v2: v2,
-          data: Execution.compare_versions(@agent_type, v1, v2, period: :this_month)
+          data: comparison_data,
+          v1_trend: v1_trend,
+          v2_trend: v2_trend
         }
       rescue StandardError => e
         Rails.logger.debug("[RubyLLM::Agents] Version comparison error: #{e.message}")

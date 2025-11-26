@@ -38,6 +38,10 @@ module RubyLLM
       # Creates a single execution record and tracks multiple attempts within it.
       # Used by execute_with_reliability for retry/fallback scenarios.
       #
+      # Uses catch/throw pattern because the yielded block uses `throw :execution_success`
+      # to exit early on success. Regular `return` from within a block would bypass
+      # our completion code, so we use throw/catch to properly intercept success cases.
+      #
       # @param models_to_try [Array<String>] List of models in the fallback chain
       # @yield [AttemptTracker] Block receives attempt tracker for recording attempts
       # @return [Object] The result from the yielded block
@@ -56,12 +60,57 @@ module RubyLLM
         execution = create_running_execution(started_at, fallback_chain: models_to_try)
         self.execution_id = execution&.id
 
-        begin
-          result = yield(attempt_tracker)
+        # Use catch to intercept successful early returns from the block
+        # The block uses `throw :execution_success, result` instead of `return`
+        result = catch(:execution_success) do
+          begin
+            yield(attempt_tracker)
+            # If we reach here normally (no throw), the block completed without success
+            # This happens when AllModelsExhaustedError is raised
+            nil
+          rescue Timeout::Error, Reliability::TotalTimeoutError => e
+            raised_exception = e
+            begin
+              complete_execution_with_attempts(
+                execution,
+                attempt_tracker: attempt_tracker,
+                completed_at: Time.current,
+                status: "timeout",
+                error: e
+              )
+              @status_update_completed = true
+            rescue StandardError => completion_err
+              completion_error = completion_err
+            end
+            raise
+          rescue StandardError => e
+            raised_exception = e
+            begin
+              complete_execution_with_attempts(
+                execution,
+                attempt_tracker: attempt_tracker,
+                completed_at: Time.current,
+                status: "error",
+                error: e
+              )
+              @status_update_completed = true
+            rescue StandardError => completion_err
+              completion_error = completion_err
+            end
+            raise
+          ensure
+            # Only run emergency fallback if we haven't completed AND we're not in success path
+            # The success path completion happens AFTER the catch block
+            unless @status_update_completed || !$!
+              actual_error = completion_error || raised_exception || $!
+              mark_execution_failed!(execution, error: actual_error)
+            end
+          end
+        end
 
-          # Update to success with attempts
-          # NOTE: If this fails, we capture the error but DON'T re-raise
-          # The ensure block will handle it via mark_execution_failed!
+        # If we caught a successful throw, complete the execution properly
+        # result will be non-nil if throw :execution_success was called
+        if result && !@status_update_completed
           begin
             complete_execution_with_attempts(
               execution,
@@ -71,49 +120,12 @@ module RubyLLM
             )
             @status_update_completed = true
           rescue StandardError => e
-            completion_error = e
-            # Don't re-raise - let ensure block handle via mark_execution_failed!
-          end
-
-          result
-        rescue Timeout::Error, Reliability::TotalTimeoutError => e
-          raised_exception = e
-          begin
-            complete_execution_with_attempts(
-              execution,
-              attempt_tracker: attempt_tracker,
-              completed_at: Time.current,
-              status: "timeout",
-              error: e
-            )
-            @status_update_completed = true
-          rescue StandardError => completion_err
-            completion_error = completion_err
-          end
-          raise
-        rescue StandardError => e
-          raised_exception = e
-          begin
-            complete_execution_with_attempts(
-              execution,
-              attempt_tracker: attempt_tracker,
-              completed_at: Time.current,
-              status: "error",
-              error: e
-            )
-            @status_update_completed = true
-          rescue StandardError => completion_err
-            completion_error = completion_err
-          end
-          raise
-        ensure
-          unless @status_update_completed
-            # Prefer completion_error (from update! failure) over raised_exception (from execution)
-            # Use $! as final fallback - it holds the current exception being propagated
-            actual_error = completion_error || raised_exception || $!
-            mark_execution_failed!(execution, error: actual_error)
+            Rails.logger.error("[RubyLLM::Agents] Failed to complete successful execution: #{e.class}: #{e.message}")
+            mark_execution_failed!(execution, error: e)
           end
         end
+
+        result
       end
 
       # Wraps agent execution with comprehensive metrics tracking
@@ -570,20 +582,26 @@ module RubyLLM
         return unless execution&.id
         return unless execution.status == "running"
 
-        # Build a detailed error message including backtrace for debugging
-        error_message = if error
-          backtrace_info = error.backtrace&.first(5)&.join("\n  ") || ""
-          msg = "#{error.class}: #{error.message}"
-          msg += "\n  #{backtrace_info}" if backtrace_info.present?
-          msg
-        else
-          "Execution status update failed (no error details captured)"
+        # If no error was captured, create a synthetic one with current stack trace
+        # This helps debug cases where error details are lost
+        if error.nil?
+          Rails.logger.error("[RubyLLM::Agents] BUG: mark_execution_failed! called with nil error")
+          Rails.logger.error("[RubyLLM::Agents] Stack trace:\n  #{caller.first(15).join("\n  ")}")
+
+          synthetic_error = RuntimeError.new("No error was captured - check logs for stack trace")
+          synthetic_error.set_backtrace(caller)
+          error = synthetic_error
         end
+
+        # Build a detailed error message including backtrace for debugging
+        backtrace_info = error.backtrace&.first(5)&.join("\n  ") || ""
+        error_message = "#{error.class}: #{error.message}"
+        error_message += "\n  #{backtrace_info}" if backtrace_info.present?
 
         update_data = {
           status: "error",
           completed_at: Time.current,
-          error_class: error&.class&.name || "InstrumentationError",
+          error_class: error.class.name,
           error_message: error_message.to_s.truncate(65535)
         }
 

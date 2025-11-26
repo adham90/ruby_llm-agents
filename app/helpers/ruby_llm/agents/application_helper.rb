@@ -125,6 +125,185 @@ module RubyLLM
         highlight_json_string(json_string)
       end
 
+      # Renders an SVG sparkline chart from trend data
+      #
+      # Creates a simple polyline SVG for inline trend visualization.
+      # Used in version comparison to show historical performance.
+      #
+      # @param trend_data [Array<Hash>] Array of daily data points
+      # @param metric_key [Symbol] The metric to chart (:count, :success_rate, :avg_cost, etc.)
+      # @param color_class [String] Tailwind color class for the line
+      # @return [ActiveSupport::SafeBuffer] SVG sparkline element
+      def render_sparkline(trend_data, metric_key, color_class: "text-blue-500")
+        return "".html_safe if trend_data.blank? || trend_data.length < 2
+
+        values = trend_data.map { |d| d[metric_key].to_f || 0 }
+        max_val = values.max || 1
+        min_val = values.min || 0
+        range = max_val - min_val
+        range = 1 if range.zero?
+
+        # Generate SVG polyline points
+        points = values.each_with_index.map do |val, i|
+          x = (i.to_f / (values.length - 1)) * 100
+          y = 28 - ((val - min_val) / range * 24) + 2 # 2px padding top/bottom
+          "#{x.round(2)},#{y.round(2)}"
+        end.join(" ")
+
+        content_tag(:svg, class: "w-full h-8", viewBox: "0 0 100 30", preserveAspectRatio: "none") do
+          content_tag(:polyline, nil,
+            points: points,
+            fill: "none",
+            stroke: "currentColor",
+            "stroke-width": "2",
+            "stroke-linecap": "round",
+            "stroke-linejoin": "round",
+            class: color_class
+          )
+        end
+      end
+
+      # Renders a comparison badge based on change percentage
+      #
+      # Determines if a metric change is significant and returns an appropriate
+      # badge indicating improvement, regression, or stability.
+      #
+      # @param change_pct [Float] Percentage change between versions
+      # @param metric_type [Symbol] Type of metric (:success_rate, :cost, :tokens, :duration, :count)
+      # @return [ActiveSupport::SafeBuffer] HTML badge element
+      def comparison_badge(change_pct, metric_type)
+        threshold = case metric_type
+                    when :success_rate then 5
+                    when :cost, :tokens then 15
+                    when :duration then 20
+                    when :count then 25
+                    else 10
+                    end
+
+        # Determine what "improvement" means for this metric
+        # For cost/tokens/duration: negative change is good (lower is better)
+        # For success_rate/count: positive change is good (higher is better)
+        is_improvement = case metric_type
+                         when :success_rate, :count then change_pct > threshold
+                         when :cost, :tokens, :duration then change_pct < -threshold
+                         else false
+                         end
+
+        is_regression = case metric_type
+                        when :success_rate, :count then change_pct < -threshold
+                        when :cost, :tokens, :duration then change_pct > threshold
+                        else false
+                        end
+
+        if is_improvement
+          content_tag(:span, class: "inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/50 rounded-full") do
+            safe_join([
+              content_tag(:svg, class: "w-3 h-3", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24") do
+                content_tag(:path, nil, "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "2", d: "M5 10l7-7m0 0l7 7m-7-7v18")
+              end,
+              "Improved"
+            ])
+          end
+        elsif is_regression
+          content_tag(:span, class: "inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/50 rounded-full") do
+            safe_join([
+              content_tag(:svg, class: "w-3 h-3", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24") do
+                content_tag(:path, nil, "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "2", d: "M19 14l-7 7m0 0l-7-7m7 7V3")
+              end,
+              "Regressed"
+            ])
+          end
+        else
+          content_tag(:span, class: "inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-full") do
+            safe_join([
+              content_tag(:svg, class: "w-3 h-3", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24") do
+                content_tag(:path, nil, "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "2", d: "M5 12h14")
+              end,
+              "Stable"
+            ])
+          end
+        end
+      end
+
+      # Returns the appropriate row background class based on change significance
+      #
+      # @param change_pct [Float] Percentage change
+      # @param metric_type [Symbol] Type of metric
+      # @return [String] Tailwind CSS classes for row background
+      def comparison_row_class(change_pct, metric_type)
+        threshold = case metric_type
+                    when :success_rate then 5
+                    when :cost, :tokens then 15
+                    when :duration then 20
+                    when :count then 25
+                    else 10
+                    end
+
+        is_improvement = case metric_type
+                         when :success_rate, :count then change_pct > threshold
+                         when :cost, :tokens, :duration then change_pct < -threshold
+                         else false
+                         end
+
+        is_regression = case metric_type
+                        when :success_rate, :count then change_pct < -threshold
+                        when :cost, :tokens, :duration then change_pct > threshold
+                        else false
+                        end
+
+        if is_improvement
+          "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
+        elsif is_regression
+          "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
+        else
+          "bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700"
+        end
+      end
+
+      # Generates an overall comparison summary based on multiple metrics
+      #
+      # @param metrics [Array<Hash>] Array of metric comparison results
+      # @return [ActiveSupport::SafeBuffer] HTML summary banner
+      def comparison_summary_badge(improvements_count, regressions_count, v2_label)
+        if improvements_count >= 3 && regressions_count == 0
+          content_tag(:span, class: "inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/50 rounded-lg") do
+            safe_join([
+              content_tag(:svg, class: "w-4 h-4", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24") do
+                content_tag(:path, nil, "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "2", d: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z")
+              end,
+              "v#{v2_label} shows overall improvement"
+            ])
+          end
+        elsif regressions_count >= 3 && improvements_count == 0
+          content_tag(:span, class: "inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/50 rounded-lg") do
+            safe_join([
+              content_tag(:svg, class: "w-4 h-4", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24") do
+                content_tag(:path, nil, "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "2", d: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z")
+              end,
+              "v#{v2_label} shows overall regression"
+            ])
+          end
+        elsif improvements_count > 0 || regressions_count > 0
+          content_tag(:span, class: "inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 rounded-lg") do
+            safe_join([
+              content_tag(:svg, class: "w-4 h-4", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24") do
+                content_tag(:path, nil, "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "2", d: "M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4")
+              end,
+              "v#{v2_label} shows mixed results"
+            ])
+          end
+        else
+          content_tag(:span, class: "inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg") do
+            safe_join([
+              content_tag(:svg, class: "w-4 h-4", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24") do
+                content_tag(:path, nil, "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "2", d: "M5 12h14")
+              end,
+              "No significant changes"
+            ])
+          end
+        end
+      end
+
       # Syntax-highlights a JSON string with Tailwind CSS colors
       #
       # Tokenizes the JSON and wraps each token type in a span with

@@ -107,6 +107,33 @@ module RubyLLM
             }
           end
 
+          # Returns daily trend data for a specific agent version
+          #
+          # Used for sparkline charts in version comparison.
+          #
+          # @param agent_type [String] The agent class name
+          # @param version [String] The version to analyze
+          # @param days [Integer] Number of days to analyze
+          # @return [Array<Hash>] Daily metrics sorted oldest to newest
+          def version_trend_data(agent_type, version, days: 14)
+            scope = by_agent(agent_type).by_version(version)
+
+            (0...days).map do |days_ago|
+              date = days_ago.days.ago.to_date
+              day_scope = scope.where(created_at: date.beginning_of_day..date.end_of_day)
+              count = day_scope.count
+
+              {
+                date: date,
+                count: count,
+                success_rate: calculate_success_rate(day_scope),
+                avg_cost: count > 0 ? ((day_scope.total_cost_sum || 0) / count).round(6) : 0,
+                avg_duration_ms: day_scope.avg_duration&.round || 0,
+                avg_tokens: day_scope.avg_tokens&.round || 0
+              }
+            end.reverse
+          end
+
           # Analyzes trends over a time period
           #
           # @param agent_type [String, nil] Filter to specific agent, or nil for all

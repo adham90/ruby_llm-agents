@@ -457,7 +457,9 @@ module RubyLLM
                   record_attempt_cost(attempt_tracker)
                 end
 
-                return result
+                # Use throw instead of return to allow instrument_execution_with_attempts
+                # to properly complete the execution record before returning
+                throw :execution_success, result
 
               rescue *retryable_errors(config) => e
                 last_error = e
