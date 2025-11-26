@@ -4,23 +4,26 @@ module RubyLLM
   module Agents
     # Background job for logging agent executions to the database
     #
-    # This job is called automatically after each agent execution to:
-    # - Create an Execution record with all execution data
-    # - Calculate costs based on token usage
-    # - Log anomalies (expensive, slow, or failed executions)
+    # Called automatically after each agent execution to create records,
+    # calculate costs, and detect anomalies.
     #
-    # Configuration:
+    # @example Configuration
     #   RubyLLM::Agents.configure do |config|
     #     config.anomaly_cost_threshold = 5.00       # Log if cost > $5
     #     config.anomaly_duration_threshold = 10_000 # Log if duration > 10s
     #   end
     #
+    # @see RubyLLM::Agents::Instrumentation
+    # @api private
     class ExecutionLoggerJob < ActiveJob::Base
       queue_as :default
 
-      # Retry with polynomial backoff
       retry_on StandardError, wait: :polynomially_longer, attempts: 3
 
+      # Creates execution record and performs post-processing
+      #
+      # @param execution_data [Hash] Execution attributes from instrumentation
+      # @return [void]
       def perform(execution_data)
         execution = Execution.create!(execution_data)
 
@@ -36,6 +39,10 @@ module RubyLLM
 
       private
 
+      # Checks if execution should be flagged as anomalous
+      #
+      # @param execution [Execution] The execution to check
+      # @return [Boolean] true if cost/duration exceeds thresholds or status is error
       def anomaly?(execution)
         config = RubyLLM::Agents.configuration
 
@@ -44,6 +51,10 @@ module RubyLLM
           execution.status_error?
       end
 
+      # Logs a warning about an anomalous execution
+      #
+      # @param execution [Execution] The anomalous execution
+      # @return [void]
       def log_anomaly(execution)
         Rails.logger.warn(
           "[RubyLLM::Agents] Execution anomaly detected: " \

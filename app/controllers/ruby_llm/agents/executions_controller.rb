@@ -2,10 +2,22 @@
 
 module RubyLLM
   module Agents
+    # Controller for browsing and searching execution records
+    #
+    # Provides paginated listing, filtering, and detail views for all
+    # agent executions. Supports both HTML and Turbo Stream responses
+    # for seamless filtering without full page reloads.
+    #
+    # @see Paginatable For pagination implementation
+    # @see Filterable For filter parsing and validation
+    # @api private
     class ExecutionsController < ApplicationController
       include Paginatable
       include Filterable
 
+      # Lists all executions with filtering and pagination
+      #
+      # @return [void]
       def index
         load_filter_options
         load_executions_with_stats
@@ -16,10 +28,19 @@ module RubyLLM
         end
       end
 
+      # Shows a single execution's details
+      #
+      # @return [void]
       def show
         @execution = Execution.find(params[:id])
       end
 
+      # Handles filter search requests via Turbo Stream
+      #
+      # Returns the same data as index but optimized for AJAX/Turbo
+      # requests, replacing only the executions list partial.
+      #
+      # @return [void]
       def search
         load_filter_options
         load_executions_with_stats
@@ -38,15 +59,32 @@ module RubyLLM
 
       private
 
+      # Loads available options for filter dropdowns
+      #
+      # Populates @agent_types with all agent types that have executions,
+      # and @statuses with all possible status values.
+      #
+      # @return [void]
       def load_filter_options
         @agent_types = available_agent_types
         @statuses = Execution.statuses.keys
       end
 
+      # Returns distinct agent types from execution history
+      #
+      # Memoized to avoid duplicate queries within a request.
+      #
+      # @return [Array<String>] Agent type names
       def available_agent_types
         @available_agent_types ||= Execution.distinct.pluck(:agent_type)
       end
 
+      # Loads paginated executions and associated statistics
+      #
+      # Sets @executions, @pagination, and @filter_stats instance variables
+      # for use in views.
+      #
+      # @return [void]
       def load_executions_with_stats
         result = paginate(filtered_executions)
         @executions = result[:records]
@@ -54,6 +92,9 @@ module RubyLLM
         load_filter_stats
       end
 
+      # Calculates aggregate statistics for the current filter
+      #
+      # @return [void]
       def load_filter_stats
         scope = filtered_executions
         @filter_stats = {
@@ -63,6 +104,12 @@ module RubyLLM
         }
       end
 
+      # Builds a filtered execution scope based on request params
+      #
+      # Applies filters in order: agent type, status, then time range.
+      # Each filter is optional and validated before application.
+      #
+      # @return [ActiveRecord::Relation] Filtered execution scope
       def filtered_executions
         scope = Execution.all
 

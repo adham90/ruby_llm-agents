@@ -2,13 +2,42 @@
 
 module RubyLLM
   module Agents
+    # View helpers for the RubyLLM::Agents dashboard
+    #
+    # Provides formatting utilities for displaying execution data,
+    # including number formatting, URL helpers, and JSON syntax highlighting.
+    #
+    # @api public
     module ApplicationHelper
       include Chartkick::Helper if defined?(Chartkick)
 
+      # Returns the URL helpers for the engine's routes
+      #
+      # Use this to generate paths and URLs within the dashboard views.
+      #
+      # @return [Module] URL helpers module with path/url methods
+      # @example Generate execution path
+      #   ruby_llm_agents.execution_path(execution)
+      # @example Generate agents index URL
+      #   ruby_llm_agents.agents_url
       def ruby_llm_agents
         RubyLLM::Agents::Engine.routes.url_helpers
       end
 
+      # Formats large numbers with human-readable suffixes (K, M, B)
+      #
+      # @param number [Numeric, nil] The number to format
+      # @param prefix [String, nil] Optional prefix (e.g., "$" for currency)
+      # @param precision [Integer] Decimal places to show (default: 1)
+      # @return [String] Formatted number with suffix
+      # @example Basic usage
+      #   number_to_human_short(1234567) #=> "1.2M"
+      # @example With currency prefix
+      #   number_to_human_short(1500, prefix: "$") #=> "$1.5K"
+      # @example With custom precision
+      #   number_to_human_short(1234567, precision: 2) #=> "1.23M"
+      # @example Small numbers
+      #   number_to_human_short(0.00123, precision: 1) #=> "0.0012"
       def number_to_human_short(number, prefix: nil, precision: 1)
         return "#{prefix}0" if number.nil? || number.zero?
 
@@ -28,6 +57,16 @@ module RubyLLM
         "#{prefix}#{formatted}"
       end
 
+      # Syntax-highlights a Ruby object as pretty-printed JSON
+      #
+      # Converts the object to JSON and applies color highlighting
+      # using Tailwind CSS classes.
+      #
+      # @param obj [Object] Any JSON-serializable Ruby object
+      # @return [ActiveSupport::SafeBuffer] HTML-safe highlighted JSON string
+      # @see #highlight_json_string
+      # @example
+      #   highlight_json({ name: "test", count: 42 })
       def highlight_json(obj)
         return "" if obj.nil?
 
@@ -35,9 +74,30 @@ module RubyLLM
         highlight_json_string(json_string)
       end
 
+      # Syntax-highlights a JSON string with Tailwind CSS colors
+      #
+      # Tokenizes the JSON and wraps each token type in a span with
+      # appropriate color classes:
+      # - Purple (text-purple-600): Object keys
+      # - Green (text-green-600): String values
+      # - Blue (text-blue-600): Numbers
+      # - Amber (text-amber-600): Booleans (true/false)
+      # - Gray (text-gray-400): null values
+      #
+      # The tokenizer uses a character-by-character approach:
+      # 1. Identifies token type by first character
+      # 2. Parses complete token (handling escapes in strings)
+      # 3. Determines if strings are keys (followed by colon)
+      # 4. Wraps each token in appropriate span
+      #
+      # @param json_string [String] A valid JSON string
+      # @return [ActiveSupport::SafeBuffer] HTML-safe highlighted output
+      # @api private
       def highlight_json_string(json_string)
         return "" if json_string.blank?
 
+        # Phase 1: Tokenization
+        # Convert JSON string into array of typed tokens for later rendering
         tokens = []
         i = 0
         chars = json_string.chars
@@ -47,7 +107,8 @@ module RubyLLM
 
           case char
           when '"'
-            # Parse string
+            # String token: starts with quote, ends with unescaped quote
+            # Handles escape sequences like \" and \\
             str_start = i
             i += 1
             while i < chars.length
@@ -62,7 +123,7 @@ module RubyLLM
             end
             tokens << { type: :string, value: chars[str_start...i].join }
           when /[0-9\-]/
-            # Parse number
+            # Number token: starts with digit or minus, continues with digits/decimals/exponents
             num_start = i
             i += 1
             while i < chars.length && chars[i] =~ /[0-9.eE+\-]/
@@ -70,7 +131,7 @@ module RubyLLM
             end
             tokens << { type: :number, value: chars[num_start...i].join }
           when 't'
-            # true
+            # Boolean token: check for "true" keyword
             if chars[i, 4].join == 'true'
               tokens << { type: :boolean, value: 'true' }
               i += 4
@@ -79,7 +140,7 @@ module RubyLLM
               i += 1
             end
           when 'f'
-            # false
+            # Boolean token: check for "false" keyword
             if chars[i, 5].join == 'false'
               tokens << { type: :boolean, value: 'false' }
               i += 5
@@ -88,7 +149,7 @@ module RubyLLM
               i += 1
             end
           when 'n'
-            # null
+            # Null token: check for "null" keyword
             if chars[i, 4].join == 'null'
               tokens << { type: :null, value: 'null' }
               i += 4
@@ -97,20 +158,27 @@ module RubyLLM
               i += 1
             end
           when ':', ',', '{', '}', '[', ']', ' ', "\n", "\t"
+            # Punctuation token: structural characters and whitespace
             tokens << { type: :punct, value: char }
             i += 1
           else
+            # Fallback for unexpected characters
             tokens << { type: :text, value: char }
             i += 1
           end
         end
 
-        # Build highlighted HTML - detect if string is a key (followed by :)
+        # Phase 2: Rendering
+        # Convert tokens to HTML with color classes
+        # Key detection: strings followed by colon are object keys (purple)
+        # Value strings get different color (green)
         result = []
         tokens.each_with_index do |token, idx|
           case token[:type]
           when :string
-            # Check if this is a key (next non-whitespace token is :)
+            # Key detection algorithm:
+            # Look ahead past any whitespace tokens to find next punctuation
+            # If next non-whitespace punct is ':', this string is an object key
             is_key = false
             (idx + 1...tokens.length).each do |j|
               if tokens[j][:type] == :punct
@@ -118,8 +186,10 @@ module RubyLLM
                   is_key = true
                   break
                 elsif tokens[j][:value] !~ /\s/
+                  # Non-whitespace punct that isn't colon - not a key
                   break
                 end
+                # Skip whitespace and continue looking
               else
                 break
               end

@@ -4,32 +4,50 @@ module RubyLLM
   module Agents
     # Service for discovering and listing available agents
     #
-    # Combines two sources:
+    # Combines two sources to ensure complete agent discovery:
     # 1. File system - Classes inheriting from ApplicationAgent in app/agents/
     # 2. Execution history - Agent types that have execution records
     #
-    # This ensures all agents are visible, including:
-    # - Agents that have never been executed
-    # - Deleted agents that still have execution history
+    # This ensures visibility of both current agents and deleted agents
+    # that still have execution history.
     #
+    # @example Getting all agent names
+    #   AgentRegistry.all #=> ["SearchAgent", "SummaryAgent"]
+    #
+    # @example Getting detailed info
+    #   AgentRegistry.all_with_details.each do |agent|
+    #     puts "#{agent[:name]}: #{agent[:execution_count]} executions"
+    #   end
+    #
+    # @api public
     class AgentRegistry
       class << self
-        # Returns all unique agent type names (sorted)
+        # Returns all unique agent type names
+        #
+        # @return [Array<String>] Sorted list of agent class names
         def all
           (file_system_agents + execution_agents).uniq.sort
         end
 
-        # Returns agent class if it exists, nil if only in execution history
+        # Finds an agent class by type name
+        #
+        # @param agent_type [String] The agent class name
+        # @return [Class, nil] The agent class, or nil if not found
         def find(agent_type)
           agent_type.safe_constantize
         end
 
-        # Check if an agent class is currently defined
+        # Checks if an agent class is currently defined
+        #
+        # @param agent_type [String] The agent class name
+        # @return [Boolean] true if the class exists
         def exists?(agent_type)
           find(agent_type).present?
         end
 
-        # Get detailed info about all agents
+        # Returns detailed info about all agents
+        #
+        # @return [Array<Hash>] Agent info hashes with configuration and stats
         def all_with_details
           all.map do |agent_type|
             build_agent_info(agent_type)
@@ -38,7 +56,9 @@ module RubyLLM
 
         private
 
-        # Find agent classes defined in the file system
+        # Finds agent classes from the file system
+        #
+        # @return [Array<String>] Agent class names
         def file_system_agents
           # Ensure all agent classes are loaded
           eager_load_agents!
@@ -51,7 +71,9 @@ module RubyLLM
           []
         end
 
-        # Find agent types from execution history
+        # Finds agent types from execution history
+        #
+        # @return [Array<String>] Agent class names with execution records
         def execution_agents
           Execution.distinct.pluck(:agent_type).compact
         rescue StandardError => e
@@ -59,7 +81,9 @@ module RubyLLM
           []
         end
 
-        # Eager load all agent files to ensure descendants are registered
+        # Eager loads all agent files to register descendants
+        #
+        # @return [void]
         def eager_load_agents!
           agents_path = Rails.root.join("app", "agents")
           return unless agents_path.exist?
@@ -71,7 +95,10 @@ module RubyLLM
           end
         end
 
-        # Build detailed info hash for an agent
+        # Builds detailed info hash for an agent
+        #
+        # @param agent_type [String] The agent class name
+        # @return [Hash] Agent info including config and stats
         def build_agent_info(agent_type)
           agent_class = find(agent_type)
           stats = fetch_stats(agent_type)
@@ -97,12 +124,20 @@ module RubyLLM
           }
         end
 
+        # Fetches statistics for an agent
+        #
+        # @param agent_type [String] The agent class name
+        # @return [Hash] Statistics hash
         def fetch_stats(agent_type)
           Execution.stats_for(agent_type, period: :all_time)
         rescue StandardError
           { count: 0, total_cost: 0, total_tokens: 0, avg_duration_ms: 0, success_rate: 0, error_rate: 0 }
         end
 
+        # Gets the timestamp of the last execution for an agent
+        #
+        # @param agent_type [String] The agent class name
+        # @return [Time, nil] Last execution time or nil
         def last_execution_time(agent_type)
           Execution.by_agent(agent_type).order(created_at: :desc).first&.created_at
         rescue StandardError

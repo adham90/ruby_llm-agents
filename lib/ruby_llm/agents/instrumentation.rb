@@ -4,36 +4,52 @@ module RubyLLM
   module Agents
     # Instrumentation concern for tracking agent executions
     #
-    # Provides execution timing, token tracking, cost calculation, and error handling.
-    # Logs all executions to the database via a background job.
+    # Provides comprehensive execution tracking including:
+    # - Timing metrics (started_at, completed_at, duration_ms)
+    # - Token usage tracking (input, output, cached)
+    # - Cost calculation via RubyLLM pricing data
+    # - Error and timeout handling with status tracking
+    # - Safe parameter sanitization for logging
     #
-    # == Usage
+    # Included automatically in {RubyLLM::Agents::Base}.
     #
-    # Included automatically in RubyLLM::Agents::Base
-    #
-    # == Customization
-    #
-    # Override `execution_metadata` in your agent to add custom data:
-    #
-    #   def execution_metadata
-    #     { query: query, user_id: Current.user&.id }
+    # @example Adding custom metadata to executions
+    #   class MyAgent < ApplicationAgent
+    #     def execution_metadata
+    #       { user_id: Current.user&.id, request_id: request.uuid }
+    #     end
     #   end
     #
+    # @see RubyLLM::Agents::Execution
+    # @see RubyLLM::Agents::ExecutionLoggerJob
+    # @api private
     module Instrumentation
       extend ActiveSupport::Concern
 
       included do
+        # @!attribute [rw] execution_id
+        #   The ID of the current execution record
+        #   @return [Integer, nil]
         attr_accessor :execution_id
       end
 
-      # Wrap agent execution with metrics tracking
-      # Creates execution record at start with 'running' status, updates on completion
-      # Uses ensure block to guarantee status is updated even if complete_execution fails
+      # Wraps agent execution with comprehensive metrics tracking
+      #
+      # Execution lifecycle:
+      # 1. Creates execution record immediately with 'running' status
+      # 2. Yields to the block for actual agent execution
+      # 3. Updates record with final status and metrics
+      # 4. Uses ensure block to guarantee status update even on failures
+      #
+      # @yield The block containing the actual agent execution
+      # @return [Object] The result from the yielded block
+      # @raise [Timeout::Error] Re-raised after logging timeout status
+      # @raise [StandardError] Re-raised after logging error status
       def instrument_execution(&block)
         started_at = Time.current
         @last_response = nil
-        @execution_status_updated = false
-        original_error = nil
+        @status_update_completed = false
+        raised_exception = nil
 
         # Create execution record immediately with running status
         execution = create_running_execution(started_at)
@@ -49,38 +65,45 @@ module RubyLLM
             status: "success",
             response: @last_response
           )
-          @execution_status_updated = true
+          @status_update_completed = true
 
           result
         rescue Timeout::Error => e
-          original_error = e
+          raised_exception = e
           complete_execution(
             execution,
             completed_at: Time.current,
             status: "timeout",
             error: e
           )
-          @execution_status_updated = true
+          @status_update_completed = true
           raise
         rescue => e
-          original_error = e
+          raised_exception = e
           complete_execution(
             execution,
             completed_at: Time.current,
             status: "error",
             error: e
           )
-          @execution_status_updated = true
+          @status_update_completed = true
           raise
         ensure
-          # Guarantee execution is marked as error if complete_execution failed
-          unless @execution_status_updated
-            mark_execution_failed!(execution, error: original_error)
+          # Emergency fallback: mark as error if complete_execution itself failed
+          # This ensures executions never remain stuck in 'running' status
+          unless @status_update_completed
+            mark_execution_failed!(execution, error: raised_exception)
           end
         end
       end
 
-      # Store response for metrics extraction
+      # Stores the LLM response for metrics extraction
+      #
+      # Called by the agent after receiving a response from the LLM.
+      # The response is used to extract token counts and model information.
+      #
+      # @param response [RubyLLM::Message] The response from the LLM
+      # @return [RubyLLM::Message] The same response (for method chaining)
       def capture_response(response)
         @last_response = response
         response
@@ -88,7 +111,10 @@ module RubyLLM
 
       private
 
-      # Create execution record with running status at start
+      # Creates initial execution record with 'running' status
+      #
+      # @param started_at [Time] When the execution started
+      # @return [RubyLLM::Agents::Execution, nil] The created record, or nil on failure
       def create_running_execution(started_at)
         execution_data = {
           agent_type: self.class.name,
@@ -105,12 +131,22 @@ module RubyLLM
 
         RubyLLM::Agents::Execution.create!(execution_data)
       rescue StandardError => e
-        # Log error but don't fail the execution
+        # Log error but don't fail the agent execution itself
         Rails.logger.error("[RubyLLM::Agents] Failed to create execution record: #{e.message}")
         nil
       end
 
-      # Update execution record on completion
+      # Updates execution record with completion data
+      #
+      # Calculates duration, extracts response metrics, and saves final status.
+      # Falls back to legacy logging if the initial execution record is nil.
+      #
+      # @param execution [Execution, nil] The execution record to update
+      # @param completed_at [Time] When the execution completed
+      # @param status [String] Final status ("success", "error", "timeout")
+      # @param response [RubyLLM::Message, nil] The LLM response (if successful)
+      # @param error [Exception, nil] The exception (if failed)
+      # @return [void]
       def complete_execution(execution, completed_at:, status:, response: nil, error: nil)
         return legacy_log_execution(completed_at: completed_at, status: status, response: response, error: error) unless execution
 
@@ -154,7 +190,16 @@ module RubyLLM
         raise # Re-raise so ensure block can handle emergency update
       end
 
-      # Fallback for when initial execution creation failed
+      # Fallback logging when initial execution record creation failed
+      #
+      # Creates execution via background job or synchronously based on configuration.
+      # Used as a last resort to ensure execution data is captured.
+      #
+      # @param completed_at [Time] When the execution completed
+      # @param status [String] Final status
+      # @param response [RubyLLM::Message, nil] The LLM response
+      # @param error [Exception, nil] The exception if failed
+      # @return [void]
       def legacy_log_execution(completed_at:, status:, response: nil, error: nil)
         execution_data = {
           agent_type: self.class.name,
@@ -192,7 +237,13 @@ module RubyLLM
         end
       end
 
-      # Sanitize parameters to remove sensitive data
+      # Sanitizes parameters by removing sensitive data
+      #
+      # Removes common sensitive keys (password, token, api_key, etc.)
+      # and converts ActiveRecord objects to ID references to avoid
+      # storing full objects in JSON.
+      #
+      # @return [Hash] Sanitized parameters safe for logging
       def sanitized_parameters
         params = @options.dup
 
@@ -217,12 +268,23 @@ module RubyLLM
         end
       end
 
-      # Hook for subclasses to add custom metadata
+      # Hook for subclasses to add custom metadata to executions
+      #
+      # Override this method in your agent to include application-specific
+      # data like user IDs, request IDs, or feature flags.
+      #
+      # @return [Hash] Custom metadata to store with the execution
+      # @example
+      #   def execution_metadata
+      #     { user_id: Current.user&.id, experiment: "v2" }
+      #   end
       def execution_metadata
         {}
       end
 
-      # Safely capture system prompt (may raise or return nil)
+      # Safely captures system prompt, handling errors gracefully
+      #
+      # @return [String, nil] The system prompt or nil if unavailable
       def safe_system_prompt
         respond_to?(:system_prompt) ? system_prompt.to_s : nil
       rescue StandardError => e
@@ -230,7 +292,9 @@ module RubyLLM
         nil
       end
 
-      # Safely capture user prompt (may raise or return nil)
+      # Safely captures user prompt, handling errors gracefully
+      #
+      # @return [String, nil] The user prompt or nil if unavailable
       def safe_user_prompt
         respond_to?(:user_prompt) ? user_prompt.to_s : nil
       rescue StandardError => e
@@ -238,7 +302,12 @@ module RubyLLM
         nil
       end
 
-      # Safely extract a value from response, returning default if method doesn't exist
+      # Safely extracts a value from response object
+      #
+      # @param response [Object] The response object
+      # @param method [Symbol] The method to call
+      # @param default [Object] Default value if method unavailable
+      # @return [Object] The extracted value or default
       def safe_response_value(response, method, default = nil)
         return default unless response.respond_to?(method)
         response.public_send(method)
@@ -246,7 +315,10 @@ module RubyLLM
         default
       end
 
-      # Safely extract all response data with fallbacks
+      # Extracts all response metrics with safe fallbacks
+      #
+      # @param response [RubyLLM::Message, nil] The LLM response
+      # @return [Hash] Extracted response data (empty if response invalid)
       def safe_extract_response_data(response)
         return {} unless response.is_a?(RubyLLM::Message)
 
@@ -260,7 +332,10 @@ module RubyLLM
         }.compact
       end
 
-      # Safe version of serialize_response
+      # Serializes response to a hash for storage
+      #
+      # @param response [RubyLLM::Message] The LLM response
+      # @return [Hash] Serialized response data
       def safe_serialize_response(response)
         {
           content: safe_response_value(response, :content),
@@ -272,8 +347,16 @@ module RubyLLM
         }.compact
       end
 
-      # Emergency fallback - mark execution as error using update_columns
-      # Bypasses callbacks/validations to ensure status is always updated
+      # Emergency fallback to mark execution as failed
+      #
+      # Uses update_all to bypass ActiveRecord callbacks and validations,
+      # ensuring the status is updated even if the model is in an invalid state.
+      # Only updates records that are still in 'running' status to prevent
+      # race conditions.
+      #
+      # @param execution [Execution, nil] The execution record
+      # @param error [Exception, nil] The exception that caused the failure
+      # @return [void]
       def mark_execution_failed!(execution, error: nil)
         return unless execution&.id
         return unless execution.status == "running"
