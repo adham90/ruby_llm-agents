@@ -11,7 +11,9 @@ module RubyLLM
                     :anomaly_cost_threshold,
                     :anomaly_duration_threshold,
                     :dashboard_auth,
-                    :dashboard_parent_controller
+                    :dashboard_parent_controller,
+                    :basic_auth_username,
+                    :basic_auth_password
 
       attr_writer :cache_store
 
@@ -26,6 +28,8 @@ module RubyLLM
         @anomaly_duration_threshold = 10_000
         @dashboard_auth = ->(_controller) { true }
         @dashboard_parent_controller = "ActionController::Base"
+        @basic_auth_username = nil
+        @basic_auth_password = nil
       end
 
       def cache_store

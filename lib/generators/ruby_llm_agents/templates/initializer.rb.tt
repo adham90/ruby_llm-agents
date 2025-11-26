@@ -27,8 +27,13 @@ RubyLLM::Agents.configure do |config|
   # config.anomaly_cost_threshold = 5.00        # dollars
   # config.anomaly_duration_threshold = 10_000  # milliseconds
 
-  # Dashboard authentication
+  # HTTP Basic Auth (simple username/password protection)
+  # config.basic_auth_username = "admin"
+  # config.basic_auth_password = Rails.application.credentials.agents_password
+
+  # Dashboard authentication (advanced - custom logic)
   # Return true to allow access, false to deny
+  # Note: If basic_auth_username/password are set, they take precedence
   # config.dashboard_auth = ->(controller) { controller.current_user&.admin? }
 
   # Parent controller for dashboard (for authentication/layout inheritance)
