@@ -115,8 +115,8 @@ module RubyLLM
           update_data.merge!(
             input_tokens: response.input_tokens,
             output_tokens: response.output_tokens,
-            cached_tokens: response.cached_tokens || 0,
-            cache_creation_tokens: response.cache_creation_tokens || 0,
+            cached_tokens: response&.cached_tokens || 0,
+            cache_creation_tokens: response&.cache_creation_tokens || 0,
             model_id: response.model_id || model,
             response: serialize_response(response)
           )
@@ -162,8 +162,8 @@ module RubyLLM
           execution_data.merge!(
             input_tokens: response.input_tokens,
             output_tokens: response.output_tokens,
-            cached_tokens: response.cached_tokens || 0,
-            cache_creation_tokens: response.cache_creation_tokens || 0,
+            cached_tokens: response&.cached_tokens || 0,
+            cache_creation_tokens: response&.cache_creation_tokens || 0,
             model_id: response.model_id || model,
             response: serialize_response(response)
           )
@@ -215,8 +215,8 @@ module RubyLLM
           model_id: response.model_id,
           input_tokens: response.input_tokens,
           output_tokens: response.output_tokens,
-          cached_tokens: response.cached_tokens,
-          cache_creation_tokens: response.cache_creation_tokens
+          cached_tokens: response&.cached_tokens || 0,
+          cache_creation_tokens: response&.cache_creation_tokens || 0
         }.compact
       end
 
