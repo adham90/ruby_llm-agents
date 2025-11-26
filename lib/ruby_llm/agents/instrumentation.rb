@@ -28,9 +28,12 @@ module RubyLLM
 
       # Wrap agent execution with metrics tracking
       # Creates execution record at start with 'running' status, updates on completion
+      # Uses ensure block to guarantee status is updated even if complete_execution fails
       def instrument_execution(&block)
         started_at = Time.current
         @last_response = nil
+        @execution_status_updated = false
+        original_error = nil
 
         # Create execution record immediately with running status
         execution = create_running_execution(started_at)
@@ -46,24 +49,34 @@ module RubyLLM
             status: "success",
             response: @last_response
           )
+          @execution_status_updated = true
 
           result
         rescue Timeout::Error => e
+          original_error = e
           complete_execution(
             execution,
             completed_at: Time.current,
             status: "timeout",
             error: e
           )
+          @execution_status_updated = true
           raise
         rescue => e
+          original_error = e
           complete_execution(
             execution,
             completed_at: Time.current,
             status: "error",
             error: e
           )
+          @execution_status_updated = true
           raise
+        ensure
+          # Guarantee execution is marked as error if complete_execution failed
+          unless @execution_status_updated
+            mark_execution_failed!(execution, error: original_error)
+          end
         end
       end
 
@@ -110,16 +123,11 @@ module RubyLLM
           status: status
         }
 
-        # Add response data if available
-        if response.is_a?(RubyLLM::Message)
-          update_data.merge!(
-            input_tokens: response.input_tokens,
-            output_tokens: response.output_tokens,
-            cached_tokens: response&.cached_tokens || 0,
-            cache_creation_tokens: response&.cache_creation_tokens || 0,
-            model_id: response.model_id || model,
-            response: serialize_response(response)
-          )
+        # Add response data if available (using safe extraction)
+        response_data = safe_extract_response_data(response)
+        if response_data.any?
+          update_data.merge!(response_data)
+          update_data[:model_id] ||= model
         end
 
         # Add error data if failed
@@ -134,11 +142,16 @@ module RubyLLM
 
         # Calculate costs if token data is available
         if execution.input_tokens && execution.output_tokens
-          execution.calculate_costs!
-          execution.save!
+          begin
+            execution.calculate_costs!
+            execution.save!
+          rescue StandardError => cost_error
+            Rails.logger.warn("[RubyLLM::Agents] Cost calculation failed: #{cost_error.message}")
+          end
         end
       rescue StandardError => e
         Rails.logger.error("[RubyLLM::Agents] Failed to update execution record: #{e.message}")
+        raise # Re-raise so ensure block can handle emergency update
       end
 
       # Fallback for when initial execution creation failed
@@ -158,15 +171,11 @@ module RubyLLM
           user_prompt: safe_user_prompt
         }
 
-        if response.is_a?(RubyLLM::Message)
-          execution_data.merge!(
-            input_tokens: response.input_tokens,
-            output_tokens: response.output_tokens,
-            cached_tokens: response&.cached_tokens || 0,
-            cache_creation_tokens: response&.cache_creation_tokens || 0,
-            model_id: response.model_id || model,
-            response: serialize_response(response)
-          )
+        # Add response data if available (using safe extraction)
+        response_data = safe_extract_response_data(response)
+        if response_data.any?
+          execution_data.merge!(response_data)
+          execution_data[:model_id] ||= model
         end
 
         if error
@@ -208,18 +217,6 @@ module RubyLLM
         end
       end
 
-      # Serialize full RubyLLM::Message response to JSON
-      def serialize_response(response)
-        {
-          content: response.content,
-          model_id: response.model_id,
-          input_tokens: response.input_tokens,
-          output_tokens: response.output_tokens,
-          cached_tokens: response&.cached_tokens || 0,
-          cache_creation_tokens: response&.cache_creation_tokens || 0
-        }.compact
-      end
-
       # Hook for subclasses to add custom metadata
       def execution_metadata
         {}
@@ -239,6 +236,58 @@ module RubyLLM
       rescue StandardError => e
         Rails.logger.warn("[RubyLLM::Agents] Could not capture user_prompt: #{e.message}")
         nil
+      end
+
+      # Safely extract a value from response, returning default if method doesn't exist
+      def safe_response_value(response, method, default = nil)
+        return default unless response.respond_to?(method)
+        response.public_send(method)
+      rescue StandardError
+        default
+      end
+
+      # Safely extract all response data with fallbacks
+      def safe_extract_response_data(response)
+        return {} unless response.is_a?(RubyLLM::Message)
+
+        {
+          input_tokens: safe_response_value(response, :input_tokens),
+          output_tokens: safe_response_value(response, :output_tokens),
+          cached_tokens: safe_response_value(response, :cached_tokens, 0),
+          cache_creation_tokens: safe_response_value(response, :cache_creation_tokens, 0),
+          model_id: safe_response_value(response, :model_id),
+          response: safe_serialize_response(response)
+        }.compact
+      end
+
+      # Safe version of serialize_response
+      def safe_serialize_response(response)
+        {
+          content: safe_response_value(response, :content),
+          model_id: safe_response_value(response, :model_id),
+          input_tokens: safe_response_value(response, :input_tokens),
+          output_tokens: safe_response_value(response, :output_tokens),
+          cached_tokens: safe_response_value(response, :cached_tokens, 0),
+          cache_creation_tokens: safe_response_value(response, :cache_creation_tokens, 0)
+        }.compact
+      end
+
+      # Emergency fallback - mark execution as error using update_columns
+      # Bypasses callbacks/validations to ensure status is always updated
+      def mark_execution_failed!(execution, error: nil)
+        return unless execution&.id
+        return unless execution.status == "running"
+
+        update_data = {
+          status: "error",
+          completed_at: Time.current,
+          error_class: error&.class&.name || "InstrumentationError",
+          error_message: (error&.message || "Execution status update failed").to_s.truncate(65535)
+        }
+
+        execution.class.where(id: execution.id, status: "running").update_all(update_data)
+      rescue StandardError => e
+        Rails.logger.error("[RubyLLM::Agents] CRITICAL: Failed emergency status update for execution #{execution&.id}: #{e.message}")
       end
     end
   end

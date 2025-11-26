@@ -150,7 +150,7 @@ RSpec.describe RubyLLM::Agents::Execution, type: :model do
 
   describe "status enum" do
     it "has correct status values" do
-      expect(described_class.statuses.keys).to contain_exactly("success", "error", "timeout")
+      expect(described_class.statuses.keys).to contain_exactly("running", "success", "error", "timeout")
     end
 
     it "provides status query methods" do
