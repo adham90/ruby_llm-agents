@@ -154,13 +154,20 @@ module RubyLLM
       # @return [void]
       def load_agent_config
         @config = {
+          # Basic configuration
           model: @agent_class.model,
           temperature: @agent_class.temperature,
           version: @agent_class.version,
           timeout: @agent_class.timeout,
           cache_enabled: @agent_class.cache_enabled?,
           cache_ttl: @agent_class.cache_ttl,
-          params: @agent_class.params
+          params: @agent_class.params,
+
+          # Reliability configuration
+          retries: @agent_class.retries,
+          fallback_models: @agent_class.fallback_models,
+          total_timeout: @agent_class.total_timeout,
+          circuit_breaker: @agent_class.circuit_breaker_config
         }
       end
 
