@@ -1,8 +1,16 @@
 <%
-  has_filters = params[:agent_types].present? || params[:statuses].present? || params[:days].present?
+  # Parse filter params
   selected_agents = params[:agent_types].present? ? (params[:agent_types].is_a?(Array) ? params[:agent_types] : params[:agent_types].split(",")) : []
   selected_statuses = params[:statuses].present? ? (params[:statuses].is_a?(Array) ? params[:statuses] : params[:statuses].split(",")) : []
-  active_filter_count = [selected_agents.any? ? 1 : 0, selected_statuses.any? ? 1 : 0, params[:days].present? ? 1 : 0].sum
+  selected_models = params[:model_ids].present? ? (params[:model_ids].is_a?(Array) ? params[:model_ids] : params[:model_ids].split(",")) : []
+
+  has_filters = selected_agents.any? || selected_statuses.any? || params[:days].present? || selected_models.any?
+  active_filter_count = [
+    selected_agents.any? ? 1 : 0,
+    selected_statuses.any? ? 1 : 0,
+    params[:days].present? ? 1 : 0,
+    selected_models.any? ? 1 : 0
+  ].sum
 
   status_options = [
     { value: "success", label: "Success", color: "bg-green-500" },
@@ -19,6 +27,12 @@
   ]
 
   agent_options = agent_types.map { |t| { value: t, label: t.gsub(/Agent$/, '') } }
+
+  # Build model options - extract short name from model_id
+  model_options = local_assigns[:model_ids]&.map do |m|
+    short_name = m.split("/").last.split(":").first # Handle "provider/model:version" format
+    { value: m, label: short_name }
+  end || []
 %>
 <div id="filters-container" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-6"
      x-data="{ mobileOpen: false }">
@@ -80,6 +94,21 @@
               full_width: true %>
         </div>
 
+        <%# Model Filter %>
+        <% if model_options.any? %>
+          <div class="md:w-auto">
+            <%= render "rubyllm/agents/shared/filter_dropdown",
+                name: "model_ids[]",
+                filter_id: "model_ids",
+                label: "Model",
+                all_label: "All Models",
+                options: model_options,
+                selected: selected_models,
+                icon: "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z",
+                full_width: true %>
+          </div>
+        <% end %>
+
         <%# Agent Types Filter %>
         <% if agent_types.any? %>
           <div class="md:w-auto">
@@ -124,7 +153,7 @@
               <span class="md:hidden">Clear</span>
             <% end %>
           <% end %>
-          <%= link_to ruby_llm_agents.export_executions_path(agent_types: selected_agents.presence, statuses: selected_statuses.presence, days: params[:days].presence),
+          <%= link_to ruby_llm_agents.export_executions_path(agent_types: selected_agents.presence, statuses: selected_statuses.presence, days: params[:days].presence, model_ids: selected_models.presence),
               class: "flex-1 md:flex-initial flex items-center justify-center gap-2 px-3 py-2 md:p-2 text-sm md:text-base text-gray-600 md:text-gray-400 dark:text-gray-300 md:dark:text-gray-400 bg-gray-50 md:bg-transparent dark:bg-gray-700 md:dark:bg-transparent hover:text-gray-600 md:hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 md:dark:hover:bg-gray-700 rounded-lg transition-colors",
               title: "Export CSV",
               data: { turbo: false } do %>

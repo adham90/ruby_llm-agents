@@ -1,7 +1,7 @@
 <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Executions</h2>
 
 <%= turbo_frame_tag "executions_content" do %>
-  <%= render partial: "rubyllm/agents/executions/filters", locals: { agent_types: @agent_types, filter_stats: @filter_stats } %>
+  <%= render partial: "rubyllm/agents/executions/filters", locals: { agent_types: @agent_types, model_ids: @model_ids, filter_stats: @filter_stats } %>
   <%= render partial: "rubyllm/agents/executions/list", locals: { executions: @executions, pagination: @pagination, filter_stats: @filter_stats } %>
 <% end %>
 

@@ -155,11 +155,13 @@ module RubyLLM
       # Loads available options for filter dropdowns
       #
       # Populates @agent_types with all agent types that have executions,
-      # and @statuses with all possible status values.
+      # @model_ids with all distinct models used, and @statuses with all
+      # possible status values.
       #
       # @return [void]
       def load_filter_options
         @agent_types = available_agent_types
+        @model_ids = available_model_ids
         @statuses = Execution.statuses.keys
       end
 
@@ -170,6 +172,15 @@ module RubyLLM
       # @return [Array<String>] Agent type names
       def available_agent_types
         @available_agent_types ||= Execution.distinct.pluck(:agent_type)
+      end
+
+      # Returns distinct model IDs from execution history
+      #
+      # Memoized to avoid duplicate queries within a request.
+      #
+      # @return [Array<String>] Model IDs
+      def available_model_ids
+        @available_model_ids ||= Execution.where.not(model_id: nil).distinct.pluck(:model_id).sort
       end
 
       # Loads paginated executions and associated statistics
@@ -228,6 +239,10 @@ module RubyLLM
         # Apply time filter with validation
         days = parse_days_param
         scope = apply_time_filter(scope, days)
+
+        # Apply model filter
+        model_ids = parse_array_param(:model_ids)
+        scope = scope.where(model_id: model_ids) if model_ids.any?
 
         scope
       end
