@@ -42,6 +42,10 @@
     <!-- Turbo -->
     <%= javascript_include_tag "turbo", type: "module" rescue nil %>
 
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+    <style>[x-cloak] { display: none !important; }</style>
+
     <!-- ActionCable (if available) -->
     <%= action_cable_meta_tag rescue nil %>
 

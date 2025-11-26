@@ -6,102 +6,7 @@
 <% end %>
 
 <script>
-  function toggleDropdown(button) {
-    document.querySelectorAll('.filter-dropdown .dropdown-menu').forEach(menu => {
-      if (menu !== button.nextElementSibling) {
-        menu.classList.add('hidden');
-      }
-    });
-    button.nextElementSibling.classList.toggle('hidden');
-  }
-
-  function selectSingleFilter(name, value, label) {
-    document.getElementById('filter_' + name).value = value;
-    // Update button label - find first matching dropdown
-    const dropdowns = document.querySelectorAll(`[data-filter="${name}"]`);
-    dropdowns.forEach(dropdown => {
-      const labelEl = dropdown.querySelector('.dropdown-label');
-      if (labelEl) labelEl.textContent = label;
-      // Update ring
-      const button = dropdown.querySelector('button');
-      if (value) {
-        button.classList.add('ring-2', 'ring-blue-500', 'ring-offset-1');
-      } else {
-        button.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-1');
-      }
-      // Close dropdown
-      dropdown.querySelector('.dropdown-menu').classList.add('hidden');
-    });
-    document.getElementById('filters-form').requestSubmit();
-  }
-
-  function toggleAllOptions(checkbox, filterName) {
-    // Find all dropdowns with this filter name
-    const dropdowns = document.querySelectorAll(`[data-filter="${filterName}"]`);
-    dropdowns.forEach(dropdown => {
-      const checkboxes = dropdown.querySelectorAll('.filter-checkbox');
-      if (checkbox.checked) {
-        // Uncheck all specific options
-        checkboxes.forEach(cb => cb.checked = false);
-      }
-    });
-    updateMultiSelect(filterName);
-  }
-
-  function updateMultiSelect(filterName) {
-    // Get all checked checkboxes across all instances of this filter
-    const allCheckboxes = document.querySelectorAll(`[data-filter="${filterName}"] .filter-checkbox`);
-    const checkedValues = new Set();
-    allCheckboxes.forEach(cb => {
-      if (cb.checked) checkedValues.add(cb.value);
-    });
-    const count = checkedValues.size;
-
-    // Update all dropdowns with this filter name
-    const dropdowns = document.querySelectorAll(`[data-filter="${filterName}"]`);
-    dropdowns.forEach(dropdown => {
-      const selectAllCheckbox = dropdown.querySelector('.select-all-checkbox');
-      const button = dropdown.querySelector('button');
-      const label = dropdown.querySelector('.dropdown-label');
-
-      // Sync checkboxes in this dropdown
-      dropdown.querySelectorAll('.filter-checkbox').forEach(cb => {
-        cb.checked = checkedValues.has(cb.value);
-      });
-
-      // Update "All" checkbox
-      if (selectAllCheckbox) selectAllCheckbox.checked = (count === 0);
-
-      // Update label
-      if (label) {
-        if (count === 0) {
-          label.textContent = filterName === 'agent_types' ? 'All Agents' : 'All Statuses';
-          button.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-1');
-        } else if (count === 1) {
-          const value = [...checkedValues][0];
-          label.textContent = filterName === 'agent_types' ? value.replace(/Agent$/, '') : value.charAt(0).toUpperCase() + value.slice(1);
-          button.classList.add('ring-2', 'ring-blue-500', 'ring-offset-1');
-        } else {
-          label.textContent = `${count} ${filterName === 'agent_types' ? 'Agents' : 'Statuses'}`;
-          button.classList.add('ring-2', 'ring-blue-500', 'ring-offset-1');
-        }
-      }
-    });
-
-    // Submit form
-    document.getElementById('filters-form').requestSubmit();
-  }
-
-  // Close dropdowns when clicking outside
-  document.addEventListener('click', function(e) {
-    if (!e.target.closest('.filter-dropdown')) {
-      document.querySelectorAll('.filter-dropdown .dropdown-menu').forEach(menu => {
-        menu.classList.add('hidden');
-      });
-    }
-  });
-
-  // Toggle attempts expansion
+  // Toggle attempts expansion (used by executions list)
   function toggleAttempts(executionId) {
     const attemptsRow = document.getElementById('attempts-row-' + executionId);
     const expandBtn = document.querySelector(`button[data-execution-id="${executionId}"]`);
@@ -119,15 +24,5 @@
         expandBtn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
       }
     }
-  }
-
-  // Mobile filters toggle
-  function toggleMobileFilters() {
-    const filters = document.getElementById('mobile-filters');
-    const chevron = document.getElementById('mobile-filter-chevron');
-    if (!filters) return;
-
-    filters.classList.toggle('hidden');
-    chevron?.classList.toggle('rotate-180');
   }
 </script>

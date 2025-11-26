@@ -1,4 +1,9 @@
-<%= turbo_stream.replace "executions_content" do %>
+<%# Update the filters (includes stats) %>
+<%= turbo_stream.replace "filters-container" do %>
   <%= render partial: "rubyllm/agents/executions/filters", locals: { agent_types: @agent_types, filter_stats: @filter_stats } %>
+<% end %>
+
+<%# Update the executions list %>
+<%= turbo_stream.replace "executions-list" do %>
   <%= render partial: "rubyllm/agents/executions/list", locals: { executions: @executions, pagination: @pagination, filter_stats: @filter_stats } %>
 <% end %>

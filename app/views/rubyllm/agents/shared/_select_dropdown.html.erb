@@ -1,5 +1,5 @@
 <%
-  # Single-select filter dropdown
+  # Single-select filter dropdown with Alpine.js
   # Usage:
   #   render "rubyllm/agents/shared/select_dropdown",
   #     name: "days",
@@ -25,9 +25,10 @@
 
   has_selection = selected.present?
 %>
-<div class="relative filter-dropdown" data-filter="<%= filter_id %>">
-  <button type="button" onclick="toggleDropdown(this)"
-    class="<%= full_width ? 'w-full justify-between' : '' %> flex items-center gap-2 px-3 py-2 text-sm
+<div class="relative" x-data="{ open: false }" @click.outside="open = false" data-filter="<%= filter_id %>">
+  <%# Trigger button %>
+  <button type="button" @click="open = !open"
+    class="<%= full_width ? 'w-full md:w-auto justify-between md:justify-start' : '' %> flex items-center gap-2 px-3 py-2 text-sm
            bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg
            hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors
            <%= has_selection ? 'ring-2 ring-blue-500 dark:ring-offset-gray-900' : '' %>">
@@ -37,14 +38,19 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<%= icon %>"/>
         </svg>
       <% end %>
-      <span class="dropdown-label text-gray-700 dark:text-gray-200"><%= current_label %></span>
+      <span class="text-gray-700 dark:text-gray-200"><%= current_label %></span>
     </div>
-    <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
     </svg>
   </button>
 
-  <div class="dropdown-menu hidden absolute z-20 mt-1 <%= full_width ? 'left-0 right-0' : width %>
+  <%# Dropdown menu %>
+  <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-100"
+       x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition ease-in duration-75"
+       x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+       class="absolute z-20 mt-1 <%= full_width ? 'left-0 right-0' : width %>
               bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
     <% options.each do |option| %>
       <%
@@ -54,7 +60,11 @@
           "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
       %>
       <button type="button"
-              onclick="selectSingleFilter('<%= filter_id %>', '<%= option[:value] %>', '<%= option[:label] %>'); return false;"
+              @click="
+                document.getElementById('filter_<%= filter_id %>').value = '<%= option[:value] %>';
+                open = false;
+                $el.closest('form').requestSubmit();
+              "
               class="w-full flex items-center gap-2 px-3 py-2 text-sm text-left <%= item_classes %>">
         <% if option[:icon].present? %>
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -63,7 +73,7 @@
         <% end %>
         <%= option[:label] %>
         <% if is_selected %>
-          <svg class="w-4 h-4 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-4 h-4 ml-auto text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
           </svg>
         <% end %>
