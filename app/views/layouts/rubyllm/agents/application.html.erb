@@ -21,6 +21,7 @@
 
     <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+
     <script>
       tailwind.config = {
         darkMode: 'class'
@@ -40,7 +41,11 @@
     ></script>
 
     <!-- Alpine.js -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"
+    ></script>
+
     <style>[x-cloak] { display: none !important; }</style>
 
     <!-- Auto-refresh for dashboard updates -->
@@ -61,7 +66,7 @@
           }
 
           pollTimer = setInterval(() => {
-            // Only refresh if we're on the dashboard (detected by presence of activity feed)
+            // Dashboard page - detected by presence of activity feed
             if (document.getElementById("activity-feed")) {
               fetch(window.location.href, {
                 headers: { "Accept": "text/html" }
@@ -100,6 +105,32 @@
                 }
               })
               .catch(err => console.log("[RubyLLM::Agents] Poll error:", err))
+            }
+
+            // Execution show page - detected by presence of execution-detail element
+            const executionDetail = document.getElementById("execution-detail")
+            if (executionDetail) {
+              const currentStatus = executionDetail.dataset.status
+
+              // Only poll if execution is still running
+              if (currentStatus === "running") {
+                fetch(window.location.href, {
+                  headers: { "Accept": "text/html" }
+                })
+                .then(response => response.text())
+                .then(html => {
+                  const parser = new DOMParser()
+                  const doc = parser.parseFromString(html, "text/html")
+
+                  // Update the main content area when status changes
+                  const newContent = doc.getElementById("execution-detail")
+                  if (newContent && newContent.dataset.status !== "running") {
+                    // Execution completed - do a full content update
+                    executionDetail.outerHTML = newContent.outerHTML
+                  }
+                })
+                .catch(err => console.log("[RubyLLM::Agents] Poll error:", err))
+              }
             }
           }, POLL_INTERVAL)
         }
@@ -267,13 +298,22 @@
 
   <body class="bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col">
     <!-- Header -->
-    <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700" x-data="{ mobileMenuOpen: false }">
+    <header
+      class="
+        bg-white dark:bg-gray-800 border-b border-gray-200
+        dark:border-gray-700
+      "
+      x-data="{ mobileMenuOpen: false }"
+    >
       <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center">
         <div class="flex justify-between items-center w-full">
           <div class="flex items-center space-x-8">
             <%= link_to ruby_llm_agents.root_path, class: "flex items-center space-x-2" do %>
               <span class="text-lg">🤖</span>
-              <span class="font-semibold text-gray-900 dark:text-gray-100">RubyLLM Agents</span>
+
+              <span class="font-semibold text-gray-900 dark:text-gray-100">
+                RubyLLM Agents
+              </span>
             <% end %>
 
             <!-- Desktop Navigation -->
@@ -342,6 +382,7 @@
                     stroke-width="2"
                     d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
                   />
+
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -354,9 +395,13 @@
             </nav>
           </div>
 
-          <div class="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
+          <div
+            class="
+              flex items-center space-x-2 text-xs text-gray-500
+              dark:text-gray-400
+            "
+          >
             <span id="live-clock" class="tabular-nums"></span>
-            <span class="text-gray-300 dark:text-gray-600 hidden sm:inline">•</span>
 
             <span
               id="live-indicator"
@@ -372,11 +417,28 @@
               @click="mobileMenuOpen = !mobileMenuOpen"
               :aria-expanded="mobileMenuOpen"
               aria-controls="mobile-menu"
-              class="md:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+              class="
+                md:hidden inline-flex items-center justify-center p-2
+                rounded-md text-gray-500 dark:text-gray-400
+                hover:text-gray-900 dark:hover:text-gray-100
+                hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none
+                focus:ring-2 focus:ring-inset focus:ring-blue-500
+              "
             >
               <span class="sr-only">Open main menu</span>
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
               </svg>
             </button>
           </div>
@@ -395,34 +457,83 @@
         x-transition:leave-start="opacity-100 translate-y-0"
         x-transition:leave-end="opacity-0 -translate-y-1"
         @click.outside="mobileMenuOpen = false"
-        class="md:hidden border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+        class="
+          md:hidden border-t border-gray-200 dark:border-gray-700 bg-white
+          dark:bg-gray-800
+        "
       >
         <nav class="max-w-7xl mx-auto px-4 py-3 space-y-1">
           <%= link_to ruby_llm_agents.root_path, "x-on:click": "mobileMenuOpen = false", class: "flex items-center px-3 py-2 text-base font-medium rounded-md #{current_page?(ruby_llm_agents.root_path) ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'}" do %>
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+            <svg
+              class="w-5 h-5 mr-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+              />
             </svg>
             Dashboard
           <% end %>
 
           <%= link_to ruby_llm_agents.agents_path, "x-on:click": "mobileMenuOpen = false", class: "flex items-center px-3 py-2 text-base font-medium rounded-md #{request.path.start_with?(ruby_llm_agents.agents_path) ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'}" do %>
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            <svg
+              class="w-5 h-5 mr-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+              />
             </svg>
             Agents
           <% end %>
 
           <%= link_to ruby_llm_agents.executions_path, "x-on:click": "mobileMenuOpen = false", class: "flex items-center px-3 py-2 text-base font-medium rounded-md #{current_page?(ruby_llm_agents.executions_path) ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'}" do %>
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+            <svg
+              class="w-5 h-5 mr-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+              />
             </svg>
             Executions
           <% end %>
 
           <%= link_to ruby_llm_agents.settings_path, "x-on:click": "mobileMenuOpen = false", class: "flex items-center px-3 py-2 text-base font-medium rounded-md #{current_page?(ruby_llm_agents.settings_path) ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'}" do %>
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <svg
+              class="w-5 h-5 mr-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+              />
+
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              />
             </svg>
             Settings
           <% end %>
@@ -436,22 +547,36 @@
     </main>
 
     <!-- Footer -->
-    <footer class="border-t bg-white dark:bg-gray-800 dark:border-gray-700 mt-auto" data-controller="theme">
+    <footer
+      class="border-t bg-white dark:bg-gray-800 dark:border-gray-700 mt-auto"
+      data-controller="theme"
+    >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div class="flex items-center justify-between">
           <div class="flex items-center space-x-2">
-            <label for="theme-select" class="text-sm text-gray-500 dark:text-gray-400">Theme:</label>
+            <label
+              for="theme-select"
+              class="text-sm text-gray-500 dark:text-gray-400"
+            >
+              Theme:
+            </label>
+
             <select
               id="theme-select"
               data-theme-target="select"
               data-action="change->theme#change"
-              class="text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1 px-2"
+              class="
+                text-sm border border-gray-300 dark:border-gray-600
+                dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm
+                focus:ring-blue-500 focus:border-blue-500 py-1 px-2
+              "
             >
               <option value="light">Light</option>
               <option value="dark">Dark</option>
               <option value="auto">Auto</option>
             </select>
           </div>
+
           <p class="text-sm text-gray-500 dark:text-gray-400">
             Powered by
             <a href="https://github.com/adham90/ruby_llm-agents" class="text-blue-600 dark:text-blue-400 hover:underline">ruby_llm-agents</a>

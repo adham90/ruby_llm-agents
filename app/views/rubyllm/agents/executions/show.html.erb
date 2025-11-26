@@ -1,3 +1,4 @@
+<div id="execution-detail" data-execution-id="<%= @execution.id %>" data-status="<%= @execution.status %>">
 <div class="mb-6">
   <%= link_to ruby_llm_agents.executions_path, class: "inline-flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" do %>
     <svg
@@ -915,3 +916,4 @@
     updateDiagnosticsUI();
   });
 </script>
+</div>

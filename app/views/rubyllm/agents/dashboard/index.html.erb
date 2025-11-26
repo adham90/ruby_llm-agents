@@ -5,17 +5,28 @@
 <%= render partial: "rubyllm/agents/dashboard/now_strip", locals: { now_strip: @now_strip } %>
 
 <!-- Today's Activity Chart -->
-<div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mb-6">
+<div
+  class="
+    bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100
+    dark:border-gray-700 mb-6 pb-24
+  "
+>
   <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
     <div class="flex justify-between items-center">
       <div class="flex items-center space-x-2">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Today's Activity</h3>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          Today's Activity
+        </h3>
+
         <span class="flex items-center text-xs text-green-600 dark:text-green-400">
           <span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-1 animate-pulse"></span>
           Live
         </span>
       </div>
-      <span class="text-xs text-gray-400 dark:text-gray-500">Hourly executions</span>
+
+      <span class="text-xs text-gray-400 dark:text-gray-500">
+        Hourly executions
+      </span>
     </div>
   </div>
 
@@ -36,13 +47,25 @@
 </div>
 
 <!-- Live Activity Feed -->
-<div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+<div
+  class="
+    bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100
+    dark:border-gray-700
+  "
+>
   <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
     <div class="flex justify-between items-center">
       <div class="flex items-center space-x-3">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Live Activity</h3>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          Live Activity
+        </h3>
 
-        <div class="flex items-center space-x-3 text-xs text-gray-400 dark:text-gray-500">
+        <div
+          class="
+            flex items-center space-x-3 text-xs text-gray-400
+            dark:text-gray-500
+          "
+        >
           <span class="flex items-center">
             <span class="w-2 h-2 bg-blue-500 rounded-full mr-1 animate-pulse"></span>
             running
@@ -69,16 +92,16 @@
     </div>
   </div>
 
-  <div
-    id="activity-feed"
-    class="px-6 py-2"
-  >
+  <div id="activity-feed" class="px-6 py-2">
     <% if @recent_executions.any? %>
       <% @recent_executions.each do |execution| %>
         <%= render partial: "rubyllm/agents/dashboard/execution_item", locals: { execution: execution } %>
       <% end %>
     <% else %>
-      <div id="empty-state" class="py-10 text-center text-gray-500 dark:text-gray-400">
+      <div
+        id="empty-state"
+        class="py-10 text-center text-gray-500 dark:text-gray-400"
+      >
         <svg
           class="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600"
           fill="none"
