@@ -57,6 +57,30 @@ module RubyLLM
         "#{prefix}#{formatted}"
       end
 
+      # Renders an enabled/disabled badge
+      #
+      # @param enabled [Boolean] Whether the feature is enabled
+      # @return [ActiveSupport::SafeBuffer] HTML badge element
+      def render_enabled_badge(enabled)
+        if enabled
+          '<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300">Enabled</span>'.html_safe
+        else
+          '<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">Disabled</span>'.html_safe
+        end
+      end
+
+      # Renders a configured/not configured badge
+      #
+      # @param configured [Boolean] Whether the setting is configured
+      # @return [ActiveSupport::SafeBuffer] HTML badge element
+      def render_configured_badge(configured)
+        if configured
+          '<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300">Configured</span>'.html_safe
+        else
+          '<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">Not configured</span>'.html_safe
+        end
+      end
+
       # Syntax-highlights a Ruby object as pretty-printed JSON
       #
       # Converts the object to JSON and applies color highlighting

@@ -1,0 +1,369 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+    <div class="flex items-center space-x-3">
+      <svg class="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+      </svg>
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Global Configuration</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Settings configured in <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">config/initializers/ruby_llm_agents.rb</code></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Model Defaults -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Model Defaults</h3>
+      <div class="space-y-4">
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Default Model</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Used when agents don't specify a model</p>
+          </div>
+          <code class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded text-sm"><%= @config.default_model %></code>
+        </div>
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Default Temperature</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">0.0 = deterministic, 2.0 = creative</p>
+          </div>
+          <code class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded text-sm"><%= @config.default_temperature %></code>
+        </div>
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Default Timeout</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Per-request timeout in seconds</p>
+          </div>
+          <code class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded text-sm"><%= @config.default_timeout %>s</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- Execution Logging -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Execution Logging</h3>
+      <div class="space-y-4">
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Async Logging</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Log executions via background job</p>
+          </div>
+          <%= render_enabled_badge(@config.async_logging) %>
+        </div>
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Retention Period</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">How long to keep execution records</p>
+          </div>
+          <code class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded text-sm"><%= @config.retention_period.inspect %></code>
+        </div>
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Job Retry Attempts</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Retries for async logging job</p>
+          </div>
+          <code class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded text-sm"><%= @config.job_retry_attempts %></code>
+        </div>
+      </div>
+    </div>
+
+    <!-- Caching -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Caching</h3>
+      <div class="space-y-4">
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Cache Store</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Used for response caching</p>
+          </div>
+          <code class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded text-sm"><%= @config.cache_store.class.name %></code>
+        </div>
+      </div>
+    </div>
+
+    <!-- Anomaly Detection -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Anomaly Detection</h3>
+      <div class="space-y-4">
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Cost Threshold</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Executions above this trigger warnings</p>
+          </div>
+          <code class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded text-sm">$<%= @config.anomaly_cost_threshold %></code>
+        </div>
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Duration Threshold</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Executions above this trigger warnings</p>
+          </div>
+          <code class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded text-sm"><%= number_with_delimiter(@config.anomaly_duration_threshold) %>ms</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard Settings -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Dashboard Settings</h3>
+      <div class="space-y-4">
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Records Per Page</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Pagination limit for listings</p>
+          </div>
+          <code class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded text-sm"><%= @config.per_page %></code>
+        </div>
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Recent Executions Limit</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Shown on dashboard home</p>
+          </div>
+          <code class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded text-sm"><%= @config.recent_executions_limit %></code>
+        </div>
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Parent Controller</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Dashboard inherits from this</p>
+          </div>
+          <code class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded text-sm text-xs"><%= @config.dashboard_parent_controller %></code>
+        </div>
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">HTTP Basic Auth</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Username/password protection</p>
+          </div>
+          <%= render_configured_badge(@config.basic_auth_username.present? && @config.basic_auth_password.present?) %>
+        </div>
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Custom Auth</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Lambda-based authentication</p>
+          </div>
+          <%= render_configured_badge(@config.dashboard_auth.present?) %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reliability Defaults -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Reliability Defaults</h3>
+      <% retries = @config.default_retries || {} %>
+      <% has_retries = (retries[:max] || 0) > 0 %>
+      <% has_fallbacks = @config.default_fallback_models.present? && @config.default_fallback_models.any? %>
+      <% has_total_timeout = @config.default_total_timeout.present? %>
+
+      <div class="space-y-4">
+        <div>
+          <div class="flex justify-between items-center">
+            <div>
+              <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Default Retries</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Applied to agents without retry config</p>
+            </div>
+            <%= render_enabled_badge(has_retries) %>
+          </div>
+          <% if has_retries %>
+            <p class="text-xs text-gray-600 dark:text-gray-400 mt-2 ml-4">
+              Max: <%= retries[:max] %> &middot;
+              Backoff: <%= retries[:backoff] %> &middot;
+              Base: <%= retries[:base] %>s &middot;
+              Max delay: <%= retries[:max_delay] %>s
+            </p>
+          <% end %>
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center">
+            <div>
+              <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Default Fallback Models</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Tried when primary model fails</p>
+            </div>
+            <%= render_enabled_badge(has_fallbacks) %>
+          </div>
+          <% if has_fallbacks %>
+            <p class="text-xs text-gray-600 dark:text-gray-400 mt-2 ml-4">
+              <%= @config.default_fallback_models.join(" → ") %>
+            </p>
+          <% end %>
+        </div>
+
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Default Total Timeout</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Across all retry/fallback attempts</p>
+          </div>
+          <% if has_total_timeout %>
+            <code class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded text-sm"><%= @config.default_total_timeout %>s</code>
+          <% else %>
+            <span class="text-xs text-gray-400 dark:text-gray-500">Not configured</span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Governance - Budgets -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Governance - Budgets</h3>
+      <% budgets = @config.budgets || {} %>
+      <% budgets_enabled = @config.budgets_enabled? %>
+
+      <div class="space-y-4">
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Budget Enforcement</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Cost limits for agents</p>
+          </div>
+          <% if budgets_enabled %>
+            <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium <%= @config.budget_enforcement == :hard ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300' : 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300' %>">
+              <%= @config.budget_enforcement.to_s.titleize %>
+            </span>
+          <% else %>
+            <span class="text-xs text-gray-400 dark:text-gray-500">Disabled</span>
+          <% end %>
+        </div>
+
+        <% if budgets_enabled %>
+          <% if budgets[:global_daily] %>
+            <div class="flex justify-between items-center ml-4">
+              <p class="text-sm text-gray-600 dark:text-gray-400">Global Daily Limit</p>
+              <code class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded text-sm">$<%= budgets[:global_daily] %></code>
+            </div>
+          <% end %>
+          <% if budgets[:global_monthly] %>
+            <div class="flex justify-between items-center ml-4">
+              <p class="text-sm text-gray-600 dark:text-gray-400">Global Monthly Limit</p>
+              <code class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded text-sm">$<%= budgets[:global_monthly] %></code>
+            </div>
+          <% end %>
+          <% if budgets[:per_agent_daily].present? %>
+            <div class="ml-4">
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Per-Agent Daily Limits</p>
+              <% budgets[:per_agent_daily].each do |agent, limit| %>
+                <div class="flex justify-between items-center ml-4 text-xs">
+                  <span class="text-gray-500 dark:text-gray-400"><%= agent %></span>
+                  <code class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-1 rounded">$<%= limit %></code>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+          <% if budgets[:per_agent_monthly].present? %>
+            <div class="ml-4">
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">Per-Agent Monthly Limits</p>
+              <% budgets[:per_agent_monthly].each do |agent, limit| %>
+                <div class="flex justify-between items-center ml-4 text-xs">
+                  <span class="text-gray-500 dark:text-gray-400"><%= agent %></span>
+                  <code class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-1 rounded">$<%= limit %></code>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Governance - Alerts -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Governance - Alerts</h3>
+      <% alerts = @config.alerts || {} %>
+      <% alerts_enabled = @config.alerts_enabled? %>
+
+      <div class="space-y-4">
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Alerts</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Notifications for important events</p>
+          </div>
+          <%= render_enabled_badge(alerts_enabled) %>
+        </div>
+
+        <% if alerts_enabled %>
+          <div class="flex justify-between items-center ml-4">
+            <p class="text-sm text-gray-600 dark:text-gray-400">Slack Webhook</p>
+            <%= render_configured_badge(alerts[:slack_webhook_url].present?) %>
+          </div>
+          <div class="flex justify-between items-center ml-4">
+            <p class="text-sm text-gray-600 dark:text-gray-400">Generic Webhook</p>
+            <%= render_configured_badge(alerts[:webhook_url].present?) %>
+          </div>
+          <div class="flex justify-between items-center ml-4">
+            <p class="text-sm text-gray-600 dark:text-gray-400">Custom Handler</p>
+            <%= render_configured_badge(alerts[:custom].present?) %>
+          </div>
+          <% if @config.alert_events.any? %>
+            <div class="ml-4">
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Events</p>
+              <div class="flex flex-wrap gap-1">
+                <% @config.alert_events.each do |event| %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
+                    <%= event %>
+                  </span>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Data Handling -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Data Handling</h3>
+      <div class="space-y-4">
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Persist Prompts</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Store system/user prompts in executions</p>
+          </div>
+          <%= render_enabled_badge(@config.persist_prompts) %>
+        </div>
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Persist Responses</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Store LLM responses in executions</p>
+          </div>
+          <%= render_enabled_badge(@config.persist_responses) %>
+        </div>
+
+        <% redaction = @config.redaction || {} %>
+        <% redaction_enabled = redaction.present? %>
+        <div>
+          <div class="flex justify-between items-center">
+            <div>
+              <p class="text-sm font-medium text-gray-900 dark:text-gray-100">PII Redaction</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Sanitize sensitive data before storing</p>
+            </div>
+            <%= render_enabled_badge(redaction_enabled) %>
+          </div>
+          <% if redaction_enabled %>
+            <div class="mt-2 ml-4 text-xs text-gray-600 dark:text-gray-400 space-y-1">
+              <p>Fields: <%= @config.redaction_fields.count %> patterns</p>
+              <p>Regex patterns: <%= @config.redaction_patterns.count %></p>
+              <p>Placeholder: <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded"><%= @config.redaction_placeholder %></code></p>
+              <% if @config.redaction_max_value_length %>
+                <p>Max value length: <%= number_with_delimiter(@config.redaction_max_value_length) %> chars</p>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info Box -->
+  <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+    <div class="flex">
+      <svg class="w-5 h-5 text-blue-400 mr-3 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+      </svg>
+      <div>
+        <p class="text-sm text-blue-700 dark:text-blue-300">
+          These settings are configured in your Rails initializer and cannot be changed at runtime.
+          To modify, edit <code class="bg-blue-100 dark:bg-blue-800 px-1 rounded">config/initializers/ruby_llm_agents.rb</code> and restart your application.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+

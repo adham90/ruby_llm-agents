@@ -10,4 +10,6 @@ RubyLLM::Agents::Engine.routes.draw do
       get :search
     end
   end
+
+  resource :settings, only: [:show]
 end
