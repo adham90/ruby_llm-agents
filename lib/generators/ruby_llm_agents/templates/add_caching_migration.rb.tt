@@ -1,0 +1,23 @@
+# frozen_string_literal: true
+
+# Migration to add caching tracking columns to executions
+#
+# These columns help track cache effectiveness and cost savings
+# from cached responses.
+#
+# Run with: rails db:migrate
+class AddCachingToRubyLLMAgentsExecutions < ActiveRecord::Migration<%= migration_version %>
+  def change
+    # Cache hit tracking
+    add_column :ruby_llm_agents_executions, :cache_hit, :boolean, default: false
+
+    # Cache key for debugging cache misses
+    add_column :ruby_llm_agents_executions, :response_cache_key, :string
+
+    # When was this response originally cached
+    add_column :ruby_llm_agents_executions, :cached_at, :datetime
+
+    # Index for cache analytics
+    add_index :ruby_llm_agents_executions, :response_cache_key
+  end
+end

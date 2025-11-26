@@ -125,6 +125,32 @@ module RubyLLM
         @attempts.reverse.find { |a| a[:error_class].present? }
       end
 
+      # Returns all failed attempts
+      #
+      # @return [Array<Hash>] Failed attempt data
+      def failed_attempts
+        @attempts.select { |a| a[:error_class].present? }
+      end
+
+      # Checks if a fallback model was used
+      #
+      # A fallback was used if multiple models were tried (more than one unique model)
+      # or if the successful model is different from the first attempted model.
+      #
+      # @return [Boolean] true if a fallback model was used
+      def used_fallback?
+        return false if @attempts.empty?
+
+        first_model = @attempts.first[:model_id]
+        successful = successful_attempt
+
+        # Fallback used if successful model differs from first attempted
+        return true if successful && successful[:model_id] != first_model
+
+        # Or if we tried multiple models (even if all failed)
+        @attempts.map { |a| a[:model_id] }.uniq.length > 1
+      end
+
       # Returns the chosen model (from successful attempt)
       #
       # @return [String, nil] The model ID that succeeded

@@ -59,6 +59,18 @@ module RubyLLM
       # - timeout: completed due to timeout
       enum :status, %w[running success error timeout].index_by(&:itself), prefix: true
 
+      # Allowed finish reasons from LLM providers
+      FINISH_REASONS = %w[stop length content_filter tool_calls other].freeze
+
+      # Allowed fallback reasons for model switching
+      FALLBACK_REASONS = %w[price_limit quality_fail rate_limit timeout safety error other].freeze
+
+      # Execution hierarchy associations
+      belongs_to :parent_execution, class_name: "RubyLLM::Agents::Execution", optional: true
+      belongs_to :root_execution, class_name: "RubyLLM::Agents::Execution", optional: true
+      has_many :child_executions, class_name: "RubyLLM::Agents::Execution",
+               foreign_key: :parent_execution_id, dependent: :nullify, inverse_of: :parent_execution
+
       # Validations
       validates :agent_type, :model_id, :started_at, presence: true
       validates :status, inclusion: { in: statuses.keys }
@@ -67,6 +79,9 @@ module RubyLLM
       validates :input_tokens, :output_tokens, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
       validates :duration_ms, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
       validates :input_cost, :output_cost, :total_cost, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+      validates :finish_reason, inclusion: { in: FINISH_REASONS }, allow_nil: true
+      validates :fallback_reason, inclusion: { in: FALLBACK_REASONS }, allow_nil: true
+      validates :time_to_first_token_ms, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
 
       before_save :calculate_total_tokens, if: -> { input_tokens_changed? || output_tokens_changed? }
       before_save :calculate_total_cost, if: -> { input_cost_changed? || output_cost_changed? }
@@ -144,6 +159,64 @@ module RubyLLM
         return [] if attempts.blank?
 
         attempts.select { |a| a["short_circuited"] }
+      end
+
+      # Returns whether this is a root (top-level) execution
+      #
+      # @return [Boolean] true if this is a root execution
+      def root?
+        parent_execution_id.nil?
+      end
+
+      # Returns whether this is a child (nested) execution
+      #
+      # @return [Boolean] true if this has a parent execution
+      def child?
+        parent_execution_id.present?
+      end
+
+      # Returns the execution tree depth
+      #
+      # @return [Integer] depth level (0 for root)
+      def depth
+        return 0 if root?
+
+        parent_execution&.depth.to_i + 1
+      end
+
+      # Returns whether this execution was a cache hit
+      #
+      # @return [Boolean] true if response was served from cache
+      def cached?
+        cache_hit == true
+      end
+
+      # Returns whether this execution was rate limited
+      #
+      # @return [Boolean] true if rate limiting occurred
+      def rate_limited?
+        rate_limited == true
+      end
+
+      # Returns whether this execution used streaming
+      #
+      # @return [Boolean] true if streaming was enabled
+      def streaming?
+        streaming == true
+      end
+
+      # Returns whether the response was truncated due to max_tokens
+      #
+      # @return [Boolean] true if hit token limit
+      def truncated?
+        finish_reason == "length"
+      end
+
+      # Returns whether the response was blocked by content filter
+      #
+      # @return [Boolean] true if blocked by safety filter
+      def content_filtered?
+        finish_reason == "content_filter"
       end
 
       # Broadcasts execution changes via ActionCable for real-time dashboard updates

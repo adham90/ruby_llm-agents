@@ -1,0 +1,34 @@
+# frozen_string_literal: true
+
+# Migration to add distributed tracing columns to executions
+#
+# These columns enable linking executions across services and debugging
+# production issues by correlating agent calls with web requests.
+#
+# Run with: rails db:migrate
+class AddTracingToRubyLLMAgentsExecutions < ActiveRecord::Migration<%= migration_version %>
+  def change
+    # Request correlation - links to the originating HTTP request
+    add_column :ruby_llm_agents_executions, :request_id, :string
+
+    # OpenTelemetry tracing - for distributed tracing
+    add_column :ruby_llm_agents_executions, :trace_id, :string
+    add_column :ruby_llm_agents_executions, :span_id, :string
+
+    # Execution hierarchy - for nested agent calls
+    add_column :ruby_llm_agents_executions, :parent_execution_id, :bigint
+    add_column :ruby_llm_agents_executions, :root_execution_id, :bigint
+
+    # Indexes for common lookups
+    add_index :ruby_llm_agents_executions, :request_id
+    add_index :ruby_llm_agents_executions, :trace_id
+    add_index :ruby_llm_agents_executions, :parent_execution_id
+    add_index :ruby_llm_agents_executions, :root_execution_id
+
+    # Foreign keys for execution hierarchy
+    add_foreign_key :ruby_llm_agents_executions, :ruby_llm_agents_executions,
+                    column: :parent_execution_id, on_delete: :nullify
+    add_foreign_key :ruby_llm_agents_executions, :ruby_llm_agents_executions,
+                    column: :root_execution_id, on_delete: :nullify
+  end
+end

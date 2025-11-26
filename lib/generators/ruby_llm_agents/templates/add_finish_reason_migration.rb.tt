@@ -1,0 +1,19 @@
+# frozen_string_literal: true
+
+# Migration to add finish_reason column to executions
+#
+# This column tracks why the LLM stopped generating:
+# - stop: Natural end of response
+# - length: Hit max_tokens limit
+# - content_filter: Blocked by safety filter
+# - tool_calls: Model wants to call a tool
+# - other: Unknown reason
+#
+# Note: streaming and time_to_first_token_ms are added by add_streaming migration
+#
+# Run with: rails db:migrate
+class AddFinishReasonToRubyLLMAgentsExecutions < ActiveRecord::Migration<%= migration_version %>
+  def change
+    add_column :ruby_llm_agents_executions, :finish_reason, :string
+  end
+end

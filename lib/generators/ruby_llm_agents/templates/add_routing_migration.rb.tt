@@ -1,0 +1,19 @@
+# frozen_string_literal: true
+
+# Migration to add routing and retry tracking columns to executions
+#
+# These columns help understand why fallbacks happen and which errors
+# are retryable for reliability analysis.
+#
+# Run with: rails db:migrate
+class AddRoutingToRubyLLMAgentsExecutions < ActiveRecord::Migration<%= migration_version %>
+  def change
+    # Fallback tracking - why did we switch models?
+    # Values: price_limit, quality_fail, rate_limit, timeout, safety, other
+    add_column :ruby_llm_agents_executions, :fallback_reason, :string
+
+    # Error classification
+    add_column :ruby_llm_agents_executions, :retryable, :boolean
+    add_column :ruby_llm_agents_executions, :rate_limited, :boolean
+  end
+end

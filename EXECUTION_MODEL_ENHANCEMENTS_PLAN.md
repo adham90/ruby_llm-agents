@@ -42,23 +42,7 @@ Phase 1d: Caching (medium impact - cost savings visibility)
 
 Why: Track cache effectiveness and cost savings.
 
-Phase 1e: Context (medium impact - filtering and multi-tenancy)
-- source: string (web, api, job, cli)
-- user_id: bigint, index (nullable)
-- organization_id: bigint, index (nullable)
-
-Why: Filter executions by source and enable per-user/org analytics.
-
-Phase 2: Hyperparameters (lower priority - add if needed for debugging)
-- max_tokens: integer
-- top_p: float
-- frequency_penalty: float
-- presence_penalty: float
-- prompt_hash: string (sha256 of effective prompt), index
-
-Why: Useful for reproducing executions but not critical for day-to-day analytics.
-
-Phase 3: Tools metrics (add only if using function calling heavily)
+Phase 2: Tools metrics (add only if using function calling heavily)
 - tools_used_count: integer
 - tools_total_time_ms: integer
 - tools_failures_count: integer
@@ -70,27 +54,25 @@ Start minimal, add based on actual query patterns:
 - (trace_id) - trace lookups
 - (request_id) - request correlation
 - (status, started_at) - status dashboards
-- (user_id, started_at) - only if user_id is populated
 
 Use `algorithm: :concurrently` for all indexes.
 
-Phase 4: Model updates
+Phase 3: Model updates
 - Validations
   - finish_reason in allowed set (allow nil)
   - fallback_reason in allowed set (allow nil)
-  - source in allowed set (allow nil)
 - Scopes
-  - by_trace(trace_id), by_request(request_id), by_user(user_id)
+  - by_trace(trace_id), by_request(request_id)
   - with_fallback, with_retries, cached
 
-Phase 5: Instrumentation
+Phase 4: Instrumentation
 - Propagate request_id, trace_id, span_id from web/worker entrypoints.
 - Record time_to_first_token_ms and streaming=true for streamed runs.
 - On retries/fallbacks, set fallback_reason.
 - On cache hit, set cache_hit, cache_key, cached_at.
 
 Migrations
-- One migration per sub-phase (1a, 1b, 1c, 1d, 1e).
+- One migration per sub-phase (1a, 1b, 1c, 1d).
 - All new columns nullable.
 - Use concurrent indexes.
 - Test rollback in staging.
@@ -99,7 +81,7 @@ Dashboard updates
 - Show indicators for fallback, retries, cache hit
 - Show finish_reason, time_to_first_token_ms
 - Add trace_id/request_id links
-- Add filters for status, agent_type, model_id, user_id, trace_id
+- Add filters for status, agent_type, model_id, trace_id
 
 Testing plan
 - Unit tests for validations and scopes
@@ -112,6 +94,6 @@ Success criteria
 - Dashboard queries p99 < 500ms
 
 Rollout
-- Phase 1a-1e: Ship one sub-phase at a time over 1-2 weeks
-- Phase 2-3: Add only when actually needed
+- Phase 1a-1d: Ship one sub-phase at a time
+- Phase 2: Add only when using tools heavily
 - Validate each phase before proceeding to next

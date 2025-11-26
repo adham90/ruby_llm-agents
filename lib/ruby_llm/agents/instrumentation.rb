@@ -232,6 +232,7 @@ module RubyLLM
       # @return [RubyLLM::Agents::Execution, nil] The created record, or nil on failure
       def create_running_execution(started_at, fallback_chain: [])
         config = RubyLLM::Agents.configuration
+        metadata = execution_metadata
 
         execution_data = {
           agent_type: self.class.name,
@@ -241,11 +242,18 @@ module RubyLLM
           started_at: started_at,
           status: "running",
           parameters: redacted_parameters,
-          metadata: execution_metadata,
+          metadata: metadata,
           system_prompt: config.persist_prompts ? redacted_system_prompt : nil,
           user_prompt: config.persist_prompts ? redacted_user_prompt : nil,
           streaming: self.class.streaming
         }
+
+        # Extract tracing fields from metadata if present
+        execution_data[:request_id] = metadata[:request_id] if metadata[:request_id]
+        execution_data[:trace_id] = metadata[:trace_id] if metadata[:trace_id]
+        execution_data[:span_id] = metadata[:span_id] if metadata[:span_id]
+        execution_data[:parent_execution_id] = metadata[:parent_execution_id] if metadata[:parent_execution_id]
+        execution_data[:root_execution_id] = metadata[:root_execution_id] if metadata[:root_execution_id]
 
         # Add fallback chain if provided (for reliability-enabled executions)
         if fallback_chain.any?
@@ -361,6 +369,16 @@ module RubyLLM
 
         # Add streaming metrics if available
         update_data[:time_to_first_token_ms] = time_to_first_token_ms if respond_to?(:time_to_first_token_ms) && time_to_first_token_ms
+
+        # Add finish reason from response if available
+        if @last_response
+          finish_reason = safe_extract_finish_reason(@last_response)
+          update_data[:finish_reason] = finish_reason if finish_reason
+        end
+
+        # Add routing/retry tracking fields
+        routing_data = extract_routing_data(attempt_tracker, error)
+        update_data.merge!(routing_data)
 
         # Add response data if we have a last response
         if @last_response && config.persist_responses
@@ -556,8 +574,114 @@ module RubyLLM
           cached_tokens: safe_response_value(response, :cached_tokens, 0),
           cache_creation_tokens: safe_response_value(response, :cache_creation_tokens, 0),
           model_id: safe_response_value(response, :model_id),
+          finish_reason: safe_extract_finish_reason(response),
           response: safe_serialize_response(response)
         }.compact
+      end
+
+      # Extracts finish reason from response, normalizing to standard values
+      #
+      # @param response [RubyLLM::Message] The LLM response
+      # @return [String, nil] Normalized finish reason
+      def safe_extract_finish_reason(response)
+        reason = safe_response_value(response, :finish_reason) ||
+                 safe_response_value(response, :stop_reason)
+        return nil unless reason
+
+        # Normalize to standard values
+        normalized = reason.to_s.downcase
+        case normalized
+        when "stop", "end_turn", "stop_sequence"
+          "stop"
+        when "length", "max_tokens"
+          "length"
+        when "content_filter", "safety"
+          "content_filter"
+        when "tool_calls", "tool_use", "function_call"
+          "tool_calls"
+        else
+          "other"
+        end
+      end
+
+      # Extracts routing/retry tracking data from attempt tracker
+      #
+      # Analyzes the execution attempts to determine:
+      # - Why a fallback was used (fallback_reason)
+      # - Whether the error is retryable
+      # - Whether rate limiting occurred
+      #
+      # @param attempt_tracker [AttemptTracker] The attempt tracker
+      # @param error [Exception, nil] The final error (if any)
+      # @return [Hash] Routing data to merge into execution
+      def extract_routing_data(attempt_tracker, error)
+        data = {}
+
+        # Determine if a fallback was used and why
+        if attempt_tracker.used_fallback?
+          data[:fallback_reason] = determine_fallback_reason(attempt_tracker)
+        end
+
+        # Check if error is retryable
+        if error
+          data[:retryable] = retryable_error?(error)
+          data[:rate_limited] = rate_limit_error?(error)
+        end
+
+        data
+      end
+
+      # Determines the reason for using a fallback model
+      #
+      # @param attempt_tracker [AttemptTracker] The attempt tracker
+      # @return [String] Fallback reason
+      def determine_fallback_reason(attempt_tracker)
+        # Analyze failed attempts to determine why fallback was needed
+        failed = attempt_tracker.failed_attempts
+        return "other" if failed.empty?
+
+        last_failed = failed.last
+        error_class = last_failed[:error_class]
+
+        case error_class
+        when /RateLimitError/, /TooManyRequestsError/
+          "rate_limit"
+        when /Timeout/
+          "timeout"
+        when /ContentFilter/, /SafetyError/
+          "safety"
+        when /BudgetExceeded/
+          "price_limit"
+        else
+          "error"
+        end
+      end
+
+      # Checks if an error is retryable
+      #
+      # @param error [Exception] The error
+      # @return [Boolean] true if retryable
+      def retryable_error?(error)
+        return false unless error
+
+        # Check against known retryable error patterns
+        error_class = error.class.name
+        error_class.match?(/Timeout|ConnectionError|RateLimitError|ServiceUnavailable|BadGateway/)
+      end
+
+      # Checks if an error indicates rate limiting
+      #
+      # @param error [Exception] The error
+      # @return [Boolean] true if rate limited
+      def rate_limit_error?(error)
+        return false unless error
+
+        error_class = error.class.name
+        error_message = error.message.to_s.downcase
+
+        error_class.match?(/RateLimitError|TooManyRequests/) ||
+          error_message.include?("rate limit") ||
+          error_message.include?("too many requests")
       end
 
       # Serializes response to a hash for storage

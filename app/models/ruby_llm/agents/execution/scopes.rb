@@ -161,6 +161,102 @@ module RubyLLM
           end
 
           # @!endgroup
+
+          # @!group Tracing Scopes
+
+          # @!method by_trace(trace_id)
+          #   Filters to a specific distributed trace
+          #   @param trace_id [String] The trace identifier
+          #   @return [ActiveRecord::Relation]
+
+          # @!method by_request(request_id)
+          #   Filters to a specific request
+          #   @param request_id [String] The request identifier
+          #   @return [ActiveRecord::Relation]
+
+          # @!method root_executions
+          #   Returns only root (top-level) executions
+          #   @return [ActiveRecord::Relation]
+
+          # @!method child_executions
+          #   Returns only child (nested) executions
+          #   @return [ActiveRecord::Relation]
+          scope :by_trace, ->(trace_id) { where(trace_id: trace_id) }
+          scope :by_request, ->(request_id) { where(request_id: request_id) }
+          scope :root_executions, -> { where(parent_execution_id: nil) }
+          scope :child_executions, -> { where.not(parent_execution_id: nil) }
+          scope :children_of, ->(execution_id) { where(parent_execution_id: execution_id) }
+
+          # @!endgroup
+
+          # @!group Routing and Retry Scopes
+
+          # @!method with_fallback
+          #   Returns executions that used a fallback model
+          #   @return [ActiveRecord::Relation]
+
+          # @!method retryable_errors
+          #   Returns executions with retryable errors
+          #   @return [ActiveRecord::Relation]
+
+          # @!method rate_limited
+          #   Returns executions that were rate limited
+          #   @return [ActiveRecord::Relation]
+          scope :with_fallback, -> { where.not(fallback_reason: nil) }
+          scope :retryable_errors, -> { where(retryable: true) }
+          scope :rate_limited, -> { where(rate_limited: true) }
+          scope :by_fallback_reason, ->(reason) { where(fallback_reason: reason) }
+
+          # @!endgroup
+
+          # @!group Caching Scopes
+
+          # @!method cached
+          #   Returns executions that were cache hits
+          #   @return [ActiveRecord::Relation]
+
+          # @!method cache_miss
+          #   Returns executions that were cache misses
+          #   @return [ActiveRecord::Relation]
+          scope :cached, -> { where(cache_hit: true) }
+          scope :cache_miss, -> { where(cache_hit: [false, nil]) }
+
+          # @!endgroup
+
+          # @!group Streaming Scopes
+
+          # @!method streaming
+          #   Returns executions that used streaming
+          #   @return [ActiveRecord::Relation]
+
+          # @!method non_streaming
+          #   Returns executions that did not use streaming
+          #   @return [ActiveRecord::Relation]
+          scope :streaming, -> { where(streaming: true) }
+          scope :non_streaming, -> { where(streaming: [false, nil]) }
+
+          # @!endgroup
+
+          # @!group Finish Reason Scopes
+
+          # @!method by_finish_reason(reason)
+          #   Filters by finish reason
+          #   @param reason [String] The finish reason (stop, length, content_filter, tool_calls)
+          #   @return [ActiveRecord::Relation]
+
+          # @!method truncated
+          #   Returns executions that hit max_tokens limit
+          #   @return [ActiveRecord::Relation]
+
+          # @!method content_filtered
+          #   Returns executions blocked by safety filter
+          #   @return [ActiveRecord::Relation]
+          scope :by_finish_reason, ->(reason) { where(finish_reason: reason) }
+          scope :truncated, -> { where(finish_reason: "length") }
+          scope :content_filtered, -> { where(finish_reason: "content_filter") }
+          scope :tool_calls, -> { where(finish_reason: "tool_calls") }
+
+          # @!endgroup
         end
 
         # @!group Aggregation Methods

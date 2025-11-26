@@ -55,6 +55,58 @@ module RubyLlmAgents
       )
     end
 
+    def create_add_tracing_migration
+      # Check if columns already exist
+      if column_exists?(:ruby_llm_agents_executions, :trace_id)
+        say_status :skip, "trace_id column already exists", :yellow
+        return
+      end
+
+      migration_template(
+        "add_tracing_migration.rb.tt",
+        File.join(db_migrate_path, "add_tracing_to_ruby_llm_agents_executions.rb")
+      )
+    end
+
+    def create_add_routing_migration
+      # Check if columns already exist
+      if column_exists?(:ruby_llm_agents_executions, :fallback_reason)
+        say_status :skip, "fallback_reason column already exists", :yellow
+        return
+      end
+
+      migration_template(
+        "add_routing_migration.rb.tt",
+        File.join(db_migrate_path, "add_routing_to_ruby_llm_agents_executions.rb")
+      )
+    end
+
+    def create_add_finish_reason_migration
+      # Check if columns already exist
+      if column_exists?(:ruby_llm_agents_executions, :finish_reason)
+        say_status :skip, "finish_reason column already exists", :yellow
+        return
+      end
+
+      migration_template(
+        "add_finish_reason_migration.rb.tt",
+        File.join(db_migrate_path, "add_finish_reason_to_ruby_llm_agents_executions.rb")
+      )
+    end
+
+    def create_add_caching_migration
+      # Check if columns already exist
+      if column_exists?(:ruby_llm_agents_executions, :cache_hit)
+        say_status :skip, "cache_hit column already exists", :yellow
+        return
+      end
+
+      migration_template(
+        "add_caching_migration.rb.tt",
+        File.join(db_migrate_path, "add_caching_to_ruby_llm_agents_executions.rb")
+      )
+    end
+
     def show_post_upgrade_message
       say ""
       say "RubyLLM::Agents upgrade migration created!", :green
