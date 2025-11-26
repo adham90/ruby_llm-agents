@@ -98,11 +98,12 @@
                <%= selected.include?(option[:value].to_s) ? 'checked' : '' %>
                @change="$el.closest('form').requestSubmit()">
 
-        <%# Label: click to select ONLY this item %>
+        <%# Label: click to select ONLY this item AND close dropdown %>
         <span class="flex-1 flex items-center gap-2 cursor-pointer"
               @click.prevent="
                 $el.closest('[data-filter]').querySelectorAll('.filter-cb').forEach(c => c.checked = false);
                 $el.previousElementSibling.checked = true;
+                open = false;
                 $el.closest('form').requestSubmit();
               ">
           <% if option[:color].present? %>

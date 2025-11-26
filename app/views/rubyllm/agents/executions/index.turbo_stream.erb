@@ -1,6 +1,15 @@
-<%# Update the filters (includes stats) %>
-<%= turbo_stream.replace "filters-container" do %>
-  <%= render partial: "rubyllm/agents/executions/filters", locals: { agent_types: @agent_types, filter_stats: @filter_stats } %>
+<%# Only update the stats (not the whole filter container to preserve Alpine.js state) %>
+<%= turbo_stream.replace "filter-stats" do %>
+  <div id="filter-stats" class="flex items-center justify-between md:justify-end gap-3 py-2 px-3 md:p-0 bg-gray-50 md:bg-transparent dark:bg-gray-700/50 md:dark:bg-transparent rounded-lg md:rounded-none">
+    <span class="text-xs text-gray-500 dark:text-gray-400 md:hidden">Results</span>
+    <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+      <span class="tabular-nums"><%= number_to_human_short(@filter_stats[:total_count]) %><span class="md:hidden"> executions</span></span>
+      <span class="text-gray-300 dark:text-gray-600">|</span>
+      <span class="tabular-nums"><%= number_to_human_short(@filter_stats[:total_cost], prefix: "$", precision: 2) %></span>
+      <span class="hidden md:inline text-gray-300 dark:text-gray-600">|</span>
+      <span class="hidden md:inline tabular-nums"><%= number_to_human_short(@filter_stats[:total_tokens]) %>t</span>
+    </div>
+  </div>
 <% end %>
 
 <%# Update the executions list %>
