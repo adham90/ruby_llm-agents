@@ -48,6 +48,7 @@ module RubyLLM
         @last_response = nil
         @status_update_completed = false
         raised_exception = nil
+        completion_error = nil
 
         attempt_tracker = AttemptTracker.new
 
@@ -59,40 +60,58 @@ module RubyLLM
           result = yield(attempt_tracker)
 
           # Update to success with attempts
-          complete_execution_with_attempts(
-            execution,
-            attempt_tracker: attempt_tracker,
-            completed_at: Time.current,
-            status: "success"
-          )
-          @status_update_completed = true
+          # NOTE: If this fails, we capture the error but DON'T re-raise
+          # The ensure block will handle it via mark_execution_failed!
+          begin
+            complete_execution_with_attempts(
+              execution,
+              attempt_tracker: attempt_tracker,
+              completed_at: Time.current,
+              status: "success"
+            )
+            @status_update_completed = true
+          rescue StandardError => e
+            completion_error = e
+            # Don't re-raise - let ensure block handle via mark_execution_failed!
+          end
 
           result
         rescue Timeout::Error, Reliability::TotalTimeoutError => e
           raised_exception = e
-          complete_execution_with_attempts(
-            execution,
-            attempt_tracker: attempt_tracker,
-            completed_at: Time.current,
-            status: "timeout",
-            error: e
-          )
-          @status_update_completed = true
+          begin
+            complete_execution_with_attempts(
+              execution,
+              attempt_tracker: attempt_tracker,
+              completed_at: Time.current,
+              status: "timeout",
+              error: e
+            )
+            @status_update_completed = true
+          rescue StandardError => completion_err
+            completion_error = completion_err
+          end
           raise
-        rescue => e
+        rescue StandardError => e
           raised_exception = e
-          complete_execution_with_attempts(
-            execution,
-            attempt_tracker: attempt_tracker,
-            completed_at: Time.current,
-            status: "error",
-            error: e
-          )
-          @status_update_completed = true
+          begin
+            complete_execution_with_attempts(
+              execution,
+              attempt_tracker: attempt_tracker,
+              completed_at: Time.current,
+              status: "error",
+              error: e
+            )
+            @status_update_completed = true
+          rescue StandardError => completion_err
+            completion_error = completion_err
+          end
           raise
         ensure
           unless @status_update_completed
-            mark_execution_failed!(execution, error: raised_exception)
+            # Prefer completion_error (from update! failure) over raised_exception (from execution)
+            # Use $! as final fallback - it holds the current exception being propagated
+            actual_error = completion_error || raised_exception || $!
+            mark_execution_failed!(execution, error: actual_error)
           end
         end
       end
@@ -114,6 +133,7 @@ module RubyLLM
         @last_response = nil
         @status_update_completed = false
         raised_exception = nil
+        completion_error = nil
 
         # Create execution record immediately with running status
         execution = create_running_execution(started_at)
@@ -123,40 +143,58 @@ module RubyLLM
           result = yield
 
           # Update to success
-          complete_execution(
-            execution,
-            completed_at: Time.current,
-            status: "success",
-            response: @last_response
-          )
-          @status_update_completed = true
+          # NOTE: If this fails, we capture the error but DON'T re-raise
+          # The ensure block will handle it via mark_execution_failed!
+          begin
+            complete_execution(
+              execution,
+              completed_at: Time.current,
+              status: "success",
+              response: @last_response
+            )
+            @status_update_completed = true
+          rescue StandardError => e
+            completion_error = e
+            # Don't re-raise - let ensure block handle via mark_execution_failed!
+          end
 
           result
         rescue Timeout::Error => e
           raised_exception = e
-          complete_execution(
-            execution,
-            completed_at: Time.current,
-            status: "timeout",
-            error: e
-          )
-          @status_update_completed = true
+          begin
+            complete_execution(
+              execution,
+              completed_at: Time.current,
+              status: "timeout",
+              error: e
+            )
+            @status_update_completed = true
+          rescue StandardError => completion_err
+            completion_error = completion_err
+          end
           raise
-        rescue => e
+        rescue StandardError => e
           raised_exception = e
-          complete_execution(
-            execution,
-            completed_at: Time.current,
-            status: "error",
-            error: e
-          )
-          @status_update_completed = true
+          begin
+            complete_execution(
+              execution,
+              completed_at: Time.current,
+              status: "error",
+              error: e
+            )
+            @status_update_completed = true
+          rescue StandardError => completion_err
+            completion_error = completion_err
+          end
           raise
         ensure
           # Emergency fallback: mark as error if complete_execution itself failed
           # This ensures executions never remain stuck in 'running' status
           unless @status_update_completed
-            mark_execution_failed!(execution, error: raised_exception)
+            # Prefer completion_error (from update! failure) over raised_exception (from execution)
+            # Use $! as final fallback - it holds the current exception being propagated
+            actual_error = completion_error || raised_exception || $!
+            mark_execution_failed!(execution, error: actual_error)
           end
         end
       end
@@ -259,9 +297,18 @@ module RubyLLM
             Rails.logger.warn("[RubyLLM::Agents] Cost calculation failed: #{cost_error.message}")
           end
         end
+      rescue ActiveRecord::RecordInvalid => e
+        Rails.logger.error("[RubyLLM::Agents] Validation failed for execution #{execution&.id}: #{e.record.errors.full_messages.join(', ')}")
+        if Rails.env.development? || Rails.env.test?
+          Rails.logger.error("[RubyLLM::Agents] Update data: #{update_data.inspect}")
+        end
+        raise
       rescue StandardError => e
-        Rails.logger.error("[RubyLLM::Agents] Failed to update execution record: #{e.message}")
-        raise # Re-raise so ensure block can handle emergency update
+        Rails.logger.error("[RubyLLM::Agents] Failed to update execution record #{execution&.id}: #{e.class}: #{e.message}")
+        if Rails.env.development? || Rails.env.test?
+          Rails.logger.error("[RubyLLM::Agents] Update data: #{update_data.inspect}")
+        end
+        raise
       end
 
       # Updates execution record with completion data and attempt tracking
@@ -320,8 +367,17 @@ module RubyLLM
             Rails.logger.warn("[RubyLLM::Agents] Cost calculation failed: #{cost_error.message}")
           end
         end
+      rescue ActiveRecord::RecordInvalid => e
+        Rails.logger.error("[RubyLLM::Agents] Validation failed for execution #{execution&.id}: #{e.record.errors.full_messages.join(', ')}")
+        if Rails.env.development? || Rails.env.test?
+          Rails.logger.error("[RubyLLM::Agents] Update data: #{update_data.inspect}")
+        end
+        raise
       rescue StandardError => e
-        Rails.logger.error("[RubyLLM::Agents] Failed to update execution record: #{e.message}")
+        Rails.logger.error("[RubyLLM::Agents] Failed to update execution record #{execution&.id}: #{e.class}: #{e.message}")
+        if Rails.env.development? || Rails.env.test?
+          Rails.logger.error("[RubyLLM::Agents] Update data: #{update_data.inspect}")
+        end
         raise
       end
 
@@ -514,11 +570,21 @@ module RubyLLM
         return unless execution&.id
         return unless execution.status == "running"
 
+        # Build a detailed error message including backtrace for debugging
+        error_message = if error
+          backtrace_info = error.backtrace&.first(5)&.join("\n  ") || ""
+          msg = "#{error.class}: #{error.message}"
+          msg += "\n  #{backtrace_info}" if backtrace_info.present?
+          msg
+        else
+          "Execution status update failed (no error details captured)"
+        end
+
         update_data = {
           status: "error",
           completed_at: Time.current,
           error_class: error&.class&.name || "InstrumentationError",
-          error_message: (error&.message || "Execution status update failed").to_s.truncate(65535)
+          error_message: error_message.to_s.truncate(65535)
         }
 
         execution.class.where(id: execution.id, status: "running").update_all(update_data)

@@ -88,18 +88,8 @@ module RubyLLM
 
         private
 
-        # Resolves model info from RubyLLM for pricing lookup
-        #
-        # @return [RubyLLM::Model, nil] Model info or nil if not found
-        def resolve_model_info
-          return nil unless model_id
-
-          model, _provider = RubyLLM::Models.resolve(model_id)
-          model
-        rescue RubyLLM::ModelNotFoundError
-          Rails.logger.warn("[RubyLLM::Agents] Model not found for pricing: #{model_id}")
-          nil
-        end
+        # NOTE: resolve_model_info is defined in Execution class (execution.rb)
+        # It accepts an optional model_id parameter, defaulting to self.model_id
 
         # Formats a cost value as currency string
         #

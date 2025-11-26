@@ -196,12 +196,14 @@ module RubyLLM
 
       # Resolves model info for cost calculation
       #
-      # @param model_id [String] The model identifier
+      # @param lookup_model_id [String, nil] The model identifier (defaults to self.model_id)
       # @return [Object, nil] Model info or nil
-      def resolve_model_info(model_id)
-        return nil unless model_id
+      def resolve_model_info(lookup_model_id = nil)
+        lookup_model_id ||= model_id
+        return nil unless lookup_model_id
 
-        RubyLLM::Models.resolve(model_id)
+        model, _provider = RubyLLM::Models.resolve(lookup_model_id)
+        model
       rescue StandardError
         nil
       end
