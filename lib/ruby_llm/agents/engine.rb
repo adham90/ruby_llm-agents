@@ -20,6 +20,7 @@ module RubyLLM
 
         RubyLLM::Agents.const_set(:ApplicationController, Class.new(parent_class) do
           layout "rubyllm/agents/application"
+          helper RubyLLM::Agents::ApplicationHelper
           before_action :authenticate_dashboard!
 
           private
