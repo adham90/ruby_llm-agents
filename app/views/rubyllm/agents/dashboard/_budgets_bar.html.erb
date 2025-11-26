@@ -1,0 +1,75 @@
+<%# Budget bars for daily and monthly spending %>
+<% if budget_status[:enabled] %>
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 mb-6">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Budget Usage</h3>
+      <span class="text-xs text-gray-500 dark:text-gray-400">
+        <%= budget_status[:enforcement] == :hard ? "Hard Enforcement" : "Soft Enforcement" %>
+      </span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <%# Daily Budget %>
+      <% if budget_status[:global_daily] %>
+        <% daily = budget_status[:global_daily] %>
+        <% percentage = daily[:percentage_used] %>
+        <% bar_color = percentage >= 100 ? "bg-red-500" : (percentage >= 80 ? "bg-yellow-500" : "bg-green-500") %>
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-xs font-medium text-gray-600 dark:text-gray-300">Daily</span>
+            <span class="text-xs text-gray-500 dark:text-gray-400">
+              $<%= number_with_precision(daily[:current], precision: 2) %> / $<%= number_with_precision(daily[:limit], precision: 2) %>
+            </span>
+          </div>
+          <div class="relative w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div class="absolute h-full <%= bar_color %> rounded-full transition-all duration-300" style="width: <%= [percentage, 100].min %>%"></div>
+            <%# Soft cap marker at 80% %>
+            <div class="absolute h-full w-0.5 bg-yellow-600 dark:bg-yellow-400" style="left: 80%"></div>
+          </div>
+          <div class="flex justify-between items-center mt-1">
+            <span class="text-xs <%= percentage >= 100 ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-400 dark:text-gray-500' %>">
+              <%= percentage.round(1) %>% used
+            </span>
+            <span class="text-xs text-gray-400 dark:text-gray-500">
+              $<%= number_with_precision(daily[:remaining], precision: 2) %> remaining
+            </span>
+          </div>
+        </div>
+      <% end %>
+
+      <%# Monthly Budget %>
+      <% if budget_status[:global_monthly] %>
+        <% monthly = budget_status[:global_monthly] %>
+        <% percentage = monthly[:percentage_used] %>
+        <% bar_color = percentage >= 100 ? "bg-red-500" : (percentage >= 80 ? "bg-yellow-500" : "bg-green-500") %>
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-xs font-medium text-gray-600 dark:text-gray-300">Monthly</span>
+            <span class="text-xs text-gray-500 dark:text-gray-400">
+              $<%= number_with_precision(monthly[:current], precision: 2) %> / $<%= number_with_precision(monthly[:limit], precision: 2) %>
+            </span>
+          </div>
+          <div class="relative w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div class="absolute h-full <%= bar_color %> rounded-full transition-all duration-300" style="width: <%= [percentage, 100].min %>%"></div>
+            <%# Soft cap marker at 80% %>
+            <div class="absolute h-full w-0.5 bg-yellow-600 dark:bg-yellow-400" style="left: 80%"></div>
+          </div>
+          <div class="flex justify-between items-center mt-1">
+            <span class="text-xs <%= percentage >= 100 ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-400 dark:text-gray-500' %>">
+              <%= percentage.round(1) %>% used
+            </span>
+            <span class="text-xs text-gray-400 dark:text-gray-500">
+              $<%= number_with_precision(monthly[:remaining], precision: 2) %> remaining
+            </span>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <% unless budget_status[:global_daily] || budget_status[:global_monthly] %>
+      <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-2">
+        No budget limits configured
+      </p>
+    <% end %>
+  </div>
+<% end %>

@@ -8,6 +8,10 @@ RubyLLM::Agents::Engine.routes.draw do
   resources :executions, only: [:index, :show] do
     collection do
       get :search
+      get :export
+    end
+    member do
+      post :rerun
     end
   end
 

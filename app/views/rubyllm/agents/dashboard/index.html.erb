@@ -1,4 +1,13 @@
 <%= turbo_frame_tag "dashboard", data: { connection_target: "dashboardFrame" } do %>
+  <!-- Budget Bars -->
+  <%= render partial: "rubyllm/agents/dashboard/budgets_bar", locals: { budget_status: @budget_status } %>
+
+  <!-- Circuit Breaker Strip -->
+  <%= render partial: "rubyllm/agents/dashboard/breaker_strip", locals: { open_breakers: @open_breakers } %>
+
+  <!-- Alerts Feed -->
+  <%= render partial: "rubyllm/agents/dashboard/alerts_feed", locals: { recent_alerts: @recent_alerts } %>
+
   <!-- Stats Cards -->
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
     <%= render "rubyllm/agents/shared/stat_card",

@@ -81,6 +81,33 @@ module RubyLLM
         end
       end
 
+      # Redacts sensitive data from an object for display
+      #
+      # Uses the configured redaction rules to mask sensitive fields
+      # and patterns in the data.
+      #
+      # @param obj [Object] The object to redact (Hash, Array, or primitive)
+      # @return [Object] The redacted object
+      # @example
+      #   redact_for_display({ password: "secret", name: "John" })
+      #   #=> { password: "[REDACTED]", name: "John" }
+      def redact_for_display(obj)
+        Redactor.redact(obj)
+      end
+
+      # Syntax-highlights a redacted Ruby object as pretty-printed JSON
+      #
+      # Combines redaction and highlighting in one call.
+      #
+      # @param obj [Object] Any JSON-serializable Ruby object
+      # @return [ActiveSupport::SafeBuffer] HTML-safe highlighted redacted JSON
+      def highlight_json_redacted(obj)
+        return "" if obj.nil?
+
+        redacted = redact_for_display(obj)
+        highlight_json(redacted)
+      end
+
       # Syntax-highlights a Ruby object as pretty-printed JSON
       #
       # Converts the object to JSON and applies color highlighting

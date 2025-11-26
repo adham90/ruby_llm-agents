@@ -144,6 +144,27 @@ module RubyLLM
       def load_chart_data
         @trend_data = Execution.trend_analysis(agent_type: @agent_type, days: 30)
         @status_distribution = Execution.by_agent(@agent_type).group(:status).count
+        load_version_comparison
+      end
+
+      # Loads version comparison data if multiple versions exist
+      #
+      # @return [void]
+      def load_version_comparison
+        return unless @versions.size >= 2
+
+        # Default to comparing two most recent versions
+        v1 = params[:compare_v1] || @versions[0]
+        v2 = params[:compare_v2] || @versions[1]
+
+        @version_comparison = {
+          v1: v1,
+          v2: v2,
+          data: Execution.compare_versions(@agent_type, v1, v2, period: :this_month)
+        }
+      rescue StandardError => e
+        Rails.logger.debug("[RubyLLM::Agents] Version comparison error: #{e.message}")
+        @version_comparison = nil
       end
 
       # Loads the current agent class configuration

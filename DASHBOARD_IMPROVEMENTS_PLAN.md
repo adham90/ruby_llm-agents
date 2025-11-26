@@ -1,9 +1,37 @@
 # RubyLLM::Agents – Dashboard Improvements Plan
 
-Status: Draft
+Status: In Progress
 Owner: Core Maintainers
 Target Version: 0.3.x
 Last Updated: 2025-11-26
+
+## Implementation Progress
+
+### Completed (Prior to Phase 1)
+- [x] Attempts timeline UI on execution detail page
+- [x] Agent hero KPIs (5 stat cards on agent show page)
+- [x] Circuit breaker status display on agent page (with cooldown timers)
+- [x] Execution trends charts (30-day executions + cost)
+- [x] Basic filtering (status, agent, time range dropdowns)
+- [x] Dashboard stats caching (1-min TTL for daily stats)
+- [x] JSON syntax highlighting with copy buttons
+- [x] Real-time ActionCable broadcasts for activity feed
+- [x] Redaction module (lib/ruby_llm/agents/redactor.rb)
+- [x] Version comparison backend (Execution.compare_versions method)
+
+### Completed (Phase 1)
+- [x] CSV Export for executions (with redaction applied)
+- [x] Search box with free-text (error_class, error_message, parameters)
+- [x] Budgets bars on overview (daily/monthly with soft/hard cap markers)
+- [x] Breaker strip on overview (open circuit breakers with cooldown)
+- [x] Alerts feed on overview (cache-based ephemeral alerts)
+- [x] Masked prompts/response toggle with localStorage persistence
+- [x] Version comparison UI on agent page (side-by-side metrics)
+- [x] Inline row expansion for attempts summary
+- [x] Rerun buttons (dry-run + real) with confirmation modal
+
+### Remaining (Phase 1)
+- [ ] Add tests (unit/system/performance/a11y) for new components
 
 ## 1) Objectives & Success Criteria
 
@@ -283,16 +311,49 @@ Phase 3
 
 ## 15) Implementation Checklist (Phase 1)
 
-- [ ] Add attempts UI to execution detail page
-- [ ] Add masked prompts/response with toggle + copy buttons
-- [ ] Add rerun buttons (dry-run + real) with confirmation
-- [ ] Add search box to executions; extend filtering; inline row expansion
-- [ ] Add CSV export (filtered scope; masked by role)
-- [ ] Add budgets bars and breaker strip to overview
-- [ ] Add alerts feed panel to overview
-- [ ] Add hero KPIs and breaker indicator to agent page
-- [ ] Add simple version comparison on agent page
-- [ ] Cache overview aggregates; validate TTLs
+- [x] Add attempts UI to execution detail page *(completed prior)*
+- [x] Add masked prompts/response with toggle + copy buttons
+- [x] Add rerun buttons (dry-run + real) with confirmation
+- [x] Add search box to executions; extend filtering
+- [x] Add inline row expansion for attempts summary
+- [x] Add CSV export (filtered scope; masked by redaction)
+- [x] Add budgets bars and breaker strip to overview
+- [x] Add alerts feed panel to overview
+- [x] Add hero KPIs and breaker indicator to agent page *(completed prior)*
+- [x] Add simple version comparison on agent page
+- [x] Cache overview aggregates; validate TTLs *(completed prior)*
 - [ ] Add tests (unit/system/performance/a11y) for new components
+
+## Files Changed (Phase 1 Implementation)
+
+**Controllers:**
+- `app/controllers/ruby_llm/agents/executions_controller.rb` - CSV export, search filter, rerun action
+- `app/controllers/ruby_llm/agents/dashboard_controller.rb` - Budget, breaker, alerts data
+- `app/controllers/ruby_llm/agents/agents_controller.rb` - Version comparison
+
+**Views:**
+- `app/views/rubyllm/agents/executions/_filters.html.erb` - Search box, export button
+- `app/views/rubyllm/agents/executions/_list.html.erb` - Inline row expansion for attempts
+- `app/views/rubyllm/agents/executions/index.html.erb` - Search JavaScript, toggle attempts function
+- `app/views/rubyllm/agents/executions/show.html.erb` - Masking toggle UI, rerun buttons with modal
+- `app/views/rubyllm/agents/executions/dry_run.html.erb` - New view for dry-run preview
+- `app/views/rubyllm/agents/dashboard/index.html.erb` - Budget bars, breaker strip, alerts
+- `app/views/rubyllm/agents/dashboard/_budgets_bar.html.erb` - New partial
+- `app/views/rubyllm/agents/dashboard/_breaker_strip.html.erb` - New partial
+- `app/views/rubyllm/agents/dashboard/_alerts_feed.html.erb` - New partial
+- `app/views/rubyllm/agents/agents/show.html.erb` - Version comparison
+- `app/views/rubyllm/agents/agents/_version_comparison.html.erb` - New partial
+
+**Models:**
+- `app/models/ruby_llm/agents/execution/scopes.rb` - Search scope
+
+**Helpers:**
+- `app/helpers/ruby_llm/agents/application_helper.rb` - redact_for_display, highlight_json_redacted
+
+**Routes:**
+- `config/routes.rb` - Export action, rerun action
+
+**Gemspec:**
+- `ruby_llm-agents.gemspec` - Added csv dependency for Ruby 3.4+
 
 End of document.

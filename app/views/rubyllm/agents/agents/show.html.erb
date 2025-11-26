@@ -217,6 +217,10 @@
   </div>
 </div>
 
+<!-- Version Comparison -->
+<%= render partial: "rubyllm/agents/agents/version_comparison",
+    locals: { versions: @versions, version_comparison: @version_comparison } %>
+
 <% if @config %>
   <!-- Configuration -->
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">

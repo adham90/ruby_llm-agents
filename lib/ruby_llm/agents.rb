@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "csv"
+
 require_relative "agents/version"
 require_relative "agents/configuration"
 require_relative "agents/reliability"

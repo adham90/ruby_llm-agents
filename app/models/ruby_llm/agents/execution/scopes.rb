@@ -130,6 +130,24 @@ module RubyLLM
           end
 
           # @!endgroup
+
+          # @!group Search Scopes
+
+          # @!method search(query)
+          #   Free-text search across error fields and parameters
+          #   @param query [String] Search query
+          #   @return [ActiveRecord::Relation]
+          scope :search, ->(query) do
+            return all if query.blank?
+
+            sanitized_query = "%#{sanitize_sql_like(query)}%"
+            where(
+              "error_class ILIKE :q OR error_message ILIKE :q OR CAST(parameters AS TEXT) ILIKE :q",
+              q: sanitized_query
+            )
+          end
+
+          # @!endgroup
         end
 
         # @!group Aggregation Methods

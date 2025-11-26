@@ -80,4 +80,52 @@
       });
     }
   });
+
+  // Search debounce
+  let searchDebounceTimer = null;
+  function debounceSearch(input) {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(function() {
+      document.getElementById('filters-form').requestSubmit();
+    }, 300);
+  }
+
+  // Attach debounce to search input
+  document.addEventListener('turbo:load', function() {
+    const searchInput = document.querySelector('input[name="q"]');
+    if (searchInput) {
+      searchInput.addEventListener('input', function() {
+        debounceSearch(this);
+      });
+    }
+  });
+
+  // Clear search
+  function clearSearch() {
+    const searchInput = document.querySelector('input[name="q"]');
+    if (searchInput) {
+      searchInput.value = '';
+      document.getElementById('filters-form').requestSubmit();
+    }
+  }
+
+  // Toggle attempts expansion
+  function toggleAttempts(executionId) {
+    const attemptsRow = document.getElementById('attempts-row-' + executionId);
+    const expandBtn = document.querySelector(`button[data-execution-id="${executionId}"]`);
+
+    if (attemptsRow) {
+      const isHidden = attemptsRow.classList.contains('hidden');
+      attemptsRow.classList.toggle('hidden');
+
+      // Rotate the chevron
+      if (expandBtn) {
+        const svg = expandBtn.querySelector('svg');
+        if (svg) {
+          svg.classList.toggle('rotate-90', isHidden);
+        }
+        expandBtn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+      }
+    }
+  }
 </script>

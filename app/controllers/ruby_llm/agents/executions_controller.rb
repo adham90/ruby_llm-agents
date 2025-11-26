@@ -15,6 +15,9 @@ module RubyLLM
       include Paginatable
       include Filterable
 
+      CSV_COLUMNS = %w[id agent_type agent_version status model_id total_tokens total_cost
+                       duration_ms created_at error_class error_message].freeze
+
       # Lists all executions with filtering and pagination
       #
       # @return [void]
@@ -57,7 +60,97 @@ module RubyLLM
         end
       end
 
+      # Reruns an execution with the same parameters
+      #
+      # Supports both dry-run mode (returns prompt info without API call)
+      # and real reruns that create a new execution.
+      #
+      # @return [void]
+      def rerun
+        @execution = Execution.find(params[:id])
+        dry_run = params[:dry_run] == "true"
+
+        agent_class = AgentRegistry.find(@execution.agent_type)
+
+        unless agent_class
+          flash[:alert] = "Agent class '#{@execution.agent_type}' not found. Cannot rerun."
+          redirect_to execution_path(@execution)
+          return
+        end
+
+        # Prepare parameters from original execution
+        original_params = @execution.parameters&.symbolize_keys || {}
+
+        if dry_run
+          # Dry run mode - show what would be sent without making API call
+          result = agent_class.call(**original_params, dry_run: true)
+          @dry_run_result = result
+
+          respond_to do |format|
+            format.html { render :dry_run }
+            format.json { render json: result }
+          end
+        else
+          # Real rerun - execute the agent
+          begin
+            agent_class.call(**original_params)
+            flash[:notice] = "Execution rerun successfully! Check the executions list for the new result."
+          rescue StandardError => e
+            flash[:alert] = "Rerun failed: #{e.message}"
+          end
+
+          redirect_to executions_path
+        end
+      end
+
+      # Exports filtered executions as CSV
+      #
+      # Streams CSV data with redacted error messages to protect
+      # sensitive information. Respects all current filter parameters.
+      #
+      # @return [void]
+      def export
+        filename = "executions-#{Date.current.iso8601}.csv"
+
+        headers["Content-Type"] = "text/csv"
+        headers["Content-Disposition"] = "attachment; filename=\"#{filename}\""
+
+        response.status = 200
+
+        self.response_body = Enumerator.new do |yielder|
+          yielder << CSV.generate_line(CSV_COLUMNS)
+
+          filtered_executions.find_each(batch_size: 1000) do |execution|
+            yielder << generate_csv_row(execution)
+          end
+        end
+      end
+
       private
+
+      # Generates a CSV row for a single execution with redacted values
+      #
+      # @param execution [Execution] The execution record
+      # @return [String] CSV row string
+      def generate_csv_row(execution)
+        redacted_error_message = if execution.error_message.present?
+                                   Redactor.redact_string(execution.error_message)
+                                 end
+
+        CSV.generate_line([
+          execution.id,
+          execution.agent_type,
+          execution.agent_version,
+          execution.status,
+          execution.model_id,
+          execution.total_tokens,
+          execution.total_cost&.to_f,
+          execution.duration_ms,
+          execution.created_at.iso8601,
+          execution.error_class,
+          redacted_error_message
+        ])
+      end
 
       # Loads available options for filter dropdowns
       #
@@ -106,12 +199,15 @@ module RubyLLM
 
       # Builds a filtered execution scope based on request params
       #
-      # Applies filters in order: agent type, status, then time range.
+      # Applies filters in order: search, agent type, status, then time range.
       # Each filter is optional and validated before application.
       #
       # @return [ActiveRecord::Relation] Filtered execution scope
       def filtered_executions
         scope = Execution.all
+
+        # Apply search filter
+        scope = scope.search(params[:q]) if params[:q].present?
 
         # Apply agent type filter
         agent_types = parse_array_param(:agent_types)

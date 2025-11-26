@@ -13,14 +13,17 @@ module RubyLLM
     class DashboardController < ApplicationController
       # Renders the main dashboard view
       #
-      # Loads daily statistics (cached), recent executions, and hourly
-      # activity data for the chart visualization.
+      # Loads daily statistics (cached), recent executions, hourly
+      # activity data, budget status, and circuit breaker states.
       #
       # @return [void]
       def index
         @stats = daily_stats
         @recent_executions = Execution.recent(RubyLLM::Agents.configuration.recent_executions_limit)
         @hourly_activity = Execution.hourly_activity_chart
+        @budget_status = load_budget_status
+        @open_breakers = load_open_breakers
+        @recent_alerts = load_recent_alerts
       end
 
       private
@@ -61,6 +64,70 @@ module RubyLLM
         total = scope.count
         return 0.0 if total.zero?
         (scope.successful.count.to_f / total * 100).round(1)
+      end
+
+      # Loads budget status for display on dashboard
+      #
+      # @return [Hash] Budget status with global daily and monthly info
+      def load_budget_status
+        BudgetTracker.status
+      end
+
+      # Loads all open circuit breakers across agents
+      #
+      # @return [Array<Hash>] Array of open breaker information
+      def load_open_breakers
+        open_breakers = []
+
+        # Get all agents from execution history
+        agent_types = Execution.distinct.pluck(:agent_type)
+
+        agent_types.each do |agent_type|
+          # Get the agent class if available
+          agent_class = AgentRegistry.find(agent_type)
+          next unless agent_class
+
+          # Get circuit breaker config from class methods
+          cb_config = agent_class.respond_to?(:circuit_breaker_config) ? agent_class.circuit_breaker_config : nil
+          next unless cb_config
+
+          # Get models to check (primary + fallbacks)
+          primary_model = agent_class.respond_to?(:model) ? agent_class.model : RubyLLM::Agents.configuration.default_model
+          fallbacks = agent_class.respond_to?(:fallback_models) ? agent_class.fallback_models : []
+          models_to_check = [primary_model, *fallbacks].compact.uniq
+
+          models_to_check.each do |model_id|
+            breaker = CircuitBreaker.from_config(agent_type, model_id, cb_config)
+            next unless breaker
+
+            if breaker.open?
+              open_breakers << {
+                agent_type: agent_type,
+                model_id: model_id,
+                cooldown_remaining: breaker.time_until_close,
+                failure_count: breaker.failure_count,
+                threshold: cb_config[:errors] || 5
+              }
+            end
+          end
+        end
+
+        open_breakers
+      rescue StandardError => e
+        Rails.logger.debug("[RubyLLM::Agents] Error loading open breakers: #{e.message}")
+        []
+      end
+
+      # Loads recent alerts from cache
+      #
+      # @return [Array<Hash>] Array of recent alert events
+      def load_recent_alerts
+        Rails.cache.fetch("ruby_llm_agents/recent_alerts", expires_in: 1.minute) do
+          # Fetch from cache-based alert store (ephemeral for Phase 1)
+          alerts_key = "ruby_llm_agents:alerts:recent"
+          cached_alerts = RubyLLM::Agents.configuration.cache_store.read(alerts_key) || []
+          cached_alerts.take(10)
+        end
       end
     end
   end

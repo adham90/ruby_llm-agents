@@ -1,11 +1,33 @@
 <%
-  has_filters = params[:agent_types].present? || params[:statuses].present? || params[:days].present?
+  has_filters = params[:agent_types].present? || params[:statuses].present? || params[:days].present? || params[:q].present?
   selected_agents = params[:agent_types].present? ? (params[:agent_types].is_a?(Array) ? params[:agent_types] : params[:agent_types].split(",")) : []
   selected_statuses = params[:statuses].present? ? (params[:statuses].is_a?(Array) ? params[:statuses] : params[:statuses].split(",")) : []
+  search_query = params[:q].to_s.strip
 %>
 <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-6" data-controller="filter-dropdown">
   <%= form_with url: ruby_llm_agents.executions_path, method: :get, data: { turbo_frame: "executions_content", turbo_action: "advance" }, id: "filters-form" do |f| %>
     <div class="flex flex-wrap items-center gap-3">
+      <!-- Search Box -->
+      <div class="relative">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+        </div>
+        <%= f.text_field :q,
+            value: search_query,
+            placeholder: "Search errors, parameters...",
+            class: "pl-9 pr-8 py-2 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:text-gray-200 w-56 #{search_query.present? ? 'ring-2 ring-blue-500 ring-offset-1' : ''}",
+            data: { action: "input->filter-dropdown#debounceSearch" }
+        %>
+        <% if search_query.present? %>
+          <button type="button" onclick="clearSearch()" class="absolute inset-y-0 right-0 pr-2 flex items-center text-gray-400 hover:text-gray-600">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        <% end %>
+      </div>
       <!-- Agent Type Filter (Multi-select) -->
       <div class="relative filter-dropdown" data-filter="agent_types">
         <button type="button" onclick="toggleDropdown(this)" class="flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors <%= selected_agents.any? ? 'ring-2 ring-blue-500 ring-offset-1' : '' %>">
@@ -151,12 +173,20 @@
 
       <!-- Clear Filters -->
       <% if has_filters %>
-        <%= link_to ruby_llm_agents.executions_path, data: { turbo_frame: "executions_content", turbo_action: "advance" }, class: "flex items-center gap-1 px-3 py-2 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" do %>
+        <%= link_to ruby_llm_agents.executions_path, data: { turbo_frame: "executions_content", turbo_action: "advance" }, class: "flex items-center gap-1 px-3 py-2 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" do %>
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
           </svg>
           Clear
         <% end %>
+      <% end %>
+
+      <!-- Export CSV -->
+      <%= link_to ruby_llm_agents.export_executions_path(agent_types: selected_agents.presence, statuses: selected_statuses.presence, days: params[:days].presence, q: search_query.presence), class: "flex items-center gap-1 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors", data: { turbo: false } do %>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        Export CSV
       <% end %>
 
       <!-- Stats Summary (right aligned) -->
