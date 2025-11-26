@@ -118,7 +118,7 @@
 <!-- Stats Grid -->
 <% success_rate = @stats[:success_rate] || 0 %>
 <% success_rate_color = success_rate >= 95 ? 'text-green-600' : success_rate >= 80 ? 'text-yellow-600' : 'text-red-600' %>
-<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
   <%= render "rubyllm/agents/shared/stat_card",
       title: "Executions",
       value: number_with_delimiter(@stats[:count]),
@@ -152,6 +152,12 @@
       title: "Avg Duration",
       value: "#{number_with_delimiter(@stats[:avg_duration_ms] || 0)} ms",
       icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
+      icon_color: "text-purple-500" %>
+
+  <%= render "rubyllm/agents/shared/stat_card",
+      title: "Cache Hit Rate",
+      value: "#{@cache_hit_rate}%",
+      icon: "M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4",
       icon_color: "text-purple-500" %>
 </div>
 
@@ -216,6 +222,40 @@
     </div>
   </div>
 </div>
+
+<!-- Finish Reason Distribution -->
+<% if @finish_reason_distribution.present? && @finish_reason_distribution.any? %>
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
+    <div class="flex items-center justify-between">
+      <p class="text-sm text-gray-500 dark:text-gray-400 uppercase">Finish Reasons</p>
+
+      <div class="flex flex-wrap gap-4">
+        <% finish_colors = {
+            'stop' => '#10B981',
+            'length' => '#F59E0B',
+            'content_filter' => '#EF4444',
+            'tool_calls' => '#3B82F6',
+            nil => '#6B7280'
+          } %>
+
+        <% @finish_reason_distribution.each do |reason, count| %>
+          <div class="flex items-center">
+            <span
+              class="w-2 h-2 rounded-full mr-1.5"
+              style="background-color: <%= finish_colors[reason] || '#6B7280' %>"
+            ></span>
+
+            <span class="text-sm text-gray-700 dark:text-gray-300"><%= reason || 'unknown' %></span>
+
+            <span class="text-sm font-medium text-gray-900 dark:text-gray-100 ml-1">
+              (<%= number_with_delimiter(count) %>)
+            </span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>
 
 <!-- Version Comparison -->
 <%= render partial: "rubyllm/agents/agents/version_comparison",

@@ -234,7 +234,58 @@ module RubyLLM
             ]
           end
 
-          private
+          # Cache hit rate percentage
+          #
+          # @return [Float] Percentage of executions that were cache hits (0.0-100.0)
+          def cache_hit_rate
+            total = count
+            return 0.0 if total.zero?
+
+            (cached.count.to_f / total * 100).round(1)
+          end
+
+          # Streaming execution rate percentage
+          #
+          # @return [Float] Percentage of executions that used streaming (0.0-100.0)
+          def streaming_rate
+            total = count
+            return 0.0 if total.zero?
+
+            (streaming.count.to_f / total * 100).round(1)
+          end
+
+          # Average time to first token for streaming executions
+          #
+          # @return [Integer, nil] Average TTFT in milliseconds, or nil if no data
+          def avg_time_to_first_token
+            streaming.where.not(time_to_first_token_ms: nil).average(:time_to_first_token_ms)&.round(0)
+          end
+
+          # Finish reason distribution
+          #
+          # @return [Hash{String => Integer}] Counts grouped by finish reason, sorted descending
+          def finish_reason_distribution
+            group(:finish_reason).count.sort_by { |_, v| -v }.to_h
+          end
+
+          # Rate limited execution count
+          #
+          # @return [Integer] Number of executions that were rate limited
+          def rate_limited_count
+            where(rate_limited: true).count
+          end
+
+          # Rate limited rate percentage
+          #
+          # @return [Float] Percentage of executions that were rate limited (0.0-100.0)
+          def rate_limited_rate
+            total = count
+            return 0.0 if total.zero?
+
+            (rate_limited_count.to_f / total * 100).round(1)
+          end
+
+        private
 
           # Calculates success rate percentage for a scope
           #

@@ -65,6 +65,12 @@ module RubyLLM
       def load_agent_stats
         @stats = Execution.stats_for(@agent_type, period: :all_time)
         @stats_today = Execution.stats_for(@agent_type, period: :today)
+
+        # Additional stats for new schema fields
+        agent_scope = Execution.by_agent(@agent_type)
+        @cache_hit_rate = agent_scope.cache_hit_rate
+        @streaming_rate = agent_scope.streaming_rate
+        @avg_ttft = agent_scope.avg_time_to_first_token
       end
 
       # Loads available filter options from execution history
@@ -138,12 +144,13 @@ module RubyLLM
 
       # Loads chart data for agent performance visualization
       #
-      # Fetches 30-day trend analysis and status distribution for charts.
+      # Fetches 30-day trend analysis and status/finish_reason distribution for charts.
       #
       # @return [void]
       def load_chart_data
         @trend_data = Execution.trend_analysis(agent_type: @agent_type, days: 30)
         @status_distribution = Execution.by_agent(@agent_type).group(:status).count
+        @finish_reason_distribution = Execution.by_agent(@agent_type).finish_reason_distribution
         load_version_comparison
       end
 
