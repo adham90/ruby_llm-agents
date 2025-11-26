@@ -343,8 +343,9 @@ module RubyLLM
       #
       # @return [Hash] Reliability config with :retries, :fallback_models, :total_timeout, :circuit_breaker
       def reliability_config
+        default_retries = RubyLLM::Agents.configuration.default_retries
         {
-          retries: self.class.retries,
+          retries: self.class.retries || default_retries,
           fallback_models: self.class.fallback_models,
           total_timeout: self.class.total_timeout,
           circuit_breaker: self.class.circuit_breaker_config
@@ -432,7 +433,7 @@ module RubyLLM
               next
             end
 
-            retries_remaining = config[:retries][:max] || 0
+            retries_remaining = config[:retries]&.dig(:max) || 0
             attempt_index = 0
 
             loop do
@@ -466,10 +467,11 @@ module RubyLLM
                 if retries_remaining > 0 && !past_deadline?(total_deadline)
                   retries_remaining -= 1
                   attempt_index += 1
+                  retries_config = config[:retries] || {}
                   delay = Reliability.calculate_backoff(
-                    strategy: config[:retries][:backoff],
-                    base: config[:retries][:base],
-                    max_delay: config[:retries][:max_delay],
+                    strategy: retries_config[:backoff] || :exponential,
+                    base: retries_config[:base] || 0.4,
+                    max_delay: retries_config[:max_delay] || 3.0,
                     attempt: attempt_index
                   )
                   sleep(delay)
@@ -497,7 +499,7 @@ module RubyLLM
       # @param config [Hash] Reliability configuration
       # @return [Array<Class>] Error classes to retry on
       def retryable_errors(config)
-        custom_errors = config[:retries][:on] || []
+        custom_errors = config[:retries]&.dig(:on) || []
         Reliability.default_retryable_errors + custom_errors
       end
 

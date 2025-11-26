@@ -128,4 +128,174 @@
       }
     }
   }
+
+  // Saved Filters functionality
+  const SAVED_FILTERS_KEY = 'ruby_llm_agents_saved_filters';
+
+  function getSavedFilters() {
+    try {
+      const filters = localStorage.getItem(SAVED_FILTERS_KEY);
+      return filters ? JSON.parse(filters) : [];
+    } catch (e) {
+      console.error('Error reading saved filters:', e);
+      return [];
+    }
+  }
+
+  function saveSavedFilters(filters) {
+    try {
+      localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(filters));
+    } catch (e) {
+      console.error('Error saving filters:', e);
+    }
+  }
+
+  function getCurrentFilterParams() {
+    const params = new URLSearchParams(window.location.search);
+    const filterData = {};
+    if (params.getAll('agent_types[]').length > 0) {
+      filterData.agent_types = params.getAll('agent_types[]');
+    }
+    if (params.getAll('statuses[]').length > 0) {
+      filterData.statuses = params.getAll('statuses[]');
+    }
+    if (params.get('days')) {
+      filterData.days = params.get('days');
+    }
+    if (params.get('q')) {
+      filterData.q = params.get('q');
+    }
+    return filterData;
+  }
+
+  function saveCurrentFilter() {
+    const nameInput = document.getElementById('save-filter-name');
+    const name = nameInput.value.trim();
+    if (!name) {
+      nameInput.focus();
+      return;
+    }
+
+    const filters = getSavedFilters();
+    const filterParams = getCurrentFilterParams();
+
+    // Check if name already exists
+    const existingIndex = filters.findIndex(f => f.name === name);
+    if (existingIndex >= 0) {
+      filters[existingIndex] = { name, params: filterParams, savedAt: new Date().toISOString() };
+    } else {
+      filters.unshift({ name, params: filterParams, savedAt: new Date().toISOString() });
+    }
+
+    // Limit to 10 saved filters
+    if (filters.length > 10) {
+      filters.pop();
+    }
+
+    saveSavedFilters(filters);
+    nameInput.value = '';
+    renderSavedFiltersList();
+  }
+
+  function deleteSavedFilter(name) {
+    const filters = getSavedFilters().filter(f => f.name !== name);
+    saveSavedFilters(filters);
+    renderSavedFiltersList();
+  }
+
+  function applyFilter(filterParams) {
+    const params = new URLSearchParams();
+    if (filterParams.agent_types) {
+      filterParams.agent_types.forEach(v => params.append('agent_types[]', v));
+    }
+    if (filterParams.statuses) {
+      filterParams.statuses.forEach(v => params.append('statuses[]', v));
+    }
+    if (filterParams.days) {
+      params.set('days', filterParams.days);
+    }
+    if (filterParams.q) {
+      params.set('q', filterParams.q);
+    }
+    window.location.href = window.location.pathname + '?' + params.toString();
+  }
+
+  function renderSavedFiltersList() {
+    const list = document.getElementById('saved-filters-list');
+    const filters = getSavedFilters();
+
+    if (filters.length === 0) {
+      list.innerHTML = `
+        <div class="px-3 py-4 text-xs text-gray-400 dark:text-gray-500 text-center">
+          <svg class="w-6 h-6 mx-auto mb-2 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+          </svg>
+          No saved filters yet.<br>
+          Apply filters and save them for quick access.
+        </div>
+      `;
+      return;
+    }
+
+    list.innerHTML = filters.map(filter => {
+      const description = getFilterDescription(filter.params);
+      return `
+        <div class="group flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700">
+          <button type="button" onclick='applyFilter(${JSON.stringify(filter.params)})' class="flex-1 text-left">
+            <div class="text-sm font-medium text-gray-700 dark:text-gray-200">${escapeHtml(filter.name)}</div>
+            <div class="text-xs text-gray-400 dark:text-gray-500 truncate">${description}</div>
+          </button>
+          <button type="button" onclick="deleteSavedFilter('${escapeHtml(filter.name)}')" class="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-opacity">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+          </button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function getFilterDescription(params) {
+    const parts = [];
+    if (params.agent_types && params.agent_types.length > 0) {
+      parts.push(`${params.agent_types.length} agent(s)`);
+    }
+    if (params.statuses && params.statuses.length > 0) {
+      parts.push(params.statuses.join(', '));
+    }
+    if (params.days) {
+      const daysLabel = params.days === '1' ? 'Today' : params.days === '7' ? '7 days' : params.days === '30' ? '30 days' : params.days + ' days';
+      parts.push(daysLabel);
+    }
+    if (params.q) {
+      parts.push(`"${params.q}"`);
+    }
+    return parts.join(' • ') || 'No filters';
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  function toggleSavedFiltersDropdown(button) {
+    document.querySelectorAll('.filter-dropdown .dropdown-menu').forEach(menu => {
+      if (menu !== button.nextElementSibling) {
+        menu.classList.add('hidden');
+      }
+    });
+    button.nextElementSibling.classList.toggle('hidden');
+    if (!button.nextElementSibling.classList.contains('hidden')) {
+      renderSavedFiltersList();
+    }
+  }
+
+  // Initialize saved filters list on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    renderSavedFiltersList();
+  });
+  document.addEventListener('turbo:load', function() {
+    renderSavedFiltersList();
+  });
 </script>

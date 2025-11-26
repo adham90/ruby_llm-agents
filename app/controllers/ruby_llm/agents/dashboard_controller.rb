@@ -21,6 +21,7 @@ module RubyLLM
         @stats = daily_stats
         @recent_executions = Execution.recent(RubyLLM::Agents.configuration.recent_executions_limit)
         @hourly_activity = Execution.hourly_activity_chart
+        @hourly_cost = Execution.hourly_cost_chart
         @budget_status = load_budget_status
         @open_breakers = load_open_breakers
         @recent_alerts = load_recent_alerts

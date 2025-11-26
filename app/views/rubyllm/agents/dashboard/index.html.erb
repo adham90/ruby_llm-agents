@@ -41,12 +41,32 @@
     <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
       <div class="flex justify-between items-center">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Today's Activity</h3>
-        <span class="text-xs text-gray-400 dark:text-gray-500">Hourly executions</span>
+        <div class="flex items-center space-x-2">
+          <div class="inline-flex rounded-lg border border-gray-200 dark:border-gray-600 p-0.5">
+            <button
+              type="button"
+              id="chart-toggle-executions"
+              onclick="toggleChart('executions')"
+              class="chart-toggle-btn px-3 py-1 text-xs font-medium rounded-md transition-colors bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
+            >
+              Executions
+            </button>
+            <button
+              type="button"
+              id="chart-toggle-cost"
+              onclick="toggleChart('cost')"
+              class="chart-toggle-btn px-3 py-1 text-xs font-medium rounded-md transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+            >
+              Cost
+            </button>
+          </div>
+          <span id="chart-subtitle" class="text-xs text-gray-400 dark:text-gray-500">Hourly executions</span>
+        </div>
       </div>
     </div>
 
     <div class="p-6">
-      <div style="height: 200px;">
+      <div id="executions-chart" style="height: 200px;">
         <%= area_chart @hourly_activity,
             stacked: true,
             colors: ["#10B981", "#EF4444"],
@@ -60,8 +80,61 @@
               }
             } %>
       </div>
+      <div id="cost-chart" style="height: 200px; display: none;">
+        <%= area_chart @hourly_cost,
+            stacked: true,
+            colors: ["#6366F1", "#8B5CF6"],
+            prefix: "$",
+            library: {
+              maintainAspectRatio: false,
+              scales: {
+                y: { beginAtZero: true }
+              },
+              plugins: {
+                legend: { position: "bottom" }
+              }
+            } %>
+      </div>
     </div>
   </div>
+
+  <script>
+    function toggleChart(chartType) {
+      const executionsChart = document.getElementById('executions-chart');
+      const costChart = document.getElementById('cost-chart');
+      const executionsBtn = document.getElementById('chart-toggle-executions');
+      const costBtn = document.getElementById('chart-toggle-cost');
+      const subtitle = document.getElementById('chart-subtitle');
+
+      const activeClasses = 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300';
+      const inactiveClasses = 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300';
+
+      if (chartType === 'executions') {
+        executionsChart.style.display = 'block';
+        costChart.style.display = 'none';
+        executionsBtn.className = 'chart-toggle-btn px-3 py-1 text-xs font-medium rounded-md transition-colors ' + activeClasses;
+        costBtn.className = 'chart-toggle-btn px-3 py-1 text-xs font-medium rounded-md transition-colors ' + inactiveClasses;
+        subtitle.textContent = 'Hourly executions';
+      } else {
+        executionsChart.style.display = 'none';
+        costChart.style.display = 'block';
+        executionsBtn.className = 'chart-toggle-btn px-3 py-1 text-xs font-medium rounded-md transition-colors ' + inactiveClasses;
+        costBtn.className = 'chart-toggle-btn px-3 py-1 text-xs font-medium rounded-md transition-colors ' + activeClasses;
+        subtitle.textContent = 'Hourly cost breakdown';
+      }
+
+      // Save preference to localStorage
+      localStorage.setItem('ruby_llm_agents_chart_preference', chartType);
+    }
+
+    // Restore preference on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      const preference = localStorage.getItem('ruby_llm_agents_chart_preference');
+      if (preference === 'cost') {
+        toggleChart('cost');
+      }
+    });
+  </script>
 
   <!-- Activity Feed -->
   <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">

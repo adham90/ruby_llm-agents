@@ -169,6 +169,44 @@ module RubyLLM
             ]
           end
 
+          # Retrieves hourly cost data for chart display
+          #
+          # Returns two series (input cost and output cost) with hourly breakdowns
+          # for the current day. Results are cached for 5 minutes.
+          #
+          # @return [Array<Hash>] Chart series with input and output cost per hour
+          def hourly_cost_chart
+            cache_key = "ruby_llm_agents/hourly_cost/#{Date.current}"
+            Rails.cache.fetch(cache_key, expires_in: 5.minutes) do
+              build_hourly_cost_data
+            end
+          end
+
+          # Builds the hourly cost data structure (uncached)
+          #
+          # @return [Array<Hash>] Input and output cost series data
+          # @api private
+          def build_hourly_cost_data
+            input_cost_data = {}
+            output_cost_data = {}
+
+            # Create entries for each hour of the day (0-23)
+            (0..23).each do |hour|
+              time_label = format("%02d:00", hour)
+              start_time = Time.current.beginning_of_day + hour.hours
+              end_time = start_time + 1.hour
+
+              hour_scope = where(created_at: start_time...end_time)
+              input_cost_data[time_label] = (hour_scope.sum(:input_cost) || 0).round(6)
+              output_cost_data[time_label] = (hour_scope.sum(:output_cost) || 0).round(6)
+            end
+
+            [
+              { name: "Input Cost", data: input_cost_data },
+              { name: "Output Cost", data: output_cost_data }
+            ]
+          end
+
           private
 
           # Calculates success rate percentage for a scope

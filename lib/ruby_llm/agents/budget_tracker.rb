@@ -147,8 +147,64 @@ module RubyLLM
             global_daily: budget_status(:global, :daily, budgets[:global_daily]),
             global_monthly: budget_status(:global, :monthly, budgets[:global_monthly]),
             per_agent_daily: agent_type ? budget_status(:agent, :daily, budgets[:per_agent_daily]&.dig(agent_type), agent_type: agent_type) : nil,
-            per_agent_monthly: agent_type ? budget_status(:agent, :monthly, budgets[:per_agent_monthly]&.dig(agent_type), agent_type: agent_type) : nil
+            per_agent_monthly: agent_type ? budget_status(:agent, :monthly, budgets[:per_agent_monthly]&.dig(agent_type), agent_type: agent_type) : nil,
+            forecast: calculate_forecast
           }.compact
+        end
+
+        # Calculates budget forecasts based on current spending trends
+        #
+        # @return [Hash, nil] Forecast information
+        def calculate_forecast
+          config = RubyLLM::Agents.configuration
+          budgets = config.budgets || {}
+
+          return nil unless config.budgets_enabled?
+          return nil unless budgets[:global_daily] || budgets[:global_monthly]
+
+          daily_current = current_spend(:global, :daily)
+          monthly_current = current_spend(:global, :monthly)
+
+          # Calculate hours elapsed today and days elapsed this month
+          hours_elapsed = Time.current.hour + (Time.current.min / 60.0)
+          hours_elapsed = [hours_elapsed, 1].max # Avoid division by zero
+          days_in_month = Time.current.end_of_month.day
+          day_of_month = Time.current.day
+          days_elapsed = day_of_month - 1 + (hours_elapsed / 24.0)
+          days_elapsed = [days_elapsed, 1].max
+
+          forecast = {}
+
+          # Daily forecast
+          if budgets[:global_daily]
+            daily_rate = daily_current / hours_elapsed
+            projected_daily = daily_rate * 24
+            forecast[:daily] = {
+              current: daily_current.round(4),
+              projected: projected_daily.round(4),
+              limit: budgets[:global_daily],
+              on_track: projected_daily <= budgets[:global_daily],
+              hours_remaining: (24 - hours_elapsed).round(1),
+              rate_per_hour: daily_rate.round(6)
+            }
+          end
+
+          # Monthly forecast
+          if budgets[:global_monthly]
+            monthly_rate = monthly_current / days_elapsed
+            projected_monthly = monthly_rate * days_in_month
+            days_remaining = days_in_month - day_of_month
+            forecast[:monthly] = {
+              current: monthly_current.round(4),
+              projected: projected_monthly.round(4),
+              limit: budgets[:global_monthly],
+              on_track: projected_monthly <= budgets[:global_monthly],
+              days_remaining: days_remaining,
+              rate_per_day: monthly_rate.round(4)
+            }
+          end
+
+          forecast.presence
         end
 
         # Resets all budget counters (useful for testing)

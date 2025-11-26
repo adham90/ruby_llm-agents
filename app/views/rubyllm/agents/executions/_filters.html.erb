@@ -171,6 +171,36 @@
         <%= f.hidden_field :days, value: params[:days], id: "filter_days" %>
       </div>
 
+      <!-- Saved Filters -->
+      <div class="relative filter-dropdown" data-filter="saved">
+        <button type="button" onclick="toggleSavedFiltersDropdown(this)" class="flex items-center gap-2 px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+          <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+          </svg>
+          <span class="text-gray-700 dark:text-gray-200">Saved</span>
+          <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </button>
+        <div class="dropdown-menu hidden absolute z-10 mt-1 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
+          <% if has_filters %>
+            <div class="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
+              <div class="flex items-center gap-2">
+                <input type="text" id="save-filter-name" placeholder="Filter name..." class="flex-1 px-2 py-1 text-xs bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:text-gray-200">
+                <button type="button" onclick="saveCurrentFilter()" class="px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors">
+                  Save
+                </button>
+              </div>
+            </div>
+          <% end %>
+          <div id="saved-filters-list" class="max-h-48 overflow-y-auto">
+            <div class="px-3 py-2 text-xs text-gray-400 dark:text-gray-500 text-center">
+              Loading saved filters...
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Clear Filters -->
       <% if has_filters %>
         <%= link_to ruby_llm_agents.executions_path, data: { turbo_frame: "executions_content", turbo_action: "advance" }, class: "flex items-center gap-1 px-3 py-2 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" do %>

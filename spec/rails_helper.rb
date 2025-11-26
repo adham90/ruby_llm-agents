@@ -8,6 +8,9 @@ require "rspec/rails"
 require "factory_bot_rails"
 require "database_cleaner/active_record"
 
+# Register turbo_stream MIME type if not already registered
+Mime::Type.register "text/vnd.turbo-stream.html", :turbo_stream unless Mime::Type.lookup_by_extension(:turbo_stream)
+
 # Manually load gem classes that are loaded via config.to_prepare in the engine
 # This is needed because RSpec loads spec files before to_prepare callbacks run
 require "ruby_llm/agents/execution_logger_job"
