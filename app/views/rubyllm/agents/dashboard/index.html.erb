@@ -1,203 +1,100 @@
-<%= turbo_frame_tag "dashboard", data: { connection_target: "dashboardFrame" } do %>
-  <!-- Budget Bars -->
-  <%= render partial: "rubyllm/agents/dashboard/budgets_bar", locals: { budget_status: @budget_status } %>
+<!-- Action Center (only when critical alerts exist) -->
+<%= render partial: "rubyllm/agents/dashboard/action_center", locals: { critical_alerts: @critical_alerts } %>
 
-  <!-- Circuit Breaker Strip -->
-  <%= render partial: "rubyllm/agents/dashboard/breaker_strip", locals: { open_breakers: @open_breakers } %>
+<!-- Now Strip -->
+<%= render partial: "rubyllm/agents/dashboard/now_strip", locals: { now_strip: @now_strip } %>
 
-  <!-- Alerts Feed -->
-  <%= render partial: "rubyllm/agents/dashboard/alerts_feed", locals: { recent_alerts: @recent_alerts } %>
-
-  <!-- Stats Cards -->
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-    <%= render "rubyllm/agents/shared/stat_card",
-        title: "Executions",
-        value: number_with_delimiter(@stats[:total_executions]),
-        icon: "M13 10V3L4 14h7v7l9-11h-7z",
-        icon_color: "text-blue-500" %>
-
-    <%= render "rubyllm/agents/shared/stat_card",
-        title: "Failed",
-        value: number_with_delimiter(@stats[:failed]),
-        icon: "M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-        icon_color: "text-red-500",
-        value_color: "text-red-600" %>
-
-    <%= render "rubyllm/agents/shared/stat_card",
-        title: "Total Cost",
-        value: "$#{number_with_precision(@stats[:total_cost], precision: 4)}",
-        icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-        icon_color: "text-amber-500" %>
-
-    <%= render "rubyllm/agents/shared/stat_card",
-        title: "Total Tokens",
-        value: number_with_delimiter(@stats[:total_tokens]),
-        icon: "M7 20l4-16m2 16l4-16M6 9h14M4 15h14",
-        icon_color: "text-indigo-500" %>
-  </div>
-
-  <!-- Activity Chart -->
-  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mb-8 pb-24">
-    <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-      <div class="flex justify-between items-center">
+<!-- Today's Activity Chart -->
+<div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mb-6">
+  <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+    <div class="flex justify-between items-center">
+      <div class="flex items-center space-x-2">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Today's Activity</h3>
-        <div class="flex items-center space-x-2">
-          <div class="inline-flex rounded-lg border border-gray-200 dark:border-gray-600 p-0.5">
-            <button
-              type="button"
-              id="chart-toggle-executions"
-              onclick="toggleChart('executions')"
-              class="chart-toggle-btn px-3 py-1 text-xs font-medium rounded-md transition-colors bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
-            >
-              Executions
-            </button>
-            <button
-              type="button"
-              id="chart-toggle-cost"
-              onclick="toggleChart('cost')"
-              class="chart-toggle-btn px-3 py-1 text-xs font-medium rounded-md transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-            >
-              Cost
-            </button>
-          </div>
-          <span id="chart-subtitle" class="text-xs text-gray-400 dark:text-gray-500">Hourly executions</span>
-        </div>
+        <span class="flex items-center text-xs text-green-600 dark:text-green-400">
+          <span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-1 animate-pulse"></span>
+          Live
+        </span>
       </div>
-    </div>
-
-    <div class="p-6">
-      <div id="executions-chart" style="height: 200px;">
-        <%= area_chart @hourly_activity,
-            stacked: true,
-            colors: ["#10B981", "#EF4444"],
-            library: {
-              maintainAspectRatio: false,
-              scales: {
-                y: { beginAtZero: true, ticks: { stepSize: 1 } }
-              },
-              plugins: {
-                legend: { position: "bottom" }
-              }
-            } %>
-      </div>
-      <div id="cost-chart" style="height: 200px; display: none;">
-        <%= area_chart @hourly_cost,
-            stacked: true,
-            colors: ["#6366F1", "#8B5CF6"],
-            prefix: "$",
-            library: {
-              maintainAspectRatio: false,
-              scales: {
-                y: { beginAtZero: true }
-              },
-              plugins: {
-                legend: { position: "bottom" }
-              }
-            } %>
-      </div>
+      <span class="text-xs text-gray-400 dark:text-gray-500">Hourly executions</span>
     </div>
   </div>
 
-  <script>
-    function toggleChart(chartType) {
-      const executionsChart = document.getElementById('executions-chart');
-      const costChart = document.getElementById('cost-chart');
-      const executionsBtn = document.getElementById('chart-toggle-executions');
-      const costBtn = document.getElementById('chart-toggle-cost');
-      const subtitle = document.getElementById('chart-subtitle');
+  <div class="p-6" style="height: 250px;">
+    <%= area_chart @hourly_activity,
+        stacked: true,
+        colors: ["#10B981", "#EF4444"],
+        library: {
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1 } }
+          },
+          plugins: {
+            legend: { position: "bottom" }
+          }
+        } %>
+  </div>
+</div>
 
-      const activeClasses = 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300';
-      const inactiveClasses = 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300';
+<!-- Live Activity Feed -->
+<div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+  <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+    <div class="flex justify-between items-center">
+      <div class="flex items-center space-x-3">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Live Activity</h3>
 
-      if (chartType === 'executions') {
-        executionsChart.style.display = 'block';
-        costChart.style.display = 'none';
-        executionsBtn.className = 'chart-toggle-btn px-3 py-1 text-xs font-medium rounded-md transition-colors ' + activeClasses;
-        costBtn.className = 'chart-toggle-btn px-3 py-1 text-xs font-medium rounded-md transition-colors ' + inactiveClasses;
-        subtitle.textContent = 'Hourly executions';
-      } else {
-        executionsChart.style.display = 'none';
-        costChart.style.display = 'block';
-        executionsBtn.className = 'chart-toggle-btn px-3 py-1 text-xs font-medium rounded-md transition-colors ' + inactiveClasses;
-        costBtn.className = 'chart-toggle-btn px-3 py-1 text-xs font-medium rounded-md transition-colors ' + activeClasses;
-        subtitle.textContent = 'Hourly cost breakdown';
-      }
+        <div class="flex items-center space-x-3 text-xs text-gray-400 dark:text-gray-500">
+          <span class="flex items-center">
+            <span class="w-2 h-2 bg-blue-500 rounded-full mr-1 animate-pulse"></span>
+            running
+          </span>
 
-      // Save preference to localStorage
-      localStorage.setItem('ruby_llm_agents_chart_preference', chartType);
-    }
+          <span class="flex items-center">
+            <span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+            success
+          </span>
 
-    // Restore preference on page load
-    document.addEventListener('DOMContentLoaded', function() {
-      const preference = localStorage.getItem('ruby_llm_agents_chart_preference');
-      if (preference === 'cost') {
-        toggleChart('cost');
-      }
-    });
-  </script>
+          <span class="flex items-center">
+            <span class="w-2 h-2 bg-red-500 rounded-full mr-1"></span>
+            error
+          </span>
 
-  <!-- Activity Feed -->
-  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-    <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-      <div class="flex justify-between items-center">
-        <div class="flex items-center space-x-3">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Activity Feed</h3>
-
-          <div class="flex items-center space-x-3 text-xs text-gray-400 dark:text-gray-500">
-            <span class="flex items-center">
-              <span class="w-2 h-2 bg-blue-500 rounded-full mr-1 animate-pulse"></span>
-              running
-            </span>
-
-            <span class="flex items-center">
-              <span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
-              success
-            </span>
-
-            <span class="flex items-center">
-              <span class="w-2 h-2 bg-red-500 rounded-full mr-1"></span>
-              error
-            </span>
-
-            <span class="flex items-center">
-              <span class="w-2 h-2 bg-yellow-500 rounded-full mr-1"></span>
-              timeout
-            </span>
-          </div>
+          <span class="flex items-center">
+            <span class="w-2 h-2 bg-yellow-500 rounded-full mr-1"></span>
+            timeout
+          </span>
         </div>
-
-        <%= link_to "View All", ruby_llm_agents.executions_path, data: { turbo: false }, class: "text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium" %>
       </div>
+
+      <%= link_to "View All", ruby_llm_agents.executions_path, data: { turbo: false }, class: "text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium" %>
     </div>
+  </div>
 
-    <div
-      id="activity-feed"
-      class="px-6 py-2"
-      data-connection-target="activityFeed"
-    >
-      <% if @recent_executions.any? %>
-        <% @recent_executions.each do |execution| %>
-          <%= render partial: "rubyllm/agents/dashboard/execution_item", locals: { execution: execution } %>
-        <% end %>
-      <% else %>
-        <div id="empty-state" class="py-10 text-center text-gray-500 dark:text-gray-400">
-          <svg
-            class="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.5"
-              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-            />
-          </svg>
-
-          <p>No executions yet. Create an agent and make a call!</p>
-        </div>
+  <div
+    id="activity-feed"
+    class="px-6 py-2"
+  >
+    <% if @recent_executions.any? %>
+      <% @recent_executions.each do |execution| %>
+        <%= render partial: "rubyllm/agents/dashboard/execution_item", locals: { execution: execution } %>
       <% end %>
-    </div>
+    <% else %>
+      <div id="empty-state" class="py-10 text-center text-gray-500 dark:text-gray-400">
+        <svg
+          class="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.5"
+            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+          />
+        </svg>
+
+        <p>No executions yet. Create an agent and make a call!</p>
+      </div>
+    <% end %>
   </div>
-<% end %>
+</div>

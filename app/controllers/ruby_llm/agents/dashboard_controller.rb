@@ -13,18 +13,15 @@ module RubyLLM
     class DashboardController < ApplicationController
       # Renders the main dashboard view
       #
-      # Loads daily statistics (cached), recent executions, hourly
-      # activity data, budget status, and circuit breaker states.
+      # Loads now strip data, critical alerts, hourly activity,
+      # and recent executions for real-time monitoring.
       #
       # @return [void]
       def index
-        @stats = daily_stats
-        @recent_executions = Execution.recent(RubyLLM::Agents.configuration.recent_executions_limit)
+        @now_strip = Execution.now_strip_data
+        @critical_alerts = load_critical_alerts
         @hourly_activity = Execution.hourly_activity_chart
-        @hourly_cost = Execution.hourly_cost_chart
-        @budget_status = load_budget_status
-        @open_breakers = load_open_breakers
-        @recent_alerts = load_recent_alerts
+        @recent_executions = Execution.recent(10)
       end
 
       private
@@ -129,6 +126,56 @@ module RubyLLM
           cached_alerts = RubyLLM::Agents.configuration.cache_store.read(alerts_key) || []
           cached_alerts.take(10)
         end
+      end
+
+      # Loads critical alerts for the Action Center
+      #
+      # Combines open circuit breakers, budget breaches, and error spikes
+      # into a single prioritized list (max 3 items).
+      #
+      # @return [Array<Hash>] Critical alerts with type and data
+      def load_critical_alerts
+        alerts = []
+
+        # Open circuit breakers
+        load_open_breakers.each do |breaker|
+          alerts << { type: :breaker, data: breaker }
+        end
+
+        # Budget breaches (>100% of limit)
+        budget_status = load_budget_status
+        daily_budget = budget_status&.dig(:global_daily)
+        monthly_budget = budget_status&.dig(:global_monthly)
+
+        if daily_budget && daily_budget[:percentage_used].to_f >= 100
+          alerts << {
+            type: :budget_breach,
+            data: {
+              period: :daily,
+              current: daily_budget[:current_spend],
+              limit: daily_budget[:limit]
+            }
+          }
+        end
+
+        if monthly_budget && monthly_budget[:percentage_used].to_f >= 100
+          alerts << {
+            type: :budget_breach,
+            data: {
+              period: :monthly,
+              current: monthly_budget[:current_spend],
+              limit: monthly_budget[:limit]
+            }
+          }
+        end
+
+        # Error spike detection (>5 errors in last 15 minutes)
+        error_count_15m = Execution.status_error.where("created_at > ?", 15.minutes.ago).count
+        if error_count_15m >= 5
+          alerts << { type: :error_spike, data: { count: error_count_15m } }
+        end
+
+        alerts.take(3)
       end
     end
   end

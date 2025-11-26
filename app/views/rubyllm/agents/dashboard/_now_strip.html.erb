@@ -1,0 +1,10 @@
+<div class="mb-6">
+  <div class="flex items-center mb-3">
+    <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+    <h3 class="text-sm font-medium text-gray-600 dark:text-gray-400">Live</h3>
+  </div>
+
+  <div id="now-strip-values">
+    <%= render partial: "rubyllm/agents/dashboard/now_strip_values", locals: { now_strip: now_strip } %>
+  </div>
+</div>

@@ -39,15 +39,91 @@
       src="https://unpkg.com/@hotwired/stimulus@3.2.2/dist/stimulus.umd.js"
     ></script>
 
-    <!-- Turbo -->
-    <%= javascript_include_tag "turbo", type: "module" rescue nil %>
-
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
     <style>[x-cloak] { display: none !important; }</style>
 
-    <!-- ActionCable (if available) -->
-    <%= action_cable_meta_tag rescue nil %>
+    <!-- Auto-refresh for dashboard updates -->
+    <script>
+      (function() {
+        // Simple polling for real-time updates (5 second interval)
+        const POLL_INTERVAL = 5000
+        let pollTimer = null
+
+        function startPolling() {
+          if (pollTimer) return
+
+          // Update indicator to show polling is active
+          const indicator = document.getElementById("live-indicator")
+          if (indicator) {
+            indicator.className = "hidden sm:flex items-center text-blue-600 dark:text-blue-400"
+            indicator.innerHTML = '<span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1 animate-pulse"></span><span class="hidden sm:inline">Auto</span>'
+          }
+
+          pollTimer = setInterval(() => {
+            // Only refresh if we're on the dashboard (detected by presence of activity feed)
+            if (document.getElementById("activity-feed")) {
+              fetch(window.location.href, {
+                headers: { "Accept": "text/html" }
+              })
+              .then(response => response.text())
+              .then(html => {
+                const parser = new DOMParser()
+                const doc = parser.parseFromString(html, "text/html")
+
+                // Update activity feed
+                const newFeed = doc.getElementById("activity-feed")
+                const currentFeed = document.getElementById("activity-feed")
+                if (newFeed && currentFeed) {
+                  currentFeed.innerHTML = newFeed.innerHTML
+                }
+
+                // Update now strip
+                const newStrip = doc.getElementById("now-strip-values")
+                const currentStrip = document.getElementById("now-strip-values")
+                if (newStrip && currentStrip) {
+                  currentStrip.innerHTML = newStrip.innerHTML
+                }
+
+                // Update action center
+                const newActionCenter = doc.getElementById("action-center")
+                const currentActionCenter = document.getElementById("action-center")
+                if (newActionCenter && currentActionCenter) {
+                  currentActionCenter.outerHTML = newActionCenter.outerHTML
+                } else if (newActionCenter && !currentActionCenter) {
+                  // Insert action center if it appeared
+                  const main = document.querySelector("main")
+                  if (main) main.insertAdjacentHTML("afterbegin", newActionCenter.outerHTML)
+                } else if (!newActionCenter && currentActionCenter) {
+                  // Remove action center if it disappeared
+                  currentActionCenter.remove()
+                }
+              })
+              .catch(err => console.log("[RubyLLM::Agents] Poll error:", err))
+            }
+          }, POLL_INTERVAL)
+        }
+
+        function stopPolling() {
+          if (pollTimer) {
+            clearInterval(pollTimer)
+            pollTimer = null
+          }
+        }
+
+        // Start polling on page load
+        document.addEventListener("DOMContentLoaded", startPolling)
+
+        // Handle visibility changes - pause when tab is hidden
+        document.addEventListener("visibilitychange", () => {
+          if (document.hidden) {
+            stopPolling()
+          } else {
+            startPolling()
+          }
+        })
+      })()
+    </script>
 
     <!-- Live Clock Script -->
     <script type="module">
@@ -81,7 +157,7 @@
       });
     </script>
 
-    <!-- Stimulus Connection Controller -->
+    <!-- Stimulus Controllers -->
     <script>
       (function() {
         // Initialize Stimulus immediately (works with Turbo)
@@ -94,63 +170,6 @@
         // Only initialize once
         if (!Stimulus.application) {
           Stimulus.application = Stimulus.Application.start();
-
-          // Polling Controller - simple auto-refresh
-          Stimulus.application.register("connection", class extends Stimulus.Controller {
-            static targets = ["indicator", "dashboardFrame"]
-
-            static values = {
-              pollInterval: { type: Number, default: 4000 }
-            }
-
-            connect() {
-              this.pollTimer = null;
-              this.startPolling();
-            }
-
-            disconnect() {
-              this.stopPolling();
-            }
-
-            startPolling() {
-              if (this.pollTimer) return;
-
-              this.updateIndicator('polling');
-
-              this.pollTimer = setInterval(() => {
-                this.poll();
-              }, this.pollIntervalValue);
-            }
-
-            stopPolling() {
-              if (this.pollTimer) {
-                clearInterval(this.pollTimer);
-                this.pollTimer = null;
-              }
-            }
-
-            poll() {
-              if (this.hasDashboardFrameTarget) {
-                const frame = this.dashboardFrameTarget;
-                if (frame.src) {
-                  frame.reload();
-                } else {
-                  frame.src = window.location.href;
-                }
-              }
-            }
-
-            updateIndicator(status) {
-              if (!this.hasIndicatorTarget) return;
-
-              const indicator = this.indicatorTarget;
-              indicator.innerHTML = `
-                <span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1"></span>
-                <span class="hidden sm:inline">Polling</span>
-              `;
-              indicator.className = 'flex items-center text-blue-600';
-            }
-          });
 
           // Theme Controller - handles dark mode switching
           Stimulus.application.register("theme", class extends Stimulus.Controller {
@@ -246,10 +265,7 @@
   </style>
   </head>
 
-  <body
-    class="bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col"
-    data-controller="connection"
-  >
+  <body class="bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col">
     <!-- Header -->
     <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700" x-data="{ mobileMenuOpen: false }">
       <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center">
@@ -344,11 +360,10 @@
 
             <span
               id="live-indicator"
-              data-connection-target="indicator"
-              class="hidden sm:flex items-center text-gray-400 dark:text-gray-500"
+              class="hidden sm:flex items-center text-blue-600 dark:text-blue-400"
             >
-              <span class="w-1.5 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full mr-1"></span>
-              <span class="hidden sm:inline">Connecting</span>
+              <span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1 animate-pulse"></span>
+              <span class="hidden sm:inline">Auto</span>
             </span>
 
             <!-- Mobile menu button -->

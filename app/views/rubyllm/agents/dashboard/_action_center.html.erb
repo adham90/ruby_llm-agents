@@ -1,0 +1,62 @@
+<% if critical_alerts.any? %>
+  <div id="action-center" class="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+    <div class="flex items-center mb-3">
+      <svg class="w-5 h-5 text-red-600 dark:text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+      </svg>
+      <h3 class="font-semibold text-red-800 dark:text-red-200">Action Required</h3>
+    </div>
+
+    <div class="space-y-2">
+      <% critical_alerts.each do |alert| %>
+        <div class="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg px-4 py-3 shadow-sm">
+          <% case alert[:type] %>
+          <% when :breaker %>
+            <div class="flex items-center">
+              <span class="w-2 h-2 bg-orange-500 rounded-full mr-3"></span>
+              <div>
+                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Circuit breaker open: <%= alert[:data][:agent_type].gsub(/Agent$/, '') %>
+                </p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  <%= alert[:data][:model_id] %> &middot; <%= alert[:data][:failure_count] %>/<%= alert[:data][:threshold] %> failures
+                </p>
+              </div>
+            </div>
+            <span class="text-xs text-orange-600 dark:text-orange-400 font-medium">
+              <%= alert[:data][:cooldown_remaining] %>s remaining
+            </span>
+
+          <% when :budget_breach %>
+            <div class="flex items-center">
+              <span class="w-2 h-2 bg-red-500 rounded-full mr-3"></span>
+              <div>
+                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <%= alert[:data][:period].to_s.capitalize %> budget exceeded
+                </p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  $<%= number_with_precision(alert[:data][:current], precision: 2) %> / $<%= number_with_precision(alert[:data][:limit], precision: 2) %>
+                </p>
+              </div>
+            </div>
+            <%= link_to "Adjust", ruby_llm_agents.settings_path, class: "text-xs text-red-600 dark:text-red-400 hover:underline font-medium" %>
+
+          <% when :error_spike %>
+            <div class="flex items-center">
+              <span class="w-2 h-2 bg-red-500 rounded-full mr-3 animate-pulse"></span>
+              <div>
+                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Error spike detected
+                </p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  <%= alert[:data][:count] %> errors in last 15 minutes
+                </p>
+              </div>
+            </div>
+            <%= link_to "View failures", ruby_llm_agents.executions_path(status: "error"), class: "text-xs text-red-600 dark:text-red-400 hover:underline font-medium" %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
