@@ -3,11 +3,12 @@
 module RubyLLM
   module Agents
     class ExecutionsController < ApplicationController
+      include Paginatable
+      include Filterable
+
       def index
-        @agent_types = Execution.distinct.pluck(:agent_type)
-        @statuses = Execution.statuses.keys
-        load_paginated_executions
-        load_filter_stats
+        load_filter_options
+        load_executions_with_stats
 
         respond_to do |format|
           format.html
@@ -20,10 +21,8 @@ module RubyLLM
       end
 
       def search
-        @agent_types = Execution.distinct.pluck(:agent_type)
-        @statuses = Execution.statuses.keys
-        load_paginated_executions
-        load_filter_stats
+        load_filter_options
+        load_executions_with_stats
 
         respond_to do |format|
           format.html { render :index }
@@ -39,21 +38,20 @@ module RubyLLM
 
       private
 
-      def load_paginated_executions
-        page = (params[:page] || 1).to_i
-        per_page = 25
-        offset = (page - 1) * per_page
+      def load_filter_options
+        @agent_types = available_agent_types
+        @statuses = Execution.statuses.keys
+      end
 
-        base_scope = filtered_executions.order(created_at: :desc)
-        total_count = base_scope.count
-        @executions = base_scope.limit(per_page).offset(offset)
+      def available_agent_types
+        @available_agent_types ||= Execution.distinct.pluck(:agent_type)
+      end
 
-        @pagination = {
-          current_page: page,
-          per_page: per_page,
-          total_count: total_count,
-          total_pages: (total_count.to_f / per_page).ceil
-        }
+      def load_executions_with_stats
+        result = paginate(filtered_executions)
+        @executions = result[:records]
+        @pagination = result[:pagination]
+        load_filter_stats
       end
 
       def load_filter_stats
@@ -68,23 +66,25 @@ module RubyLLM
       def filtered_executions
         scope = Execution.all
 
-        # Support multiple agent types (comma-separated or array)
-        if params[:agent_types].present?
-          agent_types = params[:agent_types].is_a?(Array) ? params[:agent_types] : params[:agent_types].split(",")
-          scope = scope.where(agent_type: agent_types) if agent_types.any?(&:present?)
+        # Apply agent type filter
+        agent_types = parse_array_param(:agent_types)
+        if agent_types.any?
+          scope = scope.where(agent_type: agent_types)
         elsif params[:agent_type].present?
           scope = scope.by_agent(params[:agent_type])
         end
 
-        # Support multiple statuses (comma-separated or array)
-        if params[:statuses].present?
-          statuses = params[:statuses].is_a?(Array) ? params[:statuses] : params[:statuses].split(",")
-          scope = scope.where(status: statuses) if statuses.any?(&:present?)
+        # Apply status filter with validation
+        statuses = parse_array_param(:statuses)
+        if statuses.any?
+          scope = apply_status_filter(scope, statuses)
         elsif params[:status].present?
-          scope = scope.where(status: params[:status])
+          scope = apply_status_filter(scope, [params[:status]])
         end
 
-        scope = scope.where("created_at >= ?", params[:days].to_i.days.ago) if params[:days].present?
+        # Apply time filter with validation
+        days = parse_days_param
+        scope = apply_time_filter(scope, days)
 
         scope
       end

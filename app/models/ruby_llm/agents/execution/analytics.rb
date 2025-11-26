@@ -103,7 +103,15 @@ module RubyLLM
           end
 
           # Chart data: Hourly activity chart for today showing success/failed
+          # Cached for 5 minutes to reduce database load
           def hourly_activity_chart
+            cache_key = "ruby_llm_agents/hourly_activity/#{Date.current}"
+            Rails.cache.fetch(cache_key, expires_in: 5.minutes) do
+              build_hourly_activity_data
+            end
+          end
+
+          def build_hourly_activity_data
             success_data = {}
             failed_data = {}
 

@@ -13,7 +13,10 @@ module RubyLLM
                     :dashboard_auth,
                     :dashboard_parent_controller,
                     :basic_auth_username,
-                    :basic_auth_password
+                    :basic_auth_password,
+                    :per_page,
+                    :recent_executions_limit,
+                    :job_retry_attempts
 
       attr_writer :cache_store
 
@@ -30,6 +33,9 @@ module RubyLLM
         @dashboard_parent_controller = "ActionController::Base"
         @basic_auth_username = nil
         @basic_auth_password = nil
+        @per_page = 25
+        @recent_executions_limit = 10
+        @job_retry_attempts = 3
       end
 
       def cache_store

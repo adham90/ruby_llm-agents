@@ -3,8 +3,15 @@
 module RubyLLM
   module Agents
     class AgentsController < ApplicationController
+      include Paginatable
+      include Filterable
+
       def index
         @agents = AgentRegistry.all_with_details
+      rescue StandardError => e
+        Rails.logger.error("[RubyLLM::Agents] Error loading agents: #{e.message}")
+        @agents = []
+        flash.now[:alert] = "Error loading agents list"
       end
 
       def show
@@ -12,88 +19,91 @@ module RubyLLM
         @agent_class = AgentRegistry.find(@agent_type)
         @agent_active = @agent_class.present?
 
-        # Get stats for different time periods
+        load_agent_stats
+        load_filter_options
+        load_filtered_executions
+        load_chart_data
+
+        load_agent_config if @agent_class
+      rescue StandardError => e
+        Rails.logger.error("[RubyLLM::Agents] Error loading agent #{@agent_type}: #{e.message}")
+        redirect_to ruby_llm_agents.agents_path, alert: "Error loading agent details"
+      end
+
+      private
+
+      def load_agent_stats
         @stats = Execution.stats_for(@agent_type, period: :all_time)
         @stats_today = Execution.stats_for(@agent_type, period: :today)
+      end
 
-        # Get available filter options for this agent
-        @versions = Execution.by_agent(@agent_type).distinct.pluck(:agent_version).compact.sort.reverse
-        @models = Execution.by_agent(@agent_type).distinct.pluck(:model_id).compact.sort
-        @temperatures = Execution.by_agent(@agent_type).distinct.pluck(:temperature).compact.sort
+      def load_filter_options
+        # Single query to get all filter options (fixes N+1)
+        filter_data = Execution.by_agent(@agent_type)
+                               .where.not(agent_version: nil)
+                               .or(Execution.by_agent(@agent_type).where.not(model_id: nil))
+                               .or(Execution.by_agent(@agent_type).where.not(temperature: nil))
+                               .pluck(:agent_version, :model_id, :temperature)
 
-        # Build filtered scope
-        base_scope = Execution.by_agent(@agent_type)
+        @versions = filter_data.map(&:first).compact.uniq.sort.reverse
+        @models = filter_data.map { |d| d[1] }.compact.uniq.sort
+        @temperatures = filter_data.map(&:last).compact.uniq.sort
+      end
 
-        # Apply status filter
-        if params[:statuses].present?
-          statuses = params[:statuses].is_a?(Array) ? params[:statuses] : params[:statuses].split(",")
-          base_scope = base_scope.where(status: statuses) if statuses.any?(&:present?)
-        end
+      def load_filtered_executions
+        base_scope = build_filtered_scope
+        result = paginate(base_scope)
+        @executions = result[:records]
+        @pagination = result[:pagination]
 
-        # Apply version filter
-        if params[:versions].present?
-          versions = params[:versions].is_a?(Array) ? params[:versions] : params[:versions].split(",")
-          base_scope = base_scope.where(agent_version: versions) if versions.any?(&:present?)
-        end
-
-        # Apply model filter
-        if params[:models].present?
-          models = params[:models].is_a?(Array) ? params[:models] : params[:models].split(",")
-          base_scope = base_scope.where(model_id: models) if models.any?(&:present?)
-        end
-
-        # Apply temperature filter
-        if params[:temperatures].present?
-          temps = params[:temperatures].is_a?(Array) ? params[:temperatures] : params[:temperatures].split(",")
-          base_scope = base_scope.where(temperature: temps) if temps.any?(&:present?)
-        end
-
-        # Apply time range filter
-        base_scope = base_scope.where("created_at >= ?", params[:days].to_i.days.ago) if params[:days].present?
-
-        # Paginate
-        page = (params[:page] || 1).to_i
-        per_page = 25
-        offset = (page - 1) * per_page
-
-        filtered_scope = base_scope.order(created_at: :desc)
-        total_count = filtered_scope.count
-        @executions = filtered_scope.limit(per_page).offset(offset)
-
-        @pagination = {
-          current_page: page,
-          per_page: per_page,
-          total_count: total_count,
-          total_pages: (total_count.to_f / per_page).ceil
-        }
-
-        # Filter stats for summary display
         @filter_stats = {
-          total_count: total_count,
+          total_count: result[:pagination][:total_count],
           total_cost: base_scope.sum(:total_cost),
           total_tokens: base_scope.sum(:total_tokens)
         }
+      end
 
-        # Get trend data for charts (30 days)
+      def build_filtered_scope
+        scope = Execution.by_agent(@agent_type)
+
+        # Apply status filter with validation
+        statuses = parse_array_param(:statuses)
+        scope = apply_status_filter(scope, statuses) if statuses.any?
+
+        # Apply version filter
+        versions = parse_array_param(:versions)
+        scope = scope.where(agent_version: versions) if versions.any?
+
+        # Apply model filter
+        models = parse_array_param(:models)
+        scope = scope.where(model_id: models) if models.any?
+
+        # Apply temperature filter
+        temperatures = parse_array_param(:temperatures)
+        scope = scope.where(temperature: temperatures) if temperatures.any?
+
+        # Apply time range filter with validation
+        days = parse_days_param
+        scope = apply_time_filter(scope, days)
+
+        scope
+      end
+
+      def load_chart_data
         @trend_data = Execution.trend_analysis(agent_type: @agent_type, days: 30)
+        @status_distribution = Execution.by_agent(@agent_type).group(:status).count
+      end
 
-        # Get status distribution for pie chart
-        @status_distribution = Execution.by_agent(@agent_type)
-                                         .group(:status)
-                                         .count
-
-        # Agent configuration (if class exists)
-        if @agent_class
-          @config = {
-            model: @agent_class.model,
-            temperature: @agent_class.temperature,
-            version: @agent_class.version,
-            timeout: @agent_class.timeout,
-            cache_enabled: @agent_class.cache_enabled?,
-            cache_ttl: @agent_class.cache_ttl,
-            params: @agent_class.params
-          }
-        end
+      def load_agent_config
+        @config = {
+          model: @agent_class.model,
+          temperature: @agent_class.temperature,
+          version: @agent_class.version,
+          timeout: @agent_class.timeout,
+          cache_enabled: @agent_class.cache_enabled?,
+          cache_ttl: @agent_class.cache_ttl,
+          params: @agent_class.params
+        }
       end
     end
   end

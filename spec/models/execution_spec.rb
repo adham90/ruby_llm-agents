@@ -115,6 +115,77 @@ RSpec.describe RubyLLM::Agents::Execution, type: :model do
         expect(described_class.slow(5000)).to include(slow)
       end
     end
+
+    describe ".yesterday" do
+      it "returns only yesterday's executions" do
+        today_exec = create(:execution)
+        yesterday_exec = create(:execution, :yesterday)
+
+        expect(described_class.yesterday).to include(yesterday_exec)
+        expect(described_class.yesterday).not_to include(today_exec)
+      end
+    end
+
+    describe ".this_week" do
+      it "returns executions from this week" do
+        this_week_exec = create(:execution)
+        old_exec = create(:execution, created_at: 2.weeks.ago)
+
+        expect(described_class.this_week).to include(this_week_exec)
+        expect(described_class.this_week).not_to include(old_exec)
+      end
+    end
+
+    describe ".this_month" do
+      it "returns executions from this month" do
+        this_month_exec = create(:execution)
+        old_exec = create(:execution, created_at: 2.months.ago)
+
+        expect(described_class.this_month).to include(this_month_exec)
+        expect(described_class.this_month).not_to include(old_exec)
+      end
+    end
+
+    describe ".last_n_days" do
+      it "returns executions from last n days" do
+        recent = create(:execution, created_at: 3.days.ago)
+        old = create(:execution, created_at: 10.days.ago)
+
+        expect(described_class.last_n_days(7)).to include(recent)
+        expect(described_class.last_n_days(7)).not_to include(old)
+      end
+    end
+
+    describe ".by_version" do
+      it "filters by agent version" do
+        v1 = create(:execution, agent_version: "1.0")
+        v2 = create(:execution, agent_version: "2.0")
+
+        expect(described_class.by_version("1.0")).to include(v1)
+        expect(described_class.by_version("1.0")).not_to include(v2)
+      end
+    end
+
+    describe ".by_model" do
+      it "filters by model" do
+        gpt4 = create(:execution, model_id: "gpt-4")
+        claude = create(:execution, model_id: "claude-3")
+
+        expect(described_class.by_model("gpt-4")).to include(gpt4)
+        expect(described_class.by_model("gpt-4")).not_to include(claude)
+      end
+    end
+
+    describe ".recent" do
+      it "returns limited recent executions ordered by created_at desc" do
+        old = create(:execution, created_at: 1.day.ago)
+        new = create(:execution, created_at: Time.current)
+
+        result = described_class.recent(1)
+        expect(result).to include(new)
+        expect(result).not_to include(old)
+      end
+    end
   end
 
   describe "aggregations" do

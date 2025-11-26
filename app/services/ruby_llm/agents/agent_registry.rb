@@ -66,6 +66,8 @@ module RubyLLM
 
           Dir.glob(agents_path.join("**", "*.rb")).each do |file|
             require_dependency file
+          rescue LoadError, StandardError => e
+            Rails.logger.error("[RubyLLM::Agents] Failed to load agent file #{file}: #{e.message}")
           end
         end
 

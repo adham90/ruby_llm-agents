@@ -65,6 +65,15 @@
         if (window.rubyLLMAgentsClock) clearInterval(window.rubyLLMAgentsClock);
         updateClock();
         window.rubyLLMAgentsClock = setInterval(updateClock, 1000);
+
+        // Handle data-href clickable rows (semantic alternative to onclick)
+        document.querySelectorAll('[data-href]').forEach(function(element) {
+          element.addEventListener('click', function(e) {
+            // Don't navigate if clicking on a link or button inside the row
+            if (e.target.closest('a, button')) return;
+            window.location = element.dataset.href;
+          });
+        });
       });
     </script>
 
