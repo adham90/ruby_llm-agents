@@ -50,6 +50,7 @@ module RubyLLM
         # @param kwargs [Hash] Named parameters for the agent
         # @option kwargs [Boolean] :dry_run Return prompt info without API call
         # @option kwargs [Boolean] :skip_cache Bypass caching even if enabled
+        # @option kwargs [String, Array<String>] :with Attachments (files, URLs) to send with the prompt
         # @yield [chunk] Yields chunks when streaming is enabled
         # @yieldparam chunk [RubyLLM::Chunk] A streaming chunk with content
         # @return [Object] The processed response from the agent
@@ -64,6 +65,10 @@ module RubyLLM
         #   ChatAgent.call(message: "Hello") do |chunk|
         #     print chunk.content
         #   end
+        #
+        # @example With attachments
+        #   VisionAgent.call(query: "Describe this image", with: "photo.jpg")
+        #   VisionAgent.call(query: "Compare these", with: ["a.png", "b.png"])
         def call(*args, **kwargs, &block)
           new(*args, **kwargs).call(&block)
         end
@@ -429,6 +434,7 @@ module RubyLLM
           timeout: self.class.timeout,
           system_prompt: system_prompt,
           user_prompt: user_prompt,
+          attachments: @options[:with],
           schema: schema&.class&.name,
           streaming: self.class.streaming,
           tools: self.class.tools.map { |t| t.respond_to?(:name) ? t.name : t.to_s }
@@ -465,7 +471,7 @@ module RubyLLM
           if self.class.streaming && block_given?
             execute_with_streaming(current_client, &block)
           else
-            response = current_client.ask(user_prompt)
+            response = current_client.ask(user_prompt, **ask_options)
             process_response(capture_response(response))
           end
         end
@@ -483,7 +489,7 @@ module RubyLLM
       def execute_with_streaming(current_client, &block)
         first_chunk_at = nil
 
-        response = current_client.ask(user_prompt) do |chunk|
+        response = current_client.ask(user_prompt, **ask_options) do |chunk|
           first_chunk_at ||= Time.current
           yield chunk if block_given?
         end
@@ -692,7 +698,18 @@ module RubyLLM
       #
       # @return [Hash] Data to hash for cache key
       def cache_key_data
-        @options.except(:skip_cache, :dry_run)
+        @options.except(:skip_cache, :dry_run, :with)
+      end
+
+      # Returns options to pass to the ask method
+      #
+      # Currently supports :with for attachments (images, PDFs, etc.)
+      #
+      # @return [Hash] Options for the ask call
+      def ask_options
+        opts = {}
+        opts[:with] = @options[:with] if @options[:with]
+        opts
       end
 
       # Validates that all required parameters are present

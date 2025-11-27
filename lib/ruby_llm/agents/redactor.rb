@@ -108,7 +108,7 @@ module RubyLLM
             redact_string(value, config)
           when defined?(ActiveRecord::Base) && ActiveRecord::Base
             # Convert ActiveRecord objects to safe references
-            { id: value.id, type: value.class.name }
+            { id: value&.id, type: value&.class&.name }
           else
             value
           end

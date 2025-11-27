@@ -15,6 +15,7 @@ A powerful Rails engine for building, managing, and monitoring LLM-powered agent
 - **🔍 Anomaly Detection** - Automatic warnings for unusual cost or duration patterns
 - **🎯 Type Safety** - Structured output with RubyLLM::Schema integration
 - **⚡ Real-time Streaming** - Stream LLM responses with time-to-first-token tracking
+- **📎 Attachments** - Send images, PDFs, and files to vision-capable models
 - **🔄 Reliability** - Automatic retries, model fallbacks, and circuit breakers for resilient agents
 - **💵 Budget Controls** - Daily/monthly spending limits with hard and soft enforcement
 - **🔔 Alerts** - Slack, webhook, and custom notifications for budget and circuit breaker events
@@ -217,6 +218,57 @@ Enable streaming by default for all agents:
 RubyLLM::Agents.configure do |config|
   config.default_streaming = true
 end
+```
+
+### Attachments (Vision & Multimodal)
+
+Send images, PDFs, and other files to vision-capable models using the `with:` option:
+
+```ruby
+class VisionAgent < ApplicationAgent
+  model "gpt-4o"  # Use a vision-capable model
+  param :question, required: true
+
+  def user_prompt
+    question
+  end
+end
+```
+
+#### Single Attachment
+
+```ruby
+# Local file
+VisionAgent.call(question: "Describe this image", with: "photo.jpg")
+
+# URL
+VisionAgent.call(question: "What architecture is shown?", with: "https://example.com/building.jpg")
+```
+
+#### Multiple Attachments
+
+```ruby
+VisionAgent.call(
+  question: "Compare these two screenshots",
+  with: ["screenshot_v1.png", "screenshot_v2.png"]
+)
+```
+
+#### Supported File Types
+
+RubyLLM automatically detects file types:
+
+- **Images:** `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, `.bmp`
+- **Videos:** `.mp4`, `.mov`, `.avi`, `.webm`
+- **Audio:** `.mp3`, `.wav`, `.m4a`, `.ogg`, `.flac`
+- **Documents:** `.pdf`, `.txt`, `.md`, `.csv`, `.json`, `.xml`
+- **Code:** `.rb`, `.py`, `.js`, `.html`, `.css`, and many others
+
+#### Debug Mode with Attachments
+
+```ruby
+VisionAgent.call(question: "test", with: "image.png", dry_run: true)
+# => { ..., attachments: "image.png", ... }
 ```
 
 ## Usage Guide

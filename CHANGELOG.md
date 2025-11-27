@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2025-11-27
+
+### Added
+
+- Attachment support for vision and multimodal agents via `with:` option
+- Support for images, PDFs, audio, video, and document files
+- Attachments displayed in dry_run response
+
 ## [0.3.0] - 2025-11-27
 
 ### Changed
@@ -75,6 +83,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[0.3.1]: https://github.com/adham90/ruby_llm-agents/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/adham90/ruby_llm-agents/compare/v0.2.3...v0.3.0
 [0.2.3]: https://github.com/adham90/ruby_llm-agents/compare/v0.2.1...v0.2.3
 [0.2.1]: https://github.com/adham90/ruby_llm-agents/compare/v0.2.0...v0.2.1

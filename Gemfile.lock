@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    ruby_llm-agents (0.2.4)
+    ruby_llm-agents (0.3.1)
       chartkick (>= 5.0)
       csv
       rails (>= 7.0)

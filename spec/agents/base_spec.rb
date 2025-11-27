@@ -282,5 +282,62 @@ RSpec.describe RubyLLM::Agents::Base do
 
       expect(agent1.send(:cache_key)).not_to eq(agent2.send(:cache_key))
     end
+
+    it "excludes :with from cache key" do
+      agent1 = agent_class.new(query: "test", with: "image.png")
+      agent2 = agent_class.new(query: "test")
+
+      expect(agent1.send(:cache_key)).to eq(agent2.send(:cache_key))
+    end
+  end
+
+  describe "attachments support" do
+    let(:agent_class) do
+      Class.new(described_class) do
+        model "gpt-4o"
+        param :query, required: true
+
+        def user_prompt
+          query
+        end
+      end
+    end
+
+    describe "#ask_options" do
+      it "returns empty hash when no attachments" do
+        agent = agent_class.new(query: "test")
+        expect(agent.send(:ask_options)).to eq({})
+      end
+
+      it "includes :with when attachment provided" do
+        agent = agent_class.new(query: "test", with: "image.png")
+        expect(agent.send(:ask_options)).to eq({with: "image.png"})
+      end
+
+      it "supports array of attachments" do
+        agent = agent_class.new(query: "test", with: ["a.png", "b.png"])
+        expect(agent.send(:ask_options)).to eq({with: ["a.png", "b.png"]})
+      end
+    end
+
+    describe "dry_run with attachments" do
+      it "includes attachments in dry run response" do
+        result = agent_class.call(query: "test", with: "photo.jpg", dry_run: true)
+
+        expect(result[:attachments]).to eq("photo.jpg")
+      end
+
+      it "includes array attachments in dry run response" do
+        result = agent_class.call(query: "test", with: ["a.png", "b.png"], dry_run: true)
+
+        expect(result[:attachments]).to eq(["a.png", "b.png"])
+      end
+
+      it "shows nil attachments when none provided" do
+        result = agent_class.call(query: "test", dry_run: true)
+
+        expect(result[:attachments]).to be_nil
+      end
+    end
   end
 end
