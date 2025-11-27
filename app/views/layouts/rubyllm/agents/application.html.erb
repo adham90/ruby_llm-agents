@@ -322,6 +322,15 @@
     .badge-timeout {
       @apply bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200;
     }
+    .badge-cyan {
+      @apply bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300;
+    }
+    .badge-purple {
+      @apply bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300;
+    }
+    .badge-orange {
+      @apply bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300;
+    }
   </style>
   </head>
 
@@ -581,7 +590,7 @@
       data-controller="theme"
     >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col sm:flex-row items-center sm:justify-between gap-3 sm:gap-0">
           <div class="flex items-center space-x-2">
             <label
               for="theme-select"
@@ -606,7 +615,7 @@
             </select>
           </div>
 
-          <p class="text-sm text-gray-500 dark:text-gray-400">
+          <p class="text-sm text-gray-500 dark:text-gray-400 text-center">
             Powered by
             <a href="https://github.com/adham90/ruby_llm-agents" class="text-blue-600 dark:text-blue-400 hover:underline">ruby_llm-agents</a>
           </p>

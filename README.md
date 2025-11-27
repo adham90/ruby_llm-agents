@@ -310,6 +310,11 @@ result.streaming?         # => false
 result.success?           # => true
 result.truncated?         # => false (true if hit max_tokens)
 
+# Tool calls (for agents with tools)
+result.tool_calls         # => [{ "id" => "call_abc", "name" => "search", "arguments" => {...} }]
+result.tool_calls_count   # => 1
+result.has_tool_calls?    # => true
+
 # Reliability info
 result.attempts_count     # => 1
 result.used_fallback?     # => false
@@ -348,6 +353,8 @@ result.to_h
 #   duration_ms: 1234,
 #   finish_reason: "stop",
 #   streaming: false,
+#   tool_calls: [...],
+#   tool_calls_count: 0,
 #   ...
 # }
 ```

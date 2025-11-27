@@ -256,6 +256,16 @@ module RubyLLM
           scope :content_filtered, -> { where(finish_reason: "content_filter") }
           scope :tool_calls, -> { where(finish_reason: "tool_calls") }
 
+          # @!method with_tool_calls
+          #   Returns executions that made tool calls
+          #   @return [ActiveRecord::Relation]
+
+          # @!method without_tool_calls
+          #   Returns executions that did not make tool calls
+          #   @return [ActiveRecord::Relation]
+          scope :with_tool_calls, -> { where("tool_calls_count > 0") }
+          scope :without_tool_calls, -> { where(tool_calls_count: 0) }
+
           # @!endgroup
         end
 

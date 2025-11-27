@@ -107,6 +107,19 @@ module RubyLlmAgents
       )
     end
 
+    def create_add_tool_calls_migration
+      # Check if columns already exist
+      if column_exists?(:ruby_llm_agents_executions, :tool_calls)
+        say_status :skip, "tool_calls column already exists", :yellow
+        return
+      end
+
+      migration_template(
+        "add_tool_calls_migration.rb.tt",
+        File.join(db_migrate_path, "add_tool_calls_to_ruby_llm_agents_executions.rb")
+      )
+    end
+
     def show_post_upgrade_message
       say ""
       say "RubyLLM::Agents upgrade migration created!", :green

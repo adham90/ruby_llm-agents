@@ -21,6 +21,8 @@ FactoryBot.define do
     parameters { { query: "test query" } }
     response { { content: "test response" } }
     metadata { { query: "test query" } }
+    tool_calls { [] }
+    tool_calls_count { 0 }
 
     trait :failed do
       status { "error" }
@@ -57,6 +59,25 @@ FactoryBot.define do
       created_at { 5.days.ago }
       started_at { 5.days.ago - 1.minute }
       completed_at { 5.days.ago }
+    end
+
+    trait :with_tool_calls do
+      tool_calls do
+        [
+          {
+            "id" => "call_abc123",
+            "name" => "search_database",
+            "arguments" => { "query" => "test" }
+          },
+          {
+            "id" => "call_def456",
+            "name" => "format_response",
+            "arguments" => { "format" => "json" }
+          }
+        ]
+      end
+      tool_calls_count { 2 }
+      finish_reason { "tool_calls" }
     end
   end
 end

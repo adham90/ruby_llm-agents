@@ -317,4 +317,56 @@ RSpec.describe RubyLLM::Agents::Execution, type: :model do
       end
     end
   end
+
+  describe "tool calls" do
+    describe "#has_tool_calls?" do
+      it "returns true when tool_calls_count > 0" do
+        execution = build(:execution, tool_calls_count: 2)
+        expect(execution.has_tool_calls?).to be true
+      end
+
+      it "returns false when tool_calls_count is 0" do
+        execution = build(:execution, tool_calls_count: 0)
+        expect(execution.has_tool_calls?).to be false
+      end
+
+      it "returns false when tool_calls_count is nil" do
+        execution = build(:execution, tool_calls_count: nil)
+        expect(execution.has_tool_calls?).to be false
+      end
+    end
+
+    describe "scopes" do
+      describe ".with_tool_calls" do
+        it "returns executions with tool calls" do
+          with_calls = create(:execution, :with_tool_calls)
+          without_calls = create(:execution, tool_calls_count: 0)
+
+          expect(described_class.with_tool_calls).to include(with_calls)
+          expect(described_class.with_tool_calls).not_to include(without_calls)
+        end
+      end
+
+      describe ".without_tool_calls" do
+        it "returns executions without tool calls" do
+          with_calls = create(:execution, :with_tool_calls)
+          without_calls = create(:execution, tool_calls_count: 0)
+
+          expect(described_class.without_tool_calls).to include(without_calls)
+          expect(described_class.without_tool_calls).not_to include(with_calls)
+        end
+      end
+    end
+
+    describe "factory trait" do
+      it "creates execution with tool calls" do
+        execution = create(:execution, :with_tool_calls)
+
+        expect(execution.tool_calls.size).to eq(2)
+        expect(execution.tool_calls_count).to eq(2)
+        expect(execution.finish_reason).to eq("tool_calls")
+        expect(execution.tool_calls.first["name"]).to eq("search_database")
+      end
+    end
+  end
 end

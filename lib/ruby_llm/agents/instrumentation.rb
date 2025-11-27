@@ -385,6 +385,12 @@ module RubyLLM
           update_data[:response] = redacted_response(@last_response)
         end
 
+        # Add tool calls from accumulated_tool_calls (captured from all responses)
+        if respond_to?(:accumulated_tool_calls) && accumulated_tool_calls.present?
+          update_data[:tool_calls] = accumulated_tool_calls
+          update_data[:tool_calls_count] = accumulated_tool_calls.size
+        end
+
         # Add error data if failed
         if error
           update_data.merge!(
@@ -568,6 +574,10 @@ module RubyLLM
       def safe_extract_response_data(response)
         return {} unless response.respond_to?(:input_tokens)
 
+        # Use accumulated_tool_calls which captures tool calls from ALL responses
+        # during multi-turn conversations (when tools are used)
+        tool_calls_data = respond_to?(:accumulated_tool_calls) ? accumulated_tool_calls : []
+
         {
           input_tokens: safe_response_value(response, :input_tokens),
           output_tokens: safe_response_value(response, :output_tokens),
@@ -575,7 +585,9 @@ module RubyLLM
           cache_creation_tokens: safe_response_value(response, :cache_creation_tokens, 0),
           model_id: safe_response_value(response, :model_id),
           finish_reason: safe_extract_finish_reason(response),
-          response: safe_serialize_response(response)
+          response: safe_serialize_response(response),
+          tool_calls: tool_calls_data || [],
+          tool_calls_count: tool_calls_data&.size || 0
         }.compact
       end
 
@@ -689,14 +701,35 @@ module RubyLLM
       # @param response [RubyLLM::Message] The LLM response
       # @return [Hash] Serialized response data
       def safe_serialize_response(response)
+        # Use accumulated_tool_calls which captures tool calls from ALL responses
+        tool_calls_data = respond_to?(:accumulated_tool_calls) ? accumulated_tool_calls : nil
+
         {
           content: safe_response_value(response, :content),
           model_id: safe_response_value(response, :model_id),
           input_tokens: safe_response_value(response, :input_tokens),
           output_tokens: safe_response_value(response, :output_tokens),
           cached_tokens: safe_response_value(response, :cached_tokens, 0),
-          cache_creation_tokens: safe_response_value(response, :cache_creation_tokens, 0)
+          cache_creation_tokens: safe_response_value(response, :cache_creation_tokens, 0),
+          tool_calls: tool_calls_data.presence
         }.compact
+      end
+
+      # Serializes tool calls to an array of hashes for storage
+      #
+      # @param response [RubyLLM::Message] The LLM response
+      # @return [Array<Hash>, nil] Serialized tool calls or nil if none
+      def serialize_tool_calls(response)
+        tool_calls = safe_response_value(response, :tool_calls)
+        return nil if tool_calls.nil? || tool_calls.empty?
+
+        tool_calls.map do |id, tool_call|
+          if tool_call.respond_to?(:to_h)
+            tool_call.to_h
+          else
+            { id: id, name: tool_call[:name], arguments: tool_call[:arguments] }
+          end
+        end
       end
 
       # Emergency fallback to mark execution as failed

@@ -1,48 +1,63 @@
-<div id="execution-<%= execution.id %>" class="py-3 hover:bg-gray-50 dark:hover:bg-gray-700 -mx-2 px-2 rounded-lg transition-colors">
+<div id="execution-<%= execution.id %>" class="py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 -mx-2 px-2 rounded-lg transition-colors">
   <%= link_to ruby_llm_agents.execution_path(execution), data: { turbo: false }, class: "block" do %>
-    <div class="flex items-start space-x-3">
-      <!-- Timeline indicator -->
-      <div class="flex flex-col items-center pt-1">
+    <!-- Row 1: Status dot + Agent + Badges + Timestamp -->
+    <div class="flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2 min-w-0">
         <%= render "rubyllm/agents/shared/status_dot", status: execution.status %>
-      </div>
-
-      <!-- Content -->
-      <div class="flex-1 min-w-0">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-2">
-            <p class="font-medium text-gray-900 dark:text-gray-100 text-sm">
-              <%= execution.agent_type.gsub(/Agent$/, '') %>
-            </p>
-            <span class="text-xs text-gray-400 dark:text-gray-500">v<%= execution.agent_version %></span>
-            <% if execution.status_running? %>
-              <span class="text-xs text-blue-600 dark:text-blue-400 font-medium">Running...</span>
+        <span class="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
+          <%= execution.agent_type.gsub(/Agent$/, '') %>
+        </span>
+        <span class="hidden sm:inline text-xs text-gray-400 dark:text-gray-500">v<%= execution.agent_version %></span>
+        <% unless execution.status_running? %>
+          <div class="hidden sm:flex items-center gap-1">
+            <% if execution.streaming? %>
+              <span class="badge badge-cyan text-[10px] px-1.5 py-0.5">Stream</span>
+            <% end %>
+            <% if execution.cache_hit? %>
+              <span class="badge badge-purple text-[10px] px-1.5 py-0.5">Cached</span>
+            <% end %>
+            <% if execution.rate_limited? %>
+              <span class="badge badge-orange text-[10px] px-1.5 py-0.5">Limited</span>
             <% end %>
           </div>
-          <p class="text-xs text-gray-400 dark:text-gray-500">
-            <%= time_ago_in_words(execution.created_at) %> ago
-          </p>
-        </div>
-
-        <% if execution.status_running? %>
-          <p class="text-xs text-blue-500 dark:text-blue-400 mt-1">
-            In progress...
-          </p>
-        <% else %>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            <%= number_to_human_short(execution.total_tokens || 0) %> tokens
-            <span class="text-gray-300 dark:text-gray-600 mx-1">&middot;</span>
-            <%= number_to_human_short(execution.total_cost || 0, prefix: "$", precision: 2) %>
-            <span class="text-gray-300 dark:text-gray-600 mx-1">&middot;</span>
-            <%= number_to_human_short(execution.duration_ms || 0) %>ms
-          </p>
-        <% end %>
-
-        <% if execution.status_error? && execution.error_message.present? %>
-          <p class="text-xs text-red-600 dark:text-red-400 mt-1.5 bg-red-50 dark:bg-red-900/30 rounded px-2 py-1">
-            <%= execution.error_class %>: <%= truncate(execution.error_message, length: 80) %>
-          </p>
         <% end %>
       </div>
+      <span class="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap flex-shrink-0">
+        <%= time_ago_in_words(execution.created_at) %> ago
+      </span>
     </div>
+
+    <!-- Row 2: Model + Metrics -->
+    <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+      <% if execution.status_running? %>
+        <span class="text-blue-500 dark:text-blue-400 animate-pulse">Processing...</span>
+      <% else %>
+        <!-- Mobile: compact -->
+        <span class="sm:hidden">
+          <%= number_to_human_short(execution.total_tokens || 0) %> tokens · $<%= number_with_precision(execution.total_cost || 0, precision: 2) %>
+        </span>
+        <!-- Desktop: full -->
+        <span class="hidden sm:inline">
+          <span class="font-mono text-gray-400 dark:text-gray-500"><%= execution.model_id %></span>
+          <span class="mx-1.5 text-gray-300 dark:text-gray-600">·</span>
+          <%= number_to_human_short(execution.total_tokens || 0) %> tokens
+          <span class="mx-1.5 text-gray-300 dark:text-gray-600">·</span>
+          $<%= number_with_precision(execution.total_cost || 0, precision: 4) %>
+          <span class="mx-1.5 text-gray-300 dark:text-gray-600">·</span>
+          <%= number_to_human_short(execution.duration_ms || 0) %>ms
+          <% if execution.attempts_count && execution.attempts_count > 1 %>
+            <span class="mx-1.5 text-gray-300 dark:text-gray-600">·</span>
+            <span class="text-amber-600 dark:text-amber-400"><%= execution.attempts_count %> retries</span>
+          <% end %>
+        </span>
+      <% end %>
+    </div>
+
+    <!-- Error display -->
+    <% if execution.status_error? && execution.error_message.present? %>
+      <p class="mt-1.5 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 rounded px-2 py-1">
+        <%= execution.error_class %>: <%= truncate(execution.error_message, length: 80) %>
+      </p>
+    <% end %>
   <% end %>
 </div>

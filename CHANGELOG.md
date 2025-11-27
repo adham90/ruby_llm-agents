@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2025-11-27
+
+### Added
+
+- Tool calls tracking in Result object (`tool_calls`, `tool_calls_count`, `has_tool_calls?`)
+- Dedicated `tool_calls` and `tool_calls_count` columns in executions table
+- Tool calls display in execution show page
+- Migration generator for upgrading existing installations with tool calls columns
+- Scopes for filtering executions by tool calls (`with_tool_calls`, `without_tool_calls`)
+
+### Fixed
+
+- Tool calls now properly captured from all responses during multi-turn conversations
+- Previously only the final response was captured, missing tool calls from intermediate responses
+
+### Changed
+
+- Instrumentation now uses accumulated tool calls from conversation history
+- UI improvements to dashboard and agent views
+
 ## [0.3.2] - 2025-11-27
 
 ### Added
@@ -104,6 +124,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[0.3.3]: https://github.com/adham90/ruby_llm-agents/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/adham90/ruby_llm-agents/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/adham90/ruby_llm-agents/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/adham90/ruby_llm-agents/compare/v0.2.3...v0.3.0

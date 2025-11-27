@@ -1,0 +1,28 @@
+# frozen_string_literal: true
+
+# Migration to add dedicated tool_calls column to executions
+#
+# This migration adds a dedicated column for storing tool call data,
+# enabling easier querying and display of tool/function calls made
+# during agent execution.
+#
+# Tool call structure:
+# [
+#   { "id": "call_abc123", "name": "search", "arguments": { "query": "..." } },
+#   { "id": "call_def456", "name": "calculate", "arguments": { ... } }
+# ]
+#
+# Run with: rails db:migrate
+class AddToolCallsToRubyLLMAgentsExecutions < ActiveRecord::Migration<%= migration_version %>
+  def change
+    # Add tool_calls JSONB array for storing tool call details
+    # Each tool call contains: id, name, arguments
+    add_column :ruby_llm_agents_executions, :tool_calls, :jsonb, null: false, default: []
+
+    # Add counter for quick access to tool call count
+    add_column :ruby_llm_agents_executions, :tool_calls_count, :integer, null: false, default: 0
+
+    # Add index for querying executions that have tool calls
+    add_index :ruby_llm_agents_executions, :tool_calls_count
+  end
+end

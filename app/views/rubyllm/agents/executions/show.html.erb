@@ -19,56 +19,109 @@
 </div>
 
 <!-- Header -->
-<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6">
-  <div class="flex items-center justify-between">
-    <div>
-      <div class="flex items-center gap-3">
-        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">
-          <%= @execution.agent_type.gsub(/Agent$/, '') %>
-        </h2>
-
-        <%= render "rubyllm/agents/shared/status_badge", status: @execution.status, size: :md %>
-
-        <% if @execution.streaming? %>
-          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300">
-            Streaming
-          </span>
-        <% end %>
-
-        <% if @execution.cache_hit %>
-          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300">
-            Cached
-          </span>
-        <% end %>
-
-        <% if @execution.finish_reason.present? %>
-          <% finish_colors = {
-            'stop' => 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
-            'length' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300',
-            'content_filter' => 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300',
-            'tool_calls' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300'
-          } %>
-          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <%= finish_colors[@execution.finish_reason] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' %>">
-            <%= @execution.finish_reason %>
-          </span>
-        <% end %>
-      </div>
-
-      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-        Execution #<%= @execution.id %> · v<%= @execution.agent_version %>
-        <% if @execution.model_provider.present? %>
-          · <%= @execution.model_provider %>
-        <% end %>
-      </p>
+<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-5 mb-6">
+  <!-- Desktop: Row 1 - Agent name + badges + buttons + date -->
+  <div class="hidden sm:flex sm:items-center sm:justify-between gap-4">
+    <div class="flex items-center gap-3 min-w-0">
+      <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
+        <%= @execution.agent_type.gsub(/Agent$/, '') %>
+      </h2>
+      <%= render "rubyllm/agents/shared/status_badge", status: @execution.status, size: :md %>
+      <% if @execution.streaming? %>
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300">Stream</span>
+      <% end %>
+      <% if @execution.cache_hit %>
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300">Cached</span>
+      <% end %>
+      <% if @execution.finish_reason.present? %>
+        <% finish_colors = {
+          'stop' => 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
+          'length' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300',
+          'content_filter' => 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300',
+          'tool_calls' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300'
+        } %>
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium <%= finish_colors[@execution.finish_reason] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' %>"><%= @execution.finish_reason %></span>
+      <% end %>
     </div>
+    <div class="flex items-center gap-3 flex-shrink-0">
+      <%= button_to rerun_execution_path(@execution, dry_run: true),
+          method: :post,
+          data: { turbo: false },
+          class: "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors",
+          title: "Preview what would be sent without making an API call" do %>
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+        </svg>
+        Dry Run
+      <% end %>
+      <button
+        type="button"
+        onclick="confirmRerun()"
+        class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+        title="Re-execute this agent with the same parameters"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        Rerun
+      </button>
+      <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap"><%= @execution.created_at.strftime("%b %d, %H:%M") %></span>
+    </div>
+  </div>
 
-    <div class="flex items-center gap-4">
-      <!-- Rerun Buttons -->
+  <!-- Desktop: Row 2 - Info line + relative time -->
+  <div class="hidden sm:flex sm:items-center sm:justify-between mt-1.5">
+    <p class="text-xs text-gray-500 dark:text-gray-400">
+      #<%= @execution.id %> · v<%= @execution.agent_version %>
+      <% if @execution.model_provider.present? %>
+        · <%= @execution.model_provider %>
+      <% end %>
+    </p>
+    <span class="text-xs text-gray-400 dark:text-gray-500"><%= time_ago_in_words(@execution.created_at) %> ago</span>
+  </div>
+
+  <!-- Mobile: Stacked layout -->
+  <div class="sm:hidden">
+    <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
+      <%= @execution.agent_type.gsub(/Agent$/, '') %>
+    </h2>
+    <div class="flex flex-wrap items-center gap-2 mt-2">
+      <%= render "rubyllm/agents/shared/status_badge", status: @execution.status, size: :md %>
+      <% if @execution.streaming? %>
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300">Stream</span>
+      <% end %>
+      <% if @execution.cache_hit %>
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300">Cached</span>
+      <% end %>
+      <% if @execution.finish_reason.present? %>
+        <% finish_colors = {
+          'stop' => 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
+          'length' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300',
+          'content_filter' => 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300',
+          'tool_calls' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300'
+        } %>
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium <%= finish_colors[@execution.finish_reason] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' %>"><%= @execution.finish_reason %></span>
+      <% end %>
+    </div>
+    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+      #<%= @execution.id %> · v<%= @execution.agent_version %>
+      <% if @execution.model_provider.present? %>
+        · <%= @execution.model_provider %>
+      <% end %>
+    </p>
+
+    <!-- Mobile: Date + Buttons -->
+    <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+      <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+        <%= @execution.created_at.strftime("%b %d, %Y at %H:%M") %>
+        <span class="text-gray-400 dark:text-gray-500">· <%= time_ago_in_words(@execution.created_at) %> ago</span>
+      </p>
       <div class="flex items-center gap-2">
         <%= button_to rerun_execution_path(@execution, dry_run: true),
             method: :post,
             data: { turbo: false },
-            class: "inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors",
+            class: "flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors",
             title: "Preview what would be sent without making an API call" do %>
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -76,11 +129,10 @@
           </svg>
           Dry Run
         <% end %>
-
         <button
           type="button"
           onclick="confirmRerun()"
-          class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+          class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
           title="Re-execute this agent with the same parameters"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,14 +140,6 @@
           </svg>
           Rerun
         </button>
-      </div>
-
-      <div class="text-right text-sm text-gray-500 dark:text-gray-400">
-        <p><%= @execution.created_at.strftime("%b %d, %Y at %H:%M") %></p>
-
-        <p class="text-xs text-gray-400 dark:text-gray-500">
-          <%= time_ago_in_words(@execution.created_at) %> ago
-        </p>
       </div>
     </div>
   </div>
@@ -435,6 +479,76 @@
     </div>
     <pre id="response-masked" class="maskable-content bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 text-sm overflow-x-auto max-h-96 font-mono"><%= highlight_json_redacted(@execution.response) %></pre>
     <pre id="response-original" class="maskable-content hidden bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 text-sm overflow-x-auto max-h-96 font-mono"><%= highlight_json(@execution.response) %></pre>
+  </div>
+<% end %>
+
+<!-- Tool Calls -->
+<% if @execution.tool_calls.present? && @execution.tool_calls.any? %>
+  <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Tool Calls</h3>
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300">
+          <%= @execution.tool_calls.size %>
+        </span>
+      </div>
+      <button
+        type="button"
+        data-copy-json="<%= Base64.strict_encode64(JSON.pretty_generate(@execution.tool_calls)) %>"
+        class="copy-json-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+      >
+        <svg class="w-4 h-4 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+        </svg>
+        <svg class="w-4 h-4 check-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+        </svg>
+        <span>Copy</span>
+      </button>
+    </div>
+
+    <div class="space-y-4">
+      <% @execution.tool_calls.each_with_index do |tool_call, index| %>
+        <%
+          # Handle both symbol and string keys
+          tool_id = tool_call['id'] || tool_call[:id]
+          tool_name = tool_call['name'] || tool_call[:name]
+          tool_args = tool_call['arguments'] || tool_call[:arguments] || {}
+        %>
+        <div class="border border-gray-100 dark:border-gray-700 rounded-lg overflow-hidden">
+          <!-- Tool Call Header -->
+          <div class="bg-gray-50 dark:bg-gray-900/50 px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-medium">
+                <%= index + 1 %>
+              </span>
+              <code class="text-sm font-semibold text-gray-900 dark:text-gray-100"><%= tool_name %></code>
+            </div>
+            <% if tool_id.present? %>
+              <span class="text-xs text-gray-400 dark:text-gray-500 font-mono truncate max-w-xs" title="<%= tool_id %>">
+                <%= tool_id.to_s.truncate(24) %>
+              </span>
+            <% end %>
+          </div>
+
+          <!-- Tool Call Arguments -->
+          <% if tool_args.present? && tool_args.any? %>
+            <div class="px-4 py-3">
+              <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Arguments</p>
+              <pre class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-3 text-sm overflow-x-auto font-mono"><%= highlight_json(tool_args) %></pre>
+            </div>
+          <% else %>
+            <div class="px-4 py-3">
+              <p class="text-xs text-gray-400 dark:text-gray-500 italic">No arguments</p>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
   </div>
 <% end %>
 

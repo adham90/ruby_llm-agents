@@ -127,6 +127,31 @@ RSpec.describe RubyLLM::Agents::Result do
       expect(result.attempts_count).to eq(1)
     end
 
+    it "sets tool calls" do
+      tool_calls = [
+        { "id" => "call_abc", "name" => "search", "arguments" => { "query" => "test" } },
+        { "id" => "call_def", "name" => "calculate", "arguments" => { "x" => 10 } }
+      ]
+      result = described_class.new(
+        content: "test",
+        tool_calls: tool_calls,
+        tool_calls_count: 2
+      )
+
+      expect(result.tool_calls).to eq(tool_calls)
+      expect(result.tool_calls_count).to eq(2)
+    end
+
+    it "defaults tool_calls to empty array" do
+      result = described_class.new(content: "test")
+      expect(result.tool_calls).to eq([])
+    end
+
+    it "defaults tool_calls_count to 0" do
+      result = described_class.new(content: "test")
+      expect(result.tool_calls_count).to eq(0)
+    end
+
     it "sets chosen_model_id to model_id if not provided" do
       result = described_class.new(content: "test", model_id: "gpt-4o")
       expect(result.chosen_model_id).to eq("gpt-4o")
@@ -243,14 +268,35 @@ RSpec.describe RubyLLM::Agents::Result do
     end
   end
 
+  describe "#has_tool_calls?" do
+    it "returns true when tool_calls_count > 0" do
+      result = described_class.new(content: "test", tool_calls_count: 2)
+      expect(result.has_tool_calls?).to be true
+    end
+
+    it "returns false when tool_calls_count is 0" do
+      result = described_class.new(content: "test", tool_calls_count: 0)
+      expect(result.has_tool_calls?).to be false
+    end
+
+    it "returns false when tool_calls_count is nil" do
+      result = described_class.new(content: "test")
+      expect(result.has_tool_calls?).to be false
+    end
+  end
+
   describe "#to_h" do
     it "returns all attributes as a hash" do
+      tool_calls = [{ "id" => "call_abc", "name" => "search", "arguments" => {} }]
+
       result = described_class.new(
         content: { key: "value" },
         input_tokens: 100,
         output_tokens: 50,
         model_id: "gpt-4o",
-        duration_ms: 1000
+        duration_ms: 1000,
+        tool_calls: tool_calls,
+        tool_calls_count: 1
       )
 
       hash = result.to_h
@@ -261,6 +307,8 @@ RSpec.describe RubyLLM::Agents::Result do
       expect(hash[:total_tokens]).to eq(150)
       expect(hash[:model_id]).to eq("gpt-4o")
       expect(hash[:duration_ms]).to eq(1000)
+      expect(hash[:tool_calls]).to eq(tool_calls)
+      expect(hash[:tool_calls_count]).to eq(1)
     end
   end
 

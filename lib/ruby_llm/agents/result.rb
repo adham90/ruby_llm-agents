@@ -86,6 +86,13 @@ module RubyLLM
       #   @return [Integer] Number of attempts made
       attr_reader :attempts, :attempts_count
 
+      # @!group Tool Calls
+      # @!attribute [r] tool_calls
+      #   @return [Array<Hash>] Tool calls made during execution
+      # @!attribute [r] tool_calls_count
+      #   @return [Integer] Number of tool calls made
+      attr_reader :tool_calls, :tool_calls_count
+
       # Creates a new Result instance
       #
       # @param content [Hash, String] The processed response content
@@ -126,6 +133,10 @@ module RubyLLM
         # Reliability
         @attempts = options[:attempts] || []
         @attempts_count = options[:attempts_count] || 1
+
+        # Tool calls
+        @tool_calls = options[:tool_calls] || []
+        @tool_calls_count = options[:tool_calls_count] || 0
       end
 
       # Returns total tokens (input + output)
@@ -170,6 +181,13 @@ module RubyLLM
         finish_reason == "length"
       end
 
+      # Returns whether tool calls were made during execution
+      #
+      # @return [Boolean] true if tool_calls_count > 0
+      def has_tool_calls?
+        tool_calls_count.to_i > 0
+      end
+
       # Converts the result to a hash
       #
       # @return [Hash] All result data as a hash
@@ -196,7 +214,9 @@ module RubyLLM
           error_class: error_class,
           error_message: error_message,
           attempts_count: attempts_count,
-          attempts: attempts
+          attempts: attempts,
+          tool_calls: tool_calls,
+          tool_calls_count: tool_calls_count
         }
       end
 

@@ -219,6 +219,13 @@ module RubyLLM
         finish_reason == "content_filter"
       end
 
+      # Returns whether this execution made tool calls
+      #
+      # @return [Boolean] true if tool calls were made
+      def has_tool_calls?
+        tool_calls_count.to_i > 0
+      end
+
       # Returns real-time dashboard data for the Now Strip
       #
       # @return [Hash] Now strip metrics

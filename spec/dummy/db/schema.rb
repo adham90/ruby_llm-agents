@@ -75,6 +75,10 @@ ActiveRecord::Schema.define do
     t.integer :attempts_count, default: 0
     t.string :chosen_model_id
 
+    # Tool calls tracking
+    t.json :tool_calls, null: false, default: []
+    t.integer :tool_calls_count, null: false, default: 0
+
     t.timestamps
   end
 
@@ -95,4 +99,7 @@ ActiveRecord::Schema.define do
 
   # Caching index
   add_index :ruby_llm_agents_executions, :response_cache_key
+
+  # Tool calls index
+  add_index :ruby_llm_agents_executions, :tool_calls_count
 end

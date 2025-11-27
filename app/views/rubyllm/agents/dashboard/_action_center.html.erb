@@ -9,11 +9,11 @@
 
     <div class="space-y-2">
       <% critical_alerts.each do |alert| %>
-        <div class="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg px-4 py-3 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 bg-white dark:bg-gray-800 rounded-lg px-4 py-3 shadow-sm">
           <% case alert[:type] %>
           <% when :breaker %>
             <div class="flex items-center">
-              <span class="w-2 h-2 bg-orange-500 rounded-full mr-3"></span>
+              <span class="w-2 h-2 bg-orange-500 rounded-full mr-3 flex-shrink-0"></span>
               <div>
                 <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
                   Circuit breaker open: <%= alert[:data][:agent_type].gsub(/Agent$/, '') %>
@@ -23,13 +23,13 @@
                 </p>
               </div>
             </div>
-            <span class="text-xs text-orange-600 dark:text-orange-400 font-medium">
+            <span class="text-xs text-orange-600 dark:text-orange-400 font-medium ml-5 sm:ml-0">
               <%= alert[:data][:cooldown_remaining] %>s remaining
             </span>
 
           <% when :budget_breach %>
             <div class="flex items-center">
-              <span class="w-2 h-2 bg-red-500 rounded-full mr-3"></span>
+              <span class="w-2 h-2 bg-red-500 rounded-full mr-3 flex-shrink-0"></span>
               <div>
                 <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
                   <%= alert[:data][:period].to_s.capitalize %> budget exceeded
@@ -39,11 +39,11 @@
                 </p>
               </div>
             </div>
-            <%= link_to "Adjust", ruby_llm_agents.settings_path, class: "text-xs text-red-600 dark:text-red-400 hover:underline font-medium" %>
+            <%= link_to "Adjust", ruby_llm_agents.settings_path, class: "text-xs text-red-600 dark:text-red-400 hover:underline font-medium ml-5 sm:ml-0" %>
 
           <% when :error_spike %>
             <div class="flex items-center">
-              <span class="w-2 h-2 bg-red-500 rounded-full mr-3 animate-pulse"></span>
+              <span class="w-2 h-2 bg-red-500 rounded-full mr-3 flex-shrink-0 animate-pulse"></span>
               <div>
                 <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
                   Error spike detected
@@ -53,7 +53,7 @@
                 </p>
               </div>
             </div>
-            <%= link_to "View failures", ruby_llm_agents.executions_path(status: "error"), class: "text-xs text-red-600 dark:text-red-400 hover:underline font-medium" %>
+            <%= link_to "View failures", ruby_llm_agents.executions_path(status: "error"), class: "text-xs text-red-600 dark:text-red-400 hover:underline font-medium ml-5 sm:ml-0" %>
           <% end %>
         </div>
       <% end %>

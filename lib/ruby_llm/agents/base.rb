@@ -325,7 +325,9 @@ module RubyLLM
       #   @return [RubyLLM::Chat] The configured RubyLLM client
       # @!attribute [r] time_to_first_token_ms
       #   @return [Integer, nil] Time to first token in milliseconds (streaming only)
-      attr_reader :model, :temperature, :client, :time_to_first_token_ms
+      # @!attribute [r] accumulated_tool_calls
+      #   @return [Array<Hash>] Tool calls accumulated during execution
+      attr_reader :model, :temperature, :client, :time_to_first_token_ms, :accumulated_tool_calls
 
       # Creates a new agent instance
       #
@@ -337,6 +339,7 @@ module RubyLLM
         @model = model
         @temperature = temperature
         @options = options
+        @accumulated_tool_calls = []
         validate_required_params!
         @client = build_client
       end
@@ -471,12 +474,14 @@ module RubyLLM
       def execute_single_attempt(model_override: nil, &block)
         current_client = model_override ? build_client_with_model(model_override) : client
         @execution_started_at ||= Time.current
+        reset_accumulated_tool_calls!
 
         Timeout.timeout(self.class.timeout) do
           if self.class.streaming && block_given?
             execute_with_streaming(current_client, &block)
           else
             response = current_client.ask(user_prompt, **ask_options)
+            extract_tool_calls_from_client(current_client)
             capture_response(response)
             build_result(process_response(response), response)
           end
@@ -504,6 +509,7 @@ module RubyLLM
           @time_to_first_token_ms = ((first_chunk_at - @execution_started_at) * 1000).to_i
         end
 
+        extract_tool_calls_from_client(current_client)
         capture_response(response)
         build_result(process_response(response), response)
       end
@@ -789,7 +795,9 @@ module RubyLLM
           streaming: self.class.streaming,
           input_cost: result_input_cost(input_tokens, response_model_id),
           output_cost: result_output_cost(output_tokens, response_model_id),
-          total_cost: result_total_cost(input_tokens, output_tokens, response_model_id)
+          total_cost: result_total_cost(input_tokens, output_tokens, response_model_id),
+          tool_calls: @accumulated_tool_calls,
+          tool_calls_count: @accumulated_tool_calls.size
         )
       end
 
@@ -882,6 +890,54 @@ module RubyLLM
         model_obj
       rescue StandardError
         nil
+      end
+
+      # @!endgroup
+
+      # @!group Tool Call Tracking
+
+      # Resets accumulated tool calls for a new execution
+      #
+      # @return [void]
+      def reset_accumulated_tool_calls!
+        @accumulated_tool_calls = []
+      end
+
+      # Extracts tool calls from all assistant messages in the conversation
+      #
+      # RubyLLM handles tool call loops internally. After ask() completes,
+      # the conversation history contains all intermediate assistant messages
+      # that had tool_calls. This method extracts those tool calls.
+      #
+      # @param client [RubyLLM::Chat] The chat client with conversation history
+      # @return [void]
+      def extract_tool_calls_from_client(client)
+        return unless client.respond_to?(:messages)
+
+        client.messages.each do |message|
+          next unless message.role == :assistant
+          next unless message.respond_to?(:tool_calls) && message.tool_calls.present?
+
+          message.tool_calls.each_value do |tool_call|
+            @accumulated_tool_calls << serialize_tool_call(tool_call)
+          end
+        end
+      end
+
+      # Serializes a single tool call to a hash
+      #
+      # @param tool_call [Object] The tool call object
+      # @return [Hash] Serialized tool call
+      def serialize_tool_call(tool_call)
+        if tool_call.respond_to?(:to_h)
+          tool_call.to_h.transform_keys(&:to_s)
+        else
+          {
+            "id" => tool_call.id,
+            "name" => tool_call.name,
+            "arguments" => tool_call.arguments
+          }
+        end
       end
 
       # @!endgroup
