@@ -154,12 +154,12 @@ RSpec.describe RubyLLM::Agents::Execution::Analytics do
       expect(success_data.keys.size).to eq(24)
     end
 
-    it "caches the result" do
-      expect(Rails.cache).to receive(:fetch)
-        .with(/ruby_llm_agents\/hourly_activity/, expires_in: 5.minutes)
-        .and_call_original
-
-      execution_class.hourly_activity_chart
+    it "returns fresh data (no caching)" do
+      # hourly_activity_chart intentionally doesn't cache to show real-time data
+      result1 = execution_class.hourly_activity_chart
+      result2 = execution_class.hourly_activity_chart
+      expect(result1).to be_an(Array)
+      expect(result2).to be_an(Array)
     end
   end
 

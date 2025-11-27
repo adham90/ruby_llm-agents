@@ -10,7 +10,7 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       param :query, required: true
 
       def user_prompt
-        "Test: #{params[:query]}"
+        "Test: #{query}"
       end
 
       # Anonymous classes don't have good names, so we define one
@@ -25,6 +25,7 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
   describe "#instrument_execution" do
     let(:mock_response) do
       double(
+        "RubyLLM::Message",
         content: "Test response",
         input_tokens: 100,
         output_tokens: 50,
@@ -32,11 +33,15 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       )
     end
 
-    before do
-      allow(agent).to receive(:build_client).and_return(double(chat: mock_response))
+    let(:mock_client) do
+      double("RubyLLM::Chat", ask: mock_response)
     end
 
     context "successful execution" do
+      before do
+        allow(agent).to receive(:client).and_return(mock_client)
+      end
+
       it "creates an execution record" do
         expect {
           agent.call
@@ -70,8 +75,14 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
     end
 
     context "failed execution" do
+      let(:error_client) do
+        client = double("RubyLLM::Chat")
+        allow(client).to receive(:ask).and_raise(StandardError.new("Test error"))
+        client
+      end
+
       before do
-        allow(agent).to receive(:build_client).and_raise(StandardError.new("Test error"))
+        allow(agent).to receive(:client).and_return(error_client)
       end
 
       it "records error status" do
@@ -94,8 +105,14 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
     end
 
     context "timeout execution" do
+      let(:timeout_client) do
+        client = double("RubyLLM::Chat")
+        allow(client).to receive(:ask).and_raise(Timeout::Error.new("Timed out"))
+        client
+      end
+
       before do
-        allow(agent).to receive(:build_client).and_raise(Timeout::Error.new("Timed out"))
+        allow(agent).to receive(:client).and_return(timeout_client)
       end
 
       it "records timeout status" do
@@ -133,10 +150,16 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       )
     end
 
+    let(:mock_response) do
+      double("RubyLLM::Message", content: "response", input_tokens: 10, output_tokens: 5, model_id: "gpt-4")
+    end
+
+    let(:mock_client) do
+      double("RubyLLM::Chat", ask: mock_response)
+    end
+
     before do
-      allow(sensitive_agent).to receive(:build_client).and_return(
-        double(chat: double(content: "response", input_tokens: 10, output_tokens: 5, model_id: "gpt-4"))
-      )
+      allow(sensitive_agent).to receive(:client).and_return(mock_client)
     end
 
     it "sanitizes sensitive parameters" do
@@ -144,17 +167,23 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       execution = RubyLLM::Agents::Execution.last
       params = execution.parameters
 
-      expect(params["password"]).to eq("[FILTERED]")
-      expect(params["api_key"]).to eq("[FILTERED]")
+      expect(params["password"]).to eq("[REDACTED]")
+      expect(params["api_key"]).to eq("[REDACTED]")
       expect(params["query"]).to eq("normal value")
     end
   end
 
   describe "duration tracking" do
+    let(:mock_response) do
+      double("RubyLLM::Message", content: "response", input_tokens: 10, output_tokens: 5, model_id: "gpt-4")
+    end
+
+    let(:mock_client) do
+      double("RubyLLM::Chat", ask: mock_response)
+    end
+
     before do
-      allow(agent).to receive(:build_client).and_return(
-        double(chat: double(content: "response", input_tokens: 10, output_tokens: 5, model_id: "gpt-4"))
-      )
+      allow(agent).to receive(:client).and_return(mock_client)
     end
 
     it "records start time" do

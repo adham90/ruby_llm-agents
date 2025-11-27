@@ -4,10 +4,18 @@ require "rails_helper"
 
 RSpec.describe RubyLLM::Agents::AgentsController, type: :controller do
   routes { RubyLLM::Agents::Engine.routes }
-  render_views false
 
-  before do
-    allow(controller).to receive(:render)
+  # Define custom render to capture assigns without needing templates
+  controller do
+    def index
+      super
+      head :ok
+    end
+
+    def show
+      super
+      head :ok unless performed?
+    end
   end
 
   describe "GET #index" do
@@ -84,13 +92,14 @@ RSpec.describe RubyLLM::Agents::AgentsController, type: :controller do
 
       it "filters by positive days" do
         get :show, params: { id: "TestAgent", days: "7" }
-        expect(assigns(:executions).count).to eq(1)
+        # 2 recent executions: 1 from let! + 1 from before block
+        expect(assigns(:executions).count).to eq(2)
       end
 
       it "ignores negative days" do
         get :show, params: { id: "TestAgent", days: "-5" }
-        # Should return all results since negative days is ignored
-        expect(assigns(:executions).count).to eq(2)
+        # Should return all results: 1 from let! + 2 from before block = 3
+        expect(assigns(:executions).count).to eq(3)
       end
     end
 

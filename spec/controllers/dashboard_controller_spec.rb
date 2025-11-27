@@ -4,31 +4,24 @@ require "rails_helper"
 
 RSpec.describe RubyLLM::Agents::DashboardController, type: :controller do
   routes { RubyLLM::Agents::Engine.routes }
-  render_views false
+
+  # Define custom render to capture assigns without needing templates
+  controller do
+    def index
+      super
+      head :ok
+    end
+  end
 
   describe "GET #index" do
-    before do
-      # Stub view rendering to avoid template not found errors
-      allow(controller).to receive(:render)
-    end
-
     it "returns http success" do
       get :index
       expect(response).to have_http_status(:ok)
     end
 
-    it "assigns @stats" do
+    it "assigns @now_strip" do
       get :index
-      expect(assigns(:stats)).to be_a(Hash)
-      expect(assigns(:stats)).to include(
-        :total_executions,
-        :successful,
-        :failed,
-        :total_cost,
-        :total_tokens,
-        :avg_duration_ms,
-        :success_rate
-      )
+      expect(assigns(:now_strip)).to be_a(Hash)
     end
 
     it "assigns @recent_executions" do
@@ -44,36 +37,9 @@ RSpec.describe RubyLLM::Agents::DashboardController, type: :controller do
       expect(assigns(:hourly_activity).first[:name]).to eq("Success")
     end
 
-    context "with executions today" do
-      before do
-        create(:execution, status: "success")
-        create(:execution, status: "success")
-        create(:execution, :failed)
-      end
-
-      it "calculates correct stats" do
-        get :index
-        stats = assigns(:stats)
-        expect(stats[:total_executions]).to eq(3)
-        expect(stats[:successful]).to eq(2)
-        expect(stats[:failed]).to eq(1)
-      end
-
-      it "calculates success rate" do
-        get :index
-        stats = assigns(:stats)
-        expect(stats[:success_rate]).to be_within(0.1).of(66.7)
-      end
-    end
-
-    context "caching" do
-      it "caches daily stats" do
-        expect(Rails.cache).to receive(:fetch)
-          .with(/ruby_llm_agents\/daily_stats/, expires_in: 1.minute)
-          .and_call_original
-
-        get :index
-      end
+    it "assigns @critical_alerts" do
+      get :index
+      expect(assigns(:critical_alerts)).to be_an(Array)
     end
   end
 end

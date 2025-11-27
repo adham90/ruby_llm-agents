@@ -566,7 +566,7 @@ module RubyLLM
       # @param response [RubyLLM::Message, nil] The LLM response
       # @return [Hash] Extracted response data (empty if response invalid)
       def safe_extract_response_data(response)
-        return {} unless response.is_a?(RubyLLM::Message)
+        return {} unless response.respond_to?(:input_tokens)
 
         {
           input_tokens: safe_response_value(response, :input_tokens),
