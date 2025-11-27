@@ -424,21 +424,26 @@ module RubyLLM
 
       # Returns prompt info without making an API call (debug mode)
       #
-      # @return [Hash] Agent configuration and prompt info
+      # @return [Result] A Result with dry run configuration info
       def dry_run_response
-        {
-          dry_run: true,
-          agent: self.class.name,
-          model: model,
+        Result.new(
+          content: {
+            dry_run: true,
+            agent: self.class.name,
+            model: model,
+            temperature: temperature,
+            timeout: self.class.timeout,
+            system_prompt: system_prompt,
+            user_prompt: user_prompt,
+            attachments: @options[:with],
+            schema: schema&.class&.name,
+            streaming: self.class.streaming,
+            tools: self.class.tools.map { |t| t.respond_to?(:name) ? t.name : t.to_s }
+          },
+          model_id: model,
           temperature: temperature,
-          timeout: self.class.timeout,
-          system_prompt: system_prompt,
-          user_prompt: user_prompt,
-          attachments: @options[:with],
-          schema: schema&.class&.name,
-          streaming: self.class.streaming,
-          tools: self.class.tools.map { |t| t.respond_to?(:name) ? t.name : t.to_s }
-        }
+          streaming: self.class.streaming
+        )
       end
 
       private
@@ -462,7 +467,7 @@ module RubyLLM
       #
       # @param model_override [String, nil] Optional model to use instead of default
       # @yield [chunk] Yields chunks when streaming is enabled
-      # @return [Object] The processed response
+      # @return [Result] A Result object with processed content and metadata
       def execute_single_attempt(model_override: nil, &block)
         current_client = model_override ? build_client_with_model(model_override) : client
         @execution_started_at ||= Time.current
@@ -472,7 +477,8 @@ module RubyLLM
             execute_with_streaming(current_client, &block)
           else
             response = current_client.ask(user_prompt, **ask_options)
-            process_response(capture_response(response))
+            capture_response(response)
+            build_result(process_response(response), response)
           end
         end
       end
@@ -485,7 +491,7 @@ module RubyLLM
       # @param current_client [RubyLLM::Chat] The configured client
       # @yield [chunk] Yields each chunk as it arrives
       # @yieldparam chunk [RubyLLM::Chunk] A streaming chunk
-      # @return [Object] The processed response
+      # @return [Result] A Result object with processed content and metadata
       def execute_with_streaming(current_client, &block)
         first_chunk_at = nil
 
@@ -498,7 +504,8 @@ module RubyLLM
           @time_to_first_token_ms = ((first_chunk_at - @execution_started_at) * 1000).to_i
         end
 
-        process_response(capture_response(response))
+        capture_response(response)
+        build_result(process_response(response), response)
       end
 
       # Executes the agent with retry/fallback/circuit breaker support
@@ -751,6 +758,133 @@ module RubyLLM
           client.with_message(message[:role], message[:content])
         end
       end
+
+      # @!group Result Building
+
+      # Builds a Result object from processed content and response metadata
+      #
+      # @param content [Hash, String] The processed response content
+      # @param response [RubyLLM::Message] The raw LLM response
+      # @return [Result] A Result object with full execution metadata
+      def build_result(content, response)
+        completed_at = Time.current
+        input_tokens = result_response_value(response, :input_tokens)
+        output_tokens = result_response_value(response, :output_tokens)
+        response_model_id = result_response_value(response, :model_id)
+
+        Result.new(
+          content: content,
+          input_tokens: input_tokens,
+          output_tokens: output_tokens,
+          cached_tokens: result_response_value(response, :cached_tokens, 0),
+          cache_creation_tokens: result_response_value(response, :cache_creation_tokens, 0),
+          model_id: model,
+          chosen_model_id: response_model_id || model,
+          temperature: temperature,
+          started_at: @execution_started_at,
+          completed_at: completed_at,
+          duration_ms: result_duration_ms(completed_at),
+          time_to_first_token_ms: @time_to_first_token_ms,
+          finish_reason: result_finish_reason(response),
+          streaming: self.class.streaming,
+          input_cost: result_input_cost(input_tokens, response_model_id),
+          output_cost: result_output_cost(output_tokens, response_model_id),
+          total_cost: result_total_cost(input_tokens, output_tokens, response_model_id)
+        )
+      end
+
+      # Safely extracts a value from the response object
+      #
+      # @param response [Object] The response object
+      # @param method [Symbol] The method to call
+      # @param default [Object] Default value if method doesn't exist
+      # @return [Object] The extracted value or default
+      def result_response_value(response, method, default = nil)
+        return default unless response.respond_to?(method)
+        response.send(method) || default
+      end
+
+      # Calculates execution duration in milliseconds
+      #
+      # @param completed_at [Time] When execution completed
+      # @return [Integer, nil] Duration in ms or nil
+      def result_duration_ms(completed_at)
+        return nil unless @execution_started_at
+        ((completed_at - @execution_started_at) * 1000).to_i
+      end
+
+      # Extracts finish reason from response
+      #
+      # @param response [Object] The response object
+      # @return [String, nil] Normalized finish reason
+      def result_finish_reason(response)
+        reason = result_response_value(response, :finish_reason) ||
+                 result_response_value(response, :stop_reason)
+        return nil unless reason
+
+        # Normalize to standard values
+        case reason.to_s.downcase
+        when "stop", "end_turn" then "stop"
+        when "length", "max_tokens" then "length"
+        when "content_filter", "safety" then "content_filter"
+        when "tool_calls", "tool_use" then "tool_calls"
+        else "other"
+        end
+      end
+
+      # Calculates input cost from tokens
+      #
+      # @param input_tokens [Integer, nil] Number of input tokens
+      # @param response_model_id [String, nil] Model that responded
+      # @return [Float, nil] Input cost in USD
+      def result_input_cost(input_tokens, response_model_id)
+        return nil unless input_tokens
+        model_info = result_model_info(response_model_id)
+        return nil unless model_info&.pricing
+        price = model_info.pricing.text_tokens&.input || 0
+        (input_tokens / 1_000_000.0 * price).round(6)
+      end
+
+      # Calculates output cost from tokens
+      #
+      # @param output_tokens [Integer, nil] Number of output tokens
+      # @param response_model_id [String, nil] Model that responded
+      # @return [Float, nil] Output cost in USD
+      def result_output_cost(output_tokens, response_model_id)
+        return nil unless output_tokens
+        model_info = result_model_info(response_model_id)
+        return nil unless model_info&.pricing
+        price = model_info.pricing.text_tokens&.output || 0
+        (output_tokens / 1_000_000.0 * price).round(6)
+      end
+
+      # Calculates total cost from tokens
+      #
+      # @param input_tokens [Integer, nil] Number of input tokens
+      # @param output_tokens [Integer, nil] Number of output tokens
+      # @param response_model_id [String, nil] Model that responded
+      # @return [Float, nil] Total cost in USD
+      def result_total_cost(input_tokens, output_tokens, response_model_id)
+        input_cost = result_input_cost(input_tokens, response_model_id)
+        output_cost = result_output_cost(output_tokens, response_model_id)
+        return nil unless input_cost || output_cost
+        ((input_cost || 0) + (output_cost || 0)).round(6)
+      end
+
+      # Resolves model info for cost calculation
+      #
+      # @param response_model_id [String, nil] Model ID from response
+      # @return [Object, nil] Model info or nil
+      def result_model_info(response_model_id)
+        lookup_id = response_model_id || model
+        return nil unless lookup_id
+        model_obj, _provider = RubyLLM::Models.resolve(lookup_id)
+        model_obj
+      rescue StandardError
+        nil
+      end
+
+      # @!endgroup
     end
   end
 end

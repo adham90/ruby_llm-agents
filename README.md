@@ -16,6 +16,7 @@ A powerful Rails engine for building, managing, and monitoring LLM-powered agent
 - **🎯 Type Safety** - Structured output with RubyLLM::Schema integration
 - **⚡ Real-time Streaming** - Stream LLM responses with time-to-first-token tracking
 - **📎 Attachments** - Send images, PDFs, and files to vision-capable models
+- **📋 Rich Results** - Access token counts, costs, timing, and model info from every execution
 - **🔄 Reliability** - Automatic retries, model fallbacks, and circuit breakers for resilient agents
 - **💵 Budget Controls** - Daily/monthly spending limits with hard and soft enforcement
 - **🔔 Alerts** - Slack, webhook, and custom notifications for budget and circuit breaker events
@@ -269,6 +270,86 @@ RubyLLM automatically detects file types:
 ```ruby
 VisionAgent.call(question: "test", with: "image.png", dry_run: true)
 # => { ..., attachments: "image.png", ... }
+```
+
+### Execution Results
+
+Every agent call returns a `Result` object with full execution metadata:
+
+```ruby
+result = SearchAgent.call(query: "red dress")
+
+# Access the processed response
+result.content            # => { refined_query: "red dress", ... }
+
+# Token usage
+result.input_tokens       # => 150
+result.output_tokens      # => 50
+result.total_tokens       # => 200
+result.cached_tokens      # => 0
+
+# Cost calculation
+result.input_cost         # => 0.000150
+result.output_cost        # => 0.000100
+result.total_cost         # => 0.000250
+
+# Model info
+result.model_id           # => "gpt-4o"
+result.chosen_model_id    # => "gpt-4o" (may differ if fallback used)
+result.temperature        # => 0.0
+
+# Timing
+result.duration_ms        # => 1234
+result.started_at         # => 2025-11-27 10:30:00 UTC
+result.completed_at       # => 2025-11-27 10:30:01 UTC
+result.time_to_first_token_ms # => 245 (streaming only)
+
+# Status
+result.finish_reason      # => "stop", "length", "tool_calls", etc.
+result.streaming?         # => false
+result.success?           # => true
+result.truncated?         # => false (true if hit max_tokens)
+
+# Reliability info
+result.attempts_count     # => 1
+result.used_fallback?     # => false
+```
+
+#### Backward Compatibility
+
+The Result object delegates hash methods to content, so existing code continues to work:
+
+```ruby
+# Old style (still works)
+result[:refined_query]
+result.dig(:nested, :key)
+
+# New style (access metadata)
+result.content[:refined_query]
+result.total_cost
+```
+
+#### Full Metadata Hash
+
+```ruby
+result.to_h
+# => {
+#   content: { refined_query: "red dress", ... },
+#   input_tokens: 150,
+#   output_tokens: 50,
+#   total_tokens: 200,
+#   cached_tokens: 0,
+#   input_cost: 0.000150,
+#   output_cost: 0.000100,
+#   total_cost: 0.000250,
+#   model_id: "gpt-4o",
+#   chosen_model_id: "gpt-4o",
+#   temperature: 0.0,
+#   duration_ms: 1234,
+#   finish_reason: "stop",
+#   streaming: false,
+#   ...
+# }
 ```
 
 ## Usage Guide

@@ -183,10 +183,22 @@ RSpec.describe RubyLLM::Agents::Base do
       end
     end
 
-    it "returns dry run response when dry_run: true" do
+    it "returns a Result object when dry_run: true" do
       agent = agent_class.new(query: "test", dry_run: true)
       result = agent.call
 
+      expect(result).to be_a(RubyLLM::Agents::Result)
+      expect(result.content[:dry_run]).to be true
+      expect(result.content[:model]).to eq("gpt-4")
+      expect(result.content[:user_prompt]).to eq("test")
+      expect(result.model_id).to eq("gpt-4")
+    end
+
+    it "supports backward compatible hash access on dry_run result" do
+      agent = agent_class.new(query: "test", dry_run: true)
+      result = agent.call
+
+      # Delegated methods still work
       expect(result[:dry_run]).to be true
       expect(result[:model]).to eq("gpt-4")
       expect(result[:user_prompt]).to eq("test")
