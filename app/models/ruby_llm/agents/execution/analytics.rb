@@ -162,37 +162,80 @@ module RubyLLM
           #
           # @return [Array<Hash>] Chart series with success and failed counts per hour
           def hourly_activity_chart
-            cache_key = "ruby_llm_agents/hourly_activity/#{Date.current}"
-            Rails.cache.fetch(cache_key, expires_in: 5.minutes) do
-              build_hourly_activity_data
-            end
+            # No caching - always fresh data based on latest execution
+            build_hourly_activity_data
           end
 
-          # Builds the hourly activity data structure (uncached)
-          #
-          # @return [Array<Hash>] Success and failed series data
-          # @api private
-          def build_hourly_activity_data
-            success_data = {}
-            failed_data = {}
+          # Returns chart data as arrays for Highcharts live updates
+          # Format: { categories: [...], series: [...] }
+          def hourly_activity_chart_json
+            # Always use current time as reference so chart shows "now" on the right
+            reference_time = Time.current.beginning_of_hour
 
-            # Create entries for each hour of the day (0-23)
-            (0..23).each do |hour|
-              time_label = format("%02d:00", hour)
-              start_time = Time.current.beginning_of_day + hour.hours
+            categories = []
+            success_data = []
+            failed_data = []
+            running_data = []
+
+            # Create entries for the last 24 hours ending at current hour
+            (23.downto(0)).each do |hours_ago|
+              start_time = reference_time - hours_ago.hours
               end_time = start_time + 1.hour
+              categories << start_time.in_time_zone.strftime("%H:%M")
 
               hour_scope = where(created_at: start_time...end_time)
               total = hour_scope.count
               failed = hour_scope.failed.count
+              running = hour_scope.running.count
 
-              success_data[time_label] = total - failed
+              success_data << (total - failed - running)
+              failed_data << failed
+              running_data << running
+            end
+
+            {
+              categories: categories,
+              series: [
+                { name: "Success", data: success_data },
+                { name: "Failed", data: failed_data },
+                { name: "Running", data: running_data }
+              ]
+            }
+          end
+
+          # Builds the hourly activity data structure
+          # Shows the last 24 hours with current hour on the right
+          #
+          # @return [Array<Hash>] Success, failed, and running series data
+          # @api private
+          def build_hourly_activity_data
+            success_data = {}
+            failed_data = {}
+            running_data = {}
+
+            # Use current time as reference so chart shows "now" on the right
+            reference_time = Time.current.beginning_of_hour
+
+            # Create entries for the last 24 hours ending at current hour
+            (23.downto(0)).each do |hours_ago|
+              start_time = reference_time - hours_ago.hours
+              end_time = start_time + 1.hour
+              time_label = start_time.in_time_zone.strftime("%H:%M")
+
+              hour_scope = where(created_at: start_time...end_time)
+              total = hour_scope.count
+              failed = hour_scope.failed.count
+              running = hour_scope.running.count
+
+              success_data[time_label] = total - failed - running
               failed_data[time_label] = failed
+              running_data[time_label] = running
             end
 
             [
               { name: "Success", data: success_data },
-              { name: "Failed", data: failed_data }
+              { name: "Failed", data: failed_data },
+              { name: "Running", data: running_data }
             ]
           end
 

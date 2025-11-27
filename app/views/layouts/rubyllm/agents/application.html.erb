@@ -117,6 +117,29 @@
                   currentStrip.innerHTML = newStrip.innerHTML
                 }
 
+                // Update chart via Highcharts API
+                const chartContainer = document.getElementById("hourly-chart")
+                if (chartContainer && chartContainer.dataset.chartUrl) {
+                  fetch(chartContainer.dataset.chartUrl)
+                    .then(res => res.json())
+                    .then(data => {
+                      const chart = Highcharts.charts.find(c => c && c.renderTo && c.renderTo.id === "activity-chart")
+                      if (chart) {
+                        // Update categories (x-axis labels)
+                        chart.xAxis[0].setCategories(data.categories, false)
+                        // Update each series data
+                        data.series.forEach((s, i) => {
+                          if (chart.series[i]) {
+                            chart.series[i].setData(s.data, false)
+                          }
+                        })
+                        // Redraw once after all updates
+                        chart.redraw()
+                      }
+                    })
+                    .catch(err => console.log("[RubyLLM::Agents] Chart update error:", err))
+                }
+
                 // Update action center
                 const newActionCenter = doc.getElementById("action-center")
                 const currentActionCenter = document.getElementById("action-center")

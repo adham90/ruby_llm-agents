@@ -2,6 +2,7 @@
 
 RubyLLM::Agents::Engine.routes.draw do
   root to: "dashboard#index"
+  get "chart_data", to: "dashboard#chart_data"
 
   resources :agents, only: [:index, :show]
 

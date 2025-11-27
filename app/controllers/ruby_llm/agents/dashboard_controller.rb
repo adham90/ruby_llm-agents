@@ -24,6 +24,13 @@ module RubyLLM
         @recent_executions = Execution.recent(10)
       end
 
+      # Returns chart data as JSON for live updates
+      #
+      # @return [JSON] Chart data with categories and series
+      def chart_data
+        render json: Execution.hourly_activity_chart_json
+      end
+
       private
 
       # Fetches cached daily statistics for the dashboard

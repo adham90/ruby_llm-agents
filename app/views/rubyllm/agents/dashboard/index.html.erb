@@ -15,7 +15,7 @@
     <div class="flex justify-between items-center">
       <div class="flex items-center space-x-2">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Today's Activity
+          Activity
         </h3>
 
         <span class="flex items-center text-xs text-green-600 dark:text-green-400">
@@ -25,15 +25,16 @@
       </div>
 
       <span class="text-xs text-gray-400 dark:text-gray-500">
-        Hourly executions
+        Last 24 hours
       </span>
     </div>
   </div>
 
-  <div class="p-6" style="height: 250px;">
+  <div id="hourly-chart" class="p-6" style="height: 250px;" data-chart-url="<%= ruby_llm_agents.chart_data_path %>">
     <%= area_chart @hourly_activity,
+        id: "activity-chart",
         stacked: true,
-        colors: ["#10B981", "#EF4444"],
+        colors: ["#10B981", "#EF4444", "#3B82F6"],
         library: {
           yAxis: { min: 0, allowDecimals: false },
           legend: { align: "center", verticalAlign: "bottom" },

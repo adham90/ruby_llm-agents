@@ -223,11 +223,14 @@ module RubyLLM
       #
       # @return [Hash] Now strip metrics
       def self.now_strip_data
+        today_scope = today
         {
           running: running.count,
-          errors_15m: status_error.where("created_at > ?", 15.minutes.ago).count,
-          cost_today: today.sum(:total_cost) || 0,
-          executions_today: today.count,
+          success_today: today_scope.status_success.count,
+          errors_today: today_scope.status_error.count,
+          timeouts_today: today_scope.status_timeout.count,
+          cost_today: today_scope.sum(:total_cost) || 0,
+          executions_today: today_scope.count,
           success_rate: calculate_today_success_rate
         }
       end
