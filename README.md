@@ -12,6 +12,7 @@ A powerful Rails engine for building, managing, and monitoring LLM-powered agent
 - **🛠️ Generators** - Quickly scaffold new agents with customizable templates
 - **🔍 Anomaly Detection** - Automatic warnings for unusual cost or duration patterns
 - **🎯 Type Safety** - Structured output with RubyLLM::Schema integration
+- **⚡ Real-time Streaming** - Stream LLM responses with time-to-first-token tracking
 - **🔄 Reliability** - Automatic retries, model fallbacks, and circuit breakers for resilient agents
 - **💵 Budget Controls** - Daily/monthly spending limits with hard and soft enforcement
 - **🔔 Alerts** - Slack, webhook, and custom notifications for budget and circuit breaker events
@@ -148,6 +149,72 @@ SearchIntentAgent.call(query: "test", dry_run: true)
 
 # Skip cache
 SearchIntentAgent.call(query: "test", skip_cache: true)
+```
+
+### Streaming Responses
+
+Enable real-time streaming to receive LLM responses as they're generated:
+
+```ruby
+class StreamingAgent < ApplicationAgent
+  model "gpt-4o"
+  streaming true  # Enable streaming for this agent
+
+  param :prompt, required: true
+
+  def user_prompt
+    prompt
+  end
+end
+```
+
+#### Using Streaming with a Block
+
+```ruby
+# Stream responses in real-time
+StreamingAgent.call(prompt: "Write a story") do |chunk|
+  print chunk  # Process each chunk as it arrives
+end
+```
+
+#### HTTP Streaming with ActionController::Live
+
+```ruby
+class StreamingController < ApplicationController
+  include ActionController::Live
+
+  def stream_response
+    response.headers['Content-Type'] = 'text/event-stream'
+    response.headers['Cache-Control'] = 'no-cache'
+
+    StreamingAgent.call(prompt: params[:prompt]) do |chunk|
+      response.stream.write "data: #{chunk}\n\n"
+    end
+  ensure
+    response.stream.close
+  end
+end
+```
+
+#### Time-to-First-Token Tracking
+
+Streaming executions automatically track latency metrics:
+
+```ruby
+execution = RubyLLM::Agents::Execution.last
+execution.streaming?              # => true
+execution.time_to_first_token_ms  # => 245 (milliseconds to first chunk)
+```
+
+#### Global Streaming Configuration
+
+Enable streaming by default for all agents:
+
+```ruby
+# config/initializers/ruby_llm_agents.rb
+RubyLLM::Agents.configure do |config|
+  config.default_streaming = true
+end
 ```
 
 ## Usage Guide
@@ -680,6 +747,9 @@ RubyLLM::Agents.configure do |config|
   # Default timeout for LLM requests (in seconds)
   config.default_timeout = 60
 
+  # Enable streaming by default for all agents
+  config.default_streaming = false
+
   # ============================================================================
   # Caching Configuration
   # ============================================================================
@@ -866,6 +936,18 @@ trend = RubyLLM::Agents::Execution.trend_analysis(
 # ]
 ```
 
+### Streaming Analytics
+
+```ruby
+# Percentage of executions using streaming
+RubyLLM::Agents::Execution.streaming_rate
+# => 45.5
+
+# Average time-to-first-token for streaming executions (milliseconds)
+RubyLLM::Agents::Execution.avg_time_to_first_token
+# => 245.3
+```
+
 ### Scopes
 
 Chain scopes for complex queries:
@@ -919,6 +1001,10 @@ expensive_slow_failures = RubyLLM::Agents::Execution
 
 # Token usage
 .high_token_usage(threshold)
+
+# Streaming
+.streaming
+.non_streaming
 ```
 
 ## Generators

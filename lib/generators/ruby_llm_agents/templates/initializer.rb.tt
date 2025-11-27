@@ -18,6 +18,10 @@ RubyLLM::Agents.configure do |config|
   # Default timeout in seconds for each LLM request
   # config.default_timeout = 60
 
+  # Enable streaming by default for all agents
+  # When enabled, agents stream responses and track time-to-first-token
+  # config.default_streaming = false
+
   # ============================================
   # Caching
   # ============================================
