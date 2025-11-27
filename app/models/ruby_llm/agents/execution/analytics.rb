@@ -175,7 +175,6 @@ module RubyLLM
             categories = []
             success_data = []
             failed_data = []
-            running_data = []
 
             # Create entries for the last 24 hours ending at current hour
             (23.downto(0)).each do |hours_ago|
@@ -184,21 +183,15 @@ module RubyLLM
               categories << start_time.in_time_zone.strftime("%H:%M")
 
               hour_scope = where(created_at: start_time...end_time)
-              total = hour_scope.count
-              failed = hour_scope.failed.count
-              running = hour_scope.running.count
-
-              success_data << (total - failed - running)
-              failed_data << failed
-              running_data << running
+              success_data << hour_scope.successful.count
+              failed_data << hour_scope.failed.count
             end
 
             {
               categories: categories,
               series: [
                 { name: "Success", data: success_data },
-                { name: "Failed", data: failed_data },
-                { name: "Running", data: running_data }
+                { name: "Failed", data: failed_data }
               ]
             }
           end
@@ -206,12 +199,11 @@ module RubyLLM
           # Builds the hourly activity data structure
           # Shows the last 24 hours with current hour on the right
           #
-          # @return [Array<Hash>] Success, failed, and running series data
+          # @return [Array<Hash>] Success and failed series data
           # @api private
           def build_hourly_activity_data
             success_data = {}
             failed_data = {}
-            running_data = {}
 
             # Use current time as reference so chart shows "now" on the right
             reference_time = Time.current.beginning_of_hour
@@ -223,19 +215,13 @@ module RubyLLM
               time_label = start_time.in_time_zone.strftime("%H:%M")
 
               hour_scope = where(created_at: start_time...end_time)
-              total = hour_scope.count
-              failed = hour_scope.failed.count
-              running = hour_scope.running.count
-
-              success_data[time_label] = total - failed - running
-              failed_data[time_label] = failed
-              running_data[time_label] = running
+              success_data[time_label] = hour_scope.successful.count
+              failed_data[time_label] = hour_scope.failed.count
             end
 
             [
               { name: "Success", data: success_data },
-              { name: "Failed", data: failed_data },
-              { name: "Running", data: running_data }
+              { name: "Failed", data: failed_data }
             ]
           end
 

@@ -8,7 +8,7 @@
 <div
   class="
     bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100
-    dark:border-gray-700 mb-6 pb-24
+    dark:border-gray-700 mb-6
   "
 >
   <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
@@ -25,30 +25,129 @@
       </div>
 
       <span class="text-xs text-gray-400 dark:text-gray-500">
-        Last 24 hours
+        Updates every 5s
       </span>
     </div>
   </div>
 
-  <div id="hourly-chart" class="p-6" style="height: 250px;" data-chart-url="<%= ruby_llm_agents.chart_data_path %>">
-    <%= line_chart @hourly_activity,
-        id: "activity-chart",
-        colors: ["#10B981", "#EF4444", "#3B82F6"],
-        library: {
-          chart: { type: "spline" },
-          yAxis: { min: 0, allowDecimals: false },
-          legend: { align: "center", verticalAlign: "bottom" },
-          plotOptions: {
-            spline: {
-              marker: {
-                enabled: true,
-                radius: 5,
-                symbol: "circle"
-              }
-            }
-          }
-        } %>
+  <div
+    id="hourly-chart"
+    class="p-6 pb-3 pt-8"
+    style="height: 400px;"
+    data-chart-url="<%= ruby_llm_agents.chart_data_path %>"
+  >
+    <div id="activity-chart" style="width: 100%; height: 100%;"></div>
   </div>
+
+  <script>
+    (function() {
+      const chartUrl = '<%= ruby_llm_agents.chart_data_path %>';
+      let activityChart = null;
+      const hourMs = 3600000;
+      const dayMs = 24 * hourMs;
+
+      // Convert server data to datetime points
+      function convertToDatetimePoints(data) {
+        const now = Date.now();
+        const numPoints = data.length;
+        return data.map((val, i) => {
+          // Each point is 1 hour apart, last point at current hour
+          return [now - (numPoints - 1 - i) * hourMs, val];
+        });
+      }
+
+      function initLiveChart() {
+        fetch(chartUrl)
+          .then(res => res.json())
+          .then(data => {
+            const now = Date.now();
+            const successData = convertToDatetimePoints(data.series[0].data);
+            const failedData = convertToDatetimePoints(data.series[1].data);
+
+            activityChart = Highcharts.chart('activity-chart', {
+              chart: {
+                type: 'spline',
+                backgroundColor: 'transparent',
+                animation: { duration: 300 }
+              },
+              title: { text: null },
+              xAxis: {
+                type: 'datetime',
+                tickPixelInterval: 150,
+                min: now - dayMs,
+                max: now,
+                labels: { style: { color: '#9CA3AF' } },
+                lineColor: 'rgba(156, 163, 175, 0.2)'
+              },
+              yAxis: {
+                title: { text: null },
+                min: 0,
+                allowDecimals: false,
+                labels: { style: { color: '#9CA3AF' } },
+                gridLineColor: 'rgba(156, 163, 175, 0.2)'
+              },
+              legend: {
+                align: 'center',
+                verticalAlign: 'bottom',
+                itemStyle: { color: '#9CA3AF' }
+              },
+              credits: { enabled: false },
+              tooltip: {
+                backgroundColor: 'rgba(17, 24, 39, 0.9)',
+                borderColor: 'rgba(75, 85, 99, 0.5)',
+                style: { color: '#F3F4F6' },
+                headerFormat: '<b>{series.name}</b><br/>',
+                pointFormat: '{point.x:%H:%M} - {point.y}'
+              },
+              plotOptions: {
+                spline: {
+                  lineWidth: 2,
+                  marker: {
+                    enabled: true,
+                    radius: 4,
+                    symbol: 'circle'
+                  }
+                }
+              },
+              series: [{
+                name: 'Success',
+                color: '#10B981',
+                data: successData
+              }, {
+                name: 'Failed',
+                color: '#EF4444',
+                data: failedData
+              }]
+            });
+
+            // Update chart every 5 seconds with fresh data
+            setInterval(function() {
+              fetch(chartUrl)
+                .then(res => res.json())
+                .then(newData => {
+                  const now = Date.now();
+                  const newSuccessData = convertToDatetimePoints(newData.series[0].data);
+                  const newFailedData = convertToDatetimePoints(newData.series[1].data);
+
+                  // Update x-axis range
+                  activityChart.xAxis[0].setExtremes(now - dayMs, now, false);
+
+                  // Replace series data
+                  activityChart.series[0].setData(newSuccessData, false);
+                  activityChart.series[1].setData(newFailedData, true);
+                });
+            }, 5000);
+          })
+          .catch(err => console.log('[RubyLLM::Agents] Chart init error:', err));
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initLiveChart);
+      } else {
+        initLiveChart();
+      }
+    })();
+  </script>
 </div>
 
 <!-- Live Activity Feed -->
