@@ -1,5 +1,7 @@
 # RubyLLM::Agents
 
+[![Gem Version](https://badge.fury.io/rb/ruby_llm-agents.svg)](https://badge.fury.io/rb/ruby_llm-agents)
+
 A powerful Rails engine for building, managing, and monitoring LLM-powered agents using [RubyLLM](https://github.com/crmne/ruby_llm).
 
 ## Features
