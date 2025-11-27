@@ -35,13 +35,9 @@
         stacked: true,
         colors: ["#10B981", "#EF4444"],
         library: {
-          maintainAspectRatio: false,
-          scales: {
-            y: { beginAtZero: true, ticks: { stepSize: 1 } }
-          },
-          plugins: {
-            legend: { position: "bottom" }
-          }
+          yAxis: { min: 0, allowDecimals: false },
+          legend: { align: "center", verticalAlign: "bottom" },
+          plotOptions: { area: { stacking: "normal" } }
         } %>
   </div>
 </div>

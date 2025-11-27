@@ -28,12 +28,39 @@
       }
     </script>
 
-    <!-- Chartkick for charts -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
-
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>
-
+    <!-- Highcharts for charts -->
+    <script src="https://code.highcharts.com/highcharts.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartkick@5.0.1"></script>
+
+    <!-- Configure Highcharts defaults -->
+    <script>
+      Highcharts.setOptions({
+        credits: { enabled: false },
+        chart: {
+          backgroundColor: 'transparent',
+          style: { fontFamily: 'inherit' }
+        },
+        title: { text: null },
+        xAxis: {
+          labels: { style: { color: '#9CA3AF' } },
+          lineColor: 'rgba(156, 163, 175, 0.2)',
+          tickColor: 'rgba(156, 163, 175, 0.2)'
+        },
+        yAxis: {
+          labels: { style: { color: '#9CA3AF' } },
+          gridLineColor: 'rgba(156, 163, 175, 0.2)'
+        },
+        legend: {
+          itemStyle: { color: '#9CA3AF' },
+          itemHoverStyle: { color: '#D1D5DB' }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(17, 24, 39, 0.9)',
+          borderColor: 'rgba(75, 85, 99, 0.5)',
+          style: { color: '#F3F4F6' }
+        }
+      });
+    </script>
 
     <!-- Stimulus -->
     <script

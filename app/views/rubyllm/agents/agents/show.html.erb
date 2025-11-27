@@ -176,7 +176,11 @@
       <%= area_chart [
         { name: "Success", data: success_data },
         { name: "Failed", data: failed_data }
-      ], colors: ["#10B981", "#EF4444"], stacked: true, library: { maintainAspectRatio: false } %>
+      ], colors: ["#10B981", "#EF4444"], stacked: true, library: {
+        yAxis: { min: 0 },
+        legend: { align: "center", verticalAlign: "bottom" },
+        plotOptions: { area: { stacking: "normal" } }
+      } %>
     </div>
   </div>
 
@@ -187,7 +191,10 @@
     <div id="cost-chart" style="height: 250px;">
       <% cost_data = @trend_data.map { |d| [d[:date].strftime("%b %d"), d[:total_cost].to_f.round(4)] }.to_h %>
 
-      <%= line_chart cost_data, colors: ["#10B981"], prefix: "$", library: { maintainAspectRatio: false, plugins: { legend: { display: false } } } %>
+      <%= line_chart cost_data, colors: ["#10B981"], prefix: "$", library: {
+        yAxis: { min: 0 },
+        legend: { enabled: false }
+      } %>
     </div>
   </div>
 </div>
