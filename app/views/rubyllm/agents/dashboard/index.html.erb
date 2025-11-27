@@ -31,14 +31,22 @@
   </div>
 
   <div id="hourly-chart" class="p-6" style="height: 250px;" data-chart-url="<%= ruby_llm_agents.chart_data_path %>">
-    <%= area_chart @hourly_activity,
+    <%= line_chart @hourly_activity,
         id: "activity-chart",
-        stacked: true,
         colors: ["#10B981", "#EF4444", "#3B82F6"],
         library: {
+          chart: { type: "spline" },
           yAxis: { min: 0, allowDecimals: false },
           legend: { align: "center", verticalAlign: "bottom" },
-          plotOptions: { area: { stacking: "normal" } }
+          plotOptions: {
+            spline: {
+              marker: {
+                enabled: true,
+                radius: 5,
+                symbol: "circle"
+              }
+            }
+          }
         } %>
   </div>
 </div>
