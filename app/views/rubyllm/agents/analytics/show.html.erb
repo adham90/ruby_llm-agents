@@ -14,21 +14,15 @@
   <!-- Summary Cards -->
   <%= render "summary_cards", summary: @summary %>
 
-  <!-- Usage Trends Chart (full width) -->
+  <!-- Usage Trends Chart -->
   <%= render "cost_chart", trend_data: @trend_data, days: @days %>
 
-  <!-- Agent Comparison (full width - own row) -->
+  <!-- Agent Comparison -->
   <%= render "agent_comparison", agent_stats: @agent_stats %>
 
-  <!-- Key Insights (full width) -->
-  <%= render "key_insights", insights: @insights %>
-
-  <!-- Top Errors (full width) -->
-  <%= render "top_errors", top_errors: @top_errors %>
-
-  <!-- Hourly Heatmap + Performance Metrics (2 columns) -->
+  <!-- Top Errors + Performance Metrics -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <%= render "hourly_heatmap", hourly_heatmap: @hourly_heatmap %>
+    <%= render "top_errors", top_errors: @top_errors %>
     <%= render "performance_metrics", performance: @performance %>
   </div>
 </div>
