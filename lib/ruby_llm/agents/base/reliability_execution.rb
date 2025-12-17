@@ -1,0 +1,131 @@
+# frozen_string_literal: true
+
+module RubyLLM
+  module Agents
+    class Base
+      # Reliability execution with retry/fallback/circuit breaker support
+      #
+      # Handles executing agents with automatic retries, model fallbacks,
+      # circuit breaker protection, and budget enforcement.
+      module ReliabilityExecution
+        # Executes the agent with retry/fallback/circuit breaker support
+        #
+        # @yield [chunk] Yields chunks when streaming is enabled
+        # @return [Object] The processed response
+        # @raise [Reliability::AllModelsExhaustedError] If all models fail
+        # @raise [Reliability::BudgetExceededError] If budget limits exceeded
+        # @raise [Reliability::TotalTimeoutError] If total timeout exceeded
+        def execute_with_reliability(&block)
+          config = reliability_config
+          models_to_try = [model, *config[:fallback_models]].uniq
+          total_deadline = config[:total_timeout] ? Time.current + config[:total_timeout] : nil
+          started_at = Time.current
+
+          # Pre-check budget
+          BudgetTracker.check_budget!(self.class.name) if RubyLLM::Agents.configuration.budgets_enabled?
+
+          instrument_execution_with_attempts(models_to_try: models_to_try) do |attempt_tracker|
+            last_error = nil
+
+            models_to_try.each do |current_model|
+              # Check circuit breaker
+              breaker = get_circuit_breaker(current_model)
+              if breaker&.open?
+                attempt_tracker.record_short_circuit(current_model)
+                next
+              end
+
+              retries_remaining = config[:retries]&.dig(:max) || 0
+              attempt_index = 0
+
+              loop do
+                # Check total timeout
+                if total_deadline && Time.current > total_deadline
+                  elapsed = Time.current - started_at
+                  raise Reliability::TotalTimeoutError.new(config[:total_timeout], elapsed)
+                end
+
+                attempt = attempt_tracker.start_attempt(current_model)
+
+                begin
+                  result = execute_single_attempt(model_override: current_model, &block)
+                  attempt_tracker.complete_attempt(attempt, success: true, response: @last_response)
+
+                  # Record success in circuit breaker
+                  breaker&.record_success!
+
+                  # Record budget spend
+                  if @last_response && RubyLLM::Agents.configuration.budgets_enabled?
+                    record_attempt_cost(attempt_tracker)
+                  end
+
+                  # Use throw instead of return to allow instrument_execution_with_attempts
+                  # to properly complete the execution record before returning
+                  throw :execution_success, result
+
+                rescue *retryable_errors(config) => e
+                  last_error = e
+                  attempt_tracker.complete_attempt(attempt, success: false, error: e)
+                  breaker&.record_failure!
+
+                  if retries_remaining > 0 && !past_deadline?(total_deadline)
+                    retries_remaining -= 1
+                    attempt_index += 1
+                    retries_config = config[:retries] || {}
+                    delay = Reliability.calculate_backoff(
+                      strategy: retries_config[:backoff] || :exponential,
+                      base: retries_config[:base] || 0.4,
+                      max_delay: retries_config[:max_delay] || 3.0,
+                      attempt: attempt_index
+                    )
+                    sleep(delay)
+                  else
+                    break # Move to next model
+                  end
+
+                rescue StandardError => e
+                  # Non-retryable error - record and move to next model
+                  last_error = e
+                  attempt_tracker.complete_attempt(attempt, success: false, error: e)
+                  breaker&.record_failure!
+                  break
+                end
+              end
+            end
+
+            # All models exhausted
+            raise Reliability::AllModelsExhaustedError.new(models_to_try, last_error)
+          end
+        end
+
+        # Returns the list of retryable error classes
+        #
+        # @param config [Hash] Reliability configuration
+        # @return [Array<Class>] Error classes to retry on
+        def retryable_errors(config)
+          custom_errors = config[:retries]&.dig(:on) || []
+          Reliability.default_retryable_errors + custom_errors
+        end
+
+        # Checks if the total deadline has passed
+        #
+        # @param deadline [Time, nil] The deadline
+        # @return [Boolean] true if past deadline
+        def past_deadline?(deadline)
+          deadline && Time.current > deadline
+        end
+
+        # Gets or creates a circuit breaker for a model
+        #
+        # @param model_id [String] The model identifier
+        # @return [CircuitBreaker, nil] The circuit breaker or nil if not configured
+        def get_circuit_breaker(model_id)
+          config = reliability_config[:circuit_breaker]
+          return nil unless config
+
+          CircuitBreaker.from_config(self.class.name, model_id, config)
+        end
+      end
+    end
+  end
+end
