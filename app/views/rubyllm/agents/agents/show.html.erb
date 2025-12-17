@@ -198,42 +198,52 @@
 <!-- Charts Section -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
   <!-- Executions Over Time -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 pb-16 overflow-hidden">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 overflow-hidden">
     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
       Executions (30 days)
     </h3>
-
-    <div id="executions-chart" style="height: 250px;">
-      <% success_data = @trend_data.map { |d| [d[:date].strftime("%b %d"), d[:count] - (d[:error_count] || 0)] }.to_h
-        failed_data = @trend_data.map { |d| [d[:date].strftime("%b %d"), d[:error_count] || 0] }.to_h %>
-
-      <%= area_chart [
-        { name: "Success", data: success_data },
-        { name: "Failed", data: failed_data }
-      ], colors: ["#10B981", "#EF4444"], stacked: true, library: {
-        yAxis: { min: 0 },
-        legend: { enabled: false },
-        plotOptions: { area: { stacking: "normal" } }
-      } %>
-    </div>
+    <div id="executions-chart" style="height: 220px;"></div>
   </div>
 
   <!-- Cost Over Time -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 pb-16 overflow-hidden">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 overflow-hidden">
     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
       Cost (30 days)
     </h3>
-
-    <div id="cost-chart" style="height: 250px;">
-      <% cost_data = @trend_data.map { |d| [d[:date].strftime("%b %d"), d[:total_cost].to_f.round(4)] }.to_h %>
-
-      <%= line_chart cost_data, colors: ["#10B981"], prefix: "$", library: {
-        yAxis: { min: 0 },
-        legend: { enabled: false }
-      } %>
-    </div>
+    <div id="cost-chart" style="height: 220px;"></div>
   </div>
 </div>
+
+<script>
+(function() {
+  const trendData = <%= raw @trend_data.to_json %>;
+  const categories = trendData.map(d => d.date.split('-').slice(1).join('/'));
+
+  // Executions chart
+  Highcharts.chart('executions-chart', {
+    chart: { type: 'areaspline', backgroundColor: 'transparent' },
+    xAxis: { categories: categories, labels: { style: { color: '#9CA3AF' } } },
+    yAxis: { min: 0, title: { text: null }, labels: { style: { color: '#9CA3AF' } } },
+    legend: { enabled: false },
+    plotOptions: { areaspline: { fillOpacity: 0.2, marker: { enabled: false } } },
+    series: [
+      { name: 'Success', color: '#10B981', data: trendData.map(d => d.count - (d.error_count || 0)) },
+      { name: 'Failed', color: '#EF4444', data: trendData.map(d => d.error_count || 0) }
+    ]
+  });
+
+  // Cost chart
+  Highcharts.chart('cost-chart', {
+    chart: { type: 'spline', backgroundColor: 'transparent' },
+    xAxis: { categories: categories, labels: { style: { color: '#9CA3AF' } } },
+    yAxis: { min: 0, title: { text: null }, labels: { style: { color: '#9CA3AF' }, format: '${value}' } },
+    legend: { enabled: false },
+    plotOptions: { spline: { marker: { enabled: false } } },
+    tooltip: { valuePrefix: '$' },
+    series: [{ name: 'Cost', color: '#10B981', data: trendData.map(d => parseFloat(d.total_cost) || 0) }]
+  });
+})();
+</script>
 
 <!-- Finish Reason Distribution -->
 <% if @finish_reason_distribution.present? && @finish_reason_distribution.any? %>
