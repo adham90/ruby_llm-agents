@@ -1,7 +1,18 @@
 <div class="mb-6">
-  <div class="flex items-center mb-3">
-    <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
-    <h3 class="text-sm font-medium text-gray-600 dark:text-gray-400">Live</h3>
+  <div class="flex items-center justify-between mb-3">
+    <div class="flex items-center">
+      <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+      <h3 class="text-sm font-medium text-gray-600 dark:text-gray-400">Live</h3>
+    </div>
+
+    <div class="flex space-x-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+      <%= link_to "Today", ruby_llm_agents.root_path(range: "today"),
+          class: "px-3 py-1 text-xs font-medium rounded-md transition-colors #{@selected_range == 'today' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}" %>
+      <%= link_to "7 Days", ruby_llm_agents.root_path(range: "7d"),
+          class: "px-3 py-1 text-xs font-medium rounded-md transition-colors #{@selected_range == '7d' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}" %>
+      <%= link_to "30 Days", ruby_llm_agents.root_path(range: "30d"),
+          class: "px-3 py-1 text-xs font-medium rounded-md transition-colors #{@selected_range == '30d' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}" %>
+    </div>
   </div>
 
   <div id="now-strip-values">

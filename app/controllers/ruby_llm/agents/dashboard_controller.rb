@@ -18,7 +18,8 @@ module RubyLLM
       #
       # @return [void]
       def index
-        @now_strip = Execution.now_strip_data
+        @selected_range = params[:range].presence || "today"
+        @now_strip = Execution.now_strip_data(range: @selected_range)
         @critical_alerts = load_critical_alerts
         @hourly_activity = Execution.hourly_activity_chart
         @recent_executions = Execution.recent(10)

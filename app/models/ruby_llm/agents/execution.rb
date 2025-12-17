@@ -228,28 +228,35 @@ module RubyLLM
 
       # Returns real-time dashboard data for the Now Strip
       #
+      # @param range [String] Time range: "today", "7d", or "30d"
       # @return [Hash] Now strip metrics
-      def self.now_strip_data
-        today_scope = today
+      def self.now_strip_data(range: "today")
+        scope = case range
+                when "7d" then last_n_days(7)
+                when "30d" then last_n_days(30)
+                else today
+                end
+
         {
           running: running.count,
-          success_today: today_scope.status_success.count,
-          errors_today: today_scope.status_error.count,
-          timeouts_today: today_scope.status_timeout.count,
-          cost_today: today_scope.sum(:total_cost) || 0,
-          executions_today: today_scope.count,
-          success_rate: calculate_today_success_rate
+          success_today: scope.status_success.count,
+          errors_today: scope.status_error.count,
+          timeouts_today: scope.status_timeout.count,
+          cost_today: scope.sum(:total_cost) || 0,
+          executions_today: scope.count,
+          success_rate: calculate_period_success_rate(scope)
         }
       end
 
-      # Calculates today's success rate
+      # Calculates success rate for a given scope
       #
+      # @param scope [ActiveRecord::Relation] The execution scope
       # @return [Float] Success rate as percentage
-      def self.calculate_today_success_rate
-        total = today.count
+      def self.calculate_period_success_rate(scope)
+        total = scope.count
         return 0.0 if total.zero?
 
-        (today.successful.count.to_f / total * 100).round(1)
+        (scope.successful.count.to_f / total * 100).round(1)
       end
 
       # Broadcasts execution changes via ActionCable for real-time dashboard updates
