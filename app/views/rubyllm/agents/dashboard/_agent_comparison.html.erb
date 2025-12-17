@@ -1,67 +1,46 @@
-<div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-  <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Agent Comparison</h3>
-    <p class="text-sm text-gray-500 dark:text-gray-400">Performance breakdown by agent type</p>
+<div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 h-full">
+  <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+    <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Agents</h3>
   </div>
 
-  <div class="overflow-x-auto">
-    <% if agent_stats.any? %>
-      <table class="w-full">
+  <% if agent_stats.any? %>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
         <thead>
           <tr class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-            <th class="px-6 py-3">Agent</th>
-            <th class="px-6 py-3 text-right">Executions</th>
-            <th class="px-6 py-3 text-right">Cost</th>
-            <th class="px-6 py-3 text-right">Avg Cost</th>
-            <th class="px-6 py-3 text-right">Avg Duration</th>
-            <th class="px-6 py-3 text-right">Success</th>
+            <th class="px-4 py-2">Agent</th>
+            <th class="px-4 py-2 text-right">Runs</th>
+            <th class="px-4 py-2 text-right">Cost</th>
+            <th class="px-4 py-2 text-right">Success</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-          <% agent_stats.each do |agent| %>
-            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-              <td class="px-6 py-4">
-                <div class="flex items-center">
-                  <div class="flex-shrink-0 w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mr-3">
-                    <span class="text-blue-600 dark:text-blue-400 text-xs font-bold">
-                      <%= agent[:agent_type].to_s.first(2).upcase %>
-                    </span>
-                  </div>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[150px]" title="<%= agent[:agent_type] %>">
-                      <%= agent[:agent_type].to_s.demodulize %>
-                    </p>
-                  </div>
-                </div>
+          <% agent_stats.first(5).each do |agent| %>
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+              <td class="px-4 py-2">
+                <span class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate block max-w-[120px]" title="<%= agent[:agent_type] %>">
+                  <%= agent[:agent_type].to_s.demodulize %>
+                </span>
               </td>
-              <td class="px-6 py-4 text-right text-sm text-gray-900 dark:text-gray-100">
+              <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
                 <%= number_with_delimiter(agent[:executions]) %>
               </td>
-              <td class="px-6 py-4 text-right text-sm text-gray-900 dark:text-gray-100">
-                $<%= number_with_precision(agent[:total_cost], precision: 4) %>
+              <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
+                $<%= number_with_precision(agent[:total_cost], precision: 2) %>
               </td>
-              <td class="px-6 py-4 text-right text-sm text-gray-500 dark:text-gray-400">
-                $<%= number_with_precision(agent[:avg_cost], precision: 6) %>
-              </td>
-              <td class="px-6 py-4 text-right text-sm text-gray-500 dark:text-gray-400">
-                <%= number_with_precision(agent[:avg_duration_ms] / 1000.0, precision: 1) %>s
-              </td>
-              <td class="px-6 py-4 text-right">
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium <%= agent[:success_rate] >= 95 ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' : agent[:success_rate] >= 80 ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200' : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200' %>">
-                  <%= agent[:success_rate] %>%
+              <td class="px-4 py-2 text-right">
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium <%= agent[:success_rate] >= 95 ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : agent[:success_rate] >= 80 ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300' : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300' %>">
+                  <%= agent[:success_rate].round %>%
                 </span>
               </td>
             </tr>
           <% end %>
         </tbody>
       </table>
-    <% else %>
-      <div class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-        <svg class="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-        <p>No agent data available for this period</p>
-      </div>
-    <% end %>
-  </div>
+    </div>
+  <% else %>
+    <div class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+      <p class="text-sm">No agent data yet</p>
+    </div>
+  <% end %>
 </div>

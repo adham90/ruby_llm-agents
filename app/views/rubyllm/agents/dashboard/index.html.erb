@@ -149,55 +149,29 @@
   </script>
 </div>
 
-<!-- Agent Comparison + Top Errors -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-  <%= render partial: "rubyllm/agents/dashboard/agent_comparison", locals: { agent_stats: @agent_stats } %>
-  <%= render partial: "rubyllm/agents/dashboard/top_errors", locals: { top_errors: @top_errors } %>
-</div>
-
 <!-- Live Activity Feed -->
-<div
-  class="
-    bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100
-    dark:border-gray-700
-  "
->
-  <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+<div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mb-6">
+  <div class="px-6 py-3 border-b border-gray-100 dark:border-gray-700">
     <div class="flex justify-between items-center">
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-        Live Activity
-      </h3>
-
+      <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Recent Activity</h3>
       <%= link_to "View All", ruby_llm_agents.executions_path, data: { turbo: false }, class: "text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium" %>
     </div>
   </div>
-
   <div id="activity-feed" class="px-6 py-2">
     <% if @recent_executions.any? %>
-      <% @recent_executions.each do |execution| %>
+      <% @recent_executions.first(5).each do |execution| %>
         <%= render partial: "rubyllm/agents/dashboard/execution_item", locals: { execution: execution } %>
       <% end %>
     <% else %>
-      <div
-        id="empty-state"
-        class="py-10 text-center text-gray-500 dark:text-gray-400"
-      >
-        <svg
-          class="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="1.5"
-            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-          />
-        </svg>
-
-        <p>No executions yet. Create an agent and make a call!</p>
+      <div class="py-8 text-center text-gray-500 dark:text-gray-400">
+        <p class="text-sm">No executions yet</p>
       </div>
     <% end %>
   </div>
+</div>
+
+<!-- Agent Comparison + Top Errors -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <%= render partial: "rubyllm/agents/dashboard/agent_comparison", locals: { agent_stats: @agent_stats } %>
+  <%= render partial: "rubyllm/agents/dashboard/top_errors", locals: { top_errors: @top_errors } %>
 </div>
