@@ -16,5 +16,6 @@ RubyLLM::Agents::Engine.routes.draw do
     end
   end
 
+  resource :analytics, only: [:show]
   resource :settings, only: [:show]
 end

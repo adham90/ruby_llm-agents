@@ -1,0 +1,66 @@
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+  <!-- Total Executions -->
+  <div class="flex items-center bg-white dark:bg-gray-800 rounded-lg px-4 py-3 shadow-sm border border-gray-100 dark:border-gray-700">
+    <div class="flex-shrink-0 w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mr-3">
+      <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+    </div>
+    <div>
+      <p class="text-lg font-bold text-gray-900 dark:text-gray-100"><%= number_with_delimiter(summary[:total_executions]) %></p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">Executions</p>
+    </div>
+  </div>
+
+  <!-- Total Cost -->
+  <div class="flex items-center bg-white dark:bg-gray-800 rounded-lg px-4 py-3 shadow-sm border border-gray-100 dark:border-gray-700">
+    <div class="flex-shrink-0 w-8 h-8 bg-amber-100 dark:bg-amber-900 rounded-full flex items-center justify-center mr-3">
+      <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+    <div>
+      <p class="text-lg font-bold text-gray-900 dark:text-gray-100">$<%= number_with_precision(summary[:total_cost], precision: 2) %></p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">Total Cost</p>
+    </div>
+  </div>
+
+  <!-- Total Tokens -->
+  <div class="flex items-center bg-white dark:bg-gray-800 rounded-lg px-4 py-3 shadow-sm border border-gray-100 dark:border-gray-700">
+    <div class="flex-shrink-0 w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mr-3">
+      <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+      </svg>
+    </div>
+    <div>
+      <p class="text-lg font-bold text-gray-900 dark:text-gray-100"><%= number_to_human(summary[:total_tokens], precision: 2, significant: false) %></p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">Tokens</p>
+    </div>
+  </div>
+
+  <!-- Avg Duration -->
+  <div class="flex items-center bg-white dark:bg-gray-800 rounded-lg px-4 py-3 shadow-sm border border-gray-100 dark:border-gray-700">
+    <div class="flex-shrink-0 w-8 h-8 bg-cyan-100 dark:bg-cyan-900 rounded-full flex items-center justify-center mr-3">
+      <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+    <div>
+      <p class="text-lg font-bold text-gray-900 dark:text-gray-100"><%= number_with_precision(summary[:avg_duration_ms] / 1000.0, precision: 1) %>s</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">Avg Duration</p>
+    </div>
+  </div>
+
+  <!-- Success Rate -->
+  <div class="flex items-center bg-white dark:bg-gray-800 rounded-lg px-4 py-3 shadow-sm border border-gray-100 dark:border-gray-700">
+    <div class="flex-shrink-0 w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mr-3">
+      <svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+    <div>
+      <p class="text-lg font-bold text-gray-900 dark:text-gray-100"><%= summary[:success_rate] %>%</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">Success Rate</p>
+    </div>
+  </div>
+</div>
