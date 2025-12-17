@@ -30,9 +30,11 @@ module RubyLLM
 
       # Returns chart data as JSON for live updates
       #
-      # @return [JSON] Chart data with categories and series
+      # @param range [String] Time range: "today", "7d", or "30d"
+      # @return [JSON] Chart data with series
       def chart_data
-        render json: Execution.hourly_activity_chart_json
+        range = params[:range].presence || "today"
+        render json: Execution.activity_chart_json(range: range)
       end
 
       private

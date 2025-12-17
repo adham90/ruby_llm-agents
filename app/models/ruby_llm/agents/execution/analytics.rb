@@ -167,20 +167,36 @@ module RubyLLM
           end
 
           # Returns chart data as arrays for Highcharts live updates
-          # Format: { categories: [...], series: [...] }
-          def hourly_activity_chart_json
-            # Always use current time as reference so chart shows "now" on the right
-            reference_time = Time.current.beginning_of_hour
+          # Format: { categories: [...], series: [...], range: ... }
+          #
+          # @param range [String] Time range: "today" (hourly), "7d" or "30d" (daily)
+          def activity_chart_json(range: "today")
+            case range
+            when "7d"
+              build_daily_chart_data(7)
+            when "30d"
+              build_daily_chart_data(30)
+            else
+              build_hourly_chart_data
+            end
+          end
 
-            categories = []
+          # Alias for backwards compatibility
+          def hourly_activity_chart_json
+            activity_chart_json(range: "today")
+          end
+
+          private
+
+          # Builds hourly chart data for last 24 hours
+          def build_hourly_chart_data
+            reference_time = Time.current.beginning_of_hour
             success_data = []
             failed_data = []
 
-            # Create entries for the last 24 hours ending at current hour
             (23.downto(0)).each do |hours_ago|
               start_time = reference_time - hours_ago.hours
               end_time = start_time + 1.hour
-              categories << start_time.in_time_zone.strftime("%H:%M")
 
               hour_scope = where(created_at: start_time...end_time)
               success_data << hour_scope.successful.count
@@ -188,13 +204,37 @@ module RubyLLM
             end
 
             {
-              categories: categories,
+              range: "today",
               series: [
                 { name: "Success", data: success_data },
                 { name: "Failed", data: failed_data }
               ]
             }
           end
+
+          # Builds daily chart data for specified number of days
+          def build_daily_chart_data(days)
+            success_data = []
+            failed_data = []
+
+            (days - 1).downto(0).each do |days_ago|
+              date = days_ago.days.ago.to_date
+              day_scope = where(created_at: date.beginning_of_day..date.end_of_day)
+              success_data << day_scope.successful.count
+              failed_data << day_scope.failed.count
+            end
+
+            {
+              range: "#{days}d",
+              days: days,
+              series: [
+                { name: "Success", data: success_data },
+                { name: "Failed", data: failed_data }
+              ]
+            }
+          end
+
+          public
 
           # Builds the hourly activity data structure
           # Shows the last 24 hours with current hour on the right
