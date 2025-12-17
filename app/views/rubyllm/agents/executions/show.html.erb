@@ -1,24 +1,28 @@
 <div id="execution-detail" data-execution-id="<%= @execution.id %>" data-status="<%= @execution.status %>">
-<div class="mb-6">
-  <%= link_to ruby_llm_agents.executions_path, class: "inline-flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" do %>
-    <svg
-      class="w-4 h-4 mr-1"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M10 19l-7-7m0 0l7-7m-7 7h18"
-      />
-    </svg>
-    Back to Executions
-  <% end %>
-</div>
+<%= render "rubyllm/agents/shared/breadcrumbs", items: [
+  { label: "Dashboard", path: ruby_llm_agents.root_path },
+  { label: "Executions", path: ruby_llm_agents.executions_path },
+  { label: "##{@execution.id}" }
+] %>
 
 <!-- Header -->
+<%
+  # Collect secondary badges
+  secondary_badges = []
+  secondary_badges << { label: "Stream", color: "cyan" } if @execution.streaming?
+  secondary_badges << { label: "Cached", color: "purple" } if @execution.cache_hit
+  if @execution.finish_reason.present?
+    finish_color = case @execution.finish_reason
+      when 'stop' then 'green'
+      when 'length' then 'yellow'
+      when 'content_filter' then 'red'
+      when 'tool_calls' then 'blue'
+      else 'gray'
+    end
+    secondary_badges << { label: @execution.finish_reason, color: finish_color }
+  end
+  secondary_badges << { label: "Rate Limited", color: "orange" } if @execution.respond_to?(:rate_limited?) && @execution.rate_limited?
+%>
 <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-5 mb-6">
   <!-- Desktop: Row 1 - Agent name + badges + buttons + date -->
   <div class="hidden sm:flex sm:items-center sm:justify-between gap-4">
@@ -27,20 +31,44 @@
         <%= @execution.agent_type.gsub(/Agent$/, '') %>
       </h2>
       <%= render "rubyllm/agents/shared/status_badge", status: @execution.status, size: :md %>
-      <% if @execution.streaming? %>
-        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300">Stream</span>
-      <% end %>
-      <% if @execution.cache_hit %>
-        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300">Cached</span>
-      <% end %>
-      <% if @execution.finish_reason.present? %>
-        <% finish_colors = {
-          'stop' => 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
-          'length' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300',
-          'content_filter' => 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300',
-          'tool_calls' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300'
-        } %>
-        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium <%= finish_colors[@execution.finish_reason] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' %>"><%= @execution.finish_reason %></span>
+      <% if secondary_badges.any? %>
+        <div class="relative" x-data="{ showDetails: false }">
+          <button
+            type="button"
+            @mouseenter="showDetails = true"
+            @mouseleave="showDetails = false"
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            +<%= secondary_badges.size %>
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </button>
+          <div
+            x-show="showDetails"
+            x-cloak
+            x-transition:enter="transition ease-out duration-100"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            class="absolute left-0 mt-1 z-10 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-2 min-w-max"
+          >
+            <div class="flex flex-wrap gap-1.5">
+              <% secondary_badges.each do |badge| %>
+                <% badge_classes = case badge[:color]
+                  when 'cyan' then 'bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300'
+                  when 'purple' then 'bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300'
+                  when 'green' then 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300'
+                  when 'yellow' then 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300'
+                  when 'red' then 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300'
+                  when 'blue' then 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300'
+                  when 'orange' then 'bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-300'
+                  else 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
+                end %>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium <%= badge_classes %>"><%= badge[:label] %></span>
+              <% end %>
+            </div>
+          </div>
+        </div>
       <% end %>
     </div>
     <div class="flex items-center gap-3 flex-shrink-0">
@@ -88,20 +116,18 @@
     </h2>
     <div class="flex flex-wrap items-center gap-2 mt-2">
       <%= render "rubyllm/agents/shared/status_badge", status: @execution.status, size: :md %>
-      <% if @execution.streaming? %>
-        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300">Stream</span>
-      <% end %>
-      <% if @execution.cache_hit %>
-        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300">Cached</span>
-      <% end %>
-      <% if @execution.finish_reason.present? %>
-        <% finish_colors = {
-          'stop' => 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
-          'length' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300',
-          'content_filter' => 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300',
-          'tool_calls' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300'
-        } %>
-        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium <%= finish_colors[@execution.finish_reason] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' %>"><%= @execution.finish_reason %></span>
+      <% secondary_badges.each do |badge| %>
+        <% badge_classes = case badge[:color]
+          when 'cyan' then 'bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300'
+          when 'purple' then 'bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300'
+          when 'green' then 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300'
+          when 'yellow' then 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300'
+          when 'red' then 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300'
+          when 'blue' then 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300'
+          when 'orange' then 'bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-300'
+          else 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
+        end %>
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium <%= badge_classes %>"><%= badge[:label] %></span>
       <% end %>
     </div>
     <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
@@ -484,7 +510,8 @@
 
 <!-- Tool Calls -->
 <% if @execution.tool_calls.present? && @execution.tool_calls.any? %>
-  <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6">
+  <% tool_call_count = @execution.tool_calls.size %>
+  <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6" x-data="{ expanded: <%= tool_call_count <= 3 %> }">
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-2">
         <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -493,25 +520,32 @@
         </svg>
         <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Tool Calls</h3>
         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300">
-          <%= @execution.tool_calls.size %>
+          <%= tool_call_count %>
         </span>
       </div>
-      <button
-        type="button"
-        data-copy-json="<%= Base64.strict_encode64(JSON.pretty_generate(@execution.tool_calls)) %>"
-        class="copy-json-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-      >
-        <svg class="w-4 h-4 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-        </svg>
-        <svg class="w-4 h-4 check-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-        </svg>
-        <span>Copy</span>
-      </button>
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          data-copy-json="<%= Base64.strict_encode64(JSON.pretty_generate(@execution.tool_calls)) %>"
+          class="copy-json-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+        >
+          <svg class="w-4 h-4 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+          </svg>
+          <svg class="w-4 h-4 check-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+          <span>Copy</span>
+        </button>
+        <% if tool_call_count > 3 %>
+          <button type="button" @click="expanded = !expanded" class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+            <span x-text="expanded ? 'Collapse' : 'Expand'">Expand</span>
+          </button>
+        <% end %>
+      </div>
     </div>
 
-    <div class="space-y-4">
+    <div class="space-y-4" x-show="expanded" <%= tool_call_count > 3 ? 'x-cloak' : '' %>>
       <% @execution.tool_calls.each_with_index do |tool_call, index| %>
         <%
           # Handle both symbol and string keys
@@ -554,26 +588,36 @@
 
 <!-- Metadata -->
 <% if @execution.metadata.present? && @execution.metadata.any? %>
-  <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6">
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Metadata</h3>
-      <button
-        type="button"
-        data-copy-json="<%= Base64.strict_encode64(JSON.pretty_generate(redact_for_display(@execution.metadata))) %>"
-        data-copy-json-original="<%= Base64.strict_encode64(JSON.pretty_generate(@execution.metadata)) %>"
-        class="copy-json-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-      >
-        <svg class="w-4 h-4 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-        </svg>
-        <svg class="w-4 h-4 check-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-        </svg>
-        <span>Copy</span>
-      </button>
+  <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6" x-data="{ expanded: false }">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Metadata</h3>
+        <span class="text-xs text-gray-400 dark:text-gray-500">(<%= @execution.metadata.keys.count %> keys)</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          data-copy-json="<%= Base64.strict_encode64(JSON.pretty_generate(redact_for_display(@execution.metadata))) %>"
+          data-copy-json-original="<%= Base64.strict_encode64(JSON.pretty_generate(@execution.metadata)) %>"
+          class="copy-json-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+        >
+          <svg class="w-4 h-4 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+          </svg>
+          <svg class="w-4 h-4 check-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+          <span>Copy</span>
+        </button>
+        <button type="button" @click="expanded = !expanded" class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+          <span x-text="expanded ? 'Collapse' : 'Expand'">Expand</span>
+        </button>
+      </div>
     </div>
-    <pre id="metadata-masked" class="maskable-content bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 text-sm overflow-x-auto font-mono"><%= highlight_json_redacted(@execution.metadata) %></pre>
-    <pre id="metadata-original" class="maskable-content hidden bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 text-sm overflow-x-auto font-mono"><%= highlight_json(@execution.metadata) %></pre>
+    <div x-show="expanded" x-cloak class="mt-4">
+      <pre id="metadata-masked" class="maskable-content bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 text-sm overflow-x-auto font-mono"><%= highlight_json_redacted(@execution.metadata) %></pre>
+      <pre id="metadata-original" class="maskable-content hidden bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 text-sm overflow-x-auto font-mono"><%= highlight_json(@execution.metadata) %></pre>
+    </div>
   </div>
 <% end %>
 
@@ -618,6 +662,7 @@
         <span id="system-prompt-toggle">Expand</span>
       </button>
     </div>
+    <p id="system-prompt-preview" class="text-sm text-gray-600 dark:text-gray-300 font-mono bg-gray-50 dark:bg-gray-900 rounded-lg p-3 truncate"><%= @execution.system_prompt.truncate(150) %></p>
     <pre id="system-prompt-content" class="hidden bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 text-sm overflow-x-auto max-h-96 font-mono whitespace-pre-wrap"><%= @execution.system_prompt %></pre>
   </div>
 <% end %>
@@ -631,6 +676,7 @@
         <span id="user-prompt-toggle">Expand</span>
       </button>
     </div>
+    <p id="user-prompt-preview" class="text-sm text-gray-600 dark:text-gray-300 font-mono bg-gray-50 dark:bg-gray-900 rounded-lg p-3 truncate"><%= @execution.user_prompt.truncate(150) %></p>
     <pre id="user-prompt-content" class="hidden bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 text-sm overflow-x-auto max-h-96 font-mono whitespace-pre-wrap"><%= @execution.user_prompt %></pre>
   </div>
 <% end %>
@@ -867,9 +913,12 @@
   // Prompt toggle function
   function togglePrompt(type) {
     const content = document.getElementById(type + '-prompt-content');
+    const preview = document.getElementById(type + '-prompt-preview');
     const toggle = document.getElementById(type + '-prompt-toggle');
-    content.classList.toggle('hidden');
-    toggle.textContent = content.classList.contains('hidden') ? 'Expand' : 'Collapse';
+    const isHidden = content.classList.contains('hidden');
+    content.classList.toggle('hidden', !isHidden);
+    if (preview) preview.classList.toggle('hidden', isHidden);
+    toggle.textContent = isHidden ? 'Collapse' : 'Expand';
   }
 
   // Masking state (persisted in localStorage)
@@ -972,8 +1021,8 @@
     }
   });
 
-  // Diagnostics panel toggle
-  let diagnosticsExpanded = localStorage.getItem('ruby_llm_agents_diagnostics_expanded') === 'true';
+  // Diagnostics panel toggle (default to expanded)
+  let diagnosticsExpanded = localStorage.getItem('ruby_llm_agents_diagnostics_expanded') !== 'false';
 
   function toggleDiagnostics() {
     diagnosticsExpanded = !diagnosticsExpanded;

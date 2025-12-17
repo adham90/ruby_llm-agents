@@ -74,116 +74,6 @@
 
     <style>[x-cloak] { display: none !important; }</style>
 
-    <!-- Auto-refresh for dashboard updates -->
-    <script>
-      (function() {
-        // Simple polling for updates (30 second interval)
-        const POLL_INTERVAL = 30000
-        let pollTimer = null
-
-        function startPolling() {
-          if (pollTimer) return
-
-          // Update indicator to show polling is active
-          const indicator = document.getElementById("live-indicator")
-          if (indicator) {
-            indicator.className = "hidden sm:flex items-center text-gray-500 dark:text-gray-400"
-            indicator.innerHTML = '<span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-1"></span><span class="hidden sm:inline text-xs">30s</span>'
-          }
-
-          pollTimer = setInterval(() => {
-            // Dashboard page - detected by presence of activity feed
-            if (document.getElementById("activity-feed")) {
-              fetch(window.location.href, {
-                headers: { "Accept": "text/html" }
-              })
-              .then(response => response.text())
-              .then(html => {
-                const parser = new DOMParser()
-                const doc = parser.parseFromString(html, "text/html")
-
-                // Update activity feed
-                const newFeed = doc.getElementById("activity-feed")
-                const currentFeed = document.getElementById("activity-feed")
-                if (newFeed && currentFeed) {
-                  currentFeed.innerHTML = newFeed.innerHTML
-                }
-
-                // Update now strip
-                const newStrip = doc.getElementById("now-strip-values")
-                const currentStrip = document.getElementById("now-strip-values")
-                if (newStrip && currentStrip) {
-                  currentStrip.innerHTML = newStrip.innerHTML
-                }
-
-                // Note: Chart has its own 1-second live update built-in
-
-                // Update action center
-                const newActionCenter = doc.getElementById("action-center")
-                const currentActionCenter = document.getElementById("action-center")
-                if (newActionCenter && currentActionCenter) {
-                  currentActionCenter.outerHTML = newActionCenter.outerHTML
-                } else if (newActionCenter && !currentActionCenter) {
-                  // Insert action center if it appeared
-                  const main = document.querySelector("main")
-                  if (main) main.insertAdjacentHTML("afterbegin", newActionCenter.outerHTML)
-                } else if (!newActionCenter && currentActionCenter) {
-                  // Remove action center if it disappeared
-                  currentActionCenter.remove()
-                }
-              })
-              .catch(err => console.log("[RubyLLM::Agents] Poll error:", err))
-            }
-
-            // Execution show page - detected by presence of execution-detail element
-            const executionDetail = document.getElementById("execution-detail")
-            if (executionDetail) {
-              const currentStatus = executionDetail.dataset.status
-
-              // Only poll if execution is still running
-              if (currentStatus === "running") {
-                fetch(window.location.href, {
-                  headers: { "Accept": "text/html" }
-                })
-                .then(response => response.text())
-                .then(html => {
-                  const parser = new DOMParser()
-                  const doc = parser.parseFromString(html, "text/html")
-
-                  // Update the main content area when status changes
-                  const newContent = doc.getElementById("execution-detail")
-                  if (newContent && newContent.dataset.status !== "running") {
-                    // Execution completed - do a full content update
-                    executionDetail.outerHTML = newContent.outerHTML
-                  }
-                })
-                .catch(err => console.log("[RubyLLM::Agents] Poll error:", err))
-              }
-            }
-          }, POLL_INTERVAL)
-        }
-
-        function stopPolling() {
-          if (pollTimer) {
-            clearInterval(pollTimer)
-            pollTimer = null
-          }
-        }
-
-        // Start polling on page load
-        document.addEventListener("DOMContentLoaded", startPolling)
-
-        // Handle visibility changes - pause when tab is hidden
-        document.addEventListener("visibilitychange", () => {
-          if (document.hidden) {
-            stopPolling()
-          } else {
-            startPolling()
-          }
-        })
-      })()
-    </script>
-
     <!-- Clock and clickable rows -->
     <script type="module">
       function updateClock() {
@@ -280,6 +170,15 @@
 
     <style>
     /* Custom styles for the dashboard */
+
+    /* Standard card components */
+    .card {
+      @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6;
+    }
+    .card-compact {
+      @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mb-4;
+    }
+
     .stat-card {
       @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 transition-shadow;
     }
@@ -329,6 +228,35 @@
     }
     .badge-orange {
       @apply bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300;
+    }
+
+    /* Turbo loading states */
+    turbo-frame[busy] {
+      position: relative;
+      opacity: 0.6;
+      pointer-events: none;
+    }
+    turbo-frame[busy]::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 24px;
+      height: 24px;
+      margin: -12px 0 0 -12px;
+      border: 2px solid #e5e7eb;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Form submitting state */
+    form[data-turbo-submitting] {
+      opacity: 0.6;
+      pointer-events: none;
     }
   </style>
   </head>
@@ -467,14 +395,6 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
-
-            <span
-              id="live-indicator"
-              class="hidden sm:flex items-center text-gray-500 dark:text-gray-400"
-            >
-              <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-1"></span>
-              <span class="hidden sm:inline text-xs">30s</span>
-            </span>
 
             <!-- Mobile menu button -->
             <button
@@ -662,9 +582,93 @@
           <p class="text-sm text-gray-500 dark:text-gray-400 text-center">
             Powered by
             <a href="https://github.com/adham90/ruby_llm-agents" class="text-blue-600 dark:text-blue-400 hover:underline">ruby_llm-agents</a>
+            <button
+              type="button"
+              onclick="document.getElementById('keyboard-shortcuts-modal').classList.remove('hidden')"
+              class="ml-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+              title="Keyboard shortcuts (?)"
+            >
+              <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </button>
           </p>
         </div>
       </div>
     </footer>
+
+    <!-- Keyboard Shortcuts Modal -->
+    <div id="keyboard-shortcuts-modal" class="hidden fixed inset-0 z-50 overflow-y-auto" x-data @keydown.escape.window="$el.classList.add('hidden')">
+      <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center">
+        <div class="fixed inset-0 bg-gray-500 dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-75 transition-opacity" onclick="this.parentElement.parentElement.classList.add('hidden')"></div>
+
+        <div class="relative bg-white dark:bg-gray-800 rounded-lg max-w-md w-full mx-auto shadow-xl">
+          <div class="p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Keyboard Shortcuts</h3>
+              <button type="button" onclick="this.closest('#keyboard-shortcuts-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+
+            <div class="space-y-3 text-left">
+              <div class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                <span class="text-sm text-gray-600 dark:text-gray-300">Show this help</span>
+                <kbd class="px-2 py-1 text-xs font-semibold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded">?</kbd>
+              </div>
+              <div class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                <span class="text-sm text-gray-600 dark:text-gray-300">Refresh page</span>
+                <kbd class="px-2 py-1 text-xs font-semibold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded">r</kbd>
+              </div>
+              <div class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                <span class="text-sm text-gray-600 dark:text-gray-300">Toggle data masking</span>
+                <kbd class="px-2 py-1 text-xs font-semibold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded">m</kbd>
+              </div>
+              <div class="flex items-center justify-between py-2">
+                <span class="text-sm text-gray-600 dark:text-gray-300">Toggle diagnostics</span>
+                <kbd class="px-2 py-1 text-xs font-semibold text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded">d</kbd>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Global Keyboard Shortcuts -->
+    <script>
+      document.addEventListener('keydown', function(e) {
+        // Don't trigger shortcuts when typing in inputs
+        if (e.target.matches('input, textarea, select')) return;
+
+        switch(e.key) {
+          case '?':
+            document.getElementById('keyboard-shortcuts-modal').classList.toggle('hidden');
+            break;
+          case 'r':
+            if (!e.ctrlKey && !e.metaKey) {
+              e.preventDefault();
+              window.location.reload();
+            }
+            break;
+          case 'm':
+            // Toggle masking on execution page
+            if (typeof toggleMasking === 'function') {
+              toggleMasking();
+            }
+            break;
+          case 'd':
+            // Toggle diagnostics on execution page
+            if (typeof toggleDiagnostics === 'function') {
+              toggleDiagnostics();
+            }
+            break;
+          case 'Escape':
+            document.getElementById('keyboard-shortcuts-modal').classList.add('hidden');
+            break;
+        }
+      });
+    </script>
   </body>
 </html>
