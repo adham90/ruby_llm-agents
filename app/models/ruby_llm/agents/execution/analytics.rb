@@ -193,21 +193,36 @@ module RubyLLM
             reference_time = Time.current.beginning_of_hour
             success_data = []
             failed_data = []
+            cost_data = []
+            total_success = 0
+            total_failed = 0
+            total_cost = 0.0
 
             (23.downto(0)).each do |hours_ago|
               start_time = reference_time - hours_ago.hours
               end_time = start_time + 1.hour
 
               hour_scope = where(created_at: start_time...end_time)
-              success_data << hour_scope.successful.count
-              failed_data << hour_scope.failed.count
+              success_count = hour_scope.successful.count
+              failed_count = hour_scope.failed.count
+              hour_cost = hour_scope.sum(:total_cost) || 0
+
+              success_data << success_count
+              failed_data << failed_count
+              cost_data << hour_cost.round(4)
+
+              total_success += success_count
+              total_failed += failed_count
+              total_cost += hour_cost
             end
 
             {
               range: "today",
+              totals: { success: total_success, failed: total_failed, cost: total_cost.round(4) },
               series: [
                 { name: "Success", data: success_data },
-                { name: "Failed", data: failed_data }
+                { name: "Failed", data: failed_data },
+                { name: "Cost", data: cost_data }
               ]
             }
           end
@@ -216,20 +231,35 @@ module RubyLLM
           def build_daily_chart_data(days)
             success_data = []
             failed_data = []
+            cost_data = []
+            total_success = 0
+            total_failed = 0
+            total_cost = 0.0
 
             (days - 1).downto(0).each do |days_ago|
               date = days_ago.days.ago.to_date
               day_scope = where(created_at: date.beginning_of_day..date.end_of_day)
-              success_data << day_scope.successful.count
-              failed_data << day_scope.failed.count
+              success_count = day_scope.successful.count
+              failed_count = day_scope.failed.count
+              day_cost = day_scope.sum(:total_cost) || 0
+
+              success_data << success_count
+              failed_data << failed_count
+              cost_data << day_cost.round(4)
+
+              total_success += success_count
+              total_failed += failed_count
+              total_cost += day_cost
             end
 
             {
               range: "#{days}d",
               days: days,
+              totals: { success: total_success, failed: total_failed, cost: total_cost.round(4) },
               series: [
                 { name: "Success", data: success_data },
-                { name: "Failed", data: failed_data }
+                { name: "Failed", data: failed_data },
+                { name: "Cost", data: cost_data }
               ]
             }
           end
