@@ -189,8 +189,23 @@ module RubyLLM
           private
 
           # Builds hourly chart data for last 24 hours
+          # Optimized: Single GROUP BY query instead of 72 individual queries
           def build_hourly_chart_data
             reference_time = Time.current.beginning_of_hour
+            start_time = reference_time - 23.hours
+
+            # Single query with GROUP BY - reduces 72 queries to 1
+            results = where(created_at: start_time..(reference_time + 1.hour))
+              .group(Arel.sql("DATE_TRUNC('hour', created_at)"))
+              .select(
+                Arel.sql("DATE_TRUNC('hour', created_at) as time_bucket"),
+                Arel.sql("COUNT(*) FILTER (WHERE status = 'success') as success_count"),
+                Arel.sql("COUNT(*) FILTER (WHERE status IN ('error', 'timeout')) as failed_count"),
+                Arel.sql("COALESCE(SUM(total_cost), 0) as total_cost")
+              )
+              .index_by { |r| r.time_bucket.to_time.beginning_of_hour }
+
+            # Build arrays for all 24 hours (fill missing with zeros)
             success_data = []
             failed_data = []
             cost_data = []
@@ -199,21 +214,20 @@ module RubyLLM
             total_cost = 0.0
 
             (23.downto(0)).each do |hours_ago|
-              start_time = reference_time - hours_ago.hours
-              end_time = start_time + 1.hour
+              bucket_time = (reference_time - hours_ago.hours).beginning_of_hour
+              row = results[bucket_time]
 
-              hour_scope = where(created_at: start_time...end_time)
-              success_count = hour_scope.successful.count
-              failed_count = hour_scope.failed.count
-              hour_cost = hour_scope.sum(:total_cost) || 0
+              s = row&.success_count.to_i
+              f = row&.failed_count.to_i
+              c = row&.total_cost.to_f
 
-              success_data << success_count
-              failed_data << failed_count
-              cost_data << hour_cost.round(4)
+              success_data << s
+              failed_data << f
+              cost_data << c.round(4)
 
-              total_success += success_count
-              total_failed += failed_count
-              total_cost += hour_cost
+              total_success += s
+              total_failed += f
+              total_cost += c
             end
 
             {
@@ -228,7 +242,23 @@ module RubyLLM
           end
 
           # Builds daily chart data for specified number of days
+          # Optimized: Single GROUP BY query instead of 3*days individual queries
           def build_daily_chart_data(days)
+            end_date = Date.current
+            start_date = (days - 1).days.ago.to_date
+
+            # Single query with GROUP BY - reduces 3*days queries to 1
+            results = where(created_at: start_date.beginning_of_day..end_date.end_of_day)
+              .group(Arel.sql("DATE_TRUNC('day', created_at)"))
+              .select(
+                Arel.sql("DATE_TRUNC('day', created_at) as time_bucket"),
+                Arel.sql("COUNT(*) FILTER (WHERE status = 'success') as success_count"),
+                Arel.sql("COUNT(*) FILTER (WHERE status IN ('error', 'timeout')) as failed_count"),
+                Arel.sql("COALESCE(SUM(total_cost), 0) as total_cost")
+              )
+              .index_by { |r| r.time_bucket.to_date }
+
+            # Build arrays for all days (fill missing with zeros)
             success_data = []
             failed_data = []
             cost_data = []
@@ -238,18 +268,19 @@ module RubyLLM
 
             (days - 1).downto(0).each do |days_ago|
               date = days_ago.days.ago.to_date
-              day_scope = where(created_at: date.beginning_of_day..date.end_of_day)
-              success_count = day_scope.successful.count
-              failed_count = day_scope.failed.count
-              day_cost = day_scope.sum(:total_cost) || 0
+              row = results[date]
 
-              success_data << success_count
-              failed_data << failed_count
-              cost_data << day_cost.round(4)
+              s = row&.success_count.to_i
+              f = row&.failed_count.to_i
+              c = row&.total_cost.to_f
 
-              total_success += success_count
-              total_failed += failed_count
-              total_cost += day_cost
+              success_data << s
+              failed_data << f
+              cost_data << c.round(4)
+
+              total_success += s
+              total_failed += f
+              total_cost += c
             end
 
             {

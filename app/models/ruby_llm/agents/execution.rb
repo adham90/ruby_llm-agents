@@ -85,7 +85,6 @@ module RubyLLM
 
       before_save :calculate_total_tokens, if: -> { input_tokens_changed? || output_tokens_changed? }
       before_save :calculate_total_cost, if: -> { input_cost_changed? || output_cost_changed? }
-      after_commit :broadcast_turbo_streams, on: %i[create update]
 
       # Aggregates costs from all attempts using each attempt's model pricing
       #
@@ -259,52 +258,7 @@ module RubyLLM
         (scope.successful.count.to_f / total * 100).round(1)
       end
 
-      # Broadcasts execution changes via ActionCable for real-time dashboard updates
-      #
-      # Sends JSON with action, id, status, and rendered HTML partials.
-      # The JavaScript client handles DOM updates based on the action type.
-      #
-      # @return [void]
-      def broadcast_turbo_streams
-        ActionCable.server.broadcast(
-          "ruby_llm_agents:executions",
-          {
-            action: previously_new_record? ? "created" : "updated",
-            id: id,
-            status: status,
-            html: render_execution_html,
-            now_strip_html: render_now_strip_html
-          }
-        )
-      rescue StandardError => e
-        Rails.logger.error("[RubyLLM::Agents] Failed to broadcast execution: #{e.message}")
-      end
-
       private
-
-      # Renders the execution item partial for broadcast
-      #
-      # @return [String, nil] HTML string or nil if rendering fails
-      def render_execution_html
-        ApplicationController.render(
-          partial: "rubyllm/agents/dashboard/execution_item",
-          locals: { execution: self }
-        )
-      rescue StandardError
-        nil
-      end
-
-      # Renders the Now Strip values partial for broadcast
-      #
-      # @return [String, nil] HTML string or nil if rendering fails
-      def render_now_strip_html
-        ApplicationController.render(
-          partial: "rubyllm/agents/dashboard/now_strip_values",
-          locals: { now_strip: self.class.now_strip_data }
-        )
-      rescue StandardError
-        nil
-      end
 
       # Calculates and sets total_tokens from input and output
       #
