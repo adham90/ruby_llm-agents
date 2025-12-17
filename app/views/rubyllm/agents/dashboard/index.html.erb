@@ -149,6 +149,12 @@
   </script>
 </div>
 
+<!-- Agent Comparison + Top Errors -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <%= render partial: "rubyllm/agents/dashboard/agent_comparison", locals: { agent_stats: @agent_stats } %>
+  <%= render partial: "rubyllm/agents/dashboard/top_errors", locals: { top_errors: @top_errors } %>
+</div>
+
 <!-- Live Activity Feed -->
 <div
   class="

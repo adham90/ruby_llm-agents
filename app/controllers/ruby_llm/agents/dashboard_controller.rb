@@ -14,15 +14,18 @@ module RubyLLM
       # Renders the main dashboard view
       #
       # Loads now strip data, critical alerts, hourly activity,
-      # and recent executions for real-time monitoring.
+      # recent executions, agent comparison, and top errors.
       #
       # @return [void]
       def index
         @selected_range = params[:range].presence || "today"
+        @days = range_to_days(@selected_range)
         @now_strip = Execution.now_strip_data(range: @selected_range)
         @critical_alerts = load_critical_alerts
         @hourly_activity = Execution.hourly_activity_chart
         @recent_executions = Execution.recent(10)
+        @agent_stats = build_agent_comparison
+        @top_errors = build_top_errors
       end
 
       # Returns chart data as JSON for live updates
@@ -33,6 +36,64 @@ module RubyLLM
       end
 
       private
+
+      # Converts range parameter to number of days
+      #
+      # @param range [String] Range parameter (today, 7d, 30d)
+      # @return [Integer] Number of days
+      def range_to_days(range)
+        case range
+        when "today" then 1
+        when "7d" then 7
+        when "30d" then 30
+        else 1
+        end
+      end
+
+      # Builds per-agent comparison statistics
+      #
+      # @return [Array<Hash>] Array of agent stats sorted by cost descending
+      def build_agent_comparison
+        scope = Execution.last_n_days(@days)
+        agent_types = scope.distinct.pluck(:agent_type)
+
+        agent_types.map do |agent_type|
+          agent_scope = scope.where(agent_type: agent_type)
+          count = agent_scope.count
+          total_cost = agent_scope.sum(:total_cost) || 0
+          successful = agent_scope.successful.count
+
+          {
+            agent_type: agent_type,
+            executions: count,
+            total_cost: total_cost,
+            avg_cost: count > 0 ? (total_cost / count).round(6) : 0,
+            avg_duration_ms: agent_scope.average(:duration_ms)&.round || 0,
+            success_rate: count > 0 ? (successful.to_f / count * 100).round(1) : 0
+          }
+        end.sort_by { |a| -(a[:total_cost] || 0) }
+      end
+
+      # Builds top errors list
+      #
+      # @return [Array<Hash>] Top 5 error classes with counts
+      def build_top_errors
+        scope = Execution.last_n_days(@days).where(status: "error")
+        total_errors = scope.count
+
+        scope.group(:error_class)
+             .select("error_class, COUNT(*) as count, MAX(created_at) as last_seen")
+             .order("count DESC")
+             .limit(5)
+             .map do |row|
+          {
+            error_class: row.error_class || "Unknown Error",
+            count: row.count,
+            percentage: total_errors > 0 ? (row.count.to_f / total_errors * 100).round(1) : 0,
+            last_seen: row.last_seen
+          }
+        end
+      end
 
       # Fetches cached daily statistics for the dashboard
       #
