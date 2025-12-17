@@ -30,7 +30,6 @@
 
     <!-- Highcharts for charts -->
     <script src="https://code.highcharts.com/highcharts.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartkick@5.0.1"></script>
 
     <!-- Configure Highcharts defaults -->
     <script>
@@ -78,8 +77,8 @@
     <!-- Auto-refresh for dashboard updates -->
     <script>
       (function() {
-        // Simple polling for real-time updates (5 second interval)
-        const POLL_INTERVAL = 5000
+        // Simple polling for updates (30 second interval)
+        const POLL_INTERVAL = 30000
         let pollTimer = null
 
         function startPolling() {
@@ -88,8 +87,8 @@
           // Update indicator to show polling is active
           const indicator = document.getElementById("live-indicator")
           if (indicator) {
-            indicator.className = "hidden sm:flex items-center text-blue-600 dark:text-blue-400"
-            indicator.innerHTML = '<span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1 animate-pulse"></span><span class="hidden sm:inline">Auto</span>'
+            indicator.className = "hidden sm:flex items-center text-gray-500 dark:text-gray-400"
+            indicator.innerHTML = '<span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-1"></span><span class="hidden sm:inline text-xs">30s</span>'
           }
 
           pollTimer = setInterval(() => {
@@ -185,7 +184,7 @@
       })()
     </script>
 
-    <!-- Live Clock Script -->
+    <!-- Clock and clickable rows -->
     <script type="module">
       function updateClock() {
         const clock = document.getElementById('live-clock');
@@ -194,17 +193,14 @@
           clock.textContent = now.toLocaleTimeString('en-US', {
             hour: '2-digit',
             minute: '2-digit',
-            second: '2-digit',
             hour12: false
           });
         }
       }
 
-      // Start clock on page load
+      // Initialize on page load
       document.addEventListener('turbo:load', function() {
-        if (window.rubyLLMAgentsClock) clearInterval(window.rubyLLMAgentsClock);
         updateClock();
-        window.rubyLLMAgentsClock = setInterval(updateClock, 1000);
 
         // Handle data-href clickable rows (semantic alternative to onclick)
         document.querySelectorAll('[data-href]').forEach(function(element) {
@@ -215,6 +211,9 @@
           });
         });
       });
+
+      // Also run on DOMContentLoaded for non-Turbo loads
+      document.addEventListener('DOMContentLoaded', updateClock);
     </script>
 
     <!-- Stimulus Controllers -->
@@ -458,12 +457,23 @@
           >
             <span id="live-clock" class="tabular-nums"></span>
 
+            <button
+              id="refresh-button"
+              onclick="window.location.reload()"
+              title="Refresh page"
+              class="p-1.5 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+
             <span
               id="live-indicator"
-              class="hidden sm:flex items-center text-blue-600 dark:text-blue-400"
+              class="hidden sm:flex items-center text-gray-500 dark:text-gray-400"
             >
-              <span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1 animate-pulse"></span>
-              <span class="hidden sm:inline">Auto</span>
+              <span class="w-1.5 h-1.5 bg-gray-400 rounded-full mr-1"></span>
+              <span class="hidden sm:inline text-xs">30s</span>
             </span>
 
             <!-- Mobile menu button -->
