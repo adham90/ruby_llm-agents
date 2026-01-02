@@ -143,32 +143,43 @@ end
 Compose agents into complex workflows:
 
 ```ruby
-# Sequential pipeline
-workflow = RubyLLM::Agents::Workflow.pipeline(
-  ClassifierAgent,
-  EnricherAgent,
-  FormatterAgent
-)
-result = workflow.call(input: data)
+# Sequential pipeline - each step's output feeds the next
+class ContentPipeline < RubyLLM::Agents::Workflow::Pipeline
+  timeout 60.seconds
+  max_cost 1.00
 
-# Parallel execution
-workflow = RubyLLM::Agents::Workflow.parallel(
-  sentiment: SentimentAgent,
-  entities: EntityAgent,
-  summary: SummaryAgent
-)
-result = workflow.call(text: content)
+  step :classify, agent: ClassifierAgent
+  step :enrich,   agent: EnricherAgent
+  step :format,   agent: FormatterAgent, optional: true
+end
 
-# Conditional routing
-workflow = RubyLLM::Agents::Workflow.router(
-  classifier: IntentClassifier,
-  routes: {
-    "support" => SupportAgent,
-    "sales" => SalesAgent,
-    "general" => GeneralAgent
-  }
-)
-result = workflow.call(message: user_input)
+result = ContentPipeline.call(text: data)
+result.steps[:classify].content  # Individual step result
+result.total_cost                # Sum of all steps
+
+# Parallel execution - run agents concurrently
+class AnalysisPipeline < RubyLLM::Agents::Workflow::Parallel
+  fail_fast false  # Continue even if a branch fails
+
+  branch :sentiment, agent: SentimentAgent
+  branch :entities,  agent: EntityAgent
+  branch :summary,   agent: SummaryAgent
+end
+
+result = AnalysisPipeline.call(text: content)
+result.branches[:sentiment].content  # Individual branch result
+
+# Conditional routing - dispatch based on classification
+class SupportRouter < RubyLLM::Agents::Workflow::Router
+  classifier_model "gpt-4o-mini"
+
+  route :support, to: SupportAgent, description: "Technical support issues"
+  route :sales,   to: SalesAgent,   description: "Sales and pricing questions"
+  route :default, to: GeneralAgent
+end
+
+result = SupportRouter.call(message: user_input)
+result.routed_to  # :support, :sales, or :default
 ```
 
 ## Cost & Budget Controls

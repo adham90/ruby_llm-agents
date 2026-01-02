@@ -4,100 +4,119 @@ Compose multiple agents into complex workflows with pipelines, parallel executio
 
 ## Overview
 
-RubyLLM::Agents provides three workflow patterns:
+RubyLLM::Agents provides three workflow patterns, all defined using a class-based DSL:
 
-| Pattern | Use Case |
-|---------|----------|
-| **Pipeline** | Sequential processing where each agent's output feeds the next |
-| **Parallel** | Run multiple agents concurrently and combine results |
-| **Router** | Conditionally dispatch to different agents based on classification |
+| Pattern | Use Case | Base Class |
+|---------|----------|------------|
+| **Pipeline** | Sequential processing where each agent's output feeds the next | `Workflow::Pipeline` |
+| **Parallel** | Run multiple agents concurrently and combine results | `Workflow::Parallel` |
+| **Router** | Conditionally dispatch to different agents based on classification | `Workflow::Router` |
 
 ## Quick Examples
 
 ### Pipeline
 
-```ruby
-workflow = RubyLLM::Agents::Workflow.pipeline(
-  ClassifierAgent,
-  EnricherAgent,
-  FormatterAgent
-)
+Sequential execution with data flowing between steps:
 
-result = workflow.call(input: "raw text")
+```ruby
+class ContentPipeline < RubyLLM::Agents::Workflow::Pipeline
+  version "1.0"
+  timeout 60.seconds
+  max_cost 1.00
+
+  step :extract,   agent: ExtractorAgent
+  step :classify,  agent: ClassifierAgent
+  step :format,    agent: FormatterAgent, optional: true
+end
+
+result = ContentPipeline.call(text: "raw content")
+result.steps[:extract].content   # Individual step result
+result.total_cost                # Sum of all steps
 ```
 
 ### Parallel
 
-```ruby
-workflow = RubyLLM::Agents::Workflow.parallel(
-  sentiment: SentimentAgent,
-  entities: EntityAgent,
-  summary: SummaryAgent
-)
+Concurrent execution with result aggregation:
 
-result = workflow.call(text: "analyze this")
-# => { sentiment: {...}, entities: {...}, summary: {...} }
+```ruby
+class ReviewAnalyzer < RubyLLM::Agents::Workflow::Parallel
+  version "1.0"
+  fail_fast false    # Continue even if a branch fails
+  concurrency 3      # Max concurrent branches
+
+  branch :sentiment, agent: SentimentAgent
+  branch :entities,  agent: EntityAgent
+  branch :summary,   agent: SummaryAgent
+end
+
+result = ReviewAnalyzer.call(text: "analyze this")
+result.branches[:sentiment].content  # Individual branch result
+result.content                       # Aggregated result hash
 ```
 
 ### Router
 
-```ruby
-workflow = RubyLLM::Agents::Workflow.router(
-  classifier: IntentClassifier,
-  routes: {
-    "support" => SupportAgent,
-    "sales" => SalesAgent,
-    "general" => GeneralAgent
-  }
-)
+Conditional dispatch based on classification:
 
-result = workflow.call(message: "I need help")
+```ruby
+class SupportRouter < RubyLLM::Agents::Workflow::Router
+  version "1.0"
+  classifier_model "gpt-4o-mini"
+  classifier_temperature 0.0
+
+  route :billing,   to: BillingAgent,   description: "Billing, charges, refunds"
+  route :technical, to: TechAgent,      description: "Bugs, errors, crashes"
+  route :sales,     to: SalesAgent,     description: "Pricing, plans, upgrades"
+  route :default,   to: GeneralAgent    # Fallback
+end
+
+result = SupportRouter.call(message: "I was charged twice")
+result.routed_to         # :billing
+result.classification    # Classification details
 ```
 
-## Workflow Options
+## Shared Configuration
 
-### Timeout
-
-```ruby
-workflow = RubyLLM::Agents::Workflow.pipeline(
-  Agent1,
-  Agent2,
-  timeout: 60  # Maximum seconds for entire workflow
-)
-```
-
-### Max Cost
+All workflow types support these class-level options:
 
 ```ruby
-workflow = RubyLLM::Agents::Workflow.pipeline(
-  Agent1,
-  Agent2,
-  max_cost: 1.00  # Abort if cost exceeds $1
-)
-```
-
-### Versioning
-
-```ruby
-workflow = RubyLLM::Agents::Workflow.pipeline(
-  Agent1,
-  Agent2,
-  version: "1.0"
-)
+class MyWorkflow < RubyLLM::Agents::Workflow::Pipeline
+  version "2.0"           # Workflow version (default: "1.0")
+  timeout 30.seconds      # Max duration for entire workflow
+  max_cost 1.50           # Abort if cost exceeds this amount
+end
 ```
 
 ## Result Object
 
-Workflow results include:
+Workflow results provide aggregate metrics:
 
 ```ruby
-result = workflow.call(input: data)
+result = MyWorkflow.call(input: data)
 
-result.content        # Combined output
-result.total_cost     # Sum of all agent costs
-result.total_tokens   # Sum of all tokens
-result.duration_ms    # Total execution time
-result.step_results   # Individual step results
+# Aggregate metrics
+result.total_cost       # Sum of all agent costs
+result.total_tokens     # Sum of all tokens used
+result.duration_ms      # Total execution time
+result.status           # "success", "error", or "partial"
+
+# Status helpers
+result.success?         # true if all completed successfully
+result.error?           # true if workflow failed
+result.partial?         # true if some steps succeeded
+
+# Pipeline-specific
+result.steps            # Hash of step results
+result.failed_steps     # Array of failed step names
+result.skipped_steps    # Array of skipped step names
+
+# Parallel-specific
+result.branches         # Hash of branch results
+result.failed_branches  # Array of failed branch names
+
+# Router-specific
+result.routed_to        # Selected route name
+result.classification   # Classification details hash
 ```
 
 ## Execution Tracking
@@ -105,70 +124,105 @@ result.step_results   # Individual step results
 Workflows create parent-child execution records:
 
 ```ruby
-# Parent execution
+# Parent execution (workflow)
 execution = RubyLLM::Agents::Execution.last
-execution.workflow_id  # => "wf_abc123"
+execution.workflow_id    # => "550e8400-e29b-41d4-a716-446655440000"
+execution.workflow_type  # => "ContentPipeline"
 
-# Child executions
+# Child executions (individual agents)
 children = RubyLLM::Agents::Execution
   .where(parent_execution_id: execution.id)
 
 children.each do |child|
-  puts "#{child.agent_type}: #{child.total_cost}"
+  puts "#{child.workflow_step}: $#{child.total_cost}"
 end
 ```
 
 ## Combining Patterns
 
-Nest workflows for complex scenarios:
+Workflows can be composed by calling one workflow from another's agent:
 
 ```ruby
-# Analysis sub-workflow (parallel)
-analysis = RubyLLM::Agents::Workflow.parallel(
-  sentiment: SentimentAgent,
-  topics: TopicAgent
-)
+# Parallel analysis sub-workflow
+class AnalysisWorkflow < RubyLLM::Agents::Workflow::Parallel
+  branch :sentiment, agent: SentimentAgent
+  branch :topics,    agent: TopicAgent
+end
 
-# Main pipeline
-main = RubyLLM::Agents::Workflow.pipeline(
-  PreprocessorAgent,
-  analysis,  # Nested parallel workflow
-  SummaryAgent
-)
+# Agent that wraps the sub-workflow
+class AnalysisAgent < ApplicationAgent
+  param :text, required: true
 
-result = main.call(text: document)
+  def call
+    AnalysisWorkflow.call(text: text)
+  end
+end
+
+# Main pipeline using the nested workflow
+class MainPipeline < RubyLLM::Agents::Workflow::Pipeline
+  step :preprocess, agent: PreprocessorAgent
+  step :analyze,    agent: AnalysisAgent    # Nested workflow
+  step :summarize,  agent: SummaryAgent
+end
 ```
 
-## Error Handling
+## Hooks and Customization
 
-### Pipeline Errors
+Each workflow type provides hooks for customization:
+
+### Pipeline Hooks
 
 ```ruby
-workflow = RubyLLM::Agents::Workflow.pipeline(
-  Agent1,
-  Agent2,
-  on_step_failure: :skip  # or :abort (default)
-)
+class MyPipeline < RubyLLM::Agents::Workflow::Pipeline
+  step :extract, agent: ExtractorAgent
+  step :process, agent: ProcessorAgent
+
+  # Transform input before a specific step
+  def before_process(context)
+    { data: context[:extract].content, extra: "value" }
+  end
+
+  # Handle step failures
+  def on_step_failure(step_name, error, context)
+    :skip  # or :abort
+  end
+end
 ```
 
-### Parallel Errors
+### Parallel Hooks
 
 ```ruby
-workflow = RubyLLM::Agents::Workflow.parallel(
-  a: AgentA,
-  b: AgentB,
-  fail_fast: true  # Abort all if one fails
-)
+class MyParallel < RubyLLM::Agents::Workflow::Parallel
+  branch :a, agent: AgentA
+  branch :b, agent: AgentB
+
+  # Custom result aggregation
+  def aggregate(results)
+    {
+      combined: results[:a].content + results[:b].content,
+      meta: { count: 2 }
+    }
+  end
+end
 ```
 
-### Router Fallback
+### Router Hooks
 
 ```ruby
-workflow = RubyLLM::Agents::Workflow.router(
-  classifier: IntentClassifier,
-  routes: { ... },
-  default: GeneralAgent  # If no route matches
-)
+class MyRouter < RubyLLM::Agents::Workflow::Router
+  route :fast, to: FastAgent, description: "Simple requests"
+  route :slow, to: SlowAgent, description: "Complex requests"
+
+  # Custom classification logic (bypasses LLM)
+  def classify(input)
+    input[:text].length > 100 ? :slow : :fast
+  end
+
+  # Transform input before routing
+  def before_route(input, chosen_route)
+    input.merge(priority: "high")
+  end
+end
 ```
 
 ## Detailed Guides

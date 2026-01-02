@@ -2,26 +2,27 @@
 
 Execute multiple agents concurrently and combine their results.
 
-## Basic Parallel Workflow
+## Defining a Parallel Workflow
+
+Create a parallel workflow by inheriting from `RubyLLM::Agents::Workflow::Parallel`:
 
 ```ruby
-workflow = RubyLLM::Agents::Workflow.parallel(
-  sentiment: SentimentAgent,
-  entities: EntityAgent,
-  summary: SummaryAgent
-)
+class ReviewAnalyzer < RubyLLM::Agents::Workflow::Parallel
+  version "1.0"
+  timeout 30.seconds
+  max_cost 0.50
 
-result = workflow.call(text: "analyze this content")
-# => {
-#   sentiment: { score: 0.8, label: "positive" },
-#   entities: { people: [...], places: [...] },
-#   summary: { text: "..." }
-# }
+  branch :sentiment, agent: SentimentAgent
+  branch :entities,  agent: EntityAgent
+  branch :summary,   agent: SummaryAgent
+end
+
+result = ReviewAnalyzer.call(text: "analyze this content")
 ```
 
 ## How It Works
 
-All agents run concurrently:
+All branches run concurrently:
 
 ```
              ┌─► SentimentAgent ─┐
@@ -33,165 +34,225 @@ Input ───────┼─► EntityAgent ────┼───► Com
 
 ## Branch Configuration
 
-### Named Branches
+### Basic Branch
 
 ```ruby
-workflow = RubyLLM::Agents::Workflow.parallel(
-  analysis: AnalysisAgent,
-  recommendations: RecommendationAgent,
-  risk_assessment: RiskAgent
-)
-
-result = workflow.call(data: input)
-result[:analysis]         # AnalysisAgent result
-result[:recommendations]  # RecommendationAgent result
-result[:risk_assessment] # RiskAgent result
+branch :name, agent: AgentClass
 ```
 
 ### Optional Branches
 
-```ruby
-workflow = RubyLLM::Agents::Workflow.parallel(
-  required: RequiredAgent,
-  optional: { agent: OptionalAgent, optional: true }
-)
+Branches that can fail without failing the workflow:
 
-# If OptionalAgent fails, workflow still succeeds
+```ruby
+branch :enhancement, agent: EnhancerAgent, optional: true
 ```
 
-### Conditional Branches
+### Custom Input Per Branch
+
+Transform input for specific branches:
 
 ```ruby
-workflow = RubyLLM::Agents::Workflow.parallel(
-  base: BaseAgent,
-  premium: {
-    agent: PremiumAgent,
-    skip_if: ->(context) { !context[:is_premium] }
-  }
-)
+branch :translation, agent: TranslatorAgent, input: ->(opts) {
+  { text: opts[:content], target_language: "es" }
+}
+```
 
-# Premium branch only runs for premium users
-result = workflow.call(data: input, is_premium: false)
+## Workflow Configuration
+
+### Fail Fast
+
+By default, all branches run to completion. Enable `fail_fast` to abort remaining branches when a required branch fails:
+
+```ruby
+class MyParallel < RubyLLM::Agents::Workflow::Parallel
+  fail_fast true  # Stop all branches on first required failure
+
+  branch :critical, agent: CriticalAgent
+  branch :optional, agent: OptionalAgent, optional: true
+end
+```
+
+Note: Optional branches don't trigger fail_fast.
+
+### Concurrency Limit
+
+Limit the number of concurrent branches:
+
+```ruby
+class MyParallel < RubyLLM::Agents::Workflow::Parallel
+  concurrency 3  # Max 3 branches running simultaneously
+
+  branch :a, agent: AgentA
+  branch :b, agent: AgentB
+  branch :c, agent: AgentC
+  branch :d, agent: AgentD  # Waits for a slot
+end
+```
+
+### Timeout
+
+Set a timeout for the entire workflow:
+
+```ruby
+class MyParallel < RubyLLM::Agents::Workflow::Parallel
+  timeout 60.seconds
+end
+```
+
+### Max Cost
+
+Abort if accumulated cost exceeds threshold:
+
+```ruby
+class MyParallel < RubyLLM::Agents::Workflow::Parallel
+  max_cost 1.00  # $1.00 maximum for all branches
+end
+```
+
+## Input Transformation
+
+### Using before_* Hooks
+
+Transform input before a specific branch:
+
+```ruby
+class MyParallel < RubyLLM::Agents::Workflow::Parallel
+  branch :sentiment, agent: SentimentAgent
+  branch :summary,   agent: SummaryAgent
+
+  def before_sentiment(options)
+    { text: options[:content].downcase }
+  end
+
+  def before_summary(options)
+    { text: options[:content], max_length: 100 }
+  end
+end
+```
+
+### Using input Lambda
+
+```ruby
+branch :translate, agent: TranslatorAgent, input: ->(opts) {
+  { text: opts[:content], target: "spanish" }
+}
 ```
 
 ## Result Aggregation
 
-### Default: Merge Results
+### Default Aggregation
+
+By default, results are merged into a hash:
 
 ```ruby
-result = workflow.call(text: content)
-# => { sentiment: {...}, entities: {...}, summary: {...} }
+result = MyParallel.call(text: "input")
+result.content
+# => {
+#   sentiment: <SentimentAgent result>,
+#   entities: <EntityAgent result>,
+#   summary: <SummaryAgent result>
+# }
 ```
 
 ### Custom Aggregation
 
+Override `aggregate` for custom result processing:
+
 ```ruby
-workflow = RubyLLM::Agents::Workflow.parallel(
-  sentiment: SentimentAgent,
-  keywords: KeywordAgent,
-  aggregate: ->(results) {
+class MyParallel < RubyLLM::Agents::Workflow::Parallel
+  branch :sentiment, agent: SentimentAgent
+  branch :keywords,  agent: KeywordAgent
+
+  def aggregate(results)
     {
       overall_score: calculate_score(results),
-      tags: results[:keywords][:words],
-      mood: results[:sentiment][:label]
+      tags: results[:keywords]&.content&.dig(:words) || [],
+      mood: results[:sentiment]&.content&.dig(:label),
+      confidence: average_confidence(results)
     }
-  }
-)
+  end
+
+  private
+
+  def calculate_score(results)
+    # Custom scoring logic
+    results[:sentiment]&.content&.dig(:score) || 0.0
+  end
+
+  def average_confidence(results)
+    scores = results.values.filter_map { |r| r&.content&.dig(:confidence) }
+    scores.any? ? scores.sum / scores.size : 0.0
+  end
+end
+```
+
+## Accessing Results
+
+```ruby
+result = MyParallel.call(text: "input")
+
+# Aggregated result
+result.content                    # Output from aggregate method
+
+# Individual branch results
+result.branches[:sentiment]       # Result object for :sentiment branch
+result.branches[:sentiment].content
+result.branches[:sentiment].total_cost
+
+# Branch status
+result.all_branches_successful?   # Boolean
+result.failed_branches            # [:entities] - Array of failed branch names
+result.successful_branches        # [:sentiment, :summary] - Array of successful
+
+# Aggregate metrics
+result.status                     # "success", "error", or "partial"
+result.total_cost                 # Sum of all branch costs
+result.total_tokens               # Sum of all branch tokens
+result.duration_ms                # Total execution time
 ```
 
 ## Error Handling
 
-### Fail Fast (Default)
-
-If any branch fails, abort all:
+### Fail Fast (Abort on Error)
 
 ```ruby
-workflow = RubyLLM::Agents::Workflow.parallel(
-  a: AgentA,
-  b: AgentB,
-  fail_fast: true  # Default
-)
-```
+class MyParallel < RubyLLM::Agents::Workflow::Parallel
+  fail_fast true
 
-### Complete All
-
-Continue even if some branches fail:
-
-```ruby
-workflow = RubyLLM::Agents::Workflow.parallel(
-  a: AgentA,
-  b: AgentB,
-  fail_fast: false
-)
-
-result = workflow.call(input: data)
-result[:a]  # Success result or error
-result[:b]  # Success result or error
-result.errors  # List of branch errors
-```
-
-### Branch-Level Error Handling
-
-```ruby
-workflow = RubyLLM::Agents::Workflow.parallel(
-  critical: CriticalAgent,
-  optional: {
-    agent: OptionalAgent,
-    on_failure: ->(error) {
-      { fallback: true, error: error.message }
-    }
-  }
-)
-```
-
-## Timeouts
-
-### Workflow Timeout
-
-```ruby
-workflow = RubyLLM::Agents::Workflow.parallel(
-  a: AgentA,
-  b: AgentB,
-  timeout: 30  # All branches must complete within 30s
-)
-```
-
-### Per-Branch Timeouts
-
-Individual agents have their own timeouts:
-
-```ruby
-class FastAgent < ApplicationAgent
-  timeout 5
-end
-
-class SlowAgent < ApplicationAgent
-  timeout 60
+  branch :a, agent: AgentA  # If this fails, abort remaining
+  branch :b, agent: AgentB
 end
 ```
 
-## Cost Control
+### Complete All (Default)
 
-### Max Parallel Cost
-
-```ruby
-workflow = RubyLLM::Agents::Workflow.parallel(
-  a: AgentA,
-  b: AgentB,
-  max_cost: 0.50  # Combined cost limit
-)
-```
-
-### Track Branch Costs
+Continue all branches even if some fail:
 
 ```ruby
-result = workflow.call(input: data)
+class MyParallel < RubyLLM::Agents::Workflow::Parallel
+  fail_fast false  # Default
 
-result.branch_results.each do |name, branch|
-  puts "#{name}: $#{branch[:cost]}"
+  branch :a, agent: AgentA
+  branch :b, agent: AgentB
 end
 
-puts "Total: $#{result.total_cost}"
+result = MyParallel.call(input: data)
+result.failed_branches  # [:a] if AgentA failed
+result.status           # "partial" or "error"
+```
+
+### Optional Branches
+
+Optional branches don't affect workflow success:
+
+```ruby
+class MyParallel < RubyLLM::Agents::Workflow::Parallel
+  branch :critical, agent: CriticalAgent
+  branch :nice_to_have, agent: OptionalAgent, optional: true
+end
+
+# If nice_to_have fails, workflow still succeeds (if critical succeeds)
 ```
 
 ## Real-World Examples
@@ -199,90 +260,139 @@ puts "Total: $#{result.total_cost}"
 ### Content Analysis
 
 ```ruby
-# Analyze content from multiple perspectives
-content_analysis = RubyLLM::Agents::Workflow.parallel(
-  sentiment: SentimentAnalyzer,
-  topics: TopicExtractor,
-  entities: EntityRecognizer,
-  readability: ReadabilityScorer
-)
+class ContentAnalyzer < RubyLLM::Agents::Workflow::Parallel
+  version "1.0"
+  timeout 30.seconds
 
-result = content_analysis.call(text: article_content)
-# All four analyses run concurrently
+  branch :sentiment,   agent: SentimentAgent
+  branch :topics,      agent: TopicExtractor
+  branch :entities,    agent: EntityRecognizer
+  branch :readability, agent: ReadabilityScorer, optional: true
+
+  def aggregate(results)
+    {
+      sentiment: results[:sentiment]&.content,
+      topics: results[:topics]&.content&.dig(:topics) || [],
+      entities: results[:entities]&.content || {},
+      readability: results[:readability]&.content&.dig(:score)
+    }
+  end
+end
+
+result = ContentAnalyzer.call(text: article_content)
 ```
 
 ### Multi-Language Translation
 
 ```ruby
-# Translate to multiple languages at once
-translation_workflow = RubyLLM::Agents::Workflow.parallel(
-  spanish: SpanishTranslator,
-  french: FrenchTranslator,
-  german: GermanTranslator,
-  japanese: JapaneseTranslator
-)
+class MultiTranslator < RubyLLM::Agents::Workflow::Parallel
+  version "1.0"
+  concurrency 4  # Limit concurrent API calls
 
-translations = translation_workflow.call(text: english_text)
-# All translations run in parallel
+  branch :spanish,  agent: TranslatorAgent, input: ->(o) { o.merge(target: "es") }
+  branch :french,   agent: TranslatorAgent, input: ->(o) { o.merge(target: "fr") }
+  branch :german,   agent: TranslatorAgent, input: ->(o) { o.merge(target: "de") }
+  branch :japanese, agent: TranslatorAgent, input: ->(o) { o.merge(target: "ja") }
+end
+
+translations = MultiTranslator.call(text: english_text)
+translations.branches[:spanish].content  # Spanish translation
 ```
 
 ### Risk Assessment
 
 ```ruby
-# Multiple risk evaluations
-risk_workflow = RubyLLM::Agents::Workflow.parallel(
-  financial: FinancialRiskAgent,
-  operational: OperationalRiskAgent,
-  compliance: ComplianceRiskAgent,
-  aggregate: ->(results) {
+class RiskAssessment < RubyLLM::Agents::Workflow::Parallel
+  version "1.0"
+  fail_fast false  # Get all risk assessments even if one fails
+
+  branch :financial,   agent: FinancialRiskAgent
+  branch :operational, agent: OperationalRiskAgent
+  branch :compliance,  agent: ComplianceRiskAgent
+
+  def aggregate(results)
+    risks = results.transform_values { |r| r&.content }
+
     {
-      overall_risk: calculate_overall(results),
-      breakdown: results,
-      recommendations: generate_recommendations(results)
+      overall_risk: calculate_overall_risk(risks),
+      breakdown: risks,
+      recommendations: generate_recommendations(risks),
+      assessed_at: Time.current
     }
-  }
-)
+  end
+
+  private
+
+  def calculate_overall_risk(risks)
+    scores = risks.values.filter_map { |r| r&.dig(:score) }
+    scores.any? ? scores.max : nil
+  end
+
+  def generate_recommendations(risks)
+    risks.flat_map { |type, risk|
+      risk&.dig(:recommendations) || []
+    }.uniq
+  end
+end
 ```
 
 ### A/B Model Comparison
 
 ```ruby
-# Compare responses from different models
-comparison_workflow = RubyLLM::Agents::Workflow.parallel(
-  gpt4: GPT4Agent,
-  claude: ClaudeAgent,
-  gemini: GeminiAgent
-)
+class ModelComparison < RubyLLM::Agents::Workflow::Parallel
+  version "1.0"
 
-responses = comparison_workflow.call(prompt: user_query)
-# Compare quality, cost, and latency
+  branch :gpt4,   agent: GPT4Agent
+  branch :claude, agent: ClaudeAgent
+  branch :gemini, agent: GeminiAgent
+
+  def aggregate(results)
+    {
+      responses: results.transform_values { |r| r&.content },
+      costs: results.transform_values { |r| r&.total_cost },
+      latencies: results.transform_values { |r| r&.duration_ms },
+      winner: select_best(results)
+    }
+  end
+
+  private
+
+  def select_best(results)
+    # Select based on cost/latency/quality tradeoffs
+    results.min_by { |_, r| r&.total_cost || Float::INFINITY }&.first
+  end
+end
 ```
 
-## Performance Benefits
+## Inheritance
 
-Parallel execution significantly reduces total time:
+Parallel workflows support inheritance:
 
 ```ruby
-# Sequential: 3 agents × 1s each = 3s total
-# Parallel: 3 agents running concurrently = ~1s total
+class BaseAnalyzer < RubyLLM::Agents::Workflow::Parallel
+  version "1.0"
+  timeout 30.seconds
 
-# Time savings
-sequential_time = agents.sum { |a| a.avg_duration_ms }
-parallel_time = agents.max { |a| a.avg_duration_ms }
-savings = sequential_time - parallel_time
+  branch :sentiment, agent: SentimentAgent
+end
+
+class ExtendedAnalyzer < BaseAnalyzer
+  # Inherits :sentiment branch
+  branch :entities, agent: EntityAgent
+  branch :summary,  agent: SummaryAgent
+end
 ```
 
 ## Thread Safety
 
-Agents in parallel workflows run in separate threads:
+Branches run in separate threads. Ensure your agent code is thread-safe:
 
 ```ruby
-# Ensure thread-safe agent code
 class SafeAgent < ApplicationAgent
   def call
     # Avoid shared mutable state
     # Use thread-local storage if needed
-    Thread.current[:agent_context] = context
+    Thread.current[:context] = build_context
     super
   end
 end
@@ -292,44 +402,63 @@ end
 
 ### Independent Branches
 
+Branches should be independent:
+
 ```ruby
 # Good: Branches don't depend on each other
-parallel(
-  sentiment: SentimentAgent,    # Independent
-  entities: EntityAgent,        # Independent
-  keywords: KeywordAgent        # Independent
-)
+class GoodParallel < RubyLLM::Agents::Workflow::Parallel
+  branch :sentiment, agent: SentimentAgent  # Independent
+  branch :entities,  agent: EntityAgent     # Independent
+  branch :keywords,  agent: KeywordAgent    # Independent
+end
 
-# Bad: Use pipeline if branches depend on each other
+# Bad: Use Pipeline if branches depend on each other
 ```
 
 ### Appropriate Parallelism
 
 ```ruby
 # Good: 2-5 concurrent branches
-parallel(a: A, b: B, c: C)
+class GoodParallel < RubyLLM::Agents::Workflow::Parallel
+  branch :a, agent: AgentA
+  branch :b, agent: AgentB
+  branch :c, agent: AgentC
+end
 
-# Avoid: Too many concurrent branches
-# Can overwhelm API rate limits
-parallel(a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H)
+# Consider limiting concurrency for many branches
+class LimitedParallel < RubyLLM::Agents::Workflow::Parallel
+  concurrency 3  # Prevent overwhelming API rate limits
+
+  branch :a, agent: AgentA
+  branch :b, agent: AgentB
+  # ... many more branches
+end
 ```
 
 ### Handle Partial Failures
 
 ```ruby
-workflow = RubyLLM::Agents::Workflow.parallel(
-  critical: { agent: CriticalAgent },
-  nice_to_have: { agent: OptionalAgent, optional: true }
-)
+class RobustParallel < RubyLLM::Agents::Workflow::Parallel
+  fail_fast false
+
+  branch :critical,    agent: CriticalAgent
+  branch :nice_to_have, agent: OptionalAgent, optional: true
+end
 ```
 
 ### Monitor Branch Performance
 
 ```ruby
-result = workflow.call(input: data)
+result = MyParallel.call(input: data)
 
-slowest = result.branch_results.max_by { |_, b| b[:duration_ms] }
-puts "Slowest branch: #{slowest[0]} (#{slowest[1][:duration_ms]}ms)"
+slowest = result.branches.max_by { |_, b| b&.duration_ms || 0 }
+puts "Slowest branch: #{slowest[0]} (#{slowest[1]&.duration_ms}ms)"
+
+result.branches.each do |name, branch|
+  if branch&.duration_ms && branch.duration_ms > 5000
+    Rails.logger.warn("Slow branch: #{name} took #{branch.duration_ms}ms")
+  end
+end
 ```
 
 ## Related Pages
