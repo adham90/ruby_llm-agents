@@ -14,7 +14,7 @@
 <% else %>
   <div class="space-y-3 sm:space-y-4">
     <% @agents.each do |agent| %>
-      <%= render partial: "rubyllm/agents/agents/agent", locals: { agent: agent } %>
+      <%= render partial: "ruby_llm/agents/agents/agent", locals: { agent: agent } %>
     <% end %>
   </div>
 <% end %>

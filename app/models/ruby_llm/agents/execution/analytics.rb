@@ -190,20 +190,15 @@ module RubyLLM
 
           # Builds hourly chart data for last 24 hours
           # Optimized: Single GROUP BY query instead of 72 individual queries
+          # Database-agnostic: works with both PostgreSQL and SQLite
           def build_hourly_chart_data
             reference_time = Time.current.beginning_of_hour
             start_time = reference_time - 23.hours
 
-            # Single query with GROUP BY - reduces 72 queries to 1
+            # Use database-agnostic aggregation with Ruby post-processing
             results = where(created_at: start_time..(reference_time + 1.hour))
-              .group(Arel.sql("DATE_TRUNC('hour', created_at)"))
-              .select(
-                Arel.sql("DATE_TRUNC('hour', created_at) as time_bucket"),
-                Arel.sql("COUNT(*) FILTER (WHERE status = 'success') as success_count"),
-                Arel.sql("COUNT(*) FILTER (WHERE status IN ('error', 'timeout')) as failed_count"),
-                Arel.sql("COALESCE(SUM(total_cost), 0) as total_cost")
-              )
-              .index_by { |r| r.time_bucket.to_time.beginning_of_hour }
+              .select(:status, :total_cost, :created_at)
+              .group_by { |r| r.created_at.beginning_of_hour }
 
             # Build arrays for all 24 hours (fill missing with zeros)
             success_data = []
@@ -215,11 +210,11 @@ module RubyLLM
 
             (23.downto(0)).each do |hours_ago|
               bucket_time = (reference_time - hours_ago.hours).beginning_of_hour
-              row = results[bucket_time]
+              rows = results[bucket_time] || []
 
-              s = row&.success_count.to_i
-              f = row&.failed_count.to_i
-              c = row&.total_cost.to_f
+              s = rows.count { |r| r.status == "success" }
+              f = rows.count { |r| r.status.in?(%w[error timeout]) }
+              c = rows.sum { |r| r.total_cost.to_f }
 
               success_data << s
               failed_data << f
@@ -242,21 +237,16 @@ module RubyLLM
           end
 
           # Builds daily chart data for specified number of days
-          # Optimized: Single GROUP BY query instead of 3*days individual queries
+          # Optimized: Single query instead of 3*days individual queries
+          # Database-agnostic: works with both PostgreSQL and SQLite
           def build_daily_chart_data(days)
             end_date = Date.current
             start_date = (days - 1).days.ago.to_date
 
-            # Single query with GROUP BY - reduces 3*days queries to 1
+            # Use database-agnostic aggregation with Ruby post-processing
             results = where(created_at: start_date.beginning_of_day..end_date.end_of_day)
-              .group(Arel.sql("DATE_TRUNC('day', created_at)"))
-              .select(
-                Arel.sql("DATE_TRUNC('day', created_at) as time_bucket"),
-                Arel.sql("COUNT(*) FILTER (WHERE status = 'success') as success_count"),
-                Arel.sql("COUNT(*) FILTER (WHERE status IN ('error', 'timeout')) as failed_count"),
-                Arel.sql("COALESCE(SUM(total_cost), 0) as total_cost")
-              )
-              .index_by { |r| r.time_bucket.to_date }
+              .select(:status, :total_cost, :created_at)
+              .group_by { |r| r.created_at.to_date }
 
             # Build arrays for all days (fill missing with zeros)
             success_data = []
@@ -268,11 +258,11 @@ module RubyLLM
 
             (days - 1).downto(0).each do |days_ago|
               date = days_ago.days.ago.to_date
-              row = results[date]
+              rows = results[date] || []
 
-              s = row&.success_count.to_i
-              f = row&.failed_count.to_i
-              c = row&.total_cost.to_f
+              s = rows.count { |r| r.status == "success" }
+              f = rows.count { |r| r.status.in?(%w[error timeout]) }
+              c = rows.sum { |r| r.total_cost.to_f }
 
               success_data << s
               failed_data << f

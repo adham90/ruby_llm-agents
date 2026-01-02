@@ -46,7 +46,7 @@ module RubyLLM
 
         # Define the ApplicationController dynamically with the configured parent
         RubyLLM::Agents.const_set(:ApplicationController, Class.new(parent_class) do
-          layout "rubyllm/agents/application"
+          layout "ruby_llm/agents/application"
           helper RubyLLM::Agents::ApplicationHelper
           before_action :authenticate_dashboard!
 

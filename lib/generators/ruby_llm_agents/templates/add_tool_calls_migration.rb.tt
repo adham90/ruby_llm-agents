@@ -15,9 +15,9 @@
 # Run with: rails db:migrate
 class AddToolCallsToRubyLLMAgentsExecutions < ActiveRecord::Migration<%= migration_version %>
   def change
-    # Add tool_calls JSONB array for storing tool call details
+    # Add tool_calls JSON array for storing tool call details
     # Each tool call contains: id, name, arguments
-    add_column :ruby_llm_agents_executions, :tool_calls, :jsonb, null: false, default: []
+    add_column :ruby_llm_agents_executions, :tool_calls, :json, null: false, default: []
 
     # Add counter for quick access to tool call count
     add_column :ruby_llm_agents_executions, :tool_calls_count, :integer, null: false, default: 0

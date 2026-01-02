@@ -1,0 +1,150 @@
+#!/usr/bin/env bash
+
+# bin/setup_test_app
+# Creates a fresh Rails application for testing ruby_llm-agents generators
+#
+# Usage:
+#   bin/setup_test_app         # Create test app (run generators manually)
+#   bin/setup_test_app --auto  # Also run the install generator automatically
+#
+# After setup, test generators:
+#   cd test_app
+#   bin/rails generate ruby_llm_agents:install
+#   bin/rails generate ruby_llm_agents:agent SearchIntent query:required
+#   bin/rails generate ruby_llm_agents:upgrade
+#
+# To reset and start fresh:
+#   bin/reset_test_app
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Get the directory where this script lives
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GEM_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+TEST_APP_DIR="$GEM_ROOT/test_app"
+
+# Parse arguments
+AUTO_INSTALL=false
+for arg in "$@"; do
+  case $arg in
+    --auto)
+      AUTO_INSTALL=true
+      shift
+      ;;
+    --help|-h)
+      echo "Usage: bin/setup_test_app [OPTIONS]"
+      echo ""
+      echo "Creates a fresh Rails app for testing ruby_llm-agents generators."
+      echo ""
+      echo "Options:"
+      echo "  --auto    Run the install generator automatically after setup"
+      echo "  --help    Show this help message"
+      exit 0
+      ;;
+  esac
+done
+
+echo -e "${GREEN}=== Setting up test_app for ruby_llm-agents ===${NC}"
+echo "Gem root: $GEM_ROOT"
+echo "Test app: $TEST_APP_DIR"
+echo ""
+
+# Check if test_app already exists
+if [ -d "$TEST_APP_DIR" ]; then
+  echo -e "${YELLOW}Warning: test_app already exists.${NC}"
+  echo "Run 'bin/reset_test_app' to delete and recreate, or delete manually."
+  exit 1
+fi
+
+# Check Ruby version
+RUBY_VERSION=$(ruby -v | head -1)
+echo "Ruby version: $RUBY_VERSION"
+
+# Check Rails gem is available
+if ! gem list rails -i > /dev/null 2>&1; then
+  echo -e "${YELLOW}Installing Rails gem...${NC}"
+  gem install rails --no-document
+fi
+
+RAILS_VERSION=$(rails -v)
+echo "Rails version: $RAILS_VERSION"
+echo ""
+
+# Create a minimal Rails app
+echo -e "${GREEN}Creating minimal Rails application...${NC}"
+rails new "$TEST_APP_DIR" \
+  --skip-git \
+  --skip-keeps \
+  --skip-action-mailer \
+  --skip-action-mailbox \
+  --skip-action-text \
+  --skip-active-storage \
+  --skip-jbuilder \
+  --skip-test \
+  --skip-system-test \
+  --skip-bootsnap \
+  --skip-bundle \
+  --database=sqlite3
+
+cd "$TEST_APP_DIR"
+
+# Modify Gemfile to include the gem from parent directory
+echo -e "${GREEN}Configuring Gemfile...${NC}"
+
+cat >> Gemfile << 'GEMFILE_ADDITIONS'
+
+# ruby_llm-agents from parent directory for testing generators
+gem "ruby_llm-agents", path: ".."
+
+# Required dependencies for the gem
+gem "turbo-rails"
+gem "stimulus-rails"
+GEMFILE_ADDITIONS
+
+# Run bundle install
+echo -e "${GREEN}Running bundle install...${NC}"
+bundle install
+
+# Set up the database
+echo -e "${GREEN}Setting up database...${NC}"
+bin/rails db:create
+
+# Run install generator if --auto flag was passed
+if [ "$AUTO_INSTALL" = true ]; then
+  echo ""
+  echo -e "${GREEN}Running install generator (--auto mode)...${NC}"
+  bin/rails generate ruby_llm_agents:install
+  bin/rails db:migrate
+fi
+
+echo ""
+echo -e "${GREEN}=== Setup complete! ===${NC}"
+echo ""
+echo -e "${BLUE}To test generators:${NC}"
+echo ""
+echo "  cd test_app"
+echo ""
+echo "  # Run the install generator"
+echo "  bin/rails generate ruby_llm_agents:install"
+echo ""
+echo "  # Run migrations"
+echo "  bin/rails db:migrate"
+echo ""
+echo "  # Generate an agent"
+echo "  bin/rails generate ruby_llm_agents:agent SearchIntent query:required limit:10"
+echo ""
+echo "  # Test the upgrade generator"
+echo "  bin/rails generate ruby_llm_agents:upgrade"
+echo ""
+echo "  # Start the Rails server to test the dashboard"
+echo "  bin/rails server"
+echo "  # Then visit http://localhost:3000/agents"
+echo ""
+echo -e "${BLUE}To reset and start fresh:${NC} bin/reset_test_app"

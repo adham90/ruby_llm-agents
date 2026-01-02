@@ -10,3 +10,6 @@
 
 # rspec failure tracking
 .rspec_status
+
+# Test app for generator testing (regenerated via bin/setup_test_app)
+/test_app/

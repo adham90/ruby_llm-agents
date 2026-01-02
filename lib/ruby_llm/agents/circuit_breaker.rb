@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "cache_helper"
+
 module RubyLLM
   module Agents
     # Cache-based circuit breaker for protecting against cascading failures
@@ -20,6 +22,7 @@ module RubyLLM
     # @see RubyLLM::Agents::Reliability
     # @api public
     class CircuitBreaker
+      include CacheHelper
       attr_reader :agent_type, :model_id, :errors_threshold, :window_seconds, :cooldown_seconds
 
       # @param agent_type [String] The agent class name
@@ -57,7 +60,7 @@ module RubyLLM
       #
       # @return [Boolean] true if the breaker is open and requests should be blocked
       def open?
-        cache_store.exist?(open_key)
+        cache_exist?(open_key)
       end
 
       # Records a failed attempt and potentially opens the breaker
@@ -86,7 +89,7 @@ module RubyLLM
       # @param reset_counter [Boolean] Whether to reset the failure counter (default: true)
       # @return [void]
       def record_success!(reset_counter: true)
-        cache_store.delete(count_key) if reset_counter
+        cache_delete(count_key) if reset_counter
       end
 
       # Manually resets the circuit breaker
@@ -95,15 +98,15 @@ module RubyLLM
       #
       # @return [void]
       def reset!
-        cache_store.delete(open_key)
-        cache_store.delete(count_key)
+        cache_delete(open_key)
+        cache_delete(count_key)
       end
 
       # Returns the current failure count
       #
       # @return [Integer] The current failure count in the rolling window
       def failure_count
-        cache_store.read(count_key).to_i
+        cache_read(count_key).to_i
       end
 
       # Returns the time remaining until the breaker closes
@@ -138,25 +141,14 @@ module RubyLLM
       #
       # @return [Integer] The new failure count
       def increment_failure_count
-        # Use increment if available (atomic), otherwise read-modify-write
-        if cache_store.respond_to?(:increment)
-          # First write if doesn't exist
-          cache_store.write(count_key, 0, expires_in: window_seconds, unless_exist: true)
-          cache_store.increment(count_key)
-        else
-          # Fallback for cache stores without increment
-          current = cache_store.read(count_key).to_i
-          new_count = current + 1
-          cache_store.write(count_key, new_count, expires_in: window_seconds)
-          new_count
-        end
+        cache_increment(count_key, 1, expires_in: window_seconds)
       end
 
       # Opens the circuit breaker
       #
       # @return [void]
       def open_breaker!
-        cache_store.write(open_key, Time.current.to_s, expires_in: cooldown_seconds)
+        cache_write(open_key, Time.current.to_s, expires_in: cooldown_seconds)
 
         # Fire alert if configured
         if RubyLLM::Agents.configuration.alerts_enabled? &&
@@ -176,21 +168,14 @@ module RubyLLM
       #
       # @return [String] Cache key
       def count_key
-        "ruby_llm_agents:cb:count:#{agent_type}:#{model_id}"
+        cache_key("cb", "count", agent_type, model_id)
       end
 
       # Returns the cache key for the open flag
       #
       # @return [String] Cache key
       def open_key
-        "ruby_llm_agents:cb:open:#{agent_type}:#{model_id}"
-      end
-
-      # Returns the cache store
-      #
-      # @return [ActiveSupport::Cache::Store] The cache store
-      def cache_store
-        RubyLLM::Agents.configuration.cache_store
+        cache_key("cb", "open", agent_type, model_id)
       end
     end
   end

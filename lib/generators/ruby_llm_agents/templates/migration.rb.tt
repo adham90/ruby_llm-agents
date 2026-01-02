@@ -54,10 +54,10 @@ class CreateRubyLLMAgentsExecutions < ActiveRecord::Migration<%= migration_versi
       t.decimal :output_cost, precision: 12, scale: 6
       t.decimal :total_cost, precision: 12, scale: 6
 
-      # Data (JSONB for PostgreSQL, JSON for others)
-      t.jsonb :parameters, null: false, default: {}
-      t.jsonb :response, default: {}
-      t.jsonb :metadata, null: false, default: {}
+      # Data (JSON - works with PostgreSQL, MySQL, SQLite3)
+      t.json :parameters, null: false, default: {}
+      t.json :response, default: {}
+      t.json :metadata, null: false, default: {}
 
       # Error tracking
       t.string :error_class
@@ -68,7 +68,7 @@ class CreateRubyLLMAgentsExecutions < ActiveRecord::Migration<%= migration_versi
       t.text :user_prompt
 
       # Tool calls tracking
-      t.jsonb :tool_calls, null: false, default: []
+      t.json :tool_calls, null: false, default: []
       t.integer :tool_calls_count, null: false, default: 0
 
       t.timestamps

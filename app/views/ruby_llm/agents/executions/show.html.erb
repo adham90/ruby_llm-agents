@@ -1,5 +1,5 @@
 <div id="execution-detail" data-execution-id="<%= @execution.id %>" data-status="<%= @execution.status %>">
-<%= render "rubyllm/agents/shared/breadcrumbs", items: [
+<%= render "ruby_llm/agents/shared/breadcrumbs", items: [
   { label: "Dashboard", path: ruby_llm_agents.root_path },
   { label: "Executions", path: ruby_llm_agents.executions_path },
   { label: "##{@execution.id}" }
@@ -30,7 +30,7 @@
       <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
         <%= @execution.agent_type.gsub(/Agent$/, '') %>
       </h2>
-      <%= render "rubyllm/agents/shared/status_badge", status: @execution.status, size: :md %>
+      <%= render "ruby_llm/agents/shared/status_badge", status: @execution.status, size: :md %>
       <% if secondary_badges.any? %>
         <div class="relative" x-data="{ showDetails: false }">
           <button
@@ -74,7 +74,6 @@
     <div class="flex items-center gap-3 flex-shrink-0">
       <%= button_to rerun_execution_path(@execution, dry_run: true),
           method: :post,
-          data: { turbo: false },
           class: "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors",
           title: "Preview what would be sent without making an API call" do %>
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,7 +114,7 @@
       <%= @execution.agent_type.gsub(/Agent$/, '') %>
     </h2>
     <div class="flex flex-wrap items-center gap-2 mt-2">
-      <%= render "rubyllm/agents/shared/status_badge", status: @execution.status, size: :md %>
+      <%= render "ruby_llm/agents/shared/status_badge", status: @execution.status, size: :md %>
       <% secondary_badges.each do |badge| %>
         <% badge_classes = case badge[:color]
           when 'cyan' then 'bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300'
@@ -146,7 +145,6 @@
       <div class="flex items-center gap-2">
         <%= button_to rerun_execution_path(@execution, dry_run: true),
             method: :post,
-            data: { turbo: false },
             class: "flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors",
             title: "Preview what would be sent without making an API call" do %>
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -211,25 +209,25 @@
 
 <!-- Stats Grid -->
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-  <%= render "rubyllm/agents/shared/stat_card",
+  <%= render "ruby_llm/agents/shared/stat_card",
       title: "Model",
       value: @execution.model_id,
       icon: "M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z",
       icon_color: "text-blue-500" %>
 
-  <%= render "rubyllm/agents/shared/stat_card",
+  <%= render "ruby_llm/agents/shared/stat_card",
       title: "Duration",
       value: "#{number_to_human_short(@execution.duration_ms || 0)} ms",
       icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
       icon_color: "text-purple-500" %>
 
-  <%= render "rubyllm/agents/shared/stat_card",
+  <%= render "ruby_llm/agents/shared/stat_card",
       title: "Total Tokens",
       value: number_to_human_short(@execution.total_tokens || 0),
       icon: "M7 20l4-16m2 16l4-16M6 9h14M4 15h14",
       icon_color: "text-indigo-500" %>
 
-  <%= render "rubyllm/agents/shared/stat_card",
+  <%= render "ruby_llm/agents/shared/stat_card",
       title: "Total Cost",
       value: number_to_human_short(@execution.total_cost || 0, prefix: "$", precision: 2),
       icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z",

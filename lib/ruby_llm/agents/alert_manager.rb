@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "net/http"
+require "faraday"
 require "json"
 
 module RubyLLM
@@ -177,29 +177,33 @@ module RubyLLM
           end
         end
 
-        # Posts JSON to a URL
+        # Posts JSON to a URL using Faraday
         #
         # @param url [String] The URL
         # @param payload [Hash] The payload
-        # @return [Net::HTTPResponse]
+        # @return [Faraday::Response]
         def post_json(url, payload)
-          uri = URI.parse(url)
-          http = Net::HTTP.new(uri.host, uri.port)
-          http.use_ssl = uri.scheme == "https"
-          http.open_timeout = 5
-          http.read_timeout = 10
+          response = http_client.post(url) do |req|
+            req.headers["Content-Type"] = "application/json"
+            req.body = payload.to_json
+          end
 
-          request = Net::HTTP::Post.new(uri.request_uri)
-          request["Content-Type"] = "application/json"
-          request.body = payload.to_json
-
-          response = http.request(request)
-
-          unless response.is_a?(Net::HTTPSuccess)
-            Rails.logger.warn("[RubyLLM::Agents::AlertManager] Webhook returned #{response.code}: #{response.body}")
+          unless response.success?
+            Rails.logger.warn("[RubyLLM::Agents::AlertManager] Webhook returned #{response.status}: #{response.body}")
           end
 
           response
+        end
+
+        # Returns a configured Faraday HTTP client
+        #
+        # @return [Faraday::Connection]
+        def http_client
+          @http_client ||= Faraday.new do |conn|
+            conn.options.open_timeout = 5
+            conn.options.timeout = 10
+            conn.adapter Faraday.default_adapter
+          end
         end
       end
     end

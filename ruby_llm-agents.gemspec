@@ -29,8 +29,6 @@ Gem::Specification.new do |spec|
   # Runtime dependencies
   spec.add_dependency "rails", ">= 7.0"
   spec.add_dependency "ruby_llm", ">= 1.0"
-  spec.add_dependency "turbo-rails", ">= 1.0"
-  spec.add_dependency "stimulus-rails", ">= 1.0"
   spec.add_dependency "csv"  # Required for Ruby 3.4+ (no longer bundled)
 
   # Development dependencies are in Gemfile

@@ -27,7 +27,7 @@
                      id="chevron-<%= execution.id %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
-                <%= render "rubyllm/agents/shared/status_badge", status: execution.status %>
+                <%= render "ruby_llm/agents/shared/status_badge", status: execution.status %>
               </div>
             </td>
             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
@@ -134,7 +134,7 @@
       </p>
       <nav class="flex items-center space-x-1">
         <% if current_page > 1 %>
-          <%= link_to "Previous", url_for(request.query_parameters.merge(page: current_page - 1)), data: { turbo_frame: "executions_table" }, class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
+          <%= link_to "Previous", url_for(request.query_parameters.merge(page: current_page - 1)), class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
         <% else %>
           <span class="px-3 py-1.5 text-sm font-medium text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md cursor-not-allowed">Previous</span>
         <% end %>
@@ -163,12 +163,12 @@
           <% elsif page == current_page %>
             <span class="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 border border-blue-600 rounded-md"><%= page %></span>
           <% else %>
-            <%= link_to page, url_for(request.query_parameters.merge(page: page)), data: { turbo_frame: "executions_table" }, class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
+            <%= link_to page, url_for(request.query_parameters.merge(page: page)), class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
           <% end %>
         <% end %>
 
         <% if current_page < total_pages %>
-          <%= link_to "Next", url_for(request.query_parameters.merge(page: current_page + 1)), data: { turbo_frame: "executions_table" }, class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
+          <%= link_to "Next", url_for(request.query_parameters.merge(page: current_page + 1)), class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
         <% else %>
           <span class="px-3 py-1.5 text-sm font-medium text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md cursor-not-allowed">Next</span>
         <% end %>

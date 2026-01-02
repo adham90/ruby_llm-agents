@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "cache_helper"
+
 module RubyLLM
   module Agents
     # Cache-based budget tracking for cost governance
@@ -21,6 +23,8 @@ module RubyLLM
     # @see RubyLLM::Agents::Reliability::BudgetExceededError
     # @api public
     module BudgetTracker
+      extend CacheHelper
+
       class << self
         # Checks if the current spend exceeds budget limits
         #
@@ -102,8 +106,8 @@ module RubyLLM
         # @param agent_type [String, nil] Required when scope is :agent
         # @return [Float] Current spend in USD
         def current_spend(scope, period, agent_type: nil)
-          key = cache_key(scope, period, agent_type: agent_type)
-          (cache_store.read(key) || 0).to_f
+          key = budget_cache_key(scope, period, agent_type: agent_type)
+          (BudgetTracker.cache_read(key) || 0).to_f
         end
 
         # Returns the remaining budget for a scope and period
@@ -216,8 +220,8 @@ module RubyLLM
           today = Date.current.to_s
           month = Date.current.strftime("%Y-%m")
 
-          cache_store.delete("ruby_llm_agents:budget:global:#{today}")
-          cache_store.delete("ruby_llm_agents:budget:global:#{month}")
+          BudgetTracker.cache_delete(BudgetTracker.cache_key("budget", "global", today))
+          BudgetTracker.cache_delete(BudgetTracker.cache_key("budget", "global", month))
         end
 
         private
@@ -230,25 +234,14 @@ module RubyLLM
         # @param agent_type [String, nil] Required when scope is :agent
         # @return [Float] New total
         def increment_spend(scope, period, amount, agent_type: nil)
-          key = cache_key(scope, period, agent_type: agent_type)
+          key = budget_cache_key(scope, period, agent_type: agent_type)
           ttl = period == :daily ? 1.day : 31.days
 
-          if cache_store.respond_to?(:increment)
-            # Ensure key exists with TTL
-            cache_store.write(key, 0, expires_in: ttl, unless_exist: true)
-            # Note: increment typically works with integers, so we multiply by 1000000
-            # to store as cents of a cent, then divide when reading
-            # For simplicity, we use read-modify-write here
-            current = (cache_store.read(key) || 0).to_f
-            new_total = current + amount
-            cache_store.write(key, new_total, expires_in: ttl)
-            new_total
-          else
-            current = (cache_store.read(key) || 0).to_f
-            new_total = current + amount
-            cache_store.write(key, new_total, expires_in: ttl)
-            new_total
-          end
+          # Read-modify-write for float values (cache increment is for integers)
+          current = (BudgetTracker.cache_read(key) || 0).to_f
+          new_total = current + amount
+          BudgetTracker.cache_write(key, new_total, expires_in: ttl)
+          new_total
         end
 
         # Generates a cache key for budget tracking
@@ -257,14 +250,14 @@ module RubyLLM
         # @param period [Symbol] :daily or :monthly
         # @param agent_type [String, nil] Required when scope is :agent
         # @return [String] Cache key
-        def cache_key(scope, period, agent_type: nil)
+        def budget_cache_key(scope, period, agent_type: nil)
           date_part = period == :daily ? Date.current.to_s : Date.current.strftime("%Y-%m")
 
           case scope
           when :global
-            "ruby_llm_agents:budget:global:#{date_part}"
+            BudgetTracker.cache_key("budget", "global", date_part)
           when :agent
-            "ruby_llm_agents:budget:agent:#{agent_type}:#{date_part}"
+            BudgetTracker.cache_key("budget", "agent", agent_type, date_part)
           else
             raise ArgumentError, "Unknown scope: #{scope}"
           end
@@ -334,10 +327,10 @@ module RubyLLM
           return unless config.alert_events.include?(event)
 
           # Prevent duplicate alerts by using a cache key
-          alert_key = "ruby_llm_agents:budget_alert:#{scope}:#{Date.current}"
-          return if cache_store.exist?(alert_key)
+          alert_key = BudgetTracker.cache_key("budget_alert", scope, Date.current.to_s)
+          return if BudgetTracker.cache_exist?(alert_key)
 
-          cache_store.write(alert_key, true, expires_in: 1.hour)
+          BudgetTracker.cache_write(alert_key, true, expires_in: 1.hour)
 
           AlertManager.notify(event, {
             scope: scope,
@@ -346,13 +339,6 @@ module RubyLLM
             agent_type: agent_type,
             timestamp: Date.current.to_s
           })
-        end
-
-        # Returns the cache store
-        #
-        # @return [ActiveSupport::Cache::Store]
-        def cache_store
-          RubyLLM::Agents.configuration.cache_store
         end
       end
     end

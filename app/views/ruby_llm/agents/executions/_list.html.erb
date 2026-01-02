@@ -124,7 +124,7 @@
               </td>
 
               <td class="px-4 py-3 whitespace-nowrap cursor-pointer" onclick="window.location='<%= ruby_llm_agents.execution_path(execution) %>'">
-                <%= render "rubyllm/agents/shared/status_badge", status: execution.status %>
+                <%= render "ruby_llm/agents/shared/status_badge", status: execution.status %>
               </td>
 
               <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 cursor-pointer" onclick="window.location='<%= ruby_llm_agents.execution_path(execution) %>'">
@@ -257,7 +257,7 @@
 
         <nav class="flex items-center space-x-1">
           <% if current_page > 1 %>
-            <%= link_to "Previous", url_for(page: current_page - 1), data: { turbo_frame: "executions_content", turbo_action: "advance" }, class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
+            <%= link_to "Previous", url_for(page: current_page - 1), class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
           <% else %>
             <span
               class="
@@ -297,12 +297,12 @@
                 <%= page %>
               </span>
             <% else %>
-              <%= link_to page, url_for(page: page), data: { turbo_frame: "executions_content", turbo_action: "advance" }, class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
+              <%= link_to page, url_for(page: page), class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
             <% end %>
           <% end %>
 
           <% if current_page < total_pages %>
-            <%= link_to "Next", url_for(page: current_page + 1), data: { turbo_frame: "executions_content", turbo_action: "advance" }, class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
+            <%= link_to "Next", url_for(page: current_page + 1), class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
           <% else %>
             <span
               class="

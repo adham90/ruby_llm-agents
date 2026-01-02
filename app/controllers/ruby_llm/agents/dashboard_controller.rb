@@ -22,7 +22,6 @@ module RubyLLM
         @days = range_to_days(@selected_range)
         @now_strip = Execution.now_strip_data(range: @selected_range)
         @critical_alerts = load_critical_alerts
-        @hourly_activity = Execution.hourly_activity_chart
         @recent_executions = Execution.recent(10)
         @agent_stats = build_agent_comparison
         @top_errors = build_top_errors

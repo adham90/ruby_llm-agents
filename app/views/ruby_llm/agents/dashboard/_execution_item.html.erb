@@ -1,9 +1,9 @@
 <div id="execution-<%= execution.id %>" class="py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 -mx-2 px-2 rounded-lg transition-colors">
-  <%= link_to ruby_llm_agents.execution_path(execution), data: { turbo: false }, class: "block" do %>
+  <%= link_to ruby_llm_agents.execution_path(execution), class: "block" do %>
     <!-- Row 1: Status dot + Agent + Badges + Timestamp -->
     <div class="flex items-center justify-between gap-2">
       <div class="flex items-center gap-2 min-w-0">
-        <%= render "rubyllm/agents/shared/status_dot", status: execution.status %>
+        <%= render "ruby_llm/agents/shared/status_dot", status: execution.status %>
         <span class="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
           <%= execution.agent_type.gsub(/Agent$/, '') %>
         </span>

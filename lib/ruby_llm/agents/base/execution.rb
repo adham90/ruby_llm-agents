@@ -21,7 +21,7 @@ module RubyLLM
           return uncached_call(&block) if @options[:skip_cache] || !self.class.cache_enabled?
 
           # Note: Cached responses don't stream (already complete)
-          cache_store.fetch(cache_key, expires_in: self.class.cache_ttl) do
+          cache_store.fetch(agent_cache_key, expires_in: self.class.cache_ttl) do
             uncached_call(&block)
           end
         end

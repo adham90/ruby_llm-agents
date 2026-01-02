@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "../cache_helper"
+
 module RubyLLM
   module Agents
     class Base
@@ -8,17 +10,12 @@ module RubyLLM
       # Handles cache key generation and store access for
       # caching agent execution results.
       module Caching
-        # Returns the configured cache store
-        #
-        # @return [ActiveSupport::Cache::Store] The cache store
-        def cache_store
-          RubyLLM::Agents.configuration.cache_store
-        end
+        include CacheHelper
 
         # Generates the full cache key for this agent invocation
         #
         # @return [String] Cache key in format "ruby_llm_agent/ClassName/version/hash"
-        def cache_key
+        def agent_cache_key
           ["ruby_llm_agent", self.class.name, self.class.version, cache_key_hash].join("/")
         end
 

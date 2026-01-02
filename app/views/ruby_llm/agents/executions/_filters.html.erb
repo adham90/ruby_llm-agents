@@ -37,7 +37,7 @@
 <div id="filters-container" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-6"
      x-data="{ mobileOpen: false }">
   <%= form_with url: ruby_llm_agents.executions_path, method: :get,
-                data: { turbo_stream: true, turbo_action: "advance" },
+                local: true,
                 id: "filters-form" do |f| %>
 
     <%# Mobile: Toggle button (only shows on small screens) %>
@@ -71,7 +71,7 @@
       <div class="flex flex-col md:flex-row md:items-center gap-3">
         <%# Status Filter %>
         <div class="md:w-auto">
-          <%= render "rubyllm/agents/shared/filter_dropdown",
+          <%= render "ruby_llm/agents/shared/filter_dropdown",
               name: "statuses[]",
               filter_id: "statuses",
               label: "Status",
@@ -84,7 +84,7 @@
 
         <%# Time Range Filter %>
         <div class="md:w-auto">
-          <%= render "rubyllm/agents/shared/select_dropdown",
+          <%= render "ruby_llm/agents/shared/select_dropdown",
               name: "days",
               filter_id: "days",
               options: time_options,
@@ -97,7 +97,7 @@
         <%# Model Filter %>
         <% if model_options.any? %>
           <div class="md:w-auto">
-            <%= render "rubyllm/agents/shared/filter_dropdown",
+            <%= render "ruby_llm/agents/shared/filter_dropdown",
                 name: "model_ids[]",
                 filter_id: "model_ids",
                 label: "Model",
@@ -112,7 +112,7 @@
         <%# Agent Types Filter %>
         <% if agent_types.any? %>
           <div class="md:w-auto">
-            <%= render "rubyllm/agents/shared/filter_dropdown",
+            <%= render "ruby_llm/agents/shared/filter_dropdown",
                 name: "agent_types[]",
                 filter_id: "agent_types",
                 label: "Agents",
@@ -144,7 +144,6 @@
         <div class="flex items-center gap-2 md:gap-1">
           <% if has_filters %>
             <%= link_to ruby_llm_agents.executions_path,
-                data: { turbo_stream: true, turbo_action: "advance" },
                 class: "flex-1 md:flex-initial flex items-center justify-center gap-2 px-3 py-2 md:p-2 text-sm md:text-base text-red-600 md:text-gray-400 dark:text-red-400 md:dark:text-gray-400 bg-red-50 md:bg-transparent dark:bg-red-900/20 md:dark:bg-transparent hover:text-red-500 hover:bg-red-100 md:hover:bg-red-50 dark:hover:bg-red-900/30 md:dark:hover:bg-red-900/20 rounded-lg transition-colors",
                 title: "Clear filters" do %>
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -155,8 +154,7 @@
           <% end %>
           <%= link_to ruby_llm_agents.export_executions_path(agent_types: selected_agents.presence, statuses: selected_statuses.presence, days: params[:days].presence, model_ids: selected_models.presence),
               class: "flex-1 md:flex-initial flex items-center justify-center gap-2 px-3 py-2 md:p-2 text-sm md:text-base text-gray-600 md:text-gray-400 dark:text-gray-300 md:dark:text-gray-400 bg-gray-50 md:bg-transparent dark:bg-gray-700 md:dark:bg-transparent hover:text-gray-600 md:hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 md:dark:hover:bg-gray-700 rounded-lg transition-colors",
-              title: "Export CSV",
-              data: { turbo: false } do %>
+              title: "Export CSV" do %>
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>

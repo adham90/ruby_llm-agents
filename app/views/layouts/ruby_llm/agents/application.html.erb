@@ -84,7 +84,7 @@
       }
 
       // Initialize on page load
-      document.addEventListener('turbo:load', function() {
+      document.addEventListener('DOMContentLoaded', function() {
         updateClock();
 
         // Handle data-href clickable rows (semantic alternative to onclick)
@@ -96,9 +96,6 @@
           });
         });
       });
-
-      // Also run on DOMContentLoaded for non-Turbo loads
-      document.addEventListener('DOMContentLoaded', updateClock);
     </script>
 
     <!-- Theme Switcher (Alpine.js) -->
@@ -188,34 +185,6 @@
       @apply bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300;
     }
 
-    /* Turbo loading states */
-    turbo-frame[busy] {
-      position: relative;
-      opacity: 0.6;
-      pointer-events: none;
-    }
-    turbo-frame[busy]::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 24px;
-      height: 24px;
-      margin: -12px 0 0 -12px;
-      border: 2px solid #e5e7eb;
-      border-top-color: #3b82f6;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    /* Form submitting state */
-    form[data-turbo-submitting] {
-      opacity: 0.6;
-      pointer-events: none;
-    }
   </style>
   </head>
 
@@ -250,7 +219,7 @@
             %>
             <nav class="hidden md:flex items-center space-x-1">
               <% nav_items.each do |item| %>
-                <%= render "rubyllm/agents/shared/nav_link", path: item[:path], label: item[:label], icon: item[:icon], mobile: false %>
+                <%= render "ruby_llm/agents/shared/nav_link", path: item[:path], label: item[:label], icon: item[:icon], mobile: false %>
               <% end %>
             </nav>
           </div>
@@ -327,7 +296,7 @@
       >
         <nav class="max-w-7xl mx-auto px-4 py-3 space-y-1">
           <% nav_items.each do |item| %>
-            <%= render "rubyllm/agents/shared/nav_link", path: item[:path], label: item[:label], icon: item[:icon], mobile: true %>
+            <%= render "ruby_llm/agents/shared/nav_link", path: item[:path], label: item[:label], icon: item[:icon], mobile: true %>
           <% end %>
         </nav>
       </div>

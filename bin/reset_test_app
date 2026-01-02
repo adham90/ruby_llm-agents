@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+
+# bin/reset_test_app
+# Deletes the test_app and recreates it fresh
+#
+# Usage:
+#   bin/reset_test_app         # Delete and recreate (run generators manually)
+#   bin/reset_test_app --auto  # Delete and recreate with install generator pre-run
+#
+# This is useful when you want to test generators from a completely clean state.
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Get the directory where this script lives
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GEM_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+TEST_APP_DIR="$GEM_ROOT/test_app"
+
+# Collect arguments to pass through
+ARGS=()
+for arg in "$@"; do
+  case $arg in
+    --help|-h)
+      echo "Usage: bin/reset_test_app [OPTIONS]"
+      echo ""
+      echo "Deletes test_app and recreates it fresh."
+      echo ""
+      echo "Options:"
+      echo "  --auto    Run the install generator automatically after setup"
+      echo "  --help    Show this help message"
+      exit 0
+      ;;
+    *)
+      ARGS+=("$arg")
+      ;;
+  esac
+done
+
+echo -e "${YELLOW}=== Resetting test_app ===${NC}"
+
+# Check if test_app exists
+if [ -d "$TEST_APP_DIR" ]; then
+  echo "Removing existing test_app..."
+  rm -rf "$TEST_APP_DIR"
+  echo -e "${GREEN}Removed test_app${NC}"
+else
+  echo "No existing test_app found."
+fi
+
+echo ""
+echo "Recreating test_app..."
+echo ""
+
+# Call setup script with any passed arguments
+"$SCRIPT_DIR/setup_test_app" "${ARGS[@]+"${ARGS[@]}"}"
