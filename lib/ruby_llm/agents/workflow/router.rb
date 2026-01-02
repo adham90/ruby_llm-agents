@@ -190,6 +190,9 @@ module RubyLLM
             classifier_result: classifier_result,
             classification_time_ms: classification_time
           )
+        rescue RouterError
+          # Re-raise configuration errors
+          raise
         rescue StandardError => e
           build_router_result(
             content: nil,

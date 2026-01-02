@@ -299,9 +299,11 @@ RSpec.describe RubyLLM::Agents::Workflow::Pipeline do
         step :fail, agent: fail_agent
       end
 
-      expect {
-        pipeline.call(text: "test")
-      }.to raise_error(StandardError, "Agent failed")
+      result = pipeline.call(text: "test")
+
+      expect(result.status).to eq("error")
+      expect(result.error?).to be true
+      expect(result.failed_steps).to include(:fail)
     end
 
     it "continues when optional step fails" do

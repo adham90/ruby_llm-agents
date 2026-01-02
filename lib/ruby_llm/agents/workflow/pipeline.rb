@@ -40,6 +40,38 @@ module RubyLLM
       #
       # @api public
       class Pipeline < Workflow
+        # Simple error result for failed steps
+        # @api private
+        class ErrorResult
+          attr_reader :error_class, :error_message, :step_name
+
+          def initialize(step_name:, error_class:, error_message:)
+            @step_name = step_name
+            @error_class = error_class
+            @error_message = error_message
+          end
+
+          def content = nil
+          def success? = false
+          def error? = true
+          def input_tokens = 0
+          def output_tokens = 0
+          def total_tokens = 0
+          def cached_tokens = 0
+          def input_cost = 0.0
+          def output_cost = 0.0
+          def total_cost = 0.0
+
+          def to_h
+            {
+              error: true,
+              step_name: step_name,
+              error_class: error_class,
+              error_message: error_message
+            }
+          end
+        end
+
         class << self
           # Returns the defined steps
           #
@@ -146,7 +178,13 @@ module RubyLLM
               step_results[name] = build_error_result(name, e)
               context[name] = step_results[name]
 
-              # Call error handler hook
+              # Check continue_on_error first - if true, continue without calling handler
+              if config[:continue_on_error]
+                status = "partial" if status == "success"
+                next
+              end
+
+              # Call error handler hook for non-optional steps
               action = on_step_failure(name, e, context)
 
               case action
@@ -163,11 +201,8 @@ module RubyLLM
                 last_successful_result = action
                 status = "partial" if status == "success"
               else
-                unless config[:continue_on_error]
-                  status = "error"
-                  break
-                end
-                status = "partial" if status == "success"
+                status = "error"
+                break
               end
             end
           end
@@ -236,28 +271,12 @@ module RubyLLM
         #
         # @param step_name [Symbol] The step name
         # @param error [Exception] The error
-        # @return [Hash] Error result
+        # @return [ErrorResult] Error result object
         def build_error_result(step_name, error)
-          # Return a simple hash that looks like a result
-          OpenStruct.new(
-            content: nil,
-            success?: false,
-            error?: true,
+          ErrorResult.new(
+            step_name: step_name,
             error_class: error.class.name,
-            error_message: error.message,
-            input_tokens: 0,
-            output_tokens: 0,
-            total_tokens: 0,
-            cached_tokens: 0,
-            input_cost: 0.0,
-            output_cost: 0.0,
-            total_cost: 0.0,
-            to_h: {
-              error: true,
-              step_name: step_name,
-              error_class: error.class.name,
-              error_message: error.message
-            }
+            error_message: error.message
           )
         end
 

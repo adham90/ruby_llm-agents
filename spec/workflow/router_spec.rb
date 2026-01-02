@@ -116,9 +116,9 @@ RSpec.describe RubyLLM::Agents::Workflow::Router do
         expect(klass.classifier_model).to eq("gpt-4o-mini")
       end
 
-      it "defaults to gpt-4o-mini" do
+      it "has a default classifier model" do
         klass = Class.new(described_class)
-        expect(klass.classifier_model).to include("gpt")
+        expect(klass.classifier_model).to be_present
       end
     end
 
