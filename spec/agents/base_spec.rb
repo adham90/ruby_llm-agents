@@ -265,7 +265,7 @@ RSpec.describe RubyLLM::Agents::Base do
     end
   end
 
-  describe "#cache_key" do
+  describe "#agent_cache_key" do
     let(:agent_class) do
       Class.new(described_class) do
         model "gpt-4"
@@ -285,21 +285,21 @@ RSpec.describe RubyLLM::Agents::Base do
       agent1 = agent_class.new(query: "test")
       agent2 = agent_class.new(query: "test")
 
-      expect(agent1.send(:cache_key)).to eq(agent2.send(:cache_key))
+      expect(agent1.send(:agent_cache_key)).to eq(agent2.send(:agent_cache_key))
     end
 
     it "generates different cache key for different inputs" do
       agent1 = agent_class.new(query: "test1")
       agent2 = agent_class.new(query: "test2")
 
-      expect(agent1.send(:cache_key)).not_to eq(agent2.send(:cache_key))
+      expect(agent1.send(:agent_cache_key)).not_to eq(agent2.send(:agent_cache_key))
     end
 
     it "excludes :with from cache key" do
       agent1 = agent_class.new(query: "test", with: "image.png")
       agent2 = agent_class.new(query: "test")
 
-      expect(agent1.send(:cache_key)).to eq(agent2.send(:cache_key))
+      expect(agent1.send(:agent_cache_key)).to eq(agent2.send(:agent_cache_key))
     end
   end
 

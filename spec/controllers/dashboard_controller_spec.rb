@@ -30,11 +30,9 @@ RSpec.describe RubyLLM::Agents::DashboardController, type: :controller do
       expect(assigns(:recent_executions)).to be_present
     end
 
-    it "assigns @hourly_activity" do
+    it "assigns @agent_stats" do
       get :index
-      expect(assigns(:hourly_activity)).to be_an(Array)
-      expect(assigns(:hourly_activity).size).to eq(2)
-      expect(assigns(:hourly_activity).first[:name]).to eq("Success")
+      expect(assigns(:agent_stats)).to be_an(Array)
     end
 
     it "assigns @critical_alerts" do
