@@ -207,6 +207,86 @@
   </div>
 </div>
 
+<!-- Workflow Info (if applicable) -->
+<% if @execution.workflow_type.present? || @execution.workflow_step.present? || @execution.routed_to.present? %>
+  <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-5 mb-6">
+    <div class="flex items-center gap-2 mb-4">
+      <% case @execution.workflow_type
+         when "pipeline" %>
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300">
+          <span class="text-base">→</span> Pipeline Workflow
+        </span>
+      <% when "parallel" %>
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300">
+          <span class="text-base">⫴</span> Parallel Workflow
+        </span>
+      <% when "router" %>
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300">
+          <span class="text-base">⑂</span> Router Workflow
+        </span>
+      <% elsif @execution.workflow_step.present? %>
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+          </svg>
+          Workflow Step
+        </span>
+      <% end %>
+      <% if @execution.workflow_id.present? %>
+        <span class="text-xs text-gray-400 dark:text-gray-500 font-mono" title="Workflow ID: <%= @execution.workflow_id %>">
+          <%= @execution.workflow_id.to_s.truncate(12) %>
+        </span>
+      <% end %>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <% if @execution.workflow_step.present? %>
+        <div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Step Name</p>
+          <p class="text-sm font-medium text-gray-900 dark:text-gray-100"><%= @execution.workflow_step %></p>
+        </div>
+      <% end %>
+
+      <% if @execution.routed_to.present? %>
+        <div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Routed To</p>
+          <p class="text-sm font-medium text-amber-600 dark:text-amber-400"><%= @execution.routed_to %></p>
+        </div>
+      <% end %>
+
+      <% if @execution.classification_result.present? %>
+        <% classification = @execution.classification_result.is_a?(String) ? JSON.parse(@execution.classification_result) rescue {} : @execution.classification_result %>
+        <% if classification["method"].present? %>
+          <div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Classification</p>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+              <%= classification["method"] == "llm" ? "LLM" : "Rule-based" %>
+              <% if classification["classification_time_ms"].present? %>
+                <span class="text-xs text-gray-400 dark:text-gray-500">(<%= classification["classification_time_ms"] %>ms)</span>
+              <% end %>
+            </p>
+          </div>
+        <% end %>
+        <% if classification["classifier_model"].present? %>
+          <div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Classifier Model</p>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100 font-mono"><%= classification["classifier_model"] %></p>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+
+    <% if @execution.parent_execution_id.present? %>
+      <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+        <span class="text-xs text-gray-500 dark:text-gray-400">Part of workflow:</span>
+        <%= link_to "##{@execution.parent_execution_id}",
+            ruby_llm_agents.execution_path(@execution.parent_execution_id),
+            class: "ml-2 text-blue-600 dark:text-blue-400 hover:underline font-mono text-sm" %>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+
 <!-- Stats Grid -->
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
   <%= render "ruby_llm/agents/shared/stat_card",

@@ -155,13 +155,14 @@ module RubyLLM
       # Loads available options for filter dropdowns
       #
       # Populates @agent_types with all agent types that have executions,
-      # @model_ids with all distinct models used, and @statuses with all
-      # possible status values.
+      # @model_ids with all distinct models used, @workflow_types with
+      # workflow patterns used, and @statuses with all possible status values.
       #
       # @return [void]
       def load_filter_options
         @agent_types = available_agent_types
         @model_ids = available_model_ids
+        @workflow_types = available_workflow_types
         @statuses = Execution.statuses.keys
       end
 
@@ -181,6 +182,23 @@ module RubyLLM
       # @return [Array<String>] Model IDs
       def available_model_ids
         @available_model_ids ||= Execution.where.not(model_id: nil).distinct.pluck(:model_id).sort
+      end
+
+      # Returns distinct workflow types from execution history
+      #
+      # Memoized to avoid duplicate queries within a request.
+      # Returns empty array if workflow_type column doesn't exist yet.
+      #
+      # @return [Array<String>] Workflow types (pipeline, parallel, router)
+      def available_workflow_types
+        return @available_workflow_types if defined?(@available_workflow_types)
+
+        @available_workflow_types = if Execution.column_names.include?("workflow_type")
+                                      Execution.where.not(workflow_type: [nil, ""])
+                                               .distinct.pluck(:workflow_type).sort
+                                    else
+                                      []
+                                    end
       end
 
       # Loads paginated executions and associated statistics
@@ -243,6 +261,26 @@ module RubyLLM
         # Apply model filter
         model_ids = parse_array_param(:model_ids)
         scope = scope.where(model_id: model_ids) if model_ids.any?
+
+        # Apply workflow type filter (only if column exists)
+        if Execution.column_names.include?("workflow_type")
+          workflow_types = parse_array_param(:workflow_types)
+          if workflow_types.any?
+            includes_single = workflow_types.include?("single")
+            other_types = workflow_types - ["single"]
+
+            if includes_single && other_types.any?
+              # Include both single (null workflow_type) and specific workflow types
+              scope = scope.where(workflow_type: [nil, ""] + other_types)
+            elsif includes_single
+              # Only single executions (non-workflow)
+              scope = scope.where(workflow_type: [nil, ""])
+            else
+              # Only specific workflow types
+              scope = scope.where(workflow_type: workflow_types)
+            end
+          end
+        end
 
         scope
       end

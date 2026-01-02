@@ -6,7 +6,7 @@
       <thead>
         <tr>
           <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-          <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Version</th>
+          <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
           <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Model</th>
           <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Temp</th>
           <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tokens</th>
@@ -17,8 +17,19 @@
       </thead>
       <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
         <% executions.each do |execution| %>
+          <%
+            # Determine workflow display info
+            is_workflow = execution.workflow_type.present?
+            is_workflow_step = execution.workflow_step.present? || execution.parent_execution_id.present?
+            workflow_badge = case execution.workflow_type
+              when "pipeline" then { label: "Pipeline", color: "bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300", icon: "→" }
+              when "parallel" then { label: "Parallel", color: "bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300", icon: "⫴" }
+              when "router" then { label: "Router", color: "bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300", icon: "⑂" }
+              else nil
+            end
+          %>
           <!-- Main Row (clickable to expand) -->
-          <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group"
+          <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group <%= is_workflow_step && !is_workflow ? 'bg-gray-50/50 dark:bg-gray-900/30' : '' %>"
               onclick="toggleExecutionDetails('<%= execution.id %>')"
               id="execution-row-<%= execution.id %>">
             <td class="px-4 py-3 whitespace-nowrap">
@@ -30,8 +41,27 @@
                 <%= render "ruby_llm/agents/shared/status_badge", status: execution.status %>
               </div>
             </td>
-            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-              v<%= execution.agent_version %>
+            <td class="px-4 py-3 whitespace-nowrap text-sm">
+              <div class="flex items-center gap-1.5">
+                <% if workflow_badge %>
+                  <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium <%= workflow_badge[:color] %>">
+                    <span class="text-[10px]"><%= workflow_badge[:icon] %></span>
+                    <%= workflow_badge[:label] %>
+                  </span>
+                <% elsif is_workflow_step %>
+                  <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+                    </svg>
+                    <%= execution.workflow_step || "step" %>
+                  </span>
+                <% else %>
+                  <span class="text-gray-500 dark:text-gray-400">v<%= execution.agent_version %></span>
+                <% end %>
+                <% if execution.routed_to.present? %>
+                  <span class="text-xs text-amber-600 dark:text-amber-400">→ <%= execution.routed_to %></span>
+                <% end %>
+              </div>
             </td>
             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
               <%= execution.model_id %>

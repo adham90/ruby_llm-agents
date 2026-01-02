@@ -1,7 +1,7 @@
 <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Executions</h2>
 
 <div id="executions_content">
-  <%= render partial: "ruby_llm/agents/executions/filters", locals: { agent_types: @agent_types, model_ids: @model_ids, filter_stats: @filter_stats } %>
+  <%= render partial: "ruby_llm/agents/executions/filters", locals: { agent_types: @agent_types, model_ids: @model_ids, workflow_types: @workflow_types, filter_stats: @filter_stats } %>
   <%= render partial: "ruby_llm/agents/executions/list", locals: { executions: @executions, pagination: @pagination, filter_stats: @filter_stats } %>
 </div>
 

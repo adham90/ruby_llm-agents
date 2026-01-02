@@ -3,13 +3,15 @@
   selected_agents = params[:agent_types].present? ? (params[:agent_types].is_a?(Array) ? params[:agent_types] : params[:agent_types].split(",")) : []
   selected_statuses = params[:statuses].present? ? (params[:statuses].is_a?(Array) ? params[:statuses] : params[:statuses].split(",")) : []
   selected_models = params[:model_ids].present? ? (params[:model_ids].is_a?(Array) ? params[:model_ids] : params[:model_ids].split(",")) : []
+  selected_workflows = params[:workflow_types].present? ? (params[:workflow_types].is_a?(Array) ? params[:workflow_types] : params[:workflow_types].split(",")) : []
 
-  has_filters = selected_agents.any? || selected_statuses.any? || params[:days].present? || selected_models.any?
+  has_filters = selected_agents.any? || selected_statuses.any? || params[:days].present? || selected_models.any? || selected_workflows.any?
   active_filter_count = [
     selected_agents.any? ? 1 : 0,
     selected_statuses.any? ? 1 : 0,
     params[:days].present? ? 1 : 0,
-    selected_models.any? ? 1 : 0
+    selected_models.any? ? 1 : 0,
+    selected_workflows.any? ? 1 : 0
   ].sum
 
   status_options = [
@@ -33,6 +35,18 @@
     short_name = m.split("/").last.split(":").first # Handle "provider/model:version" format
     { value: m, label: short_name }
   end || []
+
+  # Build workflow type options with icons
+  workflow_type_labels = {
+    "pipeline" => { label: "Pipeline", icon: "→" },
+    "parallel" => { label: "Parallel", icon: "⫴" },
+    "router" => { label: "Router", icon: "⑂" }
+  }
+  workflow_options = [{ value: "single", label: "Single Agent" }]
+  workflow_options += (local_assigns[:workflow_types] || []).map do |wt|
+    info = workflow_type_labels[wt] || { label: wt.titleize, icon: "" }
+    { value: wt, label: "#{info[:icon]} #{info[:label]}".strip }
+  end
 %>
 <div id="filters-container" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-6"
      x-data="{ mobileOpen: false }">
@@ -125,6 +139,22 @@
           </div>
         <% end %>
 
+        <%# Workflow Type Filter %>
+        <% if workflow_options.length > 1 %>
+          <div class="md:w-auto">
+            <%= render "ruby_llm/agents/shared/filter_dropdown",
+                name: "workflow_types[]",
+                filter_id: "workflow_types",
+                label: "Type",
+                all_label: "All Types",
+                options: workflow_options,
+                selected: selected_workflows,
+                icon: "M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm0 8a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zm12 0a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z",
+                width: "w-44",
+                full_width: true %>
+          </div>
+        <% end %>
+
         <%# Spacer (desktop only) %>
         <div class="hidden md:block flex-1"></div>
 
@@ -152,7 +182,7 @@
               <span class="md:hidden">Clear</span>
             <% end %>
           <% end %>
-          <%= link_to ruby_llm_agents.export_executions_path(agent_types: selected_agents.presence, statuses: selected_statuses.presence, days: params[:days].presence, model_ids: selected_models.presence),
+          <%= link_to ruby_llm_agents.export_executions_path(agent_types: selected_agents.presence, statuses: selected_statuses.presence, days: params[:days].presence, model_ids: selected_models.presence, workflow_types: selected_workflows.presence),
               class: "flex-1 md:flex-initial flex items-center justify-center gap-2 px-3 py-2 md:p-2 text-sm md:text-base text-gray-600 md:text-gray-400 dark:text-gray-300 md:dark:text-gray-400 bg-gray-50 md:bg-transparent dark:bg-gray-700 md:dark:bg-transparent hover:text-gray-600 md:hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 md:dark:hover:bg-gray-700 rounded-lg transition-colors",
               title: "Export CSV" do %>
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
