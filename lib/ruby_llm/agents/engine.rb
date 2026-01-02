@@ -35,6 +35,7 @@ module RubyLLM
         require_relative "execution_logger_job"
         require_relative "instrumentation"
         require_relative "base"
+        require_relative "workflow"
 
         # Resolve the parent controller class from configuration
         # Default is ActionController::Base, but can be set to inherit from app controllers

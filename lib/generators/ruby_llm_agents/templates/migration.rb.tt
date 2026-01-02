@@ -71,6 +71,13 @@ class CreateRubyLLMAgentsExecutions < ActiveRecord::Migration<%= migration_versi
       t.json :tool_calls, null: false, default: []
       t.integer :tool_calls_count, null: false, default: 0
 
+      # Workflow orchestration
+      t.uuid :workflow_id
+      t.string :workflow_type
+      t.string :workflow_step
+      t.string :routed_to
+      t.json :classification_result
+
       t.timestamps
     end
 
@@ -95,6 +102,11 @@ class CreateRubyLLMAgentsExecutions < ActiveRecord::Migration<%= migration_versi
 
     # Tool calls index
     add_index :ruby_llm_agents_executions, :tool_calls_count
+
+    # Workflow indexes
+    add_index :ruby_llm_agents_executions, :workflow_id
+    add_index :ruby_llm_agents_executions, :workflow_type
+    add_index :ruby_llm_agents_executions, [:workflow_id, :workflow_step]
 
     # Foreign keys for execution hierarchy
     add_foreign_key :ruby_llm_agents_executions, :ruby_llm_agents_executions,

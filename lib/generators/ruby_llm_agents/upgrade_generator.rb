@@ -120,6 +120,19 @@ module RubyLlmAgents
       )
     end
 
+    def create_add_workflow_migration
+      # Check if columns already exist
+      if column_exists?(:ruby_llm_agents_executions, :workflow_id)
+        say_status :skip, "workflow_id column already exists", :yellow
+        return
+      end
+
+      migration_template(
+        "add_workflow_migration.rb.tt",
+        File.join(db_migrate_path, "add_workflow_to_ruby_llm_agents_executions.rb")
+      )
+    end
+
     def show_post_upgrade_message
       say ""
       say "RubyLLM::Agents upgrade migration created!", :green
