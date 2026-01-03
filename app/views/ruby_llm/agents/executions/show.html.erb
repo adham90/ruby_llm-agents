@@ -207,8 +207,13 @@
   </div>
 </div>
 
-<!-- Workflow Info (if applicable) -->
-<% if @execution.workflow_type.present? || @execution.workflow_step.present? || @execution.routed_to.present? %>
+<!-- Workflow Summary Panel (for root workflow executions) -->
+<% if @execution.respond_to?(:root_workflow?) && @execution.root_workflow? %>
+  <%= render "ruby_llm/agents/executions/workflow_summary", execution: @execution %>
+<% end %>
+
+<!-- Workflow Info (if applicable - for child workflow steps) -->
+<% if (@execution.workflow_type.present? || @execution.workflow_step.present? || @execution.routed_to.present?) && !(@execution.respond_to?(:root_workflow?) && @execution.root_workflow?) %>
   <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-5 mb-6">
     <div class="flex items-center gap-2 mb-4">
       <% case @execution.workflow_type

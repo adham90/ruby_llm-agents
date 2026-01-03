@@ -1,0 +1,124 @@
+<%# Workflow Summary Panel - Shows aggregate stats and visualization for workflow executions %>
+<%# @param execution [RubyLLM::Agents::Execution] The workflow execution to display %>
+
+<% if execution.root_workflow? %>
+  <% stats = execution.workflow_aggregate_stats %>
+
+  <div class="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden mb-6">
+    <!-- Workflow Header -->
+    <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <% case execution.workflow_type
+             when "pipeline" %>
+            <div class="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
+              <span class="text-xl text-indigo-600 dark:text-indigo-400">→</span>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Pipeline Workflow</h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Sequential execution of <%= stats[:steps_count] %> steps</p>
+            </div>
+          <% when "parallel" %>
+            <div class="w-10 h-10 rounded-lg bg-cyan-100 dark:bg-cyan-900/50 flex items-center justify-center">
+              <span class="text-xl text-cyan-600 dark:text-cyan-400">⫴</span>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Parallel Workflow</h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Concurrent execution of <%= stats[:steps_count] %> branches</p>
+            </div>
+          <% when "router" %>
+            <div class="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+              <span class="text-xl text-amber-600 dark:text-amber-400">⑂</span>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Router Workflow</h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                Routed to <span class="font-medium text-amber-600 dark:text-amber-400"><%= execution.routed_to %></span>
+              </p>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <% overall_status = execution.workflow_overall_status %>
+          <% status_colors = {
+               success: "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300",
+               error: "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300",
+               timeout: "bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300",
+               running: "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300",
+               pending: "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+             } %>
+          <span class="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium <%= status_colors[overall_status] %>">
+            <%= overall_status.to_s.capitalize %>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Aggregate Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 p-5 bg-white/30 dark:bg-gray-800/30">
+      <div class="text-center">
+        <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <%= stats[:steps_count] %>
+        </p>
+        <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+          <%= execution.pipeline_workflow? ? "Steps" : execution.parallel_workflow? ? "Branches" : "Executions" %>
+        </p>
+      </div>
+
+      <div class="text-center">
+        <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <%= stats[:wall_clock_ms] ? "#{number_to_human_short(stats[:wall_clock_ms])}ms" : "N/A" %>
+        </p>
+        <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Wall Clock</p>
+      </div>
+
+      <div class="text-center">
+        <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <%= number_to_human_short(stats[:total_tokens]) %>
+        </p>
+        <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total Tokens</p>
+      </div>
+
+      <div class="text-center">
+        <p class="text-2xl font-bold text-amber-600 dark:text-amber-400">
+          $<%= number_with_precision(stats[:total_cost], precision: 4) %>
+        </p>
+        <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total Cost</p>
+      </div>
+
+      <div class="text-center">
+        <p class="text-2xl font-bold <%= stats[:success_rate] >= 100 ? 'text-green-600 dark:text-green-400' : stats[:success_rate] >= 80 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400' %>">
+          <%= stats[:success_rate] %>%
+        </p>
+        <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Success Rate</p>
+      </div>
+    </div>
+
+    <!-- Workflow-specific Visualization -->
+    <div class="p-5 border-t border-gray-200 dark:border-gray-700">
+      <% case execution.workflow_type
+         when "pipeline" %>
+        <%= render "ruby_llm/agents/executions/workflow_pipeline_summary", execution: execution %>
+      <% when "parallel" %>
+        <%= render "ruby_llm/agents/executions/workflow_parallel_summary", execution: execution %>
+      <% when "router" %>
+        <%= render "ruby_llm/agents/executions/workflow_router_summary", execution: execution %>
+      <% end %>
+    </div>
+
+    <% if stats[:models_used].size > 1 %>
+      <!-- Models Used -->
+      <div class="px-5 py-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs text-gray-500 dark:text-gray-400">Models used:</span>
+          <% stats[:models_used].each do |model| %>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+              <%= model %>
+            </span>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>

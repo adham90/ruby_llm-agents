@@ -1,0 +1,190 @@
+<%# Router Workflow Summary - Shows classification decision and routed execution %>
+<%# @param execution [RubyLLM::Agents::Execution] The router workflow execution %>
+
+<% classification = execution.router_classification_detail %>
+<% routes = execution.router_routes_detail %>
+
+<div class="space-y-4">
+  <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+    </svg>
+    Routing Decision
+  </h4>
+
+  <!-- Classification Decision Card -->
+  <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+    <div class="flex items-start gap-4">
+      <!-- Classification Icon -->
+      <div class="flex-shrink-0">
+        <div class="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+          <svg class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Classification Details -->
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-lg font-semibold text-amber-800 dark:text-amber-200">
+            Routed to: <%= execution.routed_to %>
+          </span>
+          <% if classification[:confidence] %>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
+              <%= (classification[:confidence] * 100).round %>% confidence
+            </span>
+          <% end %>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+          <% if classification[:method] %>
+            <div>
+              <span class="text-amber-600 dark:text-amber-400 text-xs uppercase tracking-wide">Method</span>
+              <p class="font-medium text-amber-900 dark:text-amber-100">
+                <%= classification[:method] == "llm" ? "LLM Classification" : "Rule-based" %>
+              </p>
+            </div>
+          <% end %>
+
+          <% if classification[:classifier_model] %>
+            <div>
+              <span class="text-amber-600 dark:text-amber-400 text-xs uppercase tracking-wide">Classifier Model</span>
+              <p class="font-medium font-mono text-amber-900 dark:text-amber-100 text-xs">
+                <%= classification[:classifier_model] %>
+              </p>
+            </div>
+          <% end %>
+
+          <% if classification[:classification_time_ms] %>
+            <div>
+              <span class="text-amber-600 dark:text-amber-400 text-xs uppercase tracking-wide">Classification Time</span>
+              <p class="font-medium text-amber-900 dark:text-amber-100">
+                <%= classification[:classification_time_ms] %>ms
+              </p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Routing Flow Visualization -->
+  <div class="relative py-6">
+    <div class="flex items-center justify-center gap-4">
+      <!-- Input -->
+      <div class="flex-shrink-0 text-center">
+        <div class="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-2">
+          <svg class="w-8 h-8 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+          </svg>
+        </div>
+        <span class="text-xs text-gray-500 dark:text-gray-400">Input</span>
+      </div>
+
+      <!-- Arrow to Router -->
+      <div class="flex-shrink-0">
+        <svg class="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+        </svg>
+      </div>
+
+      <!-- Router -->
+      <div class="flex-shrink-0 text-center">
+        <div class="w-20 h-20 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center mx-auto mb-2 ring-2 ring-amber-400 dark:ring-amber-600">
+          <span class="text-3xl">⑂</span>
+        </div>
+        <span class="text-xs font-medium text-amber-600 dark:text-amber-400">Router</span>
+      </div>
+
+      <!-- Arrow to Route -->
+      <div class="flex-shrink-0">
+        <svg class="w-8 h-8 text-amber-500" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+        </svg>
+      </div>
+
+      <!-- Routed Agent -->
+      <% if routes[:routed_execution] %>
+        <% routed = routes[:routed_execution] %>
+        <%= link_to ruby_llm_agents.execution_path(routed[:id]), class: "flex-shrink-0 text-center group" do %>
+          <% status_ring = case routed[:status]
+               when "success" then "ring-green-400 dark:ring-green-500"
+               when "error" then "ring-red-400 dark:ring-red-500"
+               when "timeout" then "ring-orange-400 dark:ring-orange-500"
+               when "running" then "ring-blue-400 dark:ring-blue-500 animate-pulse"
+               else "ring-gray-300 dark:ring-gray-600"
+             end %>
+          <% status_bg = case routed[:status]
+               when "success" then "bg-green-100 dark:bg-green-900/50"
+               when "error" then "bg-red-100 dark:bg-red-900/50"
+               when "timeout" then "bg-orange-100 dark:bg-orange-900/50"
+               when "running" then "bg-blue-100 dark:bg-blue-900/50"
+               else "bg-gray-100 dark:bg-gray-700"
+             end %>
+
+          <div class="w-20 h-20 rounded-lg <%= status_bg %> flex items-center justify-center mx-auto mb-2 ring-2 <%= status_ring %> group-hover:shadow-md transition-shadow">
+            <% case routed[:status]
+               when "success" %>
+              <svg class="w-8 h-8 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+              </svg>
+            <% when "error" %>
+              <svg class="w-8 h-8 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+              </svg>
+            <% when "timeout" %>
+              <svg class="w-8 h-8 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+              </svg>
+            <% when "running" %>
+              <svg class="w-8 h-8 text-blue-600 dark:text-blue-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            <% else %>
+              <svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            <% end %>
+          </div>
+          <span class="text-xs font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+            <%= execution.routed_to %>
+          </span>
+        <% end %>
+      <% else %>
+        <div class="flex-shrink-0 text-center">
+          <div class="w-20 h-20 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-2 ring-2 ring-gray-300 dark:ring-gray-600">
+            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <span class="text-xs text-gray-500 dark:text-gray-400"><%= execution.routed_to %></span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Routed Execution Details -->
+  <% if routes[:routed_execution] %>
+    <% routed = routes[:routed_execution] %>
+    <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+      <h5 class="text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-3">Routed Execution</h5>
+
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <%= link_to ruby_llm_agents.execution_path(routed[:id]), class: "text-blue-600 dark:text-blue-400 hover:underline font-medium" do %>
+            <%= routed[:agent_type].gsub(/Agent$/, "") %>
+            <span class="text-gray-400 dark:text-gray-500 font-normal">#<%= routed[:id] %></span>
+          <% end %>
+          <%= render "ruby_llm/agents/shared/status_badge", status: routed[:status], size: :sm %>
+        </div>
+
+        <div class="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+          <span><%= routed[:duration_ms] ? "#{routed[:duration_ms]}ms" : "-" %></span>
+          <span>$<%= number_with_precision(routed[:total_cost] || 0, precision: 4) %></span>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
