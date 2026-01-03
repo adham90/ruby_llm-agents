@@ -11,5 +11,15 @@
 # rspec failure tracking
 .rspec_status
 
-# Test app for generator testing (regenerated via bin/setup_test_app)
-/test_app/
+# Test app generated files (not committed)
+/test_app/Gemfile.lock
+/test_app/db/*.sqlite3
+/test_app/db/*.sqlite3-*
+/test_app/log/*
+!/test_app/log/.keep
+/test_app/storage/*
+!/test_app/storage/.keep
+/test_app/tmp/*
+!/test_app/tmp/.keep
+/test_app/config/master.key
+/test_app/config/credentials.yml.enc
