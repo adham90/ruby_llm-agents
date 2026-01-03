@@ -72,7 +72,7 @@ class CreateRubyLLMAgentsExecutions < ActiveRecord::Migration<%= migration_versi
       t.integer :tool_calls_count, null: false, default: 0
 
       # Workflow orchestration
-      t.uuid :workflow_id
+      t.string :workflow_id
       t.string :workflow_type
       t.string :workflow_step
       t.string :routed_to

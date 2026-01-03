@@ -20,14 +20,33 @@ module RubyLLM
       #
       # Uses AgentRegistry to discover agents from both file system
       # and execution history, ensuring deleted agents with history
-      # are still visible.
+      # are still visible. Separates agents and workflows for tabbed display.
       #
       # @return [void]
       def index
-        @agents = AgentRegistry.all_with_details
+        all_items = AgentRegistry.all_with_details
+
+        # Separate agents and workflows
+        @agents = all_items.reject { |a| a[:is_workflow] }
+        @workflows = all_items.select { |a| a[:is_workflow] }
+
+        # Group workflows by type for sub-tabs
+        @workflows_by_type = {
+          pipeline: @workflows.select { |w| w[:workflow_type] == "pipeline" },
+          parallel: @workflows.select { |w| w[:workflow_type] == "parallel" },
+          router: @workflows.select { |w| w[:workflow_type] == "router" }
+        }
+
+        # Counts for tab badges
+        @agent_count = @agents.size
+        @workflow_count = @workflows.size
       rescue StandardError => e
         Rails.logger.error("[RubyLLM::Agents] Error loading agents: #{e.message}")
         @agents = []
+        @workflows = []
+        @workflows_by_type = { pipeline: [], parallel: [], router: [] }
+        @agent_count = 0
+        @workflow_count = 0
         flash.now[:alert] = "Error loading agents list"
       end
 

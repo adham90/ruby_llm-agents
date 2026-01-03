@@ -16,7 +16,7 @@ class AddWorkflowToRubyLLMAgentsExecutions < ActiveRecord::Migration<%= migratio
   def change
     # Unique identifier for the workflow execution
     # All steps/branches share the same workflow_id
-    add_column :ruby_llm_agents_executions, :workflow_id, :uuid
+    add_column :ruby_llm_agents_executions, :workflow_id, :string
 
     # Type of workflow: "pipeline", "parallel", "router", or nil for regular agents
     add_column :ruby_llm_agents_executions, :workflow_type, :string

@@ -1,46 +1,112 @@
-<div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 h-full">
+<div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 h-full" x-data="{ activeTab: 'agents' }">
   <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-    <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Agents</h3>
+    <div class="flex items-center justify-between">
+      <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Performance</h3>
+      <!-- Tab Buttons -->
+      <div class="flex space-x-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
+        <button type="button" @click="activeTab = 'agents'"
+                :class="activeTab === 'agents' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'hover:bg-gray-50 dark:hover:bg-gray-600'"
+                class="px-3 py-1 text-xs font-medium rounded-md transition-colors text-gray-700 dark:text-gray-200">
+          Agents
+        </button>
+        <button type="button" @click="activeTab = 'workflows'"
+                :class="activeTab === 'workflows' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'hover:bg-gray-50 dark:hover:bg-gray-600'"
+                class="px-3 py-1 text-xs font-medium rounded-md transition-colors text-gray-700 dark:text-gray-200">
+          Workflows
+        </button>
+      </div>
+    </div>
   </div>
 
-  <% if agent_stats.any? %>
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-            <th class="px-4 py-2">Agent</th>
-            <th class="px-4 py-2 text-right">Runs</th>
-            <th class="px-4 py-2 text-right">Cost</th>
-            <th class="px-4 py-2 text-right">Success</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-          <% agent_stats.first(5).each do |agent| %>
-            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-              <td class="px-4 py-2">
-                <span class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate block max-w-[120px]" title="<%= agent[:agent_type] %>">
-                  <%= agent[:agent_type].to_s.demodulize %>
-                </span>
-              </td>
-              <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
-                <%= number_with_delimiter(agent[:executions]) %>
-              </td>
-              <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
-                $<%= number_with_precision(agent[:total_cost], precision: 2) %>
-              </td>
-              <td class="px-4 py-2 text-right">
-                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium <%= agent[:success_rate] >= 95 ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : agent[:success_rate] >= 80 ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300' : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300' %>">
-                  <%= agent[:success_rate].round %>%
-                </span>
-              </td>
+  <!-- Agents Tab -->
+  <div x-show="activeTab === 'agents'">
+    <% if agent_stats&.any? %>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th class="px-4 py-2">Agent</th>
+              <th class="px-4 py-2 text-right">Runs</th>
+              <th class="px-4 py-2 text-right">Cost</th>
+              <th class="px-4 py-2 text-right">Success</th>
             </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-  <% else %>
-    <div class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-      <p class="text-sm">No agent data yet</p>
-    </div>
-  <% end %>
+          </thead>
+          <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+            <% agent_stats.first(5).each do |agent| %>
+              <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <td class="px-4 py-2">
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate block max-w-[120px]" title="<%= agent[:agent_type] %>">
+                    <%= agent[:agent_type].to_s.demodulize %>
+                  </span>
+                </td>
+                <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
+                  <%= number_with_delimiter(agent[:executions]) %>
+                </td>
+                <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
+                  $<%= number_with_precision(agent[:total_cost], precision: 2) %>
+                </td>
+                <td class="px-4 py-2 text-right">
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium <%= agent[:success_rate] >= 95 ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : agent[:success_rate] >= 80 ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300' : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300' %>">
+                    <%= agent[:success_rate].round %>%
+                  </span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+        <p class="text-sm">No agent data yet</p>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Workflows Tab -->
+  <div x-show="activeTab === 'workflows'" x-cloak>
+    <% if @workflow_stats&.any? %>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th class="px-4 py-2">Workflow</th>
+              <th class="px-4 py-2">Type</th>
+              <th class="px-4 py-2 text-right">Runs</th>
+              <th class="px-4 py-2 text-right">Cost</th>
+              <th class="px-4 py-2 text-right">Success</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+            <% @workflow_stats.first(5).each do |workflow| %>
+              <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <td class="px-4 py-2">
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate block max-w-[100px]" title="<%= workflow[:agent_type] %>">
+                    <%= workflow[:agent_type].to_s.demodulize.gsub(/Workflow$|Pipeline$|Parallel$|Router$/, '') %>
+                  </span>
+                </td>
+                <td class="px-4 py-2">
+                  <%= render "ruby_llm/agents/shared/workflow_type_badge", workflow_type: workflow[:workflow_type], size: :xs, show_label: false %>
+                </td>
+                <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
+                  <%= number_with_delimiter(workflow[:executions]) %>
+                </td>
+                <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
+                  $<%= number_with_precision(workflow[:total_cost], precision: 2) %>
+                </td>
+                <td class="px-4 py-2 text-right">
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium <%= workflow[:success_rate] >= 95 ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : workflow[:success_rate] >= 80 ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300' : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300' %>">
+                    <%= workflow[:success_rate].round %>%
+                  </span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+        <p class="text-sm">No workflow data yet</p>
+      </div>
+    <% end %>
+  </div>
 </div>

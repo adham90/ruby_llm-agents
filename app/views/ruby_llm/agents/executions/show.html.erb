@@ -224,13 +224,15 @@
         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300">
           <span class="text-base">⑂</span> Router Workflow
         </span>
-      <% elsif @execution.workflow_step.present? %>
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
-          </svg>
-          Workflow Step
-        </span>
+      <% else %>
+        <% if @execution.workflow_step.present? %>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+            </svg>
+            Workflow Step
+          </span>
+        <% end %>
       <% end %>
       <% if @execution.workflow_id.present? %>
         <span class="text-xs text-gray-400 dark:text-gray-500 font-mono" title="Workflow ID: <%= @execution.workflow_id %>">
@@ -255,7 +257,17 @@
       <% end %>
 
       <% if @execution.classification_result.present? %>
-        <% classification = @execution.classification_result.is_a?(String) ? JSON.parse(@execution.classification_result) rescue {} : @execution.classification_result %>
+        <%
+          classification = if @execution.classification_result.is_a?(String)
+            begin
+              JSON.parse(@execution.classification_result)
+            rescue
+              {}
+            end
+          else
+            @execution.classification_result || {}
+          end
+        %>
         <% if classification["method"].present? %>
           <div>
             <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Classification</p>
@@ -375,7 +387,7 @@
       <div>
         <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Attempts</h3>
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
-          <%= @execution.attempts_count || @execution.attempts.size %> attempt(s)
+          <%= @execution.respond_to?(:attempts_count) && @execution.attempts_count ? @execution.attempts_count : @execution.attempts.size %> attempt(s)
           <% if @execution.used_fallback? %>
             · <span class="text-amber-500">Used fallback model</span>
           <% end %>
@@ -384,7 +396,7 @@
           <% end %>
         </p>
       </div>
-      <% if @execution.chosen_model_id.present? && @execution.chosen_model_id != @execution.model_id %>
+      <% if @execution.used_fallback? %>
         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300">
           Fallback: <%= @execution.chosen_model_id %>
         </span>

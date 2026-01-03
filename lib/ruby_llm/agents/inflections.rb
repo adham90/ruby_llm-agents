@@ -12,9 +12,23 @@
 # @api private
 
 # Register "LLM" as an acronym for ActiveSupport inflector
+# and add custom underscore rule for RubyLLM -> ruby_llm
 ActiveSupport::Inflector.inflections(:en) do |inflect|
   inflect.acronym "LLM"
+  # Ensure RubyLLM underscores correctly to ruby_llm (not rubyllm)
+  inflect.uncountable "ruby_llm"
 end
+
+# Override underscore behavior for RubyLLM specifically
+# This ensures view paths resolve correctly (ruby_llm/agents/... not rubyllm/agents/...)
+module RubyLLMInflectionFix
+  def underscore
+    result = super
+    result.gsub("rubyllm", "ruby_llm")
+  end
+end
+
+String.prepend(RubyLLMInflectionFix)
 
 # Configure Zeitwerk to map directory names correctly
 ActiveSupport.on_load(:before_configuration) do

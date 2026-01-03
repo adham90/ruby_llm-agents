@@ -95,6 +95,28 @@ module RubyLLM
           end
         end
 
+        # Returns only regular agents (non-workflows)
+        #
+        # @return [Array<Hash>] Agent info hashes for non-workflow agents
+        def agents_only
+          all_with_details.reject { |a| a[:is_workflow] }
+        end
+
+        # Returns only workflows
+        #
+        # @return [Array<Hash>] Agent info hashes for workflows only
+        def workflows_only
+          all_with_details.select { |a| a[:is_workflow] }
+        end
+
+        # Returns workflows filtered by type
+        #
+        # @param type [String, Symbol] The workflow type (pipeline, parallel, router)
+        # @return [Array<Hash>] Filtered workflow info hashes
+        def workflows_by_type(type)
+          workflows_only.select { |w| w[:workflow_type] == type.to_s }
+        end
+
         # Builds detailed info hash for an agent
         #
         # @param agent_type [String] The agent class name
@@ -103,17 +125,27 @@ module RubyLLM
           agent_class = find(agent_type)
           stats = fetch_stats(agent_type)
 
+          # Check if this is a workflow class vs a regular agent
+          is_workflow = agent_class&.ancestors&.any? { |a| a.name&.include?("Workflow") }
+
+          # Determine specific workflow type and children
+          workflow_type = is_workflow ? detect_workflow_type(agent_class) : nil
+          workflow_children = is_workflow ? extract_workflow_children(agent_class) : []
+
           {
             name: agent_type,
             class: agent_class,
             active: agent_class.present?,
-            version: agent_class&.version || "N/A",
-            model: agent_class&.model || "N/A",
-            temperature: agent_class&.temperature,
-            timeout: agent_class&.timeout,
-            cache_enabled: agent_class&.cache_enabled? || false,
-            cache_ttl: agent_class&.cache_ttl,
-            params: agent_class&.params || {},
+            is_workflow: is_workflow,
+            workflow_type: workflow_type,
+            workflow_children: workflow_children,
+            version: safe_call(agent_class, :version) || "N/A",
+            model: safe_call(agent_class, :model) || (is_workflow ? "workflow" : "N/A"),
+            temperature: safe_call(agent_class, :temperature),
+            timeout: safe_call(agent_class, :timeout),
+            cache_enabled: safe_call(agent_class, :cache_enabled?) || false,
+            cache_ttl: safe_call(agent_class, :cache_ttl),
+            params: safe_call(agent_class, :params) || {},
             execution_count: stats[:count],
             total_cost: stats[:total_cost],
             total_tokens: stats[:total_tokens],
@@ -122,6 +154,20 @@ module RubyLLM
             error_rate: stats[:error_rate],
             last_executed: last_execution_time(agent_type)
           }
+        end
+
+        # Safely calls a method on a class, returning nil if method doesn't exist
+        #
+        # @param klass [Class, nil] The class to call the method on
+        # @param method_name [Symbol] The method to call
+        # @return [Object, nil] The result or nil
+        def safe_call(klass, method_name)
+          return nil unless klass
+          return nil unless klass.respond_to?(method_name)
+
+          klass.public_send(method_name)
+        rescue StandardError
+          nil
         end
 
         # Fetches statistics for an agent
@@ -142,6 +188,71 @@ module RubyLLM
           Execution.by_agent(agent_type).order(created_at: :desc).first&.created_at
         rescue StandardError
           nil
+        end
+
+        # Detects the specific workflow type from class hierarchy
+        #
+        # @param agent_class [Class, nil] The agent class
+        # @return [String, nil] "pipeline", "parallel", "router", or nil
+        def detect_workflow_type(agent_class)
+          return nil unless agent_class
+
+          ancestors = agent_class.ancestors.map { |a| a.name.to_s }
+
+          if ancestors.include?("RubyLLM::Agents::Workflow::Pipeline")
+            "pipeline"
+          elsif ancestors.include?("RubyLLM::Agents::Workflow::Parallel")
+            "parallel"
+          elsif ancestors.include?("RubyLLM::Agents::Workflow::Router")
+            "router"
+          end
+        end
+
+        # Extracts child agents from workflow DSL configuration
+        #
+        # @param agent_class [Class, nil] The workflow class
+        # @return [Array<Hash>] Array of child info hashes with :name, :agent, :type, :optional keys
+        def extract_workflow_children(agent_class)
+          return [] unless agent_class
+
+          children = []
+
+          if agent_class.respond_to?(:steps) && agent_class.steps.any?
+            # Pipeline workflow - extract steps
+            agent_class.steps.each do |name, config|
+              children << {
+                name: name,
+                agent: config[:agent]&.name,
+                type: "step",
+                optional: config[:continue_on_error] || false
+              }
+            end
+          elsif agent_class.respond_to?(:branches) && agent_class.branches.any?
+            # Parallel workflow - extract branches
+            agent_class.branches.each do |name, config|
+              children << {
+                name: name,
+                agent: config[:agent]&.name,
+                type: "branch",
+                optional: config[:optional] || false
+              }
+            end
+          elsif agent_class.respond_to?(:routes) && agent_class.routes.any?
+            # Router workflow - extract routes
+            agent_class.routes.each do |name, config|
+              children << {
+                name: name,
+                agent: config[:agent]&.name,
+                type: "route",
+                description: config[:description]
+              }
+            end
+          end
+
+          children
+        rescue StandardError => e
+          Rails.logger.error("[RubyLLM::Agents] Error extracting workflow children: #{e.message}")
+          []
         end
       end
     end

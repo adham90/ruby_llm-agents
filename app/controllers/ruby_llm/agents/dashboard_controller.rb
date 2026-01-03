@@ -53,16 +53,22 @@ module RubyLLM
 
       # Builds per-agent comparison statistics
       #
-      # @return [Array<Hash>] Array of agent stats sorted by cost descending
+      # Sets @agent_stats (regular agents) and @workflow_stats (workflows)
+      # @return [Array<Hash>] Array of all stats sorted by cost descending
       def build_agent_comparison
         scope = Execution.last_n_days(@days)
         agent_types = scope.distinct.pluck(:agent_type)
 
-        agent_types.map do |agent_type|
+        all_stats = agent_types.map do |agent_type|
           agent_scope = scope.where(agent_type: agent_type)
           count = agent_scope.count
           total_cost = agent_scope.sum(:total_cost) || 0
           successful = agent_scope.successful.count
+
+          # Detect if this is a workflow
+          agent_class = AgentRegistry.find(agent_type)
+          is_workflow = agent_class&.ancestors&.any? { |a| a.name&.include?("Workflow") }
+          workflow_type = is_workflow ? detect_workflow_type(agent_class) : nil
 
           {
             agent_type: agent_type,
@@ -70,9 +76,33 @@ module RubyLLM
             total_cost: total_cost,
             avg_cost: count > 0 ? (total_cost / count).round(6) : 0,
             avg_duration_ms: agent_scope.average(:duration_ms)&.round || 0,
-            success_rate: count > 0 ? (successful.to_f / count * 100).round(1) : 0
+            success_rate: count > 0 ? (successful.to_f / count * 100).round(1) : 0,
+            is_workflow: is_workflow,
+            workflow_type: workflow_type
           }
         end.sort_by { |a| -(a[:total_cost] || 0) }
+
+        # Split into agents and workflows for tabbed display
+        @workflow_stats = all_stats.select { |a| a[:is_workflow] }
+        all_stats.reject { |a| a[:is_workflow] }
+      end
+
+      # Detects workflow type from class hierarchy
+      #
+      # @param agent_class [Class] The agent class
+      # @return [String, nil] "pipeline", "parallel", "router", or nil
+      def detect_workflow_type(agent_class)
+        return nil unless agent_class
+
+        ancestors = agent_class.ancestors.map { |a| a.name.to_s }
+
+        if ancestors.include?("RubyLLM::Agents::Workflow::Pipeline")
+          "pipeline"
+        elsif ancestors.include?("RubyLLM::Agents::Workflow::Parallel")
+          "parallel"
+        elsif ancestors.include?("RubyLLM::Agents::Workflow::Router")
+          "router"
+        end
       end
 
       # Builds top errors list

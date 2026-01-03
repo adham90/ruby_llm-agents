@@ -1,0 +1,23 @@
+<%
+  type = local_assigns[:type] || "agents"
+  is_workflow = type == "workflows"
+%>
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
+  <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <% if is_workflow %>
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm0 8a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zm12 0a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
+    <% else %>
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+    <% end %>
+  </svg>
+  <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+    No <%= type %> found
+  </h3>
+  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+    <% if is_workflow %>
+      Create a workflow by subclassing <code class="bg-gray-100 dark:bg-gray-700 dark:text-gray-200 px-1 rounded">Pipeline</code>, <code class="bg-gray-100 dark:bg-gray-700 dark:text-gray-200 px-1 rounded">Parallel</code>, or <code class="bg-gray-100 dark:bg-gray-700 dark:text-gray-200 px-1 rounded">Router</code>
+    <% else %>
+      Create an agent by running <code class="bg-gray-100 dark:bg-gray-700 dark:text-gray-200 px-1 rounded">rails g ruby_llm_agents:agent YourAgentName</code>
+    <% end %>
+  </p>
+</div>

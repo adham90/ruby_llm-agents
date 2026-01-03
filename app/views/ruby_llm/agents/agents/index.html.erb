@@ -1,20 +1,93 @@
 <div class="mb-6">
-  <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Agents</h1>
-  <p class="text-gray-500 dark:text-gray-400 mt-1">All available agents and their execution statistics</p>
+  <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Agents & Workflows</h1>
+  <p class="text-gray-500 dark:text-gray-400 mt-1">All available agents and workflows with execution statistics</p>
 </div>
 
-<% if @agents.empty? %>
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
-    <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-    </svg>
-    <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No agents found</h3>
-    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Create an agent by running <code class="bg-gray-100 dark:bg-gray-700 dark:text-gray-200 px-1 rounded">rails g ruby_llm_agents:agent YourAgentName</code></p>
+<div x-data="{ activeTab: 'agents', activeSubTab: null }">
+  <!-- Tab Navigation -->
+  <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
+    <nav class="-mb-px flex space-x-6" aria-label="Tabs">
+      <!-- Agents Tab -->
+      <button type="button" @click="activeTab = 'agents'; activeSubTab = null"
+              :class="activeTab === 'agents' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300'"
+              class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+        Agents
+        <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium"
+              :class="activeTab === 'agents' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'">
+          <%= @agent_count %>
+        </span>
+      </button>
+
+      <!-- Workflows Tab -->
+      <button type="button" @click="activeTab = 'workflows'; activeSubTab = null"
+              :class="activeTab === 'workflows' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300'"
+              class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm0 8a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zm12 0a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
+        </svg>
+        Workflows
+        <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium"
+              :class="activeTab === 'workflows' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'">
+          <%= @workflow_count %>
+        </span>
+      </button>
+    </nav>
   </div>
-<% else %>
-  <div class="space-y-3 sm:space-y-4">
-    <% @agents.each do |agent| %>
-      <%= render partial: "ruby_llm/agents/agents/agent", locals: { agent: agent } %>
+
+  <!-- Workflow Sub-tabs -->
+  <div x-show="activeTab === 'workflows'" x-cloak class="mb-4">
+    <div class="flex flex-wrap gap-2">
+      <button type="button" @click="activeSubTab = null"
+              :class="activeSubTab === null ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
+              class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
+        All (<%= @workflow_count %>)
+      </button>
+      <button type="button" @click="activeSubTab = 'pipeline'"
+              :class="activeSubTab === 'pipeline' ? 'bg-indigo-600 text-white' : 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-800'"
+              class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors inline-flex items-center gap-1.5">
+        <span aria-hidden="true">-></span> Pipeline (<%= @workflows_by_type[:pipeline].size %>)
+      </button>
+      <button type="button" @click="activeSubTab = 'parallel'"
+              :class="activeSubTab === 'parallel' ? 'bg-cyan-600 text-white' : 'bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-200 dark:hover:bg-cyan-800'"
+              class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors inline-flex items-center gap-1.5">
+        <span aria-hidden="true">//</span> Parallel (<%= @workflows_by_type[:parallel].size %>)
+      </button>
+      <button type="button" @click="activeSubTab = 'router'"
+              :class="activeSubTab === 'router' ? 'bg-amber-600 text-white' : 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800'"
+              class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors inline-flex items-center gap-1.5">
+        <span aria-hidden="true">&lt;&gt;</span> Router (<%= @workflows_by_type[:router].size %>)
+      </button>
+    </div>
+  </div>
+
+  <!-- Agents Content -->
+  <div x-show="activeTab === 'agents'">
+    <% if @agents.empty? %>
+      <%= render "ruby_llm/agents/agents/empty_state", type: "agents" %>
+    <% else %>
+      <div class="space-y-3 sm:space-y-4">
+        <% @agents.each do |agent| %>
+          <%= render partial: "ruby_llm/agents/agents/agent", locals: { agent: agent } %>
+        <% end %>
+      </div>
     <% end %>
   </div>
-<% end %>
+
+  <!-- Workflows Content -->
+  <div x-show="activeTab === 'workflows'" x-cloak>
+    <% if @workflows.empty? %>
+      <%= render "ruby_llm/agents/agents/empty_state", type: "workflows" %>
+    <% else %>
+      <div class="space-y-3 sm:space-y-4">
+        <% @workflows.each do |workflow| %>
+          <div x-show="activeSubTab === null || activeSubTab === '<%= workflow[:workflow_type] %>'">
+            <%= render partial: "ruby_llm/agents/agents/workflow", locals: { workflow: workflow } %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

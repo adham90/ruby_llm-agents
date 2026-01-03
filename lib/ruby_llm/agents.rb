@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "csv"
+require "ruby_llm"
 
 require_relative "agents/version"
 require_relative "agents/configuration"

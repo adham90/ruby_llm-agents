@@ -1,0 +1,61 @@
+<%
+  # Workflow type badge with icon and color coding
+  # Usage: render "ruby_llm/agents/shared/workflow_type_badge", workflow_type: "pipeline"
+  # Options:
+  #   size: :xs, :sm (default), :md
+  #   show_label: true (default) or false for icon-only mode
+
+  workflow_type = local_assigns[:workflow_type]
+  size = local_assigns[:size] || :sm
+  show_label = local_assigns.fetch(:show_label, true)
+
+  config = case workflow_type.to_s
+    when "pipeline"
+      {
+        icon: "arrow-right",
+        label: "Pipeline",
+        bg: "bg-indigo-100 dark:bg-indigo-900/50",
+        text: "text-indigo-700 dark:text-indigo-300",
+        icon_char: "→"
+      }
+    when "parallel"
+      {
+        icon: "parallel",
+        label: "Parallel",
+        bg: "bg-cyan-100 dark:bg-cyan-900/50",
+        text: "text-cyan-700 dark:text-cyan-300",
+        icon_char: "⫿"
+      }
+    when "router"
+      {
+        icon: "router",
+        label: "Router",
+        bg: "bg-amber-100 dark:bg-amber-900/50",
+        text: "text-amber-700 dark:text-amber-300",
+        icon_char: "⌂"
+      }
+    else
+      {
+        icon: "workflow",
+        label: "Workflow",
+        bg: "bg-gray-100 dark:bg-gray-700",
+        text: "text-gray-700 dark:text-gray-300",
+        icon_char: "⚙"
+      }
+    end
+
+  size_classes = case size
+    when :xs
+      { badge: "px-1.5 py-0.5", icon: "text-[10px]", text: "text-[10px]" }
+    when :md
+      { badge: "px-2.5 py-1", icon: "text-sm", text: "text-sm" }
+    else # :sm
+      { badge: "px-2 py-0.5", icon: "text-xs", text: "text-xs" }
+    end
+%>
+<span class="inline-flex items-center gap-1 rounded-md font-medium <%= config[:bg] %> <%= config[:text] %> <%= size_classes[:badge] %>">
+  <span class="<%= size_classes[:icon] %>" aria-hidden="true"><%= config[:icon_char] %></span>
+  <% if show_label %>
+    <span class="<%= size_classes[:text] %>"><%= config[:label] %></span>
+  <% end %>
+</span>

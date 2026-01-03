@@ -282,7 +282,38 @@ module RubyLLM
           end
         end
 
+        # Apply execution type tab filter (agents vs workflows)
+        scope = apply_execution_type_filter(scope)
+
         scope
+      end
+
+      # Applies execution type tab filter (all, agents, workflows)
+      #
+      # @param scope [ActiveRecord::Relation] The current scope
+      # @return [ActiveRecord::Relation] Filtered scope
+      def apply_execution_type_filter(scope)
+        return scope unless Execution.column_names.include?("workflow_type")
+
+        execution_type = params[:execution_type]
+        case execution_type
+        when "agents"
+          # Only show executions where workflow_type is null/empty (regular agents)
+          scope.where(workflow_type: [nil, ""])
+        when "workflows"
+          # Only show executions with a workflow_type
+          workflow_scope = scope.where.not(workflow_type: [nil, ""])
+
+          # Apply workflow type sub-filter if specified
+          workflow_type_tab = params[:workflow_type_tab]
+          if workflow_type_tab.present? && %w[pipeline parallel router].include?(workflow_type_tab)
+            workflow_scope = workflow_scope.where(workflow_type: workflow_type_tab)
+          end
+
+          workflow_scope
+        else
+          scope
+        end
       end
     end
   end

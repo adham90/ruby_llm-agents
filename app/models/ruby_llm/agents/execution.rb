@@ -123,13 +123,20 @@ module RubyLLM
       #
       # @return [Boolean] true if more than one attempt was made
       def has_retries?
-        (attempts_count || 0) > 1
+        count = if self.class.column_names.include?("attempts_count")
+                  attempts_count
+                elsif self.class.column_names.include?("attempts")
+                  attempts&.size
+                end
+        (count || 0) > 1
       end
 
       # Returns whether this execution used fallback models
       #
       # @return [Boolean] true if a different model than requested succeeded
       def used_fallback?
+        return false unless self.class.column_names.include?("chosen_model_id")
+
         chosen_model_id.present? && chosen_model_id != model_id
       end
 

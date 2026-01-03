@@ -122,29 +122,346 @@ if [ "$AUTO_INSTALL" = true ]; then
   echo -e "${GREEN}Running install generator (--auto mode)...${NC}"
   bin/rails generate ruby_llm_agents:install
   bin/rails db:migrate
+
+  echo ""
+  echo -e "${GREEN}Creating example workflows and agents...${NC}"
+
+  # Create workflows directory
+  mkdir -p app/workflows
+
+  # Create Pipeline workflow example
+  cat > app/workflows/content_pipeline.rb << 'PIPELINE_EOF'
+# frozen_string_literal: true
+
+# Example Pipeline Workflow
+# Processes content through sequential steps: extract -> classify -> format
+#
+# Usage:
+#   result = ContentPipeline.call(text: "Your content here")
+#   result.steps[:extract].content   # Extracted data
+#   result.steps[:classify].content  # Classification result
+#   result.total_cost                # Total cost of all steps
+#
+class ContentPipeline < RubyLLM::Agents::Workflow::Pipeline
+  version "1.0"
+  timeout 60.seconds
+  max_cost 1.00
+
+  step :extract,  agent: ExtractorAgent
+  step :classify, agent: ClassifierAgent
+  step :format,   agent: FormatterAgent, optional: true
+
+  # Transform input for the classify step
+  def before_classify(context)
+    { text: context[:extract].content.to_s }
+  end
+
+  # Transform input for the format step
+  def before_format(context)
+    {
+      text: context[:extract].content.to_s,
+      category: context[:classify].content
+    }
+  end
+end
+PIPELINE_EOF
+
+  # Create Parallel workflow example
+  cat > app/workflows/content_analyzer.rb << 'PARALLEL_EOF'
+# frozen_string_literal: true
+
+# Example Parallel Workflow
+# Analyzes content from multiple perspectives concurrently
+#
+# Usage:
+#   result = ContentAnalyzer.call(text: "Your content here")
+#   result.branches[:sentiment].content  # Sentiment analysis
+#   result.branches[:keywords].content   # Keyword extraction
+#   result.branches[:summary].content    # Summary
+#   result.total_cost                    # Combined cost
+#
+class ContentAnalyzer < RubyLLM::Agents::Workflow::Parallel
+  version "1.0"
+  fail_fast false  # Continue even if a branch fails
+
+  branch :sentiment, agent: SentimentAgent
+  branch :keywords,  agent: KeywordAgent
+  branch :summary,   agent: SummaryAgent
+
+  # Custom aggregation of results
+  def aggregate(results)
+    {
+      sentiment: results[:sentiment]&.content,
+      keywords: results[:keywords]&.content,
+      summary: results[:summary]&.content,
+      analyzed_at: Time.current
+    }
+  end
+end
+PARALLEL_EOF
+
+  # Create Router workflow example
+  cat > app/workflows/support_router.rb << 'ROUTER_EOF'
+# frozen_string_literal: true
+
+# Example Router Workflow
+# Routes customer messages to specialized agents based on intent
+#
+# Usage:
+#   result = SupportRouter.call(message: "I was charged twice")
+#   result.routed_to         # :billing, :technical, or :default
+#   result.classification    # Classification details
+#   result.content           # Response from routed agent
+#
+class SupportRouter < RubyLLM::Agents::Workflow::Router
+  version "1.0"
+  classifier_model "gpt-4o-mini"
+  classifier_temperature 0.0
+
+  route :billing,   to: BillingAgent,   description: "Billing questions, charges, refunds, invoices"
+  route :technical, to: TechnicalAgent, description: "Technical issues, bugs, errors, crashes"
+  route :default,   to: GeneralAgent
+
+  # Transform input before routing to agent
+  def before_route(input, chosen_route)
+    input.merge(
+      routed_at: Time.current,
+      route_context: chosen_route
+    )
+  end
+end
+ROUTER_EOF
+
+  # Create supporting agents for Pipeline workflow
+  cat > app/agents/extractor_agent.rb << 'AGENT_EOF'
+# frozen_string_literal: true
+
+class ExtractorAgent < ApplicationAgent
+  model "gpt-4o-mini"
+  temperature 0.0
+
+  param :text, required: true
+
+  def system_prompt
+    "You are a data extraction assistant. Extract key information from the given text."
+  end
+
+  def user_prompt
+    "Extract the main points and entities from this text:\n\n#{text}"
+  end
+end
+AGENT_EOF
+
+  cat > app/agents/classifier_agent.rb << 'AGENT_EOF'
+# frozen_string_literal: true
+
+class ClassifierAgent < ApplicationAgent
+  model "gpt-4o-mini"
+  temperature 0.0
+
+  param :text, required: true
+
+  def system_prompt
+    "You are a content classifier. Classify content into categories."
+  end
+
+  def user_prompt
+    "Classify this content into one of: article, news, review, tutorial, other.\n\n#{text}"
+  end
+end
+AGENT_EOF
+
+  cat > app/agents/formatter_agent.rb << 'AGENT_EOF'
+# frozen_string_literal: true
+
+class FormatterAgent < ApplicationAgent
+  model "gpt-4o-mini"
+  temperature 0.3
+
+  param :text, required: true
+  param :category
+
+  def system_prompt
+    "You are a content formatter. Format content in a clean, readable way."
+  end
+
+  def user_prompt
+    "Format this #{category || 'content'} for display:\n\n#{text}"
+  end
+end
+AGENT_EOF
+
+  # Create supporting agents for Parallel workflow
+  cat > app/agents/sentiment_agent.rb << 'AGENT_EOF'
+# frozen_string_literal: true
+
+class SentimentAgent < ApplicationAgent
+  model "gpt-4o-mini"
+  temperature 0.0
+
+  param :text, required: true
+
+  def system_prompt
+    "You are a sentiment analysis assistant."
+  end
+
+  def user_prompt
+    "Analyze the sentiment of this text (positive, negative, or neutral):\n\n#{text}"
+  end
+end
+AGENT_EOF
+
+  cat > app/agents/keyword_agent.rb << 'AGENT_EOF'
+# frozen_string_literal: true
+
+class KeywordAgent < ApplicationAgent
+  model "gpt-4o-mini"
+  temperature 0.0
+
+  param :text, required: true
+
+  def system_prompt
+    "You are a keyword extraction assistant."
+  end
+
+  def user_prompt
+    "Extract the top 5 keywords from this text:\n\n#{text}"
+  end
+end
+AGENT_EOF
+
+  cat > app/agents/summary_agent.rb << 'AGENT_EOF'
+# frozen_string_literal: true
+
+class SummaryAgent < ApplicationAgent
+  model "gpt-4o-mini"
+  temperature 0.3
+
+  param :text, required: true
+
+  def system_prompt
+    "You are a summarization assistant."
+  end
+
+  def user_prompt
+    "Summarize this text in 2-3 sentences:\n\n#{text}"
+  end
+end
+AGENT_EOF
+
+  # Create supporting agents for Router workflow
+  cat > app/agents/billing_agent.rb << 'AGENT_EOF'
+# frozen_string_literal: true
+
+class BillingAgent < ApplicationAgent
+  model "gpt-4o"
+  temperature 0.3
+
+  param :message, required: true
+
+  def system_prompt
+    "You are a billing support specialist. Help customers with billing questions, charges, refunds, and invoice inquiries."
+  end
+
+  def user_prompt
+    message
+  end
+end
+AGENT_EOF
+
+  cat > app/agents/technical_agent.rb << 'AGENT_EOF'
+# frozen_string_literal: true
+
+class TechnicalAgent < ApplicationAgent
+  model "gpt-4o"
+  temperature 0.3
+
+  param :message, required: true
+
+  def system_prompt
+    "You are a technical support specialist. Help customers with technical issues, bugs, errors, and troubleshooting."
+  end
+
+  def user_prompt
+    message
+  end
+end
+AGENT_EOF
+
+  cat > app/agents/general_agent.rb << 'AGENT_EOF'
+# frozen_string_literal: true
+
+class GeneralAgent < ApplicationAgent
+  model "gpt-4o-mini"
+  temperature 0.5
+
+  param :message, required: true
+
+  def system_prompt
+    "You are a helpful customer support assistant. Help customers with general inquiries."
+  end
+
+  def user_prompt
+    message
+  end
+end
+AGENT_EOF
+
+  echo -e "${GREEN}Created example workflows in app/workflows/:${NC}"
+  echo "  - content_pipeline.rb  (Pipeline example)"
+  echo "  - content_analyzer.rb  (Parallel example)"
+  echo "  - support_router.rb    (Router example)"
+  echo ""
+  echo -e "${GREEN}Created supporting agents in app/agents/:${NC}"
+  echo "  - extractor_agent.rb, classifier_agent.rb, formatter_agent.rb"
+  echo "  - sentiment_agent.rb, keyword_agent.rb, summary_agent.rb"
+  echo "  - billing_agent.rb, technical_agent.rb, general_agent.rb"
 fi
 
 echo ""
 echo -e "${GREEN}=== Setup complete! ===${NC}"
 echo ""
-echo -e "${BLUE}To test generators:${NC}"
-echo ""
-echo "  cd test_app"
-echo ""
-echo "  # Run the install generator"
-echo "  bin/rails generate ruby_llm_agents:install"
-echo ""
-echo "  # Run migrations"
-echo "  bin/rails db:migrate"
-echo ""
-echo "  # Generate an agent"
-echo "  bin/rails generate ruby_llm_agents:agent SearchIntent query:required limit:10"
-echo ""
-echo "  # Test the upgrade generator"
-echo "  bin/rails generate ruby_llm_agents:upgrade"
-echo ""
-echo "  # Start the Rails server to test the dashboard"
-echo "  bin/rails server"
-echo "  # Then visit http://localhost:3000/agents"
-echo ""
+
+if [ "$AUTO_INSTALL" = true ]; then
+  echo -e "${BLUE}Example workflows have been created:${NC}"
+  echo ""
+  echo "  # Test in Rails console"
+  echo "  bin/rails console"
+  echo ""
+  echo "  # Pipeline workflow (sequential steps)"
+  echo "  ContentPipeline.call(text: \"Your content here\")"
+  echo ""
+  echo "  # Parallel workflow (concurrent analysis)"
+  echo "  ContentAnalyzer.call(text: \"Your content here\")"
+  echo ""
+  echo "  # Router workflow (conditional dispatch)"
+  echo "  SupportRouter.call(message: \"I was charged twice\")"
+  echo ""
+  echo "  # Start the Rails server to test the dashboard"
+  echo "  bin/rails server"
+  echo "  # Then visit http://localhost:3000/agents"
+  echo ""
+else
+  echo -e "${BLUE}To test generators:${NC}"
+  echo ""
+  echo "  cd test_app"
+  echo ""
+  echo "  # Run the install generator"
+  echo "  bin/rails generate ruby_llm_agents:install"
+  echo ""
+  echo "  # Run migrations"
+  echo "  bin/rails db:migrate"
+  echo ""
+  echo "  # Generate an agent"
+  echo "  bin/rails generate ruby_llm_agents:agent SearchIntent query:required limit:10"
+  echo ""
+  echo "  # Test the upgrade generator"
+  echo "  bin/rails generate ruby_llm_agents:upgrade"
+  echo ""
+  echo "  # Start the Rails server to test the dashboard"
+  echo "  bin/rails server"
+  echo "  # Then visit http://localhost:3000/agents"
+  echo ""
+fi
+
 echo -e "${BLUE}To reset and start fresh:${NC} bin/reset_test_app"
