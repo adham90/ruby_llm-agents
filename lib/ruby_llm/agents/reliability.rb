@@ -42,21 +42,27 @@ module RubyLLM
       # @example
       #   raise BudgetExceededError.new(:global_daily, 25.0, 27.5)
       #
+      # @example With tenant
+      #   raise BudgetExceededError.new(:global_daily, 25.0, 27.5, tenant_id: "acme")
+      #
       # @api public
       class BudgetExceededError < Error
-        attr_reader :scope, :limit, :current
+        attr_reader :scope, :limit, :current, :agent_type, :tenant_id
 
         # @param scope [Symbol] The budget scope (:global_daily, :global_monthly, :per_agent_daily, etc.)
         # @param limit [Float] The budget limit in USD
         # @param current [Float] The current spend in USD
         # @param agent_type [String, nil] The agent type for per-agent budgets
-        def initialize(scope, limit, current, agent_type: nil)
+        # @param tenant_id [String, nil] The tenant identifier for multi-tenant budgets
+        def initialize(scope, limit, current, agent_type: nil, tenant_id: nil)
           @scope = scope
           @limit = limit
           @current = current
           @agent_type = agent_type
+          @tenant_id = tenant_id
 
           message = "Budget exceeded for #{scope}"
+          message += " (tenant: #{tenant_id})" if tenant_id
           message += " (#{agent_type})" if agent_type
           message += ": limit $#{limit}, current $#{current}"
           super(message)

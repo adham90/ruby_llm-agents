@@ -73,8 +73,9 @@ module RubyLLM
         # Records cost from an attempt to the budget tracker
         #
         # @param attempt_tracker [AttemptTracker] The attempt tracker
+        # @param tenant_id [String, nil] Optional tenant identifier for multi-tenant tracking
         # @return [void]
-        def record_attempt_cost(attempt_tracker)
+        def record_attempt_cost(attempt_tracker, tenant_id: nil)
           successful = attempt_tracker.successful_attempt
           return unless successful
 
@@ -93,7 +94,7 @@ module RubyLLM
           total_cost = (input_tokens / 1_000_000.0 * input_price) +
                        (output_tokens / 1_000_000.0 * output_price)
 
-          BudgetTracker.record_spend!(self.class.name, total_cost)
+          BudgetTracker.record_spend!(self.class.name, total_cost, tenant_id: tenant_id)
         rescue StandardError => e
           Rails.logger.warn("[RubyLLM::Agents] Failed to record budget spend: #{e.message}")
         end

@@ -1,0 +1,26 @@
+<% if tenant_filter_enabled? && available_tenants.any? %>
+  <div class="tenant-filter">
+    <%= form_with url: request.path, method: :get, local: true, class: "tenant-filter-form" do |f| %>
+      <label for="tenant_id">Tenant:</label>
+      <select name="tenant_id" id="tenant_id" onchange="this.form.submit()">
+        <option value="">All Tenants</option>
+        <% available_tenants.each do |tenant| %>
+          <option value="<%= tenant %>" <%= 'selected' if tenant == current_tenant_id %>>
+            <%= tenant %>
+          </option>
+        <% end %>
+      </select>
+
+      <%# Preserve other filter params %>
+      <% params.except(:tenant_id, :controller, :action).each do |key, value| %>
+        <% if value.is_a?(Array) %>
+          <% value.each do |v| %>
+            <input type="hidden" name="<%= key %>[]" value="<%= v %>">
+          <% end %>
+        <% else %>
+          <input type="hidden" name="<%= key %>" value="<%= value %>">
+        <% end %>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>

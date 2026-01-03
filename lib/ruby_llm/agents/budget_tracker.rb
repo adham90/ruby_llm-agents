@@ -8,6 +8,7 @@ module RubyLLM
     #
     # Tracks spending against configured budget limits using cache counters.
     # Supports daily and monthly budgets at both global and per-agent levels.
+    # In multi-tenant mode, budgets are tracked separately per tenant.
     #
     # Note: Uses best-effort enforcement with cache counters. In high-concurrency
     # scenarios, slight overruns may occur due to race conditions. This is an
@@ -19,8 +20,13 @@ module RubyLLM
     # @example Recording spend after execution
     #   BudgetTracker.record_spend!("MyAgent", 0.05)
     #
+    # @example Multi-tenant usage
+    #   BudgetTracker.check_budget!("MyAgent", tenant_id: "acme_corp")
+    #   BudgetTracker.record_spend!("MyAgent", 0.05, tenant_id: "acme_corp")
+    #
     # @see RubyLLM::Agents::Configuration
     # @see RubyLLM::Agents::Reliability::BudgetExceededError
+    # @see RubyLLM::Agents::TenantBudget
     # @api public
     module BudgetTracker
       extend CacheHelper
@@ -29,74 +35,39 @@ module RubyLLM
         # Checks if the current spend exceeds budget limits
         #
         # @param agent_type [String] The agent class name
+        # @param tenant_id [String, nil] Optional tenant identifier (uses resolver if not provided)
         # @raise [Reliability::BudgetExceededError] If hard cap is exceeded
         # @return [void]
-        def check_budget!(agent_type)
-          config = RubyLLM::Agents.configuration
-          return unless config.budgets_enabled?
+        def check_budget!(agent_type, tenant_id: nil)
+          tenant_id = resolve_tenant_id(tenant_id)
+          budget_config = resolve_budget_config(tenant_id)
 
-          budgets = config.budgets
-          enforcement = config.budget_enforcement
+          return unless budget_config[:enabled]
+          return unless budget_config[:enforcement] == :hard
 
-          # Only block on hard enforcement
-          return unless enforcement == :hard
-
-          # Check global daily budget
-          if budgets[:global_daily]
-            current = current_spend(:global, :daily)
-            if current >= budgets[:global_daily]
-              raise Reliability::BudgetExceededError.new(:global_daily, budgets[:global_daily], current)
-            end
-          end
-
-          # Check global monthly budget
-          if budgets[:global_monthly]
-            current = current_spend(:global, :monthly)
-            if current >= budgets[:global_monthly]
-              raise Reliability::BudgetExceededError.new(:global_monthly, budgets[:global_monthly], current)
-            end
-          end
-
-          # Check per-agent daily budget
-          agent_daily_limit = budgets[:per_agent_daily]&.dig(agent_type)
-          if agent_daily_limit
-            current = current_spend(:agent, :daily, agent_type: agent_type)
-            if current >= agent_daily_limit
-              raise Reliability::BudgetExceededError.new(:per_agent_daily, agent_daily_limit, current, agent_type: agent_type)
-            end
-          end
-
-          # Check per-agent monthly budget
-          agent_monthly_limit = budgets[:per_agent_monthly]&.dig(agent_type)
-          if agent_monthly_limit
-            current = current_spend(:agent, :monthly, agent_type: agent_type)
-            if current >= agent_monthly_limit
-              raise Reliability::BudgetExceededError.new(:per_agent_monthly, agent_monthly_limit, current, agent_type: agent_type)
-            end
-          end
+          check_budget_limits!(agent_type, tenant_id, budget_config)
         end
 
         # Records spend and checks for soft cap alerts
         #
         # @param agent_type [String] The agent class name
         # @param amount [Float] The amount spent in USD
+        # @param tenant_id [String, nil] Optional tenant identifier (uses resolver if not provided)
         # @return [void]
-        def record_spend!(agent_type, amount)
+        def record_spend!(agent_type, amount, tenant_id: nil)
           return if amount.nil? || amount <= 0
 
-          config = RubyLLM::Agents.configuration
-          budgets = config.budgets
+          tenant_id = resolve_tenant_id(tenant_id)
 
           # Increment all relevant counters
-          increment_spend(:global, :daily, amount)
-          increment_spend(:global, :monthly, amount)
-          increment_spend(:agent, :daily, amount, agent_type: agent_type)
-          increment_spend(:agent, :monthly, amount, agent_type: agent_type)
+          increment_spend(:global, :daily, amount, tenant_id: tenant_id)
+          increment_spend(:global, :monthly, amount, tenant_id: tenant_id)
+          increment_spend(:agent, :daily, amount, agent_type: agent_type, tenant_id: tenant_id)
+          increment_spend(:agent, :monthly, amount, agent_type: agent_type, tenant_id: tenant_id)
 
-          # Check for soft cap alerts if budgets are configured
-          return unless budgets.is_a?(Hash)
-
-          check_soft_cap_alerts(agent_type, budgets, config)
+          # Check for soft cap alerts
+          budget_config = resolve_budget_config(tenant_id)
+          check_soft_cap_alerts(agent_type, tenant_id, budget_config) if budget_config[:enabled]
         end
 
         # Returns the current spend for a scope and period
@@ -104,9 +75,11 @@ module RubyLLM
         # @param scope [Symbol] :global or :agent
         # @param period [Symbol] :daily or :monthly
         # @param agent_type [String, nil] Required when scope is :agent
+        # @param tenant_id [String, nil] Optional tenant identifier (uses resolver if not provided)
         # @return [Float] Current spend in USD
-        def current_spend(scope, period, agent_type: nil)
-          key = budget_cache_key(scope, period, agent_type: agent_type)
+        def current_spend(scope, period, agent_type: nil, tenant_id: nil)
+          tenant_id = resolve_tenant_id(tenant_id)
+          key = budget_cache_key(scope, period, agent_type: agent_type, tenant_id: tenant_id)
           (BudgetTracker.cache_read(key) || 0).to_f
         end
 
@@ -115,59 +88,62 @@ module RubyLLM
         # @param scope [Symbol] :global or :agent
         # @param period [Symbol] :daily or :monthly
         # @param agent_type [String, nil] Required when scope is :agent
+        # @param tenant_id [String, nil] Optional tenant identifier (uses resolver if not provided)
         # @return [Float, nil] Remaining budget in USD, or nil if no limit configured
-        def remaining_budget(scope, period, agent_type: nil)
-          config = RubyLLM::Agents.configuration
-          budgets = config.budgets
-          return nil unless budgets.is_a?(Hash)
+        def remaining_budget(scope, period, agent_type: nil, tenant_id: nil)
+          tenant_id = resolve_tenant_id(tenant_id)
+          budget_config = resolve_budget_config(tenant_id)
 
           limit = case [scope, period]
           when [:global, :daily]
-            budgets[:global_daily]
+            budget_config[:global_daily]
           when [:global, :monthly]
-            budgets[:global_monthly]
+            budget_config[:global_monthly]
           when [:agent, :daily]
-            budgets[:per_agent_daily]&.dig(agent_type)
+            budget_config[:per_agent_daily]&.dig(agent_type)
           when [:agent, :monthly]
-            budgets[:per_agent_monthly]&.dig(agent_type)
+            budget_config[:per_agent_monthly]&.dig(agent_type)
           end
 
           return nil unless limit
 
-          [limit - current_spend(scope, period, agent_type: agent_type), 0].max
+          [limit - current_spend(scope, period, agent_type: agent_type, tenant_id: tenant_id), 0].max
         end
 
         # Returns a summary of all budget statuses
         #
         # @param agent_type [String, nil] Optional agent type for per-agent budgets
+        # @param tenant_id [String, nil] Optional tenant identifier (uses resolver if not provided)
         # @return [Hash] Budget status information
-        def status(agent_type: nil)
-          config = RubyLLM::Agents.configuration
-          budgets = config.budgets || {}
+        def status(agent_type: nil, tenant_id: nil)
+          tenant_id = resolve_tenant_id(tenant_id)
+          budget_config = resolve_budget_config(tenant_id)
 
           {
-            enabled: config.budgets_enabled?,
-            enforcement: config.budget_enforcement,
-            global_daily: budget_status(:global, :daily, budgets[:global_daily]),
-            global_monthly: budget_status(:global, :monthly, budgets[:global_monthly]),
-            per_agent_daily: agent_type ? budget_status(:agent, :daily, budgets[:per_agent_daily]&.dig(agent_type), agent_type: agent_type) : nil,
-            per_agent_monthly: agent_type ? budget_status(:agent, :monthly, budgets[:per_agent_monthly]&.dig(agent_type), agent_type: agent_type) : nil,
-            forecast: calculate_forecast
+            tenant_id: tenant_id,
+            enabled: budget_config[:enabled],
+            enforcement: budget_config[:enforcement],
+            global_daily: budget_status(:global, :daily, budget_config[:global_daily], tenant_id: tenant_id),
+            global_monthly: budget_status(:global, :monthly, budget_config[:global_monthly], tenant_id: tenant_id),
+            per_agent_daily: agent_type ? budget_status(:agent, :daily, budget_config[:per_agent_daily]&.dig(agent_type), agent_type: agent_type, tenant_id: tenant_id) : nil,
+            per_agent_monthly: agent_type ? budget_status(:agent, :monthly, budget_config[:per_agent_monthly]&.dig(agent_type), agent_type: agent_type, tenant_id: tenant_id) : nil,
+            forecast: calculate_forecast(tenant_id: tenant_id)
           }.compact
         end
 
         # Calculates budget forecasts based on current spending trends
         #
+        # @param tenant_id [String, nil] Optional tenant identifier (uses resolver if not provided)
         # @return [Hash, nil] Forecast information
-        def calculate_forecast
-          config = RubyLLM::Agents.configuration
-          budgets = config.budgets || {}
+        def calculate_forecast(tenant_id: nil)
+          tenant_id = resolve_tenant_id(tenant_id)
+          budget_config = resolve_budget_config(tenant_id)
 
-          return nil unless config.budgets_enabled?
-          return nil unless budgets[:global_daily] || budgets[:global_monthly]
+          return nil unless budget_config[:enabled]
+          return nil unless budget_config[:global_daily] || budget_config[:global_monthly]
 
-          daily_current = current_spend(:global, :daily)
-          monthly_current = current_spend(:global, :monthly)
+          daily_current = current_spend(:global, :daily, tenant_id: tenant_id)
+          monthly_current = current_spend(:global, :monthly, tenant_id: tenant_id)
 
           # Calculate hours elapsed today and days elapsed this month
           hours_elapsed = Time.current.hour + (Time.current.min / 60.0)
@@ -180,29 +156,29 @@ module RubyLLM
           forecast = {}
 
           # Daily forecast
-          if budgets[:global_daily]
+          if budget_config[:global_daily]
             daily_rate = daily_current / hours_elapsed
             projected_daily = daily_rate * 24
             forecast[:daily] = {
               current: daily_current.round(4),
               projected: projected_daily.round(4),
-              limit: budgets[:global_daily],
-              on_track: projected_daily <= budgets[:global_daily],
+              limit: budget_config[:global_daily],
+              on_track: projected_daily <= budget_config[:global_daily],
               hours_remaining: (24 - hours_elapsed).round(1),
               rate_per_hour: daily_rate.round(6)
             }
           end
 
           # Monthly forecast
-          if budgets[:global_monthly]
+          if budget_config[:global_monthly]
             monthly_rate = monthly_current / days_elapsed
             projected_monthly = monthly_rate * days_in_month
             days_remaining = days_in_month - day_of_month
             forecast[:monthly] = {
               current: monthly_current.round(4),
               projected: projected_monthly.round(4),
-              limit: budgets[:global_monthly],
-              on_track: projected_monthly <= budgets[:global_monthly],
+              limit: budget_config[:global_monthly],
+              on_track: projected_monthly <= budget_config[:global_monthly],
               days_remaining: days_remaining,
               rate_per_day: monthly_rate.round(4)
             }
@@ -213,18 +189,143 @@ module RubyLLM
 
         # Resets all budget counters (useful for testing)
         #
+        # @param tenant_id [String, nil] Optional tenant identifier to reset only that tenant's counters
         # @return [void]
-        def reset!
-          # Note: This is a simple implementation. In production, you might want
-          # to iterate over all known keys or use cache namespacing.
+        def reset!(tenant_id: nil)
+          tenant_id = resolve_tenant_id(tenant_id)
           today = Date.current.to_s
           month = Date.current.strftime("%Y-%m")
 
-          BudgetTracker.cache_delete(BudgetTracker.cache_key("budget", "global", today))
-          BudgetTracker.cache_delete(BudgetTracker.cache_key("budget", "global", month))
+          tenant_part = tenant_id.present? ? "tenant:#{tenant_id}" : "global"
+
+          BudgetTracker.cache_delete(BudgetTracker.cache_key("budget", tenant_part, today))
+          BudgetTracker.cache_delete(BudgetTracker.cache_key("budget", tenant_part, month))
+
+          # Reset memoized table existence check (useful for testing)
+          remove_instance_variable(:@tenant_budget_table_exists) if defined?(@tenant_budget_table_exists)
         end
 
         private
+
+        # Resolves the current tenant ID
+        #
+        # @param explicit_tenant_id [String, nil] Explicitly passed tenant ID
+        # @return [String, nil] Resolved tenant ID or nil if multi-tenancy disabled
+        def resolve_tenant_id(explicit_tenant_id)
+          config = RubyLLM::Agents.configuration
+
+          # Ignore tenant_id entirely when multi-tenancy is disabled
+          return nil unless config.multi_tenancy_enabled?
+
+          # Use explicit tenant_id if provided, otherwise use resolver
+          return explicit_tenant_id if explicit_tenant_id.present?
+
+          config.tenant_resolver&.call
+        end
+
+        # Resolves budget configuration for a tenant
+        #
+        # @param tenant_id [String, nil] The tenant identifier
+        # @return [Hash] Budget configuration
+        def resolve_budget_config(tenant_id)
+          config = RubyLLM::Agents.configuration
+
+          # If multi-tenancy is disabled or no tenant, use global config
+          if tenant_id.nil? || !config.multi_tenancy_enabled?
+            return {
+              enabled: config.budgets_enabled?,
+              enforcement: config.budget_enforcement,
+              global_daily: config.budgets&.dig(:global_daily),
+              global_monthly: config.budgets&.dig(:global_monthly),
+              per_agent_daily: config.budgets&.dig(:per_agent_daily),
+              per_agent_monthly: config.budgets&.dig(:per_agent_monthly)
+            }
+          end
+
+          # Look up tenant-specific budget from database (if table exists)
+          tenant_budget = lookup_tenant_budget(tenant_id)
+
+          if tenant_budget
+            tenant_budget.to_budget_config
+          else
+            # Fall back to global config for unknown tenants
+            {
+              enabled: config.budgets_enabled?,
+              enforcement: config.budget_enforcement,
+              global_daily: config.budgets&.dig(:global_daily),
+              global_monthly: config.budgets&.dig(:global_monthly),
+              per_agent_daily: config.budgets&.dig(:per_agent_daily),
+              per_agent_monthly: config.budgets&.dig(:per_agent_monthly)
+            }
+          end
+        end
+
+        # Safely looks up tenant budget, handling missing table
+        #
+        # @param tenant_id [String] The tenant identifier
+        # @return [TenantBudget, nil] The tenant budget or nil
+        def lookup_tenant_budget(tenant_id)
+          return nil unless tenant_budget_table_exists?
+
+          TenantBudget.for_tenant(tenant_id)
+        rescue StandardError => e
+          Rails.logger.warn("[RubyLLM::Agents] Failed to lookup tenant budget: #{e.message}")
+          nil
+        end
+
+        # Checks if the tenant_budgets table exists
+        #
+        # @return [Boolean] true if table exists
+        def tenant_budget_table_exists?
+          return @tenant_budget_table_exists if defined?(@tenant_budget_table_exists)
+
+          @tenant_budget_table_exists = ActiveRecord::Base.connection.table_exists?(:ruby_llm_agents_tenant_budgets)
+        rescue StandardError
+          @tenant_budget_table_exists = false
+        end
+
+        # Checks budget limits and raises error if exceeded
+        #
+        # @param agent_type [String] The agent class name
+        # @param tenant_id [String, nil] The tenant identifier
+        # @param budget_config [Hash] The budget configuration
+        # @raise [Reliability::BudgetExceededError] If limit exceeded
+        # @return [void]
+        def check_budget_limits!(agent_type, tenant_id, budget_config)
+          # Check global daily budget
+          if budget_config[:global_daily]
+            current = current_spend(:global, :daily, tenant_id: tenant_id)
+            if current >= budget_config[:global_daily]
+              raise Reliability::BudgetExceededError.new(:global_daily, budget_config[:global_daily], current, tenant_id: tenant_id)
+            end
+          end
+
+          # Check global monthly budget
+          if budget_config[:global_monthly]
+            current = current_spend(:global, :monthly, tenant_id: tenant_id)
+            if current >= budget_config[:global_monthly]
+              raise Reliability::BudgetExceededError.new(:global_monthly, budget_config[:global_monthly], current, tenant_id: tenant_id)
+            end
+          end
+
+          # Check per-agent daily budget
+          agent_daily_limit = budget_config[:per_agent_daily]&.dig(agent_type)
+          if agent_daily_limit
+            current = current_spend(:agent, :daily, agent_type: agent_type, tenant_id: tenant_id)
+            if current >= agent_daily_limit
+              raise Reliability::BudgetExceededError.new(:per_agent_daily, agent_daily_limit, current, agent_type: agent_type, tenant_id: tenant_id)
+            end
+          end
+
+          # Check per-agent monthly budget
+          agent_monthly_limit = budget_config[:per_agent_monthly]&.dig(agent_type)
+          if agent_monthly_limit
+            current = current_spend(:agent, :monthly, agent_type: agent_type, tenant_id: tenant_id)
+            if current >= agent_monthly_limit
+              raise Reliability::BudgetExceededError.new(:per_agent_monthly, agent_monthly_limit, current, agent_type: agent_type, tenant_id: tenant_id)
+            end
+          end
+        end
 
         # Increments the spend counter for a scope and period
         #
@@ -232,9 +333,10 @@ module RubyLLM
         # @param period [Symbol] :daily or :monthly
         # @param amount [Float] Amount to add
         # @param agent_type [String, nil] Required when scope is :agent
+        # @param tenant_id [String, nil] The tenant identifier
         # @return [Float] New total
-        def increment_spend(scope, period, amount, agent_type: nil)
-          key = budget_cache_key(scope, period, agent_type: agent_type)
+        def increment_spend(scope, period, amount, agent_type: nil, tenant_id: nil)
+          key = budget_cache_key(scope, period, agent_type: agent_type, tenant_id: tenant_id)
           ttl = period == :daily ? 1.day : 31.days
 
           # Read-modify-write for float values (cache increment is for integers)
@@ -249,15 +351,17 @@ module RubyLLM
         # @param scope [Symbol] :global or :agent
         # @param period [Symbol] :daily or :monthly
         # @param agent_type [String, nil] Required when scope is :agent
+        # @param tenant_id [String, nil] The tenant identifier
         # @return [String] Cache key
-        def budget_cache_key(scope, period, agent_type: nil)
+        def budget_cache_key(scope, period, agent_type: nil, tenant_id: nil)
           date_part = period == :daily ? Date.current.to_s : Date.current.strftime("%Y-%m")
+          tenant_part = tenant_id.present? ? "tenant:#{tenant_id}" : "global"
 
           case scope
           when :global
-            BudgetTracker.cache_key("budget", "global", date_part)
+            BudgetTracker.cache_key("budget", tenant_part, date_part)
           when :agent
-            BudgetTracker.cache_key("budget", "agent", agent_type, date_part)
+            BudgetTracker.cache_key("budget", tenant_part, "agent", agent_type, date_part)
           else
             raise ArgumentError, "Unknown scope: #{scope}"
           end
@@ -269,11 +373,12 @@ module RubyLLM
         # @param period [Symbol] :daily or :monthly
         # @param limit [Float, nil] The budget limit
         # @param agent_type [String, nil] Required when scope is :agent
+        # @param tenant_id [String, nil] The tenant identifier
         # @return [Hash, nil] Status hash or nil if no limit
-        def budget_status(scope, period, limit, agent_type: nil)
+        def budget_status(scope, period, limit, agent_type: nil, tenant_id: nil)
           return nil unless limit
 
-          current = current_spend(scope, period, agent_type: agent_type)
+          current = current_spend(scope, period, agent_type: agent_type, tenant_id: tenant_id)
           {
             limit: limit,
             current: current.round(6),
@@ -285,29 +390,38 @@ module RubyLLM
         # Checks for soft cap alerts after recording spend
         #
         # @param agent_type [String] The agent class name
-        # @param budgets [Hash] Budget configuration
-        # @param config [Configuration] The configuration
+        # @param tenant_id [String, nil] The tenant identifier
+        # @param budget_config [Hash] Budget configuration
         # @return [void]
-        def check_soft_cap_alerts(agent_type, budgets, config)
+        def check_soft_cap_alerts(agent_type, tenant_id, budget_config)
+          config = RubyLLM::Agents.configuration
           return unless config.alerts_enabled?
           return unless config.alert_events.include?(:budget_soft_cap) || config.alert_events.include?(:budget_hard_cap)
 
           # Check global daily
-          check_budget_alert(:global_daily, budgets[:global_daily], current_spend(:global, :daily), agent_type, config)
+          check_budget_alert(:global_daily, budget_config[:global_daily],
+                            current_spend(:global, :daily, tenant_id: tenant_id),
+                            agent_type, tenant_id, budget_config)
 
           # Check global monthly
-          check_budget_alert(:global_monthly, budgets[:global_monthly], current_spend(:global, :monthly), agent_type, config)
+          check_budget_alert(:global_monthly, budget_config[:global_monthly],
+                            current_spend(:global, :monthly, tenant_id: tenant_id),
+                            agent_type, tenant_id, budget_config)
 
           # Check per-agent daily
-          agent_daily_limit = budgets[:per_agent_daily]&.dig(agent_type)
+          agent_daily_limit = budget_config[:per_agent_daily]&.dig(agent_type)
           if agent_daily_limit
-            check_budget_alert(:per_agent_daily, agent_daily_limit, current_spend(:agent, :daily, agent_type: agent_type), agent_type, config)
+            check_budget_alert(:per_agent_daily, agent_daily_limit,
+                              current_spend(:agent, :daily, agent_type: agent_type, tenant_id: tenant_id),
+                              agent_type, tenant_id, budget_config)
           end
 
           # Check per-agent monthly
-          agent_monthly_limit = budgets[:per_agent_monthly]&.dig(agent_type)
+          agent_monthly_limit = budget_config[:per_agent_monthly]&.dig(agent_type)
           if agent_monthly_limit
-            check_budget_alert(:per_agent_monthly, agent_monthly_limit, current_spend(:agent, :monthly, agent_type: agent_type), agent_type, config)
+            check_budget_alert(:per_agent_monthly, agent_monthly_limit,
+                              current_spend(:agent, :monthly, agent_type: agent_type, tenant_id: tenant_id),
+                              agent_type, tenant_id, budget_config)
           end
         end
 
@@ -317,17 +431,20 @@ module RubyLLM
         # @param limit [Float, nil] Budget limit
         # @param current [Float] Current spend
         # @param agent_type [String] Agent type
-        # @param config [Configuration] Configuration
+        # @param tenant_id [String, nil] The tenant identifier
+        # @param budget_config [Hash] Budget configuration
         # @return [void]
-        def check_budget_alert(scope, limit, current, agent_type, config)
+        def check_budget_alert(scope, limit, current, agent_type, tenant_id, budget_config)
           return unless limit
           return if current <= limit
 
-          event = config.budget_enforcement == :hard ? :budget_hard_cap : :budget_soft_cap
+          event = budget_config[:enforcement] == :hard ? :budget_hard_cap : :budget_soft_cap
+          config = RubyLLM::Agents.configuration
           return unless config.alert_events.include?(event)
 
-          # Prevent duplicate alerts by using a cache key
-          alert_key = BudgetTracker.cache_key("budget_alert", scope, Date.current.to_s)
+          # Prevent duplicate alerts by using a cache key (include tenant for isolation)
+          tenant_part = tenant_id.present? ? "tenant:#{tenant_id}" : "global"
+          alert_key = BudgetTracker.cache_key("budget_alert", tenant_part, scope, Date.current.to_s)
           return if BudgetTracker.cache_exist?(alert_key)
 
           BudgetTracker.cache_write(alert_key, true, expires_in: 1.hour)
@@ -337,6 +454,7 @@ module RubyLLM
             limit: limit,
             total: current.round(6),
             agent_type: agent_type,
+            tenant_id: tenant_id,
             timestamp: Date.current.to_s
           })
         end

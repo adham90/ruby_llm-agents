@@ -20,11 +20,12 @@ module RubyLLM
       def index
         @selected_range = params[:range].presence || "today"
         @days = range_to_days(@selected_range)
-        @now_strip = Execution.now_strip_data(range: @selected_range)
-        @critical_alerts = load_critical_alerts
-        @recent_executions = Execution.recent(10)
-        @agent_stats = build_agent_comparison
-        @top_errors = build_top_errors
+        base_scope = tenant_scoped_executions
+        @now_strip = base_scope.now_strip_data(range: @selected_range)
+        @critical_alerts = load_critical_alerts(base_scope)
+        @recent_executions = base_scope.recent(10)
+        @agent_stats = build_agent_comparison(base_scope)
+        @top_errors = build_top_errors(base_scope)
       end
 
       # Returns chart data as JSON for live updates
@@ -33,7 +34,7 @@ module RubyLLM
       # @return [JSON] Chart data with series
       def chart_data
         range = params[:range].presence || "today"
-        render json: Execution.activity_chart_json(range: range)
+        render json: tenant_scoped_executions.activity_chart_json(range: range)
       end
 
       private
@@ -53,10 +54,10 @@ module RubyLLM
 
       # Builds per-agent comparison statistics
       #
-      # Sets @agent_stats (regular agents) and @workflow_stats (workflows)
+      # @param base_scope [ActiveRecord::Relation] Base scope to filter from
       # @return [Array<Hash>] Array of all stats sorted by cost descending
-      def build_agent_comparison
-        scope = Execution.last_n_days(@days)
+      def build_agent_comparison(base_scope = Execution)
+        scope = base_scope.last_n_days(@days)
         agent_types = scope.distinct.pluck(:agent_type)
 
         all_stats = agent_types.map do |agent_type|
@@ -107,9 +108,10 @@ module RubyLLM
 
       # Builds top errors list
       #
+      # @param base_scope [ActiveRecord::Relation] Base scope to filter from
       # @return [Array<Hash>] Top 5 error classes with counts
-      def build_top_errors
-        scope = Execution.last_n_days(@days).where(status: "error")
+      def build_top_errors(base_scope = Execution)
+        scope = base_scope.last_n_days(@days).where(status: "error")
         total_errors = scope.count
 
         scope.group(:error_class)
@@ -233,8 +235,9 @@ module RubyLLM
       # Combines open circuit breakers, budget breaches, and error spikes
       # into a single prioritized list (max 3 items).
       #
+      # @param base_scope [ActiveRecord::Relation] Base scope to filter from
       # @return [Array<Hash>] Critical alerts with type and data
-      def load_critical_alerts
+      def load_critical_alerts(base_scope = Execution)
         alerts = []
 
         # Open circuit breakers
@@ -270,7 +273,7 @@ module RubyLLM
         end
 
         # Error spike detection (>5 errors in last 15 minutes)
-        error_count_15m = Execution.status_error.where("created_at > ?", 15.minutes.ago).count
+        error_count_15m = base_scope.status_error.where("created_at > ?", 15.minutes.ago).count
         if error_count_15m >= 5
           alerts << { type: :error_spike, data: { count: error_count_15m } }
         end

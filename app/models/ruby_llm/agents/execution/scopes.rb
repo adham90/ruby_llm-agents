@@ -47,6 +47,31 @@ module RubyLLM
 
           # @!endgroup
 
+          # @!group Tenant Scopes
+
+          # @!method by_tenant(tenant_id)
+          #   Filters to a specific tenant
+          #   @param tenant_id [String] The tenant identifier
+          #   @return [ActiveRecord::Relation]
+
+          # @!method for_current_tenant
+          #   Filters to the current tenant from the resolver
+          #   @return [ActiveRecord::Relation]
+          scope :by_tenant, ->(tenant_id) { where(tenant_id: tenant_id) }
+          scope :without_tenant, -> { where(tenant_id: nil) }
+          scope :with_tenant, -> { where.not(tenant_id: nil) }
+          scope :for_current_tenant, -> {
+            config = RubyLLM::Agents.configuration
+            if config.multi_tenancy_enabled?
+              tenant_id = config.tenant_resolver&.call
+              tenant_id ? where(tenant_id: tenant_id) : all
+            else
+              all
+            end
+          }
+
+          # @!endgroup
+
           # @!group Agent-based Scopes
 
           # @!method by_agent(agent_type)

@@ -169,33 +169,36 @@ module RubyLLM
       # Returns distinct agent types from execution history
       #
       # Memoized to avoid duplicate queries within a request.
+      # Uses tenant_scoped_executions to respect multi-tenancy filtering.
       #
       # @return [Array<String>] Agent type names
       def available_agent_types
-        @available_agent_types ||= Execution.distinct.pluck(:agent_type)
+        @available_agent_types ||= tenant_scoped_executions.distinct.pluck(:agent_type)
       end
 
       # Returns distinct model IDs from execution history
       #
       # Memoized to avoid duplicate queries within a request.
+      # Uses tenant_scoped_executions to respect multi-tenancy filtering.
       #
       # @return [Array<String>] Model IDs
       def available_model_ids
-        @available_model_ids ||= Execution.where.not(model_id: nil).distinct.pluck(:model_id).sort
+        @available_model_ids ||= tenant_scoped_executions.where.not(model_id: nil).distinct.pluck(:model_id).sort
       end
 
       # Returns distinct workflow types from execution history
       #
       # Memoized to avoid duplicate queries within a request.
       # Returns empty array if workflow_type column doesn't exist yet.
+      # Uses tenant_scoped_executions to respect multi-tenancy filtering.
       #
       # @return [Array<String>] Workflow types (pipeline, parallel, router)
       def available_workflow_types
         return @available_workflow_types if defined?(@available_workflow_types)
 
         @available_workflow_types = if Execution.column_names.include?("workflow_type")
-                                      Execution.where.not(workflow_type: [nil, ""])
-                                               .distinct.pluck(:workflow_type).sort
+                                      tenant_scoped_executions.where.not(workflow_type: [nil, ""])
+                                                              .distinct.pluck(:workflow_type).sort
                                     else
                                       []
                                     end
@@ -233,7 +236,7 @@ module RubyLLM
       #
       # @return [ActiveRecord::Relation] Filtered execution scope
       def filtered_executions
-        scope = Execution.all
+        scope = tenant_scoped_executions
 
         # Apply search filter
         scope = scope.search(params[:q]) if params[:q].present?

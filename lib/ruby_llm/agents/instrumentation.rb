@@ -262,6 +262,11 @@ module RubyLLM
           execution_data[:attempts_count] = 0
         end
 
+        # Add tenant_id if multi-tenancy is enabled
+        if config.multi_tenancy_enabled?
+          execution_data[:tenant_id] = config.current_tenant_id
+        end
+
         RubyLLM::Agents::Execution.create!(execution_data)
       rescue StandardError => e
         # Log error but don't fail the agent execution itself

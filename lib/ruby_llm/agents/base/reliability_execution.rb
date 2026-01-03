@@ -21,15 +21,19 @@ module RubyLLM
           total_deadline = config[:total_timeout] ? Time.current + config[:total_timeout] : nil
           started_at = Time.current
 
-          # Pre-check budget
-          BudgetTracker.check_budget!(self.class.name) if RubyLLM::Agents.configuration.budgets_enabled?
+          # Get current tenant_id for multi-tenancy support
+          global_config = RubyLLM::Agents.configuration
+          tenant_id = global_config.multi_tenancy_enabled? ? global_config.current_tenant_id : nil
+
+          # Pre-check budget (tenant_id is resolved automatically if not passed)
+          BudgetTracker.check_budget!(self.class.name, tenant_id: tenant_id) if global_config.budgets_enabled?
 
           instrument_execution_with_attempts(models_to_try: models_to_try) do |attempt_tracker|
             last_error = nil
 
             models_to_try.each do |current_model|
-              # Check circuit breaker
-              breaker = get_circuit_breaker(current_model)
+              # Check circuit breaker (with tenant isolation if enabled)
+              breaker = get_circuit_breaker(current_model, tenant_id: tenant_id)
               if breaker&.open?
                 attempt_tracker.record_short_circuit(current_model)
                 next
@@ -54,9 +58,9 @@ module RubyLLM
                   # Record success in circuit breaker
                   breaker&.record_success!
 
-                  # Record budget spend
-                  if @last_response && RubyLLM::Agents.configuration.budgets_enabled?
-                    record_attempt_cost(attempt_tracker)
+                  # Record budget spend (with tenant isolation if enabled)
+                  if @last_response && global_config.budgets_enabled?
+                    record_attempt_cost(attempt_tracker, tenant_id: tenant_id)
                   end
 
                   # Use throw instead of return to allow instrument_execution_with_attempts
@@ -118,12 +122,13 @@ module RubyLLM
         # Gets or creates a circuit breaker for a model
         #
         # @param model_id [String] The model identifier
+        # @param tenant_id [String, nil] Optional tenant identifier for multi-tenant isolation
         # @return [CircuitBreaker, nil] The circuit breaker or nil if not configured
-        def get_circuit_breaker(model_id)
+        def get_circuit_breaker(model_id, tenant_id: nil)
           config = reliability_config[:circuit_breaker]
           return nil unless config
 
-          CircuitBreaker.from_config(self.class.name, model_id, config)
+          CircuitBreaker.from_config(self.class.name, model_id, config, tenant_id: tenant_id)
         end
       end
     end

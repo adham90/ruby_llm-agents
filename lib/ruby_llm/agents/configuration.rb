@@ -178,6 +178,23 @@ module RubyLLM
       #       max_value_length: 5000
       #     }
 
+      # @!attribute [rw] multi_tenancy_enabled
+      #   Whether multi-tenancy features are enabled.
+      #   When false, the gem behaves exactly as before (backward compatible).
+      #   @return [Boolean] Enable multi-tenancy (default: false)
+      #   @example
+      #     config.multi_tenancy_enabled = true
+
+      # @!attribute [rw] tenant_resolver
+      #   Lambda that returns the current tenant identifier.
+      #   Called whenever tenant context is needed for budget tracking,
+      #   circuit breakers, and execution recording.
+      #   @return [Proc] Tenant resolution lambda (default: -> { nil })
+      #   @example Using Rails CurrentAttributes
+      #     config.tenant_resolver = -> { Current.tenant&.id }
+      #   @example Using request store
+      #     config.tenant_resolver = -> { RequestStore[:tenant_id] }
+
       attr_accessor :default_model,
                     :default_temperature,
                     :default_timeout,
@@ -201,7 +218,9 @@ module RubyLLM
                     :alerts,
                     :persist_prompts,
                     :persist_responses,
-                    :redaction
+                    :redaction,
+                    :multi_tenancy_enabled,
+                    :tenant_resolver
 
       attr_writer :cache_store
 
@@ -241,6 +260,10 @@ module RubyLLM
         @persist_prompts = true
         @persist_responses = true
         @redaction = nil
+
+        # Multi-tenancy defaults (disabled for backward compatibility)
+        @multi_tenancy_enabled = false
+        @tenant_resolver = -> { nil }
       end
 
       # Returns the configured cache store, falling back to Rails.cache
@@ -312,6 +335,22 @@ module RubyLLM
       # @return [Integer, nil] Max length, or nil for no limit
       def redaction_max_value_length
         redaction&.dig(:max_value_length)
+      end
+
+      # Returns whether multi-tenancy is enabled
+      #
+      # @return [Boolean] true if multi-tenancy is enabled
+      def multi_tenancy_enabled?
+        @multi_tenancy_enabled == true
+      end
+
+      # Returns the current tenant ID from the resolver
+      #
+      # @return [String, nil] Current tenant identifier or nil
+      def current_tenant_id
+        return nil unless multi_tenancy_enabled?
+
+        tenant_resolver&.call
       end
     end
   end

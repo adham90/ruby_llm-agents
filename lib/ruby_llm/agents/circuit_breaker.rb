@@ -12,6 +12,9 @@ module RubyLLM
     # - Stays open for a cooldown period
     # - Automatically closes after cooldown expires
     #
+    # In multi-tenant mode, circuit breakers are isolated per tenant,
+    # so one tenant's failures don't affect other tenants.
+    #
     # @example Basic usage
     #   breaker = CircuitBreaker.new("MyAgent", "gpt-4o", errors: 10, within: 60, cooldown: 300)
     #   breaker.open?         # => false
@@ -19,20 +22,26 @@ module RubyLLM
     #   # ... after 10 failures within 60 seconds ...
     #   breaker.open?         # => true
     #
+    # @example Multi-tenant usage
+    #   breaker = CircuitBreaker.new("MyAgent", "gpt-4o", tenant_id: "acme", errors: 10)
+    #   breaker.open?  # Isolated to "acme" tenant
+    #
     # @see RubyLLM::Agents::Reliability
     # @api public
     class CircuitBreaker
       include CacheHelper
-      attr_reader :agent_type, :model_id, :errors_threshold, :window_seconds, :cooldown_seconds
+      attr_reader :agent_type, :model_id, :tenant_id, :errors_threshold, :window_seconds, :cooldown_seconds
 
       # @param agent_type [String] The agent class name
       # @param model_id [String] The model identifier
+      # @param tenant_id [String, nil] Optional tenant identifier for multi-tenant isolation
       # @param errors [Integer] Number of errors to trigger open state (default: 10)
       # @param within [Integer] Rolling window in seconds (default: 60)
       # @param cooldown [Integer] Cooldown period in seconds when open (default: 300)
-      def initialize(agent_type, model_id, errors: 10, within: 60, cooldown: 300)
+      def initialize(agent_type, model_id, tenant_id: nil, errors: 10, within: 60, cooldown: 300)
         @agent_type = agent_type
         @model_id = model_id
+        @tenant_id = resolve_tenant_id(tenant_id)
         @errors_threshold = errors
         @window_seconds = within
         @cooldown_seconds = cooldown
@@ -43,13 +52,15 @@ module RubyLLM
       # @param agent_type [String] The agent class name
       # @param model_id [String] The model identifier
       # @param config [Hash] Configuration with :errors, :within, :cooldown keys
+      # @param tenant_id [String, nil] Optional tenant identifier
       # @return [CircuitBreaker] A new circuit breaker instance
-      def self.from_config(agent_type, model_id, config)
+      def self.from_config(agent_type, model_id, config, tenant_id: nil)
         return nil unless config.is_a?(Hash)
 
         new(
           agent_type,
           model_id,
+          tenant_id: tenant_id,
           errors: config[:errors] || 10,
           within: config[:within] || 60,
           cooldown: config[:cooldown] || 300
@@ -127,6 +138,7 @@ module RubyLLM
         {
           agent_type: agent_type,
           model_id: model_id,
+          tenant_id: tenant_id,
           open: open?,
           failure_count: failure_count,
           errors_threshold: errors_threshold,
@@ -136,6 +148,18 @@ module RubyLLM
       end
 
       private
+
+      # Resolves the current tenant ID
+      #
+      # @param explicit_tenant_id [String, nil] Explicitly passed tenant ID
+      # @return [String, nil] Resolved tenant ID or nil
+      def resolve_tenant_id(explicit_tenant_id)
+        config = RubyLLM::Agents.configuration
+        return nil unless config.multi_tenancy_enabled?
+        return explicit_tenant_id if explicit_tenant_id.present?
+
+        config.tenant_resolver&.call
+      end
 
       # Increments the failure counter with TTL
       #
@@ -156,6 +180,7 @@ module RubyLLM
           AlertManager.notify(:breaker_open, {
             agent_type: agent_type,
             model_id: model_id,
+            tenant_id: tenant_id,
             errors: errors_threshold,
             within: window_seconds,
             cooldown: cooldown_seconds,
@@ -168,14 +193,22 @@ module RubyLLM
       #
       # @return [String] Cache key
       def count_key
-        cache_key("cb", "count", agent_type, model_id)
+        if tenant_id.present?
+          cache_key("cb", "tenant", tenant_id, "count", agent_type, model_id)
+        else
+          cache_key("cb", "count", agent_type, model_id)
+        end
       end
 
       # Returns the cache key for the open flag
       #
       # @return [String] Cache key
       def open_key
-        cache_key("cb", "open", agent_type, model_id)
+        if tenant_id.present?
+          cache_key("cb", "tenant", tenant_id, "open", agent_type, model_id)
+        else
+          cache_key("cb", "open", agent_type, model_id)
+        end
       end
     end
   end

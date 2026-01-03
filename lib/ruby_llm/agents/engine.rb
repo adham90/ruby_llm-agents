@@ -97,6 +97,66 @@ module RubyLLM
                 ActiveSupport::SecurityUtils.secure_compare(password, config.basic_auth_password)
             end
           end
+
+          # Returns whether multi-tenancy filtering is enabled
+          #
+          # @return [Boolean] true if multi-tenancy is enabled
+          # @api public
+          def tenant_filter_enabled?
+            RubyLLM::Agents.configuration.multi_tenancy_enabled?
+          end
+          helper_method :tenant_filter_enabled?
+
+          # Returns the current tenant ID for filtering
+          #
+          # Priority:
+          # 1. Explicit tenant_id param (for admin filtering)
+          # 2. Resolved from tenant_resolver
+          #
+          # @return [String, nil] Current tenant identifier
+          # @api public
+          def current_tenant_id
+            return @current_tenant_id if defined?(@current_tenant_id)
+
+            @current_tenant_id = if params[:tenant_id].present?
+              params[:tenant_id]
+            else
+              RubyLLM::Agents.configuration.current_tenant_id
+            end
+          end
+          helper_method :current_tenant_id
+
+          # Returns a tenant-scoped base query for executions
+          #
+          # If multi-tenancy is enabled and a tenant is selected,
+          # returns executions filtered by that tenant.
+          # Otherwise returns all executions.
+          #
+          # @return [ActiveRecord::Relation] Scoped executions
+          # @api public
+          def tenant_scoped_executions
+            if tenant_filter_enabled? && current_tenant_id.present?
+              RubyLLM::Agents::Execution.by_tenant(current_tenant_id)
+            else
+              RubyLLM::Agents::Execution.all
+            end
+          end
+          helper_method :tenant_scoped_executions
+
+          # Returns list of available tenants for filtering dropdown
+          #
+          # @return [Array<String>] Unique tenant IDs from executions
+          # @api public
+          def available_tenants
+            return @available_tenants if defined?(@available_tenants)
+
+            @available_tenants = RubyLLM::Agents::Execution
+              .where.not(tenant_id: nil)
+              .distinct
+              .pluck(:tenant_id)
+              .sort
+          end
+          helper_method :available_tenants
         end)
       end
 
