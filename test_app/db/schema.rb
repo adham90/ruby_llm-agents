@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_03_121727) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_04_102502) do
   create_table "ruby_llm_agents_executions", force: :cascade do |t|
     t.string "agent_type", null: false
     t.string "agent_version", default: "1.0"
@@ -52,6 +52,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_03_121727) do
     t.boolean "streaming", default: false
     t.text "system_prompt"
     t.decimal "temperature", precision: 3, scale: 2
+    t.string "tenant_id"
     t.integer "time_to_first_token_ms"
     t.json "tool_calls", default: [], null: false
     t.integer "tool_calls_count", default: 0, null: false
@@ -76,12 +77,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_03_121727) do
     t.index ["response_cache_key"], name: "index_ruby_llm_agents_executions_on_response_cache_key"
     t.index ["root_execution_id"], name: "index_ruby_llm_agents_executions_on_root_execution_id"
     t.index ["status"], name: "index_ruby_llm_agents_executions_on_status"
+    t.index ["tenant_id", "agent_type"], name: "index_ruby_llm_agents_executions_on_tenant_id_and_agent_type"
+    t.index ["tenant_id", "created_at"], name: "index_ruby_llm_agents_executions_on_tenant_id_and_created_at"
+    t.index ["tenant_id", "status"], name: "index_ruby_llm_agents_executions_on_tenant_id_and_status"
+    t.index ["tenant_id"], name: "index_ruby_llm_agents_executions_on_tenant_id"
     t.index ["tool_calls_count"], name: "index_ruby_llm_agents_executions_on_tool_calls_count"
     t.index ["total_cost"], name: "index_ruby_llm_agents_executions_on_total_cost"
     t.index ["trace_id"], name: "index_ruby_llm_agents_executions_on_trace_id"
     t.index ["workflow_id", "workflow_step"], name: "idx_on_workflow_id_workflow_step_85a6d10aef"
     t.index ["workflow_id"], name: "index_ruby_llm_agents_executions_on_workflow_id"
     t.index ["workflow_type"], name: "index_ruby_llm_agents_executions_on_workflow_type"
+  end
+
+  create_table "ruby_llm_agents_tenant_budgets", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.decimal "daily_limit", precision: 12, scale: 6
+    t.string "enforcement", default: "soft"
+    t.boolean "inherit_global_defaults", default: true
+    t.decimal "monthly_limit", precision: 12, scale: 6
+    t.json "per_agent_daily", default: {}, null: false
+    t.json "per_agent_monthly", default: {}, null: false
+    t.string "tenant_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id"], name: "index_ruby_llm_agents_tenant_budgets_on_tenant_id", unique: true
   end
 
   add_foreign_key "ruby_llm_agents_executions", "ruby_llm_agents_executions", column: "parent_execution_id", on_delete: :nullify

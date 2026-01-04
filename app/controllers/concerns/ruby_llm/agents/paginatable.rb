@@ -33,7 +33,8 @@ module RubyLLM
         per_page = RubyLLM::Agents.configuration.per_page
         offset = (page - 1) * per_page
 
-        scope = scope.order(created_at: :desc) if ordered
+        # Qualify column name to avoid ambiguity when joins are present
+        scope = scope.order("#{scope.model.table_name}.created_at DESC") if ordered
         total_count = scope.count
 
         {

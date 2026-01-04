@@ -74,7 +74,11 @@ module RubyLLM
       # @param days [Integer, nil] Number of days to filter by
       # @return [ActiveRecord::Relation] Filtered scope
       def apply_time_filter(scope, days)
-        days.present? && days.positive? ? scope.where("created_at >= ?", days.days.ago) : scope
+        return scope unless days.present? && days.positive?
+
+        # Qualify column name to avoid ambiguity when joins are present
+        table_name = scope.model.table_name
+        scope.where("#{table_name}.created_at >= ?", days.days.ago)
       end
     end
   end

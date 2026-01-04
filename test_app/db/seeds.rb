@@ -46,123 +46,120 @@ def create_execution(attrs = {})
 end
 
 # Clear existing data
-puts "Clearing existing executions..."
+puts "Clearing existing data..."
 RubyLLM::Agents::Execution.destroy_all
+RubyLLM::Agents::TenantBudget.destroy_all if RubyLLM::Agents::TenantBudget.table_exists?
 
 # =============================================================================
-# 1. Regular Agent Executions (various statuses)
+# TENANT BUDGETS
 # =============================================================================
-puts "Creating regular agent executions..."
+puts "\n" + "=" * 60
+puts "Creating Tenant Budgets..."
+puts "=" * 60
 
-# Successful executions
-5.times do |i|
+if RubyLLM::Agents::TenantBudget.table_exists?
+  # Tenant 1: Acme Corp - High usage enterprise customer
+  acme = RubyLLM::Agents::TenantBudget.create!(
+    tenant_id: "acme_corp",
+    daily_limit: 100.0,
+    monthly_limit: 2000.0,
+    per_agent_daily: {
+      "ContentPipeline" => 30.0,
+      "SearchAgent" => 20.0,
+      "SummaryAgent" => 15.0
+    },
+    per_agent_monthly: {
+      "ContentPipeline" => 600.0,
+      "SearchAgent" => 400.0
+    },
+    enforcement: "soft",
+    inherit_global_defaults: true
+  )
+  puts "  Created: acme_corp (daily: $#{acme.daily_limit}, monthly: $#{acme.monthly_limit}, enforcement: #{acme.enforcement})"
+
+  # Tenant 2: Startup Inc - Budget-conscious startup
+  startup = RubyLLM::Agents::TenantBudget.create!(
+    tenant_id: "startup_inc",
+    daily_limit: 25.0,
+    monthly_limit: 500.0,
+    per_agent_daily: {
+      "ContentPipeline" => 10.0,
+      "SearchAgent" => 5.0
+    },
+    enforcement: "hard",
+    inherit_global_defaults: true
+  )
+  puts "  Created: startup_inc (daily: $#{startup.daily_limit}, monthly: $#{startup.monthly_limit}, enforcement: #{startup.enforcement})"
+
+  # Tenant 3: Enterprise Plus - Premium unlimited customer
+  enterprise = RubyLLM::Agents::TenantBudget.create!(
+    tenant_id: "enterprise_plus",
+    daily_limit: 500.0,
+    monthly_limit: 10000.0,
+    per_agent_daily: {},
+    per_agent_monthly: {},
+    enforcement: "none",
+    inherit_global_defaults: false
+  )
+  puts "  Created: enterprise_plus (daily: $#{enterprise.daily_limit}, monthly: $#{enterprise.monthly_limit}, enforcement: #{enterprise.enforcement})"
+
+  # Tenant 4: Demo Account - For demos and testing
+  demo = RubyLLM::Agents::TenantBudget.create!(
+    tenant_id: "demo_account",
+    daily_limit: 10.0,
+    monthly_limit: 100.0,
+    per_agent_daily: {
+      "SearchAgent" => 3.0,
+      "SummaryAgent" => 2.0,
+      "TranslationAgent" => 2.0
+    },
+    enforcement: "soft",
+    inherit_global_defaults: true
+  )
+  puts "  Created: demo_account (daily: $#{demo.daily_limit}, monthly: $#{demo.monthly_limit}, enforcement: #{demo.enforcement})"
+else
+  puts "  Skipping TenantBudget creation - table does not exist"
+end
+
+# =============================================================================
+# TENANT: ACME CORP - High volume, various executions
+# =============================================================================
+puts "\n" + "=" * 60
+puts "Creating executions for: acme_corp"
+puts "=" * 60
+
+# Successful searches
+8.times do |i|
   create_execution(
+    tenant_id: "acme_corp",
     agent_type: "SearchAgent",
-    parameters: { query: "How to implement #{%w[authentication caching routing validation].sample}?" },
+    parameters: { query: "How to implement #{%w[authentication caching routing validation pagination].sample}?" },
     response: { content: "Here's how to implement it..." },
     metadata: { request_id: SecureRandom.uuid },
     created_at: Time.current - (i * 2).hours
   )
 end
+puts "  Created 8 SearchAgent executions"
 
-3.times do |i|
+# Summary executions
+5.times do |i|
   create_execution(
+    tenant_id: "acme_corp",
     agent_type: "SummaryAgent",
     model_id: "gpt-4o",
-    parameters: { text: "Long document content..." },
+    parameters: { text: "Long document content #{i + 1}..." },
     response: { summary: "This document discusses..." },
     created_at: Time.current - (i * 3).hours
   )
 end
+puts "  Created 5 SummaryAgent executions"
 
-# Failed execution
-create_execution(
-  agent_type: "TranslationAgent",
-  status: "error",
-  error_class: "RubyLLM::RateLimitError",
-  error_message: "Rate limit exceeded. Please retry after 60 seconds.",
-  rate_limited: true,
-  retryable: true,
-  parameters: { text: "Hello world", target_language: "es" },
-  created_at: Time.current - 30.minutes
-)
-
-# Timeout execution
-create_execution(
-  agent_type: "AnalysisAgent",
-  status: "timeout",
-  error_class: "Timeout::Error",
-  error_message: "Execution exceeded 30 second timeout",
-  parameters: { data: "Large dataset..." },
-  duration_ms: 30000,
-  created_at: Time.current - 45.minutes
-)
-
-# Running execution
-create_execution(
-  agent_type: "ReportAgent",
-  status: "running",
-  parameters: { report_type: "monthly", format: "pdf" },
-  completed_at: nil,
-  duration_ms: nil,
-  output_tokens: nil,
-  created_at: Time.current - 2.minutes
-)
-
-# Cached execution
-create_execution(
-  agent_type: "SearchAgent",
-  cache_hit: true,
-  response_cache_key: "search_agent:v1:abc123",
-  cached_at: Time.current - 1.hour,
-  duration_ms: 5,
-  parameters: { query: "What is Ruby on Rails?" },
-  response: { content: "Ruby on Rails is a web framework..." },
-  created_at: Time.current - 10.minutes
-)
-
-# Execution with tool calls
-create_execution(
-  agent_type: "AssistantAgent",
-  model_id: "gpt-4o",
-  finish_reason: "tool_calls",
-  tool_calls: [
-    { id: "call_abc123", name: "search_web", arguments: { query: "latest news" } },
-    { id: "call_def456", name: "calculate", arguments: { expression: "2 + 2" } }
-  ],
-  tool_calls_count: 2,
-  parameters: { message: "Search for latest news and calculate 2+2" },
-  response: { content: "I found the news and the answer is 4." },
-  created_at: Time.current - 15.minutes
-)
-
-# Execution with retries/fallback
-create_execution(
-  agent_type: "ReliableAgent",
-  model_id: "gpt-4o",
-  chosen_model_id: "gpt-4o-mini",
-  fallback_reason: "rate_limit",
-  fallback_chain: ["gpt-4o", "gpt-4o-mini", "gemini-2.0-flash"],
-  attempts: [
-    { model_id: "gpt-4o", error_class: "RubyLLM::RateLimitError", error_message: "Rate limited", duration_ms: 150 },
-    { model_id: "gpt-4o-mini", input_tokens: 500, output_tokens: 200, duration_ms: 1200 }
-  ],
-  attempts_count: 2,
-  parameters: { prompt: "Generate a story" },
-  response: { content: "Once upon a time..." },
-  created_at: Time.current - 20.minutes
-)
-
-# =============================================================================
-# 2. Pipeline Workflow
-# =============================================================================
-puts "Creating pipeline workflow..."
-
+# Pipeline workflow for acme
 workflow_id = SecureRandom.uuid
 pipeline_started = Time.current - 1.hour
 
-# Create the root pipeline execution
 pipeline_root = create_execution(
+  tenant_id: "acme_corp",
   agent_type: "ContentPipeline",
   workflow_type: "pipeline",
   workflow_id: workflow_id,
@@ -178,8 +175,9 @@ pipeline_root = create_execution(
   created_at: pipeline_started
 )
 
-# Pipeline Step 1: Extract
-step1 = create_execution(
+# Pipeline steps
+create_execution(
+  tenant_id: "acme_corp",
   agent_type: "ExtractorAgent",
   workflow_type: "pipeline",
   workflow_id: workflow_id,
@@ -197,8 +195,8 @@ step1 = create_execution(
   created_at: pipeline_started
 )
 
-# Pipeline Step 2: Classify
-step2 = create_execution(
+create_execution(
+  tenant_id: "acme_corp",
   agent_type: "ClassifierAgent",
   workflow_type: "pipeline",
   workflow_id: workflow_id,
@@ -206,8 +204,7 @@ step2 = create_execution(
   parent_execution_id: pipeline_root.id,
   root_execution_id: pipeline_root.id,
   model_id: "gpt-4o-mini",
-  temperature: 0.0,
-  parameters: { text: "Entities: AI, ML, trends. Key points: 3" },
+  parameters: { text: "Entities: AI, ML, trends" },
   response: { category: "technology", confidence: 0.95 },
   started_at: pipeline_started + 1.3.seconds,
   completed_at: pipeline_started + 2.1.seconds,
@@ -217,8 +214,8 @@ step2 = create_execution(
   created_at: pipeline_started + 1.3.seconds
 )
 
-# Pipeline Step 3: Format
-step3 = create_execution(
+create_execution(
+  tenant_id: "acme_corp",
   agent_type: "FormatterAgent",
   workflow_type: "pipeline",
   workflow_id: workflow_id,
@@ -226,7 +223,6 @@ step3 = create_execution(
   parent_execution_id: pipeline_root.id,
   root_execution_id: pipeline_root.id,
   model_id: "gpt-4o-mini",
-  temperature: 0.3,
   parameters: { text: "Entities and classification data...", category: "technology" },
   response: { formatted: "# Analysis Report\n\nKey findings..." },
   started_at: pipeline_started + 2.2.seconds,
@@ -236,19 +232,92 @@ step3 = create_execution(
   output_tokens: 400,
   created_at: pipeline_started + 2.2.seconds
 )
-
-puts "  Created pipeline with #{pipeline_root.child_executions.count} steps"
+puts "  Created ContentPipeline workflow with 3 steps"
 
 # =============================================================================
-# 3. Parallel Workflow
+# TENANT: STARTUP INC - Budget-conscious, fewer executions
 # =============================================================================
-puts "Creating parallel workflow..."
+puts "\n" + "=" * 60
+puts "Creating executions for: startup_inc"
+puts "=" * 60
 
+# Fewer searches (budget conscious)
+3.times do |i|
+  create_execution(
+    tenant_id: "startup_inc",
+    agent_type: "SearchAgent",
+    model_id: "gpt-4o-mini", # Cost-effective model
+    parameters: { query: "Best practices for #{%w[MVP deployment scaling].sample}" },
+    response: { content: "Here are the best practices..." },
+    created_at: Time.current - (i * 5).hours
+  )
+end
+puts "  Created 3 SearchAgent executions"
+
+# One failed execution (hit budget limit)
+create_execution(
+  tenant_id: "startup_inc",
+  agent_type: "SummaryAgent",
+  status: "error",
+  error_class: "RubyLLM::Agents::BudgetExceededError",
+  error_message: "Daily budget limit of $25.00 exceeded for tenant startup_inc",
+  parameters: { text: "Summarize this report..." },
+  created_at: Time.current - 2.hours
+)
+puts "  Created 1 budget-exceeded error"
+
+# One successful summary
+create_execution(
+  tenant_id: "startup_inc",
+  agent_type: "SummaryAgent",
+  model_id: "gpt-4o-mini",
+  parameters: { text: "Quarterly report..." },
+  response: { summary: "Q4 showed 20% growth..." },
+  created_at: Time.current - 6.hours
+)
+puts "  Created 1 SummaryAgent execution"
+
+# =============================================================================
+# TENANT: ENTERPRISE PLUS - Heavy usage, premium models
+# =============================================================================
+puts "\n" + "=" * 60
+puts "Creating executions for: enterprise_plus"
+puts "=" * 60
+
+# Heavy search usage with premium models
+10.times do |i|
+  model = ["gpt-4o", "claude-3-opus", "gpt-4o"].sample
+  create_execution(
+    tenant_id: "enterprise_plus",
+    agent_type: "SearchAgent",
+    model_id: model,
+    parameters: { query: "Enterprise #{%w[security compliance analytics governance].sample} strategy" },
+    response: { content: "Comprehensive analysis..." },
+    metadata: { request_id: SecureRandom.uuid, department: %w[engineering legal finance hr].sample },
+    created_at: Time.current - (i * 1.5).hours
+  )
+end
+puts "  Created 10 SearchAgent executions"
+
+# Summary executions
+6.times do |i|
+  create_execution(
+    tenant_id: "enterprise_plus",
+    agent_type: "SummaryAgent",
+    model_id: "gpt-4o",
+    parameters: { text: "Board meeting notes #{i + 1}..." },
+    response: { summary: "Key decisions from the meeting..." },
+    created_at: Time.current - (i * 2).hours
+  )
+end
+puts "  Created 6 SummaryAgent executions"
+
+# Parallel workflow
 parallel_workflow_id = SecureRandom.uuid
 parallel_started = Time.current - 45.minutes
 
-# Create the root parallel execution
 parallel_root = create_execution(
+  tenant_id: "enterprise_plus",
   agent_type: "ContentAnalyzer",
   workflow_type: "parallel",
   workflow_id: parallel_workflow_id,
@@ -264,16 +333,16 @@ parallel_root = create_execution(
   created_at: parallel_started
 )
 
-# Parallel Branch 1: Sentiment (fastest)
-branch1 = create_execution(
+# Parallel branches
+create_execution(
+  tenant_id: "enterprise_plus",
   agent_type: "SentimentAgent",
   workflow_type: "parallel",
   workflow_id: parallel_workflow_id,
   workflow_step: "sentiment",
   parent_execution_id: parallel_root.id,
   root_execution_id: parallel_root.id,
-  model_id: "gpt-4o-mini",
-  temperature: 0.0,
+  model_id: "gpt-4o",
   parameters: { text: "The new product launch exceeded expectations..." },
   response: { sentiment: "positive", score: 0.89 },
   started_at: parallel_started,
@@ -284,18 +353,17 @@ branch1 = create_execution(
   created_at: parallel_started
 )
 
-# Parallel Branch 2: Keywords
-branch2 = create_execution(
+create_execution(
+  tenant_id: "enterprise_plus",
   agent_type: "KeywordAgent",
   workflow_type: "parallel",
   workflow_id: parallel_workflow_id,
   workflow_step: "keywords",
   parent_execution_id: parallel_root.id,
   root_execution_id: parallel_root.id,
-  model_id: "gpt-4o-mini",
-  temperature: 0.0,
+  model_id: "gpt-4o",
   parameters: { text: "The new product launch exceeded expectations..." },
-  response: { keywords: ["product", "launch", "growth", "expectations", "exceeded"] },
+  response: { keywords: ["product", "launch", "growth"] },
   started_at: parallel_started,
   completed_at: parallel_started + 1.5.seconds,
   duration_ms: 1500,
@@ -304,18 +372,17 @@ branch2 = create_execution(
   created_at: parallel_started
 )
 
-# Parallel Branch 3: Summary (slowest)
-branch3 = create_execution(
+create_execution(
+  tenant_id: "enterprise_plus",
   agent_type: "SummaryAgent",
   workflow_type: "parallel",
   workflow_id: parallel_workflow_id,
   workflow_step: "summary",
   parent_execution_id: parallel_root.id,
   root_execution_id: parallel_root.id,
-  model_id: "gpt-4o-mini",
-  temperature: 0.3,
+  model_id: "gpt-4o",
   parameters: { text: "The new product launch exceeded expectations..." },
-  response: { summary: "Successful product launch with 50% growth, exceeding all expectations." },
+  response: { summary: "Successful product launch with 50% growth." },
   started_at: parallel_started,
   completed_at: parallel_started + 2.7.seconds,
   duration_ms: 2700,
@@ -323,218 +390,186 @@ branch3 = create_execution(
   output_tokens: 80,
   created_at: parallel_started
 )
+puts "  Created ContentAnalyzer parallel workflow with 3 branches"
 
-puts "  Created parallel workflow with #{parallel_root.child_executions.count} branches"
-
-# =============================================================================
-# 4. Router Workflow
-# =============================================================================
-puts "Creating router workflow..."
-
+# Router workflow
 router_workflow_id = SecureRandom.uuid
 router_started = Time.current - 30.minutes
 
-# Create the root router execution
 router_root = create_execution(
+  tenant_id: "enterprise_plus",
   agent_type: "SupportRouter",
   workflow_type: "router",
   workflow_id: router_workflow_id,
-  routed_to: "billing",
+  routed_to: "technical",
   classification_result: {
     method: "llm",
-    classifier_model: "gpt-4o-mini",
+    classifier_model: "gpt-4o",
     classification_time_ms: 450,
-    confidence: 0.92,
-    alternatives: [
-      { route: "billing", score: 0.92 },
-      { route: "technical", score: 0.05 },
-      { route: "general", score: 0.03 }
-    ]
+    confidence: 0.95
   },
-  parameters: { message: "I was charged twice for my subscription last month" },
-  response: { content: "I understand you've been double charged. Let me help resolve this billing issue..." },
+  parameters: { message: "Our API integration is returning 500 errors" },
+  response: { content: "Let me help you debug the API integration issue..." },
   started_at: router_started,
   completed_at: router_started + 3.2.seconds,
   duration_ms: 3200,
   created_at: router_started
 )
 
-# Routed execution: BillingAgent
-routed_execution = create_execution(
-  agent_type: "BillingAgent",
+create_execution(
+  tenant_id: "enterprise_plus",
+  agent_type: "TechnicalSupportAgent",
   workflow_type: "router",
   workflow_id: router_workflow_id,
-  workflow_step: "billing",
+  workflow_step: "technical",
   parent_execution_id: router_root.id,
   root_execution_id: router_root.id,
   model_id: "gpt-4o",
-  temperature: 0.3,
-  parameters: {
-    message: "I was charged twice for my subscription last month",
-    routed_at: router_started + 0.5.seconds,
-    route_context: "billing"
-  },
-  response: {
-    content: "I apologize for the inconvenience. I can see the duplicate charge in your account. I've initiated a refund which should appear in 3-5 business days.",
-    actions_taken: ["identified_duplicate", "initiated_refund"]
-  },
+  parameters: { message: "Our API integration is returning 500 errors" },
+  response: { content: "Based on the error logs, I recommend checking..." },
   started_at: router_started + 0.5.seconds,
   completed_at: router_started + 3.1.seconds,
   duration_ms: 2600,
   input_tokens: 380,
-  output_tokens: 150,
+  output_tokens: 250,
   created_at: router_started + 0.5.seconds
 )
-
-puts "  Created router workflow routed to: #{router_root.routed_to}"
-
-# =============================================================================
-# 5. Failed Pipeline Workflow (for error state testing)
-# =============================================================================
-puts "Creating failed pipeline workflow..."
-
-failed_workflow_id = SecureRandom.uuid
-failed_started = Time.current - 2.hours
-
-failed_pipeline = create_execution(
-  agent_type: "ContentPipeline",
-  workflow_type: "pipeline",
-  workflow_id: failed_workflow_id,
-  status: "error",
-  error_class: "RubyLLM::ContentFilterError",
-  error_message: "Content was blocked by safety filters",
-  parameters: { text: "Some problematic content..." },
-  started_at: failed_started,
-  completed_at: failed_started + 1.8.seconds,
-  duration_ms: 1800,
-  created_at: failed_started
-)
-
-# First step succeeded
-failed_step1 = create_execution(
-  agent_type: "ExtractorAgent",
-  workflow_type: "pipeline",
-  workflow_id: failed_workflow_id,
-  workflow_step: "extract",
-  parent_execution_id: failed_pipeline.id,
-  root_execution_id: failed_pipeline.id,
-  parameters: { text: "Some problematic content..." },
-  response: { entities: ["content"] },
-  started_at: failed_started,
-  completed_at: failed_started + 0.8.seconds,
-  duration_ms: 800,
-  created_at: failed_started
-)
-
-# Second step failed
-failed_step2 = create_execution(
-  agent_type: "ClassifierAgent",
-  workflow_type: "pipeline",
-  workflow_id: failed_workflow_id,
-  workflow_step: "classify",
-  parent_execution_id: failed_pipeline.id,
-  root_execution_id: failed_pipeline.id,
-  status: "error",
-  error_class: "RubyLLM::ContentFilterError",
-  error_message: "Content was blocked by safety filters",
-  finish_reason: "content_filter",
-  parameters: { text: "Extracted entities..." },
-  started_at: failed_started + 0.9.seconds,
-  completed_at: failed_started + 1.7.seconds,
-  duration_ms: 800,
-  created_at: failed_started + 0.9.seconds
-)
-
-puts "  Created failed pipeline (error at step 2)"
+puts "  Created SupportRouter workflow"
 
 # =============================================================================
-# 6. Parallel Workflow with Mixed Results
+# TENANT: DEMO ACCOUNT - Variety of states for demos
 # =============================================================================
-puts "Creating parallel workflow with mixed results..."
+puts "\n" + "=" * 60
+puts "Creating executions for: demo_account"
+puts "=" * 60
 
-mixed_workflow_id = SecureRandom.uuid
-mixed_started = Time.current - 1.5.hours
-
-mixed_parallel = create_execution(
-  agent_type: "ContentAnalyzer",
-  workflow_type: "parallel",
-  workflow_id: mixed_workflow_id,
-  status: "success", # Overall success despite one failure
-  parameters: { text: "Complex analysis request..." },
-  response: { partial_results: true },
-  started_at: mixed_started,
-  completed_at: mixed_started + 3.5.seconds,
-  duration_ms: 3500,
-  created_at: mixed_started
-)
-
-# Branch 1: Success
+# Success
 create_execution(
-  agent_type: "SentimentAgent",
-  workflow_type: "parallel",
-  workflow_id: mixed_workflow_id,
-  workflow_step: "sentiment",
-  parent_execution_id: mixed_parallel.id,
-  root_execution_id: mixed_parallel.id,
-  parameters: { text: "Complex analysis..." },
-  response: { sentiment: "neutral" },
-  started_at: mixed_started,
-  completed_at: mixed_started + 1.2.seconds,
-  duration_ms: 1200,
-  created_at: mixed_started
+  tenant_id: "demo_account",
+  agent_type: "SearchAgent",
+  parameters: { query: "What is Ruby on Rails?" },
+  response: { content: "Ruby on Rails is a web framework..." },
+  created_at: Time.current - 10.minutes
 )
+puts "  Created 1 successful SearchAgent"
 
-# Branch 2: Timeout
+# Cached response
 create_execution(
-  agent_type: "KeywordAgent",
-  workflow_type: "parallel",
-  workflow_id: mixed_workflow_id,
-  workflow_step: "keywords",
-  parent_execution_id: mixed_parallel.id,
-  root_execution_id: mixed_parallel.id,
+  tenant_id: "demo_account",
+  agent_type: "SearchAgent",
+  cache_hit: true,
+  response_cache_key: "search_agent:v1:demo123",
+  cached_at: Time.current - 1.hour,
+  duration_ms: 5,
+  parameters: { query: "What is Ruby on Rails?" },
+  response: { content: "Ruby on Rails is a web framework..." },
+  created_at: Time.current - 5.minutes
+)
+puts "  Created 1 cached SearchAgent"
+
+# Rate limited
+create_execution(
+  tenant_id: "demo_account",
+  agent_type: "TranslationAgent",
+  status: "error",
+  error_class: "RubyLLM::RateLimitError",
+  error_message: "Rate limit exceeded. Please retry after 60 seconds.",
+  rate_limited: true,
+  retryable: true,
+  parameters: { text: "Hello world", target_language: "es" },
+  created_at: Time.current - 15.minutes
+)
+puts "  Created 1 rate-limited error"
+
+# Timeout
+create_execution(
+  tenant_id: "demo_account",
+  agent_type: "AnalysisAgent",
   status: "timeout",
   error_class: "Timeout::Error",
-  error_message: "Execution exceeded timeout",
-  parameters: { text: "Complex analysis..." },
-  started_at: mixed_started,
-  completed_at: mixed_started + 3.4.seconds,
-  duration_ms: 3400,
-  created_at: mixed_started
+  error_message: "Execution exceeded 30 second timeout",
+  parameters: { data: "Large dataset..." },
+  duration_ms: 30000,
+  created_at: Time.current - 20.minutes
 )
+puts "  Created 1 timeout error"
 
-# Branch 3: Success
+# Running
 create_execution(
-  agent_type: "SummaryAgent",
-  workflow_type: "parallel",
-  workflow_id: mixed_workflow_id,
-  workflow_step: "summary",
-  parent_execution_id: mixed_parallel.id,
-  root_execution_id: mixed_parallel.id,
-  parameters: { text: "Complex analysis..." },
-  response: { summary: "Partial analysis completed." },
-  started_at: mixed_started,
-  completed_at: mixed_started + 2.1.seconds,
-  duration_ms: 2100,
-  created_at: mixed_started
+  tenant_id: "demo_account",
+  agent_type: "ReportAgent",
+  status: "running",
+  parameters: { report_type: "demo", format: "pdf" },
+  completed_at: nil,
+  duration_ms: nil,
+  output_tokens: nil,
+  created_at: Time.current - 1.minute
 )
+puts "  Created 1 running execution"
 
-puts "  Created parallel workflow with mixed results (1 timeout)"
+# With tool calls
+create_execution(
+  tenant_id: "demo_account",
+  agent_type: "AssistantAgent",
+  model_id: "gpt-4o",
+  finish_reason: "tool_calls",
+  tool_calls: [
+    { id: "call_abc123", name: "search_web", arguments: { query: "latest news" } },
+    { id: "call_def456", name: "calculate", arguments: { expression: "2 + 2" } }
+  ],
+  tool_calls_count: 2,
+  parameters: { message: "Search for news and calculate 2+2" },
+  response: { content: "I found the news and the answer is 4." },
+  created_at: Time.current - 25.minutes
+)
+puts "  Created 1 execution with tool calls"
+
+# =============================================================================
+# NO TENANT (legacy/global executions)
+# =============================================================================
+puts "\n" + "=" * 60
+puts "Creating executions without tenant (global)"
+puts "=" * 60
+
+# Some executions without tenant_id (backward compatibility)
+3.times do |i|
+  create_execution(
+    tenant_id: nil,
+    agent_type: "LegacyAgent",
+    parameters: { action: "process_#{i}" },
+    response: { status: "completed" },
+    created_at: Time.current - (i * 4).hours
+  )
+end
+puts "  Created 3 LegacyAgent executions (no tenant)"
 
 # =============================================================================
 # Summary
 # =============================================================================
-puts ""
-puts "=" * 60
+puts "\n" + "=" * 60
 puts "Seeding complete!"
 puts "=" * 60
-puts ""
-puts "Created:"
-puts "  - #{RubyLLM::Agents::Execution.where(workflow_type: nil).count} regular agent executions"
+
+if RubyLLM::Agents::TenantBudget.table_exists?
+  puts "\nTenant Budgets:"
+  RubyLLM::Agents::TenantBudget.all.each do |budget|
+    puts "  #{budget.tenant_id}: daily=$#{budget.daily_limit}, monthly=$#{budget.monthly_limit}, enforcement=#{budget.enforcement}"
+  end
+end
+
+puts "\nExecutions by Tenant:"
+tenant_counts = RubyLLM::Agents::Execution.group(:tenant_id).count
+tenant_counts.each do |tenant_id, count|
+  tenant_name = tenant_id.nil? ? "(no tenant)" : tenant_id
+  puts "  #{tenant_name}: #{count} executions"
+end
+
+puts "\nWorkflows:"
 puts "  - #{RubyLLM::Agents::Execution.where(workflow_type: 'pipeline', parent_execution_id: nil).count} pipeline workflows"
 puts "  - #{RubyLLM::Agents::Execution.where(workflow_type: 'parallel', parent_execution_id: nil).count} parallel workflows"
 puts "  - #{RubyLLM::Agents::Execution.where(workflow_type: 'router', parent_execution_id: nil).count} router workflows"
-puts ""
-puts "Total executions: #{RubyLLM::Agents::Execution.count}"
-puts ""
-puts "Start the server with: bin/rails server"
+
+puts "\nTotal: #{RubyLLM::Agents::Execution.count} executions"
+puts "\nStart the server with: bin/rails server"
 puts "Then visit: http://localhost:3000/agents"
+puts "\nTo test tenant filtering, append ?tenant_id=acme_corp to the URL"

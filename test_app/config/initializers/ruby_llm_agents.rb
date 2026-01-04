@@ -6,6 +6,19 @@
 
 RubyLLM::Agents.configure do |config|
   # ============================================
+  # Multi-Tenancy (enabled for testing)
+  # ============================================
+
+  # Enable multi-tenancy features
+  config.multi_tenancy_enabled = true
+
+  # Resolve current tenant from request params or Current attributes
+  # In production, you'd typically use Current.tenant or similar
+  config.tenant_resolver = lambda {
+    # For testing: check thread-local variable first, then fall back to nil
+    Thread.current[:ruby_llm_agents_tenant_id]
+  }
+  # ============================================
   # Model Defaults
   # ============================================
 

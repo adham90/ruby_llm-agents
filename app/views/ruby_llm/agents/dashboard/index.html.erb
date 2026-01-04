@@ -4,6 +4,9 @@
 <!-- Now Strip -->
 <%= render partial: "ruby_llm/agents/dashboard/now_strip", locals: { now_strip: @now_strip } %>
 
+<!-- Tenant Budget (when viewing specific tenant) -->
+<%= render partial: "ruby_llm/agents/dashboard/tenant_budget", locals: { tenant_budget: @tenant_budget } %>
+
 <!-- Activity Chart -->
 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mb-6">
   <div class="px-6 py-3 border-b border-gray-100 dark:border-gray-700">

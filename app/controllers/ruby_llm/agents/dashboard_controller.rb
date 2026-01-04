@@ -26,6 +26,7 @@ module RubyLLM
         @recent_executions = base_scope.recent(10)
         @agent_stats = build_agent_comparison(base_scope)
         @top_errors = build_top_errors(base_scope)
+        @tenant_budget = load_tenant_budget(base_scope)
       end
 
       # Returns chart data as JSON for live updates
@@ -216,6 +217,37 @@ module RubyLLM
       rescue StandardError => e
         Rails.logger.debug("[RubyLLM::Agents] Error loading open breakers: #{e.message}")
         []
+      end
+
+      # Loads tenant budget info for the current tenant
+      #
+      # @param base_scope [ActiveRecord::Relation] Base scope for usage calculation
+      # @return [Hash, nil] Tenant budget data with usage info, or nil if not applicable
+      def load_tenant_budget(base_scope)
+        return nil unless tenant_filter_enabled? && current_tenant_id.present?
+        return nil unless TenantBudget.table_exists?
+
+        budget = TenantBudget.for_tenant(current_tenant_id)
+        return nil unless budget
+
+        # Calculate current usage
+        today_scope = base_scope.where("created_at >= ?", Time.current.beginning_of_day)
+        month_scope = base_scope.where("created_at >= ?", Time.current.beginning_of_month)
+
+        daily_spend = today_scope.sum(:total_cost) || 0
+        monthly_spend = month_scope.sum(:total_cost) || 0
+
+        {
+          tenant_id: current_tenant_id,
+          daily_limit: budget.effective_daily_limit,
+          monthly_limit: budget.effective_monthly_limit,
+          daily_spend: daily_spend,
+          monthly_spend: monthly_spend,
+          daily_percentage: budget.effective_daily_limit.to_f > 0 ? (daily_spend / budget.effective_daily_limit * 100).round(1) : 0,
+          monthly_percentage: budget.effective_monthly_limit.to_f > 0 ? (monthly_spend / budget.effective_monthly_limit * 100).round(1) : 0,
+          enforcement: budget.effective_enforcement,
+          per_agent_daily: budget.per_agent_daily || {}
+        }
       end
 
       # Loads recent alerts from cache

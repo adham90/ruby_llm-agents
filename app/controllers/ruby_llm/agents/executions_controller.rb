@@ -288,6 +288,12 @@ module RubyLLM
         # Apply execution type tab filter (agents vs workflows)
         scope = apply_execution_type_filter(scope)
 
+        # Only show root executions (not workflow children) - children are nested under parents
+        scope = scope.where(parent_execution_id: nil)
+
+        # Eager load children for workflow grouping
+        scope = scope.includes(:child_executions)
+
         scope
       end
 

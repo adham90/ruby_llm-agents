@@ -1,153 +1,197 @@
+<%# Show tenant column when multi-tenancy is enabled and no specific tenant is selected %>
+<% show_tenant_column = tenant_filter_enabled? && current_tenant_id.blank? %>
+
 <% if executions.empty? %>
   <p class="text-gray-500 dark:text-gray-400 text-center py-8">No executions found.</p>
 <% else %>
   <div class="overflow-x-auto">
-    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-      <thead>
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 dark:bg-gray-900/50">
         <tr>
           <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-          <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
+          <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Agent</th>
+          <% if show_tenant_column %>
+            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tenant</th>
+          <% end %>
           <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Model</th>
-          <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Temp</th>
+          <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Duration</th>
           <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tokens</th>
           <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cost</th>
-          <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Duration</th>
           <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Time</th>
         </tr>
       </thead>
       <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
         <% executions.each do |execution| %>
           <%
-            # Determine workflow display info
             is_workflow = execution.workflow_type.present?
-            is_workflow_step = execution.workflow_step.present? || execution.parent_execution_id.present?
-            workflow_badge = case execution.workflow_type
-              when "pipeline" then { label: "Pipeline", color: "bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300", icon: "→" }
-              when "parallel" then { label: "Parallel", color: "bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300", icon: "⫴" }
-              when "router" then { label: "Router", color: "bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300", icon: "⑂" }
-              else nil
-            end
+            children = execution.child_executions.sort_by(&:created_at)
+            has_children = children.any?
           %>
-          <!-- Main Row (clickable to expand) -->
-          <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group <%= is_workflow_step && !is_workflow ? 'bg-gray-50/50 dark:bg-gray-900/30' : '' %>"
-              onclick="toggleExecutionDetails('<%= execution.id %>')"
-              id="execution-row-<%= execution.id %>">
+
+          <%# Parent/Main Row %>
+          <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+            <%# Status %>
             <td class="px-4 py-3 whitespace-nowrap">
-              <div class="flex items-center">
-                <svg class="w-4 h-4 mr-2 text-gray-400 dark:text-gray-500 transform transition-transform duration-200"
-                     id="chevron-<%= execution.id %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
-                <%= render "ruby_llm/agents/shared/status_badge", status: execution.status %>
+              <%= render "ruby_llm/agents/shared/status_badge", status: execution.status, size: :sm %>
+            </td>
+
+            <%# Agent Name with Workflow Badge %>
+            <td class="px-4 py-3 whitespace-nowrap">
+              <div class="flex items-center gap-2">
+                <%= link_to ruby_llm_agents.execution_path(execution), class: "font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400" do %>
+                  <%= execution.agent_type.gsub(/Agent$/, "") %>
+                <% end %>
+                <% if is_workflow %>
+                  <% badge_style = case execution.workflow_type
+                       when "pipeline" then "text-indigo-600 dark:text-indigo-400"
+                       when "parallel" then "text-cyan-600 dark:text-cyan-400"
+                       when "router" then "text-amber-600 dark:text-amber-400"
+                     end %>
+                  <% badge_icon = case execution.workflow_type
+                       when "pipeline" then "→"
+                       when "parallel" then "⫴"
+                       when "router" then "⑂"
+                     end %>
+                  <span class="text-xs <%= badge_style %>"><%= badge_icon %></span>
+                <% end %>
               </div>
             </td>
-            <td class="px-4 py-3 whitespace-nowrap text-sm">
-              <div class="flex items-center gap-1.5">
-                <% if workflow_badge %>
-                  <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium <%= workflow_badge[:color] %>">
-                    <span class="text-[10px]"><%= workflow_badge[:icon] %></span>
-                    <%= workflow_badge[:label] %>
-                  </span>
-                <% elsif is_workflow_step %>
-                  <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
-                    </svg>
-                    <%= execution.workflow_step || "step" %>
-                  </span>
+
+            <%# Tenant (only when viewing all tenants) %>
+            <% if show_tenant_column %>
+              <td class="px-4 py-3 whitespace-nowrap">
+                <% if execution.tenant_id.present? %>
+                  <a href="<%= url_for(request.query_parameters.merge(tenant_id: execution.tenant_id)) %>"
+                     class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50">
+                    <%= truncate(execution.tenant_id, length: 15) %>
+                  </a>
                 <% else %>
-                  <span class="text-gray-500 dark:text-gray-400">v<%= execution.agent_version %></span>
+                  <span class="text-gray-400 dark:text-gray-500 text-xs">—</span>
                 <% end %>
-                <% if execution.routed_to.present? %>
-                  <span class="text-xs text-amber-600 dark:text-amber-400">→ <%= execution.routed_to %></span>
-                <% end %>
-              </div>
-            </td>
-            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+              </td>
+            <% end %>
+
+            <%# Model %>
+            <td class="px-4 py-3 whitespace-nowrap text-gray-500 dark:text-gray-400 font-mono text-xs">
               <%= execution.model_id %>
             </td>
-            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-              <%= execution.temperature %>
+
+            <%# Duration %>
+            <td class="px-4 py-3 whitespace-nowrap text-right text-gray-900 dark:text-gray-100 tabular-nums">
+              <%= execution.duration_ms ? "#{number_with_delimiter(execution.duration_ms)}ms" : "-" %>
             </td>
-            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 text-right font-medium">
-              <%= number_to_human_short(execution.total_tokens || 0) %>
+
+            <%# Tokens %>
+            <td class="px-4 py-3 whitespace-nowrap text-right text-gray-900 dark:text-gray-100 tabular-nums">
+              <%= number_with_delimiter(execution.total_tokens || 0) %>
             </td>
-            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 text-right font-medium">
-              <%= number_to_human_short(execution.total_cost || 0, prefix: "$", precision: 2) %>
+
+            <%# Cost %>
+            <td class="px-4 py-3 whitespace-nowrap text-right text-gray-900 dark:text-gray-100 tabular-nums">
+              $<%= number_with_precision(execution.total_cost || 0, precision: 4) %>
             </td>
-            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 text-right font-medium">
-              <%= number_with_delimiter(execution.duration_ms || 0) %>ms
-            </td>
-            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
+
+            <%# Time %>
+            <td class="px-4 py-3 whitespace-nowrap text-right text-gray-500 dark:text-gray-400">
               <%= time_ago_in_words(execution.created_at) %> ago
             </td>
           </tr>
 
-          <!-- Error Row (if applicable) -->
+          <%# Error Row (if applicable) %>
           <% if execution.status_error? && execution.error_message.present? %>
-            <tr class="bg-red-50 dark:bg-red-900/30">
-              <td colspan="8" class="px-4 py-2">
+            <tr class="bg-red-50/50 dark:bg-red-900/20">
+              <td></td>
+              <td colspan="<%= show_tenant_column ? 7 : 6 %>" class="px-4 py-2">
                 <p class="text-xs text-red-600 dark:text-red-400">
                   <span class="font-medium"><%= execution.error_class %>:</span>
-                  <%= truncate(execution.error_message, length: 150) %>
+                  <%= truncate(execution.error_message, length: 120) %>
                 </p>
               </td>
             </tr>
           <% end %>
 
-          <!-- Expandable Details Row (hidden by default) -->
-          <tr id="execution-details-<%= execution.id %>" class="hidden bg-gray-50 dark:bg-gray-900">
-            <td colspan="8" class="px-4 py-4">
-              <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <% if execution.respond_to?(:system_prompt) && execution.system_prompt.present? %>
-                  <div>
-                    <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">System Prompt</h4>
-                    <pre class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-xs text-gray-900 dark:text-gray-100 overflow-x-auto max-h-48 overflow-y-auto font-mono whitespace-pre-wrap"><%= execution.system_prompt %></pre>
+          <%# Child Rows (for workflows) %>
+          <% if has_children %>
+            <% children.each_with_index do |child, index| %>
+              <% is_last = index == children.size - 1 %>
+              <tr class="bg-gray-50/50 dark:bg-gray-900/30 hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors">
+                <%# Status with tree line %>
+                <td class="px-4 py-2 whitespace-nowrap">
+                  <div class="flex items-center">
+                    <span class="text-gray-300 dark:text-gray-600 mr-2 font-mono text-xs"><%= is_last ? "└─" : "├─" %></span>
+                    <% case child.status
+                       when "success" %>
+                      <span class="text-green-600 dark:text-green-400">✓</span>
+                    <% when "error" %>
+                      <span class="text-red-600 dark:text-red-400">✗</span>
+                    <% when "timeout" %>
+                      <span class="text-orange-600 dark:text-orange-400">⏱</span>
+                    <% when "running" %>
+                      <span class="text-blue-600 dark:text-blue-400 animate-pulse">●</span>
+                    <% else %>
+                      <span class="text-gray-400">○</span>
+                    <% end %>
                   </div>
+                </td>
+
+                <%# Step/Branch Name %>
+                <td class="px-4 py-2 whitespace-nowrap">
+                  <%= link_to ruby_llm_agents.execution_path(child), class: "text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400" do %>
+                    <% if execution.pipeline_workflow? %>
+                      <span class="text-gray-400 dark:text-gray-500 text-xs"><%= index + 1 %>.</span>
+                    <% end %>
+                    <%= child.workflow_step || child.agent_type.gsub(/Agent$/, "") %>
+                  <% end %>
+                </td>
+
+                <%# Tenant - empty for child rows %>
+                <% if show_tenant_column %>
+                  <td class="px-4 py-2"></td>
                 <% end %>
 
-                <% if execution.respond_to?(:user_prompt) && execution.user_prompt.present? %>
-                  <div>
-                    <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">User Prompt</h4>
-                    <pre class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-xs text-gray-900 dark:text-gray-100 overflow-x-auto max-h-48 overflow-y-auto font-mono whitespace-pre-wrap"><%= execution.user_prompt %></pre>
-                  </div>
-                <% end %>
+                <%# Model %>
+                <td class="px-4 py-2 whitespace-nowrap text-gray-400 dark:text-gray-500 font-mono text-xs">
+                  <%= child.model_id %>
+                </td>
 
-                <% if execution.parameters.present? && execution.parameters.any? %>
-                  <div>
-                    <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">Parameters</h4>
-                    <pre class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-xs text-gray-900 dark:text-gray-100 overflow-x-auto max-h-48 overflow-y-auto font-mono"><%= JSON.pretty_generate(execution.parameters) %></pre>
-                  </div>
-                <% end %>
+                <%# Duration %>
+                <td class="px-4 py-2 whitespace-nowrap text-right text-gray-600 dark:text-gray-300 tabular-nums text-xs">
+                  <%= child.duration_ms ? "#{number_with_delimiter(child.duration_ms)}ms" : "-" %>
+                </td>
 
-                <% if execution.response.present? && execution.response.any? %>
-                  <div>
-                    <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">Response</h4>
-                    <pre class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-xs text-gray-900 dark:text-gray-100 overflow-x-auto max-h-48 overflow-y-auto font-mono"><%= JSON.pretty_generate(execution.response) %></pre>
-                  </div>
-                <% end %>
+                <%# Tokens %>
+                <td class="px-4 py-2 whitespace-nowrap text-right text-gray-600 dark:text-gray-300 tabular-nums text-xs">
+                  <%= number_with_delimiter(child.total_tokens || 0) %>
+                </td>
 
-                <% if execution.metadata.present? && execution.metadata.any? %>
-                  <div>
-                    <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">Metadata</h4>
-                    <pre class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-xs text-gray-900 dark:text-gray-100 overflow-x-auto max-h-48 overflow-y-auto font-mono"><%= JSON.pretty_generate(execution.metadata) %></pre>
-                  </div>
-                <% end %>
-              </div>
+                <%# Cost %>
+                <td class="px-4 py-2 whitespace-nowrap text-right text-gray-600 dark:text-gray-300 tabular-nums text-xs">
+                  $<%= number_with_precision(child.total_cost || 0, precision: 4) %>
+                </td>
 
-              <!-- View Full Details Link -->
-              <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                <%= link_to ruby_llm_agents.execution_path(execution), class: "text-sm text-blue-600 dark:text-blue-400 hover:underline", onclick: "event.stopPropagation();" do %>
-                  View Full Details &rarr;
-                <% end %>
-              </div>
-            </td>
-          </tr>
+                <%# Time - empty for children %>
+                <td class="px-4 py-2"></td>
+              </tr>
+
+              <%# Child Error Row %>
+              <% if child.status_error? && child.error_message.present? %>
+                <tr class="bg-red-50/30 dark:bg-red-900/10">
+                  <td></td>
+                  <td colspan="<%= show_tenant_column ? 7 : 6 %>" class="px-4 py-1.5 pl-8">
+                    <p class="text-xs text-red-500 dark:text-red-400">
+                      <%= truncate(child.error_message, length: 100) %>
+                    </p>
+                  </td>
+                </tr>
+              <% end %>
+            <% end %>
+          <% end %>
         <% end %>
       </tbody>
     </table>
   </div>
 
+  <%# Pagination %>
   <% if pagination[:total_pages] > 1 %>
     <%
       current_page = pagination[:current_page]
@@ -170,7 +214,6 @@
         <% end %>
 
         <%
-          # Calculate which page numbers to show
           window = 2
           left_edge = 1
           right_edge = 1
@@ -206,18 +249,3 @@
     </div>
   <% end %>
 <% end %>
-
-<script>
-  function toggleExecutionDetails(id) {
-    const detailsRow = document.getElementById(`execution-details-${id}`);
-    const chevron = document.getElementById(`chevron-${id}`);
-
-    if (detailsRow.classList.contains('hidden')) {
-      detailsRow.classList.remove('hidden');
-      chevron.classList.add('rotate-90');
-    } else {
-      detailsRow.classList.add('hidden');
-      chevron.classList.remove('rotate-90');
-    }
-  }
-</script>
