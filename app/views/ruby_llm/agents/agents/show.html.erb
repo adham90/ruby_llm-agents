@@ -341,8 +341,9 @@
 
     <!-- Reliability Configuration -->
     <% retries_config = @config[:retries] || {}
+      fallback_models = Array(@config[:fallback_models]).compact
       has_retries = (retries_config[:max] || 0) > 0
-      has_fallbacks = @config[:fallback_models].present? && @config[:fallback_models].any?
+      has_fallbacks = fallback_models.any?
       has_total_timeout = @config[:total_timeout].present?
       has_circuit_breaker = @config[:circuit_breaker].present?
       has_any_reliability = has_retries || has_fallbacks || has_total_timeout || has_circuit_breaker %>
@@ -446,7 +447,7 @@
 
               <% if has_fallbacks %>
                 <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                  <%= @config[:fallback_models].join(" → ") %>
+                  <%= fallback_models.join(" → ") %>
                 </p>
               <% else %>
                 <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
@@ -603,7 +604,10 @@
     <% end %>
 
     <!-- Available Tools -->
-    <% tools = @agent_class.respond_to?(:tools) ? (@agent_class.tools || []) : [] %>
+    <%
+      class_tools = @agent_class.respond_to?(:tools) ? (@agent_class.tools || []) : []
+      has_dynamic_tools = @agent_class.instance_methods(false).include?(:tools)
+    %>
     <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
       <p
         class="
@@ -612,14 +616,24 @@
         "
       >
         Available Tools
-        <span class="inline-flex items-center ml-2 px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300">
-          <%= tools.size %>
-        </span>
+        <% if class_tools.any? %>
+          <span class="inline-flex items-center ml-2 px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300">
+            <%= class_tools.size %>
+          </span>
+        <% elsif has_dynamic_tools %>
+          <span class="inline-flex items-center ml-2 px-1.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300">
+            Dynamic
+          </span>
+        <% else %>
+          <span class="inline-flex items-center ml-2 px-1.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+            0
+          </span>
+        <% end %>
       </p>
 
-      <% if tools.any? %>
+      <% if class_tools.any? %>
         <div class="space-y-2">
-          <% tools.each do |tool_class| %>
+          <% class_tools.each do |tool_class| %>
             <div class="flex items-center text-sm">
               <code
                 class="
@@ -632,6 +646,13 @@
             </div>
           <% end %>
         </div>
+      <% elsif has_dynamic_tools %>
+        <p class="text-sm text-purple-600 dark:text-purple-400">
+          This agent configures tools dynamically at runtime based on context.
+        </p>
+        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+          Tools vary per execution based on feature flags and configuration.
+        </p>
       <% else %>
         <p class="text-sm text-gray-400 dark:text-gray-500 italic">
           No tools configured for this agent.
