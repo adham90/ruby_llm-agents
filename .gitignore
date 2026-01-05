@@ -23,3 +23,6 @@
 !/test_app/tmp/.keep
 /test_app/config/master.key
 /test_app/config/credentials.yml.enc
+
+# Wiki clone (separate git repo)
+ruby_llm-agents.wiki/
