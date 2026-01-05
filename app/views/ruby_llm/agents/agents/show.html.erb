@@ -601,6 +601,43 @@
         </div>
       </div>
     <% end %>
+
+    <!-- Available Tools -->
+    <% tools = @agent_class.respond_to?(:tools) ? (@agent_class.tools || []) : [] %>
+    <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
+      <p
+        class="
+          text-xs text-gray-500 dark:text-gray-400 uppercase
+          tracking-wider mb-3
+        "
+      >
+        Available Tools
+        <span class="inline-flex items-center ml-2 px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300">
+          <%= tools.size %>
+        </span>
+      </p>
+
+      <% if tools.any? %>
+        <div class="space-y-2">
+          <% tools.each do |tool_class| %>
+            <div class="flex items-center text-sm">
+              <code
+                class="
+                  bg-gray-100 dark:bg-gray-700 dark:text-gray-200 px-2
+                  py-0.5 rounded font-mono
+                "
+              >
+                <%= tool_class.respond_to?(:tool_name) ? tool_class.tool_name : tool_class.name.demodulize %>
+              </code>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-sm text-gray-400 dark:text-gray-500 italic">
+          No tools configured for this agent.
+        </p>
+      <% end %>
+    </div>
   </div>
 <% end %>
 

@@ -523,46 +523,13 @@
   </div>
 <% end %>
 
-<!-- Masking Toggle -->
-<div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-6">
-  <div class="flex items-center justify-between">
-    <div class="flex items-center gap-2">
-      <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-      </svg>
-      <span class="text-sm font-medium text-amber-800 dark:text-amber-200">Data Masking</span>
-    </div>
-    <div class="flex items-center gap-3">
-      <span id="masking-status" class="text-xs text-amber-600 dark:text-amber-400">
-        Sensitive data is hidden
-      </span>
-      <button
-        type="button"
-        id="toggle-masking-btn"
-        onclick="toggleMasking()"
-        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800/50"
-      >
-        <svg id="eye-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-        </svg>
-        <svg id="eye-off-icon" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
-        </svg>
-        <span id="toggle-btn-text">Show Original</span>
-      </button>
-    </div>
-  </div>
-</div>
-
 <!-- Parameters -->
 <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6">
   <div class="flex items-center justify-between mb-4">
     <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Parameters</h3>
     <button
       type="button"
-      data-copy-json="<%= Base64.strict_encode64(JSON.pretty_generate(redact_for_display(@execution.parameters || {}))) %>"
-      data-copy-json-original="<%= Base64.strict_encode64(JSON.pretty_generate(@execution.parameters || {})) %>"
+      data-copy-json="<%= Base64.strict_encode64(JSON.pretty_generate(@execution.parameters || {})) %>"
       class="copy-json-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
     >
       <svg class="w-4 h-4 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -574,8 +541,7 @@
       <span>Copy</span>
     </button>
   </div>
-  <pre id="parameters-masked" class="maskable-content bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 text-sm overflow-x-auto font-mono"><%= highlight_json_redacted(@execution.parameters || {}) %></pre>
-  <pre id="parameters-original" class="maskable-content hidden bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 text-sm overflow-x-auto font-mono"><%= highlight_json(@execution.parameters || {}) %></pre>
+  <pre class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 text-sm overflow-x-auto font-mono"><%= highlight_json(@execution.parameters || {}) %></pre>
 </div>
 
 <!-- Response -->
@@ -585,8 +551,7 @@
       <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Response</h3>
       <button
         type="button"
-        data-copy-json="<%= Base64.strict_encode64(JSON.pretty_generate(redact_for_display(@execution.response))) %>"
-        data-copy-json-original="<%= Base64.strict_encode64(JSON.pretty_generate(@execution.response)) %>"
+        data-copy-json="<%= Base64.strict_encode64(JSON.pretty_generate(@execution.response)) %>"
         class="copy-json-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
       >
         <svg class="w-4 h-4 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -598,30 +563,30 @@
         <span>Copy</span>
       </button>
     </div>
-    <pre id="response-masked" class="maskable-content bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 text-sm overflow-x-auto max-h-96 font-mono"><%= highlight_json_redacted(@execution.response) %></pre>
-    <pre id="response-original" class="maskable-content hidden bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 text-sm overflow-x-auto max-h-96 font-mono"><%= highlight_json(@execution.response) %></pre>
+    <pre class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 text-sm overflow-x-auto max-h-96 font-mono"><%= highlight_json(@execution.response) %></pre>
   </div>
 <% end %>
 
 <!-- Tool Calls -->
-<% if @execution.tool_calls.present? && @execution.tool_calls.any? %>
-  <% tool_call_count = @execution.tool_calls.size %>
-  <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6" x-data="{ expanded: <%= tool_call_count <= 3 %> }">
-    <div class="flex items-center justify-between mb-4">
-      <div class="flex items-center gap-2">
-        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-        </svg>
-        <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Tool Calls</h3>
-        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300">
-          <%= tool_call_count %>
-        </span>
-      </div>
+<% tool_calls = @execution.tool_calls || [] %>
+<% tool_call_count = tool_calls.size %>
+<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6" x-data="{ expanded: <%= tool_call_count <= 3 && tool_call_count > 0 %> }">
+  <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center gap-2">
+      <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+      </svg>
+      <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Tool Calls</h3>
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300">
+        <%= tool_call_count %>
+      </span>
+    </div>
+    <% if tool_call_count > 0 %>
       <div class="flex items-center gap-2">
         <button
           type="button"
-          data-copy-json="<%= Base64.strict_encode64(JSON.pretty_generate(@execution.tool_calls)) %>"
+          data-copy-json="<%= Base64.strict_encode64(JSON.pretty_generate(tool_calls)) %>"
           class="copy-json-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
         >
           <svg class="w-4 h-4 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -638,10 +603,12 @@
           </button>
         <% end %>
       </div>
-    </div>
+    <% end %>
+  </div>
 
+  <% if tool_call_count > 0 %>
     <div class="space-y-4" x-show="expanded" <%= tool_call_count > 3 ? 'x-cloak' : '' %>>
-      <% @execution.tool_calls.each_with_index do |tool_call, index| %>
+      <% tool_calls.each_with_index do |tool_call, index| %>
         <%
           # Handle both symbol and string keys
           tool_id = tool_call['id'] || tool_call[:id]
@@ -678,8 +645,10 @@
         </div>
       <% end %>
     </div>
-  </div>
-<% end %>
+  <% else %>
+    <p class="text-sm text-gray-400 dark:text-gray-500 italic">No tool calls were made during this execution.</p>
+  <% end %>
+</div>
 
 <!-- Metadata -->
 <% if @execution.metadata.present? && @execution.metadata.any? %>
@@ -692,8 +661,7 @@
       <div class="flex items-center gap-2">
         <button
           type="button"
-          data-copy-json="<%= Base64.strict_encode64(JSON.pretty_generate(redact_for_display(@execution.metadata))) %>"
-          data-copy-json-original="<%= Base64.strict_encode64(JSON.pretty_generate(@execution.metadata)) %>"
+          data-copy-json="<%= Base64.strict_encode64(JSON.pretty_generate(@execution.metadata)) %>"
           class="copy-json-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
         >
           <svg class="w-4 h-4 copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -710,8 +678,7 @@
       </div>
     </div>
     <div x-show="expanded" x-cloak class="mt-4">
-      <pre id="metadata-masked" class="maskable-content bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 text-sm overflow-x-auto font-mono"><%= highlight_json_redacted(@execution.metadata) %></pre>
-      <pre id="metadata-original" class="maskable-content hidden bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 text-sm overflow-x-auto font-mono"><%= highlight_json(@execution.metadata) %></pre>
+      <pre class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 text-sm overflow-x-auto font-mono"><%= highlight_json(@execution.metadata) %></pre>
     </div>
   </div>
 <% end %>
@@ -1016,61 +983,10 @@
     toggle.textContent = isHidden ? 'Collapse' : 'Expand';
   }
 
-  // Masking state (persisted in localStorage)
-  let isMasked = localStorage.getItem('ruby_llm_agents_masking') !== 'false';
-
-  function toggleMasking() {
-    isMasked = !isMasked;
-    localStorage.setItem('ruby_llm_agents_masking', isMasked);
-    updateMaskingUI();
-  }
-
-  function updateMaskingUI() {
-    const status = document.getElementById('masking-status');
-    const btnText = document.getElementById('toggle-btn-text');
-    const eyeIcon = document.getElementById('eye-icon');
-    const eyeOffIcon = document.getElementById('eye-off-icon');
-
-    // Update all maskable content sections
-    document.querySelectorAll('[id$="-masked"]').forEach(function(el) {
-      el.classList.toggle('hidden', !isMasked);
-    });
-    document.querySelectorAll('[id$="-original"]').forEach(function(el) {
-      el.classList.toggle('hidden', isMasked);
-    });
-
-    // Update status and button
-    if (isMasked) {
-      status.textContent = 'Sensitive data is hidden';
-      btnText.textContent = 'Show Original';
-      eyeIcon.classList.remove('hidden');
-      eyeOffIcon.classList.add('hidden');
-    } else {
-      status.textContent = 'Showing original data';
-      btnText.textContent = 'Hide Sensitive';
-      eyeIcon.classList.add('hidden');
-      eyeOffIcon.classList.remove('hidden');
-    }
-
-    // Update copy buttons to use appropriate data
-    document.querySelectorAll('.copy-json-btn').forEach(function(button) {
-      const maskedData = button.getAttribute('data-copy-json');
-      const originalData = button.getAttribute('data-copy-json-original');
-      if (originalData) {
-        button.setAttribute('data-active-json', isMasked ? maskedData : originalData);
-      }
-    });
-  }
-
   document.addEventListener('DOMContentLoaded', function() {
-    // Initialize masking UI on page load
-    updateMaskingUI();
-
     document.querySelectorAll('.copy-json-btn').forEach(function(button) {
       button.addEventListener('click', function() {
-        // Use active JSON (considers masking state) or fall back to default
-        const activeData = this.getAttribute('data-active-json') || this.getAttribute('data-copy-json');
-        const jsonText = atob(activeData);
+        const jsonText = atob(this.getAttribute('data-copy-json'));
         const span = this.querySelector('span');
         const copyIcon = this.querySelector('.copy-icon');
         const checkIcon = this.querySelector('.check-icon');
