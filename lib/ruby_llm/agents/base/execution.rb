@@ -105,12 +105,28 @@ module RubyLLM
               attachments: @options[:with],
               schema: schema&.class&.name,
               streaming: self.class.streaming,
-              tools: self.class.tools.map { |t| t.respond_to?(:name) ? t.name : t.to_s }
+              tools: resolved_tools.map { |t| t.respond_to?(:name) ? t.name : t.to_s }
             },
             model_id: model,
             temperature: temperature,
             streaming: self.class.streaming
           )
+        end
+
+        # Resolves tools for this execution
+        #
+        # Checks for instance method override first (for dynamic tools),
+        # then falls back to class-level DSL configuration. This allows
+        # agents to define tools dynamically based on runtime context.
+        #
+        # @return [Array<Class>] Tool classes to use
+        def resolved_tools
+          # Check if instance defines tools method (not inherited from class singleton)
+          if self.class.instance_methods(false).include?(:tools)
+            tools
+          else
+            self.class.tools
+          end
         end
 
         # Returns the consolidated reliability configuration for this agent instance
@@ -166,7 +182,7 @@ module RubyLLM
             .with_temperature(temperature)
           client = client.with_instructions(system_prompt) if system_prompt
           client = client.with_schema(schema) if schema
-          client = client.with_tools(*self.class.tools) if self.class.tools.any?
+          client = client.with_tools(*resolved_tools) if resolved_tools.any?
           client
         end
 
@@ -180,7 +196,7 @@ module RubyLLM
             .with_temperature(temperature)
           client = client.with_instructions(system_prompt) if system_prompt
           client = client.with_schema(schema) if schema
-          client = client.with_tools(*self.class.tools) if self.class.tools.any?
+          client = client.with_tools(*resolved_tools) if resolved_tools.any?
           client
         end
 
