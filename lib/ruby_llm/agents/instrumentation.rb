@@ -737,6 +737,67 @@ module RubyLLM
         end
       end
 
+      # Records an execution for a cache hit
+      #
+      # Creates a minimal execution record with cache_hit: true, 0 tokens,
+      # and 0 cost. This allows tracking cache hits in the dashboard.
+      #
+      # @param cache_key [String] The cache key that was hit
+      # @param cached_result [Object] The cached result returned
+      # @param started_at [Time] When the cache lookup started
+      # @return [void]
+      def record_cache_hit_execution(cache_key, cached_result, started_at)
+        config = RubyLLM::Agents.configuration
+        completed_at = Time.current
+        duration_ms = ((completed_at - started_at) * 1000).round
+
+        execution_data = {
+          agent_type: self.class.name,
+          agent_version: self.class.version,
+          model_id: model,
+          temperature: temperature,
+          status: "success",
+          cache_hit: true,
+          response_cache_key: cache_key,
+          cached_at: completed_at,
+          started_at: started_at,
+          completed_at: completed_at,
+          duration_ms: duration_ms,
+          input_tokens: 0,
+          output_tokens: 0,
+          cached_tokens: 0,
+          cache_creation_tokens: 0,
+          total_tokens: 0,
+          input_cost: 0,
+          output_cost: 0,
+          total_cost: 0,
+          parameters: redacted_parameters,
+          metadata: execution_metadata,
+          streaming: self.class.streaming
+        }
+
+        # Add tracing fields from metadata if present
+        metadata = execution_metadata
+        execution_data[:request_id] = metadata[:request_id] if metadata[:request_id]
+        execution_data[:trace_id] = metadata[:trace_id] if metadata[:trace_id]
+        execution_data[:span_id] = metadata[:span_id] if metadata[:span_id]
+        execution_data[:parent_execution_id] = metadata[:parent_execution_id] if metadata[:parent_execution_id]
+        execution_data[:root_execution_id] = metadata[:root_execution_id] if metadata[:root_execution_id]
+
+        # Add tenant_id if multi-tenancy is enabled
+        if config.multi_tenancy_enabled?
+          execution_data[:tenant_id] = config.current_tenant_id
+        end
+
+        if config.async_logging
+          RubyLLM::Agents::ExecutionLoggerJob.perform_later(execution_data)
+        else
+          RubyLLM::Agents::Execution.create!(execution_data)
+        end
+      rescue StandardError => e
+        Rails.logger.error("[RubyLLM::Agents] Failed to record cache hit execution: #{e.message}")
+      end
+
       # Emergency fallback to mark execution as failed
       #
       # Uses update_all to bypass ActiveRecord callbacks and validations,

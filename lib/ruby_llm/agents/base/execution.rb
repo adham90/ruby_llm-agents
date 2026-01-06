@@ -20,8 +20,18 @@ module RubyLLM
           return dry_run_response if @options[:dry_run]
           return uncached_call(&block) if @options[:skip_cache] || !self.class.cache_enabled?
 
-          # Note: Cached responses don't stream (already complete)
-          cache_store.fetch(agent_cache_key, expires_in: self.class.cache_ttl) do
+          cache_key = agent_cache_key
+
+          # Check for cache hit BEFORE fetch to record it
+          if cache_store.exist?(cache_key)
+            started_at = Time.current
+            cached_result = cache_store.read(cache_key)
+            record_cache_hit_execution(cache_key, cached_result, started_at) if cached_result
+            return cached_result
+          end
+
+          # Cache miss - execute and store
+          cache_store.fetch(cache_key, expires_in: self.class.cache_ttl) do
             uncached_call(&block)
           end
         end

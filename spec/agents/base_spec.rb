@@ -352,4 +352,220 @@ RSpec.describe RubyLLM::Agents::Base do
       end
     end
   end
+
+  describe "caching behavior" do
+    let(:cache_store) { ActiveSupport::Cache::MemoryStore.new }
+
+    let(:cached_agent_class) do
+      Class.new(described_class) do
+        model "gpt-4"
+        cache 1.hour
+        param :query, required: true
+
+        def system_prompt
+          "Test system prompt"
+        end
+
+        def user_prompt
+          query
+        end
+
+        def process_response(response)
+          response.content
+        end
+
+        def self.name
+          "CachedTestAgent"
+        end
+      end
+    end
+
+    let(:uncached_agent_class) do
+      Class.new(described_class) do
+        model "gpt-4"
+        param :query, required: true
+
+        def system_prompt
+          "Test system prompt"
+        end
+
+        def user_prompt
+          query
+        end
+
+        def process_response(response)
+          response.content
+        end
+
+        def self.name
+          "UncachedTestAgent"
+        end
+      end
+    end
+
+    let(:mock_response) do
+      double(
+        "RubyLLM::Message",
+        content: "Cached response content",
+        input_tokens: 100,
+        output_tokens: 50,
+        model_id: "gpt-4",
+        tool_calls: nil
+      )
+    end
+
+    let(:mock_client) do
+      client = double("RubyLLM::Chat")
+      allow(client).to receive(:ask).and_return(mock_response)
+      allow(client).to receive(:messages).and_return([])
+      client
+    end
+
+    before do
+      RubyLLM::Agents.reset_configuration!
+      allow(RubyLLM::Agents.configuration).to receive(:cache_store).and_return(cache_store)
+      allow(RubyLLM::Agents.configuration).to receive(:async_logging).and_return(false)
+      cache_store.clear
+    end
+
+    describe "when caching is enabled" do
+      it "does not call the AI client on cache hit" do
+        agent1 = cached_agent_class.new(query: "test query")
+        allow(agent1).to receive(:client).and_return(mock_client)
+        agent1.call
+
+        agent2 = cached_agent_class.new(query: "test query")
+        allow(agent2).to receive(:client).and_return(mock_client)
+        agent2.call
+
+        expect(mock_client).to have_received(:ask).exactly(1).time
+      end
+
+      it "returns the cached Result on subsequent calls" do
+        agent1 = cached_agent_class.new(query: "test query")
+        allow(agent1).to receive(:client).and_return(mock_client)
+        first_result = agent1.call
+
+        agent2 = cached_agent_class.new(query: "test query")
+        allow(agent2).to receive(:client).and_return(mock_client)
+        second_result = agent2.call
+
+        expect(second_result.content).to eq(first_result.content)
+      end
+
+      it "returns a Result object from cache" do
+        agent1 = cached_agent_class.new(query: "test query")
+        allow(agent1).to receive(:client).and_return(mock_client)
+        agent1.call
+
+        agent2 = cached_agent_class.new(query: "test query")
+        allow(agent2).to receive(:client).and_return(mock_client)
+        result = agent2.call
+
+        expect(result).to be_a(RubyLLM::Agents::Result)
+      end
+    end
+
+    describe "when skip_cache: true is passed" do
+      it "calls the AI client even if response is cached" do
+        agent1 = cached_agent_class.new(query: "test query")
+        allow(agent1).to receive(:client).and_return(mock_client)
+        agent1.call
+
+        agent2 = cached_agent_class.new(query: "test query", skip_cache: true)
+        allow(agent2).to receive(:client).and_return(mock_client)
+        agent2.call
+
+        expect(mock_client).to have_received(:ask).exactly(2).times
+      end
+    end
+
+    describe "when parameters differ" do
+      it "calls the AI client for different inputs (cache miss)" do
+        agent1 = cached_agent_class.new(query: "first query")
+        allow(agent1).to receive(:client).and_return(mock_client)
+        agent1.call
+
+        agent2 = cached_agent_class.new(query: "second query")
+        allow(agent2).to receive(:client).and_return(mock_client)
+        agent2.call
+
+        expect(mock_client).to have_received(:ask).exactly(2).times
+      end
+    end
+
+    describe "when caching is disabled" do
+      it "calls the AI client on every call" do
+        agent1 = uncached_agent_class.new(query: "test query")
+        allow(agent1).to receive(:client).and_return(mock_client)
+        agent1.call
+
+        agent2 = uncached_agent_class.new(query: "test query")
+        allow(agent2).to receive(:client).and_return(mock_client)
+        agent2.call
+
+        expect(mock_client).to have_received(:ask).exactly(2).times
+      end
+    end
+
+    describe "cache hit execution recording" do
+      it "creates an execution record with cache_hit: true on cache hit" do
+        # First call - populate cache
+        agent1 = cached_agent_class.new(query: "test query")
+        allow(agent1).to receive(:client).and_return(mock_client)
+        agent1.call
+
+        # Second call - should be a cache hit
+        agent2 = cached_agent_class.new(query: "test query")
+        allow(agent2).to receive(:client).and_return(mock_client)
+
+        expect {
+          agent2.call
+        }.to change { RubyLLM::Agents::Execution.where(cache_hit: true).count }.by(1)
+      end
+
+      it "records 0 tokens and 0 cost for cache hits" do
+        # First call - populate cache
+        agent1 = cached_agent_class.new(query: "test query")
+        allow(agent1).to receive(:client).and_return(mock_client)
+        agent1.call
+
+        # Second call - cache hit
+        agent2 = cached_agent_class.new(query: "test query")
+        allow(agent2).to receive(:client).and_return(mock_client)
+        agent2.call
+
+        cache_hit_execution = RubyLLM::Agents::Execution.where(cache_hit: true).last
+        expect(cache_hit_execution.input_tokens).to eq(0)
+        expect(cache_hit_execution.output_tokens).to eq(0)
+        expect(cache_hit_execution.total_tokens).to eq(0)
+        expect(cache_hit_execution.total_cost).to eq(0)
+      end
+
+      it "records the cache key in response_cache_key" do
+        # First call - populate cache
+        agent1 = cached_agent_class.new(query: "test query")
+        allow(agent1).to receive(:client).and_return(mock_client)
+        agent1.call
+
+        # Second call - cache hit
+        agent2 = cached_agent_class.new(query: "test query")
+        allow(agent2).to receive(:client).and_return(mock_client)
+        agent2.call
+
+        cache_hit_execution = RubyLLM::Agents::Execution.where(cache_hit: true).last
+        expect(cache_hit_execution.response_cache_key).to be_present
+        expect(cache_hit_execution.response_cache_key).to include("ruby_llm_agent")
+      end
+
+      it "does not create cache_hit execution for first call (cache miss)" do
+        agent = cached_agent_class.new(query: "unique query for this test")
+        allow(agent).to receive(:client).and_return(mock_client)
+
+        expect {
+          agent.call
+        }.not_to change { RubyLLM::Agents::Execution.where(cache_hit: true).count }
+      end
+    end
+  end
 end
