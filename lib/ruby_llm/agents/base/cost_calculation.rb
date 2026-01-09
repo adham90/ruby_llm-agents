@@ -65,7 +65,8 @@ module RubyLLM
         # @param model_id [String] The model identifier
         # @return [Object, nil] Model info or nil
         def resolve_model_info(model_id)
-          RubyLLM::Models.resolve(model_id)
+          model_obj, _provider = RubyLLM::Models.resolve(model_id)
+          model_obj
         rescue StandardError
           nil
         end
