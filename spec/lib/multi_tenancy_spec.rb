@@ -93,6 +93,9 @@ RSpec.describe "Multi-tenancy support" do
           config.budgets = { global_daily: 100.0, enforcement: :soft }
         end
 
+        # Reset memoized table check to ensure fresh lookup
+        described_class.send(:reset_tenant_budget_table_check!)
+
         # Skip if TenantBudget table doesn't exist (migration not run)
         skip "TenantBudget table not available" unless tenant_budget_table_exists?
       end

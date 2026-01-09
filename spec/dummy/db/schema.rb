@@ -79,6 +79,16 @@ ActiveRecord::Schema.define do
     t.json :tool_calls, null: false, default: []
     t.integer :tool_calls_count, null: false, default: 0
 
+    # Workflow support
+    t.string :workflow_id
+    t.string :workflow_type
+    t.string :workflow_step
+    t.string :routed_to
+    t.json :classification_result
+
+    # Multi-tenancy
+    t.string :tenant_id
+
     t.timestamps
   end
 
@@ -102,4 +112,22 @@ ActiveRecord::Schema.define do
 
   # Tool calls index
   add_index :ruby_llm_agents_executions, :tool_calls_count
+
+  # Multi-tenancy index
+  add_index :ruby_llm_agents_executions, [:tenant_id, :agent_type]
+
+  # Tenant budgets table
+  create_table :ruby_llm_agents_tenant_budgets, force: :cascade do |t|
+    t.string :tenant_id, null: false
+    t.decimal :daily_limit, precision: 12, scale: 6
+    t.decimal :monthly_limit, precision: 12, scale: 6
+    t.json :per_agent_daily, null: false, default: {}
+    t.json :per_agent_monthly, null: false, default: {}
+    t.string :enforcement, default: "soft"
+    t.boolean :inherit_global_defaults, default: true
+
+    t.timestamps
+  end
+
+  add_index :ruby_llm_agents_tenant_budgets, :tenant_id, unique: true
 end

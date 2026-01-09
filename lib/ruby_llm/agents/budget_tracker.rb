@@ -279,9 +279,16 @@ module RubyLLM
         def tenant_budget_table_exists?
           return @tenant_budget_table_exists if defined?(@tenant_budget_table_exists)
 
-          @tenant_budget_table_exists = ActiveRecord::Base.connection.table_exists?(:ruby_llm_agents_tenant_budgets)
+          @tenant_budget_table_exists = ::ActiveRecord::Base.connection.table_exists?(:ruby_llm_agents_tenant_budgets)
         rescue StandardError
           @tenant_budget_table_exists = false
+        end
+
+        # Resets the memoized tenant budget table existence check (useful for testing)
+        #
+        # @return [void]
+        def reset_tenant_budget_table_check!
+          remove_instance_variable(:@tenant_budget_table_exists) if defined?(@tenant_budget_table_exists)
         end
 
         # Checks budget limits and raises error if exceeded
