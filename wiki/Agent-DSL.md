@@ -208,6 +208,31 @@ end
 
 See [Prompts and Schemas](Prompts-and-Schemas) for details.
 
+### messages
+
+Define conversation history for multi-turn conversations:
+
+```ruby
+def messages
+  [
+    { role: :user, content: "Previous question" },
+    { role: :assistant, content: "Previous answer" }
+  ]
+end
+```
+
+You can also pass messages at call-time or use the chainable `with_messages` method:
+
+```ruby
+# Call-time
+MyAgent.call(query: "Follow up", messages: [...])
+
+# Chainable
+agent.with_messages([...]).call
+```
+
+See [Conversation History](Conversation-History) for details.
+
 ### process_response
 
 Post-process the LLM response:
@@ -311,5 +336,6 @@ end
 
 - [Parameters](Parameters) - Parameter definition details
 - [Prompts and Schemas](Prompts-and-Schemas) - Output structuring
+- [Conversation History](Conversation-History) - Multi-turn conversations
 - [Reliability](Reliability) - Fault tolerance configuration
 - [Caching](Caching) - Cache configuration

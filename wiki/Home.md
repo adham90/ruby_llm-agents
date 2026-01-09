@@ -14,6 +14,7 @@ Welcome to the official documentation for **RubyLLM::Agents**, a production-read
 - **[Agent DSL](Agent-DSL)** - Declarative agent configuration
 - **[Parameters](Parameters)** - Required and optional parameters
 - **[Prompts and Schemas](Prompts-and-Schemas)** - Structure inputs and outputs
+- **[Conversation History](Conversation-History)** - Multi-turn conversations
 - **[Result Object](Result-Object)** - Access execution metadata
 
 ### Features
@@ -68,7 +69,7 @@ RubyLLM::Agents is a Rails engine that provides:
 
 ## Current Version
 
-**v0.3.4** - See [CHANGELOG](https://github.com/adham90/ruby_llm-agents/blob/main/CHANGELOG.md) for release history.
+**v0.3.5** - See [CHANGELOG](https://github.com/adham90/ruby_llm-agents/blob/main/CHANGELOG.md) for release history.
 
 ## Supported LLM Providers
 

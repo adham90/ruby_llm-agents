@@ -30,6 +30,7 @@ Build intelligent AI agents in Ruby with a clean DSL, automatic execution tracki
 | **Workflows** | Pipelines, parallel execution, conditional routers | [Workflows](https://github.com/adham90/ruby_llm-agents/wiki/Workflows) |
 | **Dashboard** | Real-time Turbo-powered monitoring UI | [Dashboard](https://github.com/adham90/ruby_llm-agents/wiki/Dashboard) |
 | **Streaming** | Real-time response streaming with TTFT tracking | [Streaming](https://github.com/adham90/ruby_llm-agents/wiki/Streaming) |
+| **Conversation History** | Multi-turn conversations with message history | [Conversation History](https://github.com/adham90/ruby_llm-agents/wiki/Conversation-History) |
 | **Attachments** | Images, PDFs, and multimodal support | [Attachments](https://github.com/adham90/ruby_llm-agents/wiki/Attachments) |
 | **PII Redaction** | Automatic sensitive data protection | [Security](https://github.com/adham90/ruby_llm-agents/wiki/PII-Redaction) |
 | **Alerts** | Slack, webhook, and custom notifications | [Alerts](https://github.com/adham90/ruby_llm-agents/wiki/Alerts) |
@@ -95,6 +96,23 @@ result.total_cost     # => 0.00025
 result.total_tokens   # => 150
 result.duration_ms    # => 850
 ```
+
+### Multi-Turn Conversations
+
+Build chatbots and conversational agents with message history:
+
+```ruby
+result = ChatAgent.call(
+  query: "What's my name?",
+  messages: [
+    { role: :user, content: "My name is Alice" },
+    { role: :assistant, content: "Nice to meet you, Alice!" }
+  ]
+)
+# => "Your name is Alice!"
+```
+
+See [Conversation History](https://github.com/adham90/ruby_llm-agents/wiki/Conversation-History) for more patterns.
 
 ## Documentation
 

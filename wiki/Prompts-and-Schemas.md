@@ -4,12 +4,15 @@ Learn how to craft effective prompts and structure LLM outputs with schemas.
 
 ## Prompts Overview
 
-RubyLLM::Agents uses two types of prompts:
+RubyLLM::Agents uses these prompt types:
 
 | Prompt | Purpose | When Sent |
 |--------|---------|-----------|
 | `system_prompt` | Sets the agent's role and behavior | First message in conversation |
+| `messages` | Conversation history for context | Before user_prompt |
 | `user_prompt` | The specific request to process | Each call |
+
+For multi-turn conversations, see [Conversation History](Conversation-History).
 
 ## System Prompts
 
@@ -361,5 +364,6 @@ end
 
 - [Agent DSL](Agent-DSL) - Full DSL reference
 - [Parameters](Parameters) - Input parameters
+- [Conversation History](Conversation-History) - Multi-turn conversations
 - [Result Object](Result-Object) - Working with responses
 - [Examples](Examples) - Real-world patterns
