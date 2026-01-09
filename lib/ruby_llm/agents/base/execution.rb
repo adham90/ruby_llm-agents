@@ -139,6 +139,21 @@ module RubyLLM
           end
         end
 
+        # Resolves messages for this execution
+        #
+        # Priority order:
+        # 1. @override_messages (set via with_messages)
+        # 2. :messages option passed at call time
+        # 3. messages template method defined in subclass
+        #
+        # @return [Array<Hash>] Messages to apply to conversation
+        def resolved_messages
+          return @override_messages if @override_messages&.any?
+          return @options[:messages] if @options[:messages]&.any?
+
+          messages
+        end
+
         # Returns the consolidated reliability configuration for this agent instance
         #
         # @return [Hash] Reliability config with :retries, :fallback_models, :total_timeout, :circuit_breaker
@@ -193,6 +208,7 @@ module RubyLLM
           client = client.with_instructions(system_prompt) if system_prompt
           client = client.with_schema(schema) if schema
           client = client.with_tools(*resolved_tools) if resolved_tools.any?
+          client = apply_messages(client, resolved_messages) if resolved_messages.any?
           client
         end
 
@@ -207,13 +223,25 @@ module RubyLLM
           client = client.with_instructions(system_prompt) if system_prompt
           client = client.with_schema(schema) if schema
           client = client.with_tools(*resolved_tools) if resolved_tools.any?
+          client = apply_messages(client, resolved_messages) if resolved_messages.any?
           client
+        end
+
+        # Applies conversation history to the client
+        #
+        # @param client [RubyLLM::Chat] The chat client
+        # @param msgs [Array<Hash>] Messages with :role and :content keys
+        # @return [RubyLLM::Chat] Client with messages applied
+        def apply_messages(client, msgs)
+          msgs.reduce(client) do |c, message|
+            c.with_message(message[:role].to_s, message[:content])
+          end
         end
 
         # Builds a client with pre-populated conversation history
         #
-        # Useful for multi-turn conversations or providing context.
-        #
+        # @deprecated Use resolved_messages and apply_messages instead.
+        #   Override the messages template method or pass messages: option to call.
         # @param messages [Array<Hash>] Messages with :role and :content keys
         # @return [RubyLLM::Chat] Client with messages added
         # @example
@@ -222,9 +250,7 @@ module RubyLLM
         #     { role: "assistant", content: "Hi there!" }
         #   ])
         def build_client_with_messages(messages)
-          messages.reduce(build_client) do |client, message|
-            client.with_message(message[:role], message[:content])
-          end
+          apply_messages(build_client, messages)
         end
       end
     end

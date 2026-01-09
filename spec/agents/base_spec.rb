@@ -568,4 +568,231 @@ RSpec.describe RubyLLM::Agents::Base do
       end
     end
   end
+
+  describe "conversation history (messages) support" do
+    let(:agent_class) do
+      Class.new(described_class) do
+        model "gpt-4"
+        param :query, required: true
+
+        def user_prompt
+          query
+        end
+
+        def self.name
+          "TestMessagesAgent"
+        end
+      end
+    end
+
+    describe "#messages template method" do
+      it "returns empty array by default" do
+        agent = agent_class.new(query: "test")
+        expect(agent.messages).to eq([])
+      end
+
+      it "can be overridden in subclass" do
+        custom_messages = [
+          { role: :user, content: "Hello" },
+          { role: :assistant, content: "Hi there!" }
+        ]
+
+        custom_class = Class.new(agent_class) do
+          define_method(:messages) { custom_messages }
+        end
+
+        agent = custom_class.new(query: "test")
+        expect(agent.messages).to eq(custom_messages)
+      end
+    end
+
+    describe "#resolved_messages" do
+      it "returns empty array when no messages provided" do
+        agent = agent_class.new(query: "test")
+        expect(agent.send(:resolved_messages)).to eq([])
+      end
+
+      it "returns messages from options when passed at call time" do
+        messages = [{ role: :user, content: "Previous message" }]
+        agent = agent_class.new(query: "test", messages: messages)
+        expect(agent.send(:resolved_messages)).to eq(messages)
+      end
+
+      it "returns messages from template method when defined" do
+        template_messages = [{ role: :assistant, content: "Template message" }]
+
+        custom_class = Class.new(agent_class) do
+          define_method(:messages) { template_messages }
+        end
+
+        agent = custom_class.new(query: "test")
+        expect(agent.send(:resolved_messages)).to eq(template_messages)
+      end
+
+      it "prioritizes options over template method" do
+        template_messages = [{ role: :assistant, content: "Template message" }]
+        option_messages = [{ role: :user, content: "Option message" }]
+
+        custom_class = Class.new(agent_class) do
+          define_method(:messages) { template_messages }
+        end
+
+        agent = custom_class.new(query: "test", messages: option_messages)
+        expect(agent.send(:resolved_messages)).to eq(option_messages)
+      end
+
+      it "prioritizes override_messages (from with_messages) over options" do
+        option_messages = [{ role: :user, content: "Option message" }]
+        override_messages = [{ role: :user, content: "Override message" }]
+
+        agent = agent_class.new(query: "test", messages: option_messages)
+        agent.with_messages(override_messages)
+
+        expect(agent.send(:resolved_messages)).to eq(override_messages)
+      end
+    end
+
+    describe "#with_messages" do
+      it "returns self for chaining" do
+        agent = agent_class.new(query: "test")
+        result = agent.with_messages([{ role: :user, content: "Hello" }])
+        expect(result).to be(agent)
+      end
+
+      it "sets override messages" do
+        messages = [{ role: :user, content: "Hello" }]
+        agent = agent_class.new(query: "test")
+        agent.with_messages(messages)
+
+        expect(agent.send(:resolved_messages)).to eq(messages)
+      end
+
+      it "rebuilds the client with new messages" do
+        agent = agent_class.new(query: "test")
+        original_client = agent.client
+
+        agent.with_messages([{ role: :user, content: "Hello" }])
+
+        expect(agent.client).not_to be(original_client)
+      end
+    end
+
+    describe "#apply_messages" do
+      it "applies messages to the client" do
+        messages = [
+          { role: :user, content: "First message" },
+          { role: :assistant, content: "Second message" }
+        ]
+
+        agent = agent_class.new(query: "test", messages: messages)
+
+        expect(agent.client.messages).to eq([
+          { role: "user", content: "First message" },
+          { role: "assistant", content: "Second message" }
+        ])
+      end
+
+      it "converts symbol roles to strings" do
+        messages = [{ role: :user, content: "Hello" }]
+        agent = agent_class.new(query: "test", messages: messages)
+
+        expect(agent.client.messages.first[:role]).to eq("user")
+      end
+
+      it "supports string roles as well" do
+        messages = [{ role: "assistant", content: "Hello" }]
+        agent = agent_class.new(query: "test", messages: messages)
+
+        expect(agent.client.messages.first[:role]).to eq("assistant")
+      end
+    end
+
+    describe "integration with agent execution" do
+      let(:mock_response) do
+        double(
+          "RubyLLM::Message",
+          content: "Response with context",
+          input_tokens: 100,
+          output_tokens: 50,
+          model_id: "gpt-4",
+          tool_calls: nil
+        )
+      end
+
+      before do
+        RubyLLM::Agents.reset_configuration!
+        allow(RubyLLM::Agents.configuration).to receive(:async_logging).and_return(false)
+      end
+
+      it "passes messages to the client when called via class method" do
+        messages = [{ role: :user, content: "Remember my name is Alice" }]
+
+        # We can verify by checking the client after construction
+        agent = agent_class.new(query: "What is my name?", messages: messages)
+
+        expect(agent.client.messages).to eq([
+          { role: "user", content: "Remember my name is Alice" }
+        ])
+      end
+
+      it "works with chainable with_messages call" do
+        agent = agent_class.new(query: "Continue our conversation")
+        agent.with_messages([
+          { role: :user, content: "Tell me a joke" },
+          { role: :assistant, content: "Why did the chicken cross the road?" }
+        ])
+
+        expect(agent.client.messages.length).to eq(2)
+        expect(agent.client.messages.first[:content]).to eq("Tell me a joke")
+      end
+
+      it "works with template method in subclass" do
+        conversation_history = [
+          { role: :user, content: "What is 2+2?" },
+          { role: :assistant, content: "4" }
+        ]
+
+        chat_agent_class = Class.new(agent_class) do
+          define_method(:messages) { conversation_history }
+        end
+
+        agent = chat_agent_class.new(query: "What about 3+3?")
+
+        expect(agent.client.messages.length).to eq(2)
+        expect(agent.client.messages.last[:content]).to eq("4")
+      end
+    end
+
+    describe "with dynamic messages based on params" do
+      it "allows messages to access agent params" do
+        dynamic_agent_class = Class.new(agent_class) do
+          param :context_type, default: :general
+
+          def messages
+            case context_type
+            when :technical
+              [{ role: :system, content: "You are a technical expert" }]
+            when :friendly
+              [{ role: :system, content: "You are a friendly assistant" }]
+            else
+              []
+            end
+          end
+        end
+
+        technical_agent = dynamic_agent_class.new(query: "Help me", context_type: :technical)
+        expect(technical_agent.send(:resolved_messages)).to eq([
+          { role: :system, content: "You are a technical expert" }
+        ])
+
+        friendly_agent = dynamic_agent_class.new(query: "Help me", context_type: :friendly)
+        expect(friendly_agent.send(:resolved_messages)).to eq([
+          { role: :system, content: "You are a friendly assistant" }
+        ])
+
+        default_agent = dynamic_agent_class.new(query: "Help me")
+        expect(default_agent.send(:resolved_messages)).to eq([])
+      end
+    end
+  end
 end

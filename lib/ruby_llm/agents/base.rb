@@ -137,6 +137,20 @@ module RubyLLM
         nil
       end
 
+      # Conversation history for multi-turn conversations
+      #
+      # Override in subclass to provide conversation history.
+      # Messages will be added to the chat before the user_prompt.
+      #
+      # @return [Array<Hash>] Array of messages with :role and :content keys
+      # @example
+      #   def messages
+      #     [{ role: :user, content: "Hello" }, { role: :assistant, content: "Hi!" }]
+      #   end
+      def messages
+        []
+      end
+
       # Post-processes the LLM response
       #
       # Override to transform the response before returning to the caller.
@@ -151,6 +165,18 @@ module RubyLLM
       end
 
       # @!endgroup
+
+      # Sets conversation history and rebuilds the client
+      #
+      # @param msgs [Array<Hash>] Messages with :role and :content keys
+      # @return [self] Returns self for chaining
+      # @example
+      #   agent.with_messages([{ role: :user, content: "Hi" }]).call
+      def with_messages(msgs)
+        @override_messages = msgs
+        @client = build_client
+        self
+      end
     end
   end
 end

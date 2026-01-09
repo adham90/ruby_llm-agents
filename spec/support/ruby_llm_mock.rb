@@ -11,12 +11,15 @@ module RubyLLM
   end
 
   class MockClient
+    attr_reader :model, :temperature, :instructions, :schema, :tools, :messages
+
     def initialize
       @model = nil
       @temperature = nil
       @instructions = nil
       @schema = nil
       @messages = []
+      @tools = []
     end
 
     def with_model(model)
