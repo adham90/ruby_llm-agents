@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class TechnicalAgent < ApplicationAgent
+  description "Assists with technical issues, bugs, errors, and troubleshooting"
   model "gpt-4o"
   temperature 0.3
 

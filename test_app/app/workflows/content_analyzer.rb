@@ -11,6 +11,7 @@
 #   result.total_cost                    # Combined cost
 #
 class ContentAnalyzer < RubyLLM::Agents::Workflow::Parallel
+  description "Analyzes content concurrently for sentiment, keywords, and summary"
   version "1.0"
   fail_fast false  # Continue even if a branch fails
 

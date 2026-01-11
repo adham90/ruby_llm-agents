@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class SentimentAgent < ApplicationAgent
+  description "Analyzes text sentiment as positive, negative, or neutral"
   model "gpt-4o-mini"
   temperature 0.0
 

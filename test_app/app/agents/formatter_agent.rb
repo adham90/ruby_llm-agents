@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class FormatterAgent < ApplicationAgent
+  description "Formats content for clean, readable display based on category"
   model "gpt-4o-mini"
   temperature 0.3
 

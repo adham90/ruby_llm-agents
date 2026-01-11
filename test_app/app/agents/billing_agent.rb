@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class BillingAgent < ApplicationAgent
+  description "Handles billing questions, charges, refunds, and invoice inquiries"
   model "gpt-4o"
   temperature 0.3
 

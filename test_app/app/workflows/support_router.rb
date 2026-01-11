@@ -10,6 +10,7 @@
 #   result.content           # Response from routed agent
 #
 class SupportRouter < RubyLLM::Agents::Workflow::Router
+  description "Routes customer messages to specialized support agents based on intent"
   version "1.0"
   classifier_model "gpt-4o-mini"
   classifier_temperature 0.0

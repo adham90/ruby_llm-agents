@@ -36,7 +36,8 @@ module RubyLlmAgents
     end
 
     def show_usage
-      full_class_name = (namespace_parts + [agent_class_name]).join("::")
+      # Build full class name from path (e.g., "chat/support" -> "Chat::Support")
+      full_class_name = name.split('/').map(&:camelize).join("::")
       say ""
       say "Agent #{full_class_name}Agent created!", :green
       say ""
@@ -47,27 +48,6 @@ module RubyLlmAgents
     end
 
     private
-
-    # Returns the full class path as an array (e.g., ["Chat", "Support", "Ticket"] for "chat/support/ticket")
-    # Computed directly from name to avoid Rails namespace issues
-    def class_path_parts
-      @class_path_parts ||= name.split('/').map { |part| part.camelize }
-    end
-
-    # Returns the namespace modules as an array (e.g., ["Chat", "Support"] for "chat/support/ticket")
-    def namespace_parts
-      @namespace_parts ||= class_path_parts[0..-2]
-    end
-
-    # Returns just the agent class name without namespace (e.g., "Ticket" for "chat/support/ticket")
-    def agent_class_name
-      @agent_class_name ||= class_path_parts.last
-    end
-
-    # Returns true if this agent is namespaced
-    def namespaced?
-      namespace_parts.any?
-    end
 
     def parsed_params
       @parsed_params ||= params.map do |param|

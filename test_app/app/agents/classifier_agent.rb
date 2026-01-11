@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class ClassifierAgent < ApplicationAgent
+  description "Classifies content into categories: article, news, review, tutorial, or other"
   model "gpt-4o-mini"
   temperature 0.0
 

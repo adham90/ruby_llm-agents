@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class GeneralAgent < ApplicationAgent
+  description "Handles general customer inquiries and support requests"
   model "gpt-4o-mini"
   temperature 0.5
 

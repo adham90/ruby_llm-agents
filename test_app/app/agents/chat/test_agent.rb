@@ -1,12 +1,14 @@
 # frozen_string_literal: true
 
-class <%= class_name %>Agent < ApplicationAgent
+class Chat::TestAgent < ApplicationAgent
+  description "A general-purpose test agent for development and experimentation"
+
   # ============================================
   # Model Configuration
   # ============================================
 
-  model "<%= options[:model] %>"
-  temperature <%= options[:temperature] %>
+  model "gemini-2.0-flash"
+  temperature 0.0
   version "1.0"
   # timeout 30  # Per-request timeout in seconds (default: 60)
 
@@ -14,11 +16,7 @@ class <%= class_name %>Agent < ApplicationAgent
   # Caching
   # ============================================
 
-<% if options[:cache] -%>
-  cache <%= options[:cache] %>
-<% else -%>
   # cache 1.hour  # Enable response caching with TTL
-<% end -%>
 
   # ============================================
   # Reliability (Retries & Fallbacks)
@@ -48,9 +46,7 @@ class <%= class_name %>Agent < ApplicationAgent
   # Parameters
   # ============================================
 
-<% parsed_params.each do |param| -%>
-  param :<%= param.name %><%= ", required: true" if param.required? %><%= ", default: #{param.default.inspect}" if param.default && !param.required? %>
-<% end -%>
+  param :query, required: true
 
   private
 
@@ -67,11 +63,7 @@ class <%= class_name %>Agent < ApplicationAgent
 
   def user_prompt
     # Build the prompt from parameters
-<% if parsed_params.any? -%>
-    <%= parsed_params.first.name %>
-<% else -%>
-    "Your prompt here"
-<% end -%>
+    query
   end
 
   # ============================================

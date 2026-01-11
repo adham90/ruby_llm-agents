@@ -10,6 +10,7 @@
 #   result.total_cost                # Total cost of all steps
 #
 class ContentPipeline < RubyLLM::Agents::Workflow::Pipeline
+  description "Processes content through sequential steps: extraction, classification, and formatting"
   version "1.0"
   timeout 60.seconds
   max_cost 1.00

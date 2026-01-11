@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class SummaryAgent < ApplicationAgent
+  description "Generates concise 2-3 sentence summaries of text"
   model "gpt-4o-mini"
   temperature 0.3
 
