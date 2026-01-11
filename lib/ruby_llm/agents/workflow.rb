@@ -42,6 +42,10 @@ module RubyLLM
         #   @return [Float, nil] Maximum cost threshold for the workflow
         attr_accessor :_max_cost
 
+        # @!attribute [rw] description
+        #   @return [String, nil] Description of the workflow
+        attr_accessor :_description
+
         # Sets or returns the workflow version
         #
         # @param value [String, nil] Version string to set
@@ -75,6 +79,18 @@ module RubyLLM
             self._max_cost = value.to_f
           else
             _max_cost
+          end
+        end
+
+        # Sets or returns the workflow description
+        #
+        # @param value [String, nil] Description text to set
+        # @return [String, nil] The current description
+        def description(value = nil)
+          if value
+            self._description = value
+          else
+            _description
           end
         end
 

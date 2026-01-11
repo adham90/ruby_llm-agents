@@ -48,6 +48,17 @@ module RubyLLM
           @version || inherited_or_default(:version, VERSION)
         end
 
+        # Sets or returns the description for this agent class
+        #
+        # @param value [String, nil] The description text
+        # @return [String, nil] The current description
+        # @example
+        #   description "Searches the knowledge base for relevant documents"
+        def description(value = nil)
+          @description = value if value
+          @description || inherited_or_default(:description, nil)
+        end
+
         # Sets or returns the timeout in seconds for LLM requests
         #
         # @param value [Integer, nil] Timeout in seconds

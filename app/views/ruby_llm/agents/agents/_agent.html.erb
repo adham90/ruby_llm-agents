@@ -29,6 +29,13 @@
       </span>
     </div>
 
+    <!-- Description -->
+    <% if agent[:description].present? %>
+      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+        <%= agent[:description] %>
+      </p>
+    <% end %>
+
     <!-- Row 2: Stats -->
     <div class="mt-2 sm:mt-3 sm:border-t sm:border-gray-100 sm:dark:border-gray-700 sm:pt-3">
       <!-- Mobile: compact inline -->

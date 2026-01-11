@@ -140,6 +140,7 @@ module RubyLLM
             workflow_type: workflow_type,
             workflow_children: workflow_children,
             version: safe_call(agent_class, :version) || "N/A",
+            description: safe_call(agent_class, :description),
             model: safe_call(agent_class, :model) || (is_workflow ? "workflow" : "N/A"),
             temperature: safe_call(agent_class, :temperature),
             timeout: safe_call(agent_class, :timeout),

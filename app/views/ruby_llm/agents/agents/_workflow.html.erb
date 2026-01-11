@@ -39,6 +39,13 @@
       </span>
     </div>
 
+    <!-- Description -->
+    <% if workflow[:description].present? %>
+      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+        <%= workflow[:description] %>
+      </p>
+    <% end %>
+
     <!-- Stats Row -->
     <div class="mt-2 sm:mt-3 sm:border-t sm:border-gray-100 sm:dark:border-gray-700 sm:pt-3">
       <% success_rate = workflow[:success_rate] || 0 %>

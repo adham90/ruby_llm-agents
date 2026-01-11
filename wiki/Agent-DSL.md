@@ -81,6 +81,31 @@ end
 
 See [Streaming](Streaming) for details.
 
+### tools
+
+Register tools for the agent to use:
+
+```ruby
+class MyAgent < ApplicationAgent
+  tools SearchTool, CalculatorTool, WeatherTool
+end
+```
+
+For dynamic tool selection based on runtime context, override as an instance method:
+
+```ruby
+class SmartAgent < ApplicationAgent
+  param :user_role
+
+  def tools
+    base = [SearchTool, InfoTool]
+    user_role == "admin" ? base + [AdminTool] : base
+  end
+end
+```
+
+See [Tools](Tools) for details.
+
 ## Parameters
 
 ### param
@@ -337,5 +362,6 @@ end
 - [Parameters](Parameters) - Parameter definition details
 - [Prompts and Schemas](Prompts-and-Schemas) - Output structuring
 - [Conversation History](Conversation-History) - Multi-turn conversations
+- [Tools](Tools) - Using tools with agents
 - [Reliability](Reliability) - Fault tolerance configuration
 - [Caching](Caching) - Cache configuration

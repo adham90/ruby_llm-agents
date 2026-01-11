@@ -18,6 +18,7 @@ Welcome to the official documentation for **RubyLLM::Agents**, a production-read
 - **[Result Object](Result-Object)** - Access execution metadata
 
 ### Features
+- **[Tools](Tools)** - Enable agents to call external functions
 - **[Streaming](Streaming)** - Real-time response streaming
 - **[Attachments](Attachments)** - Vision and multimodal support
 - **[Caching](Caching)** - Response caching with TTL

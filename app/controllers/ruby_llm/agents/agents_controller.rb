@@ -215,6 +215,7 @@ module RubyLLM
           model: @agent_class.model,
           temperature: @agent_class.temperature,
           version: @agent_class.version,
+          description: @agent_class.respond_to?(:description) ? @agent_class.description : nil,
           timeout: @agent_class.timeout,
           cache_enabled: @agent_class.cache_enabled?,
           cache_ttl: @agent_class.cache_ttl,
