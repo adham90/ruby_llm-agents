@@ -687,23 +687,23 @@ RSpec.describe RubyLLM::Agents::Base do
         agent = agent_class.new(query: "test", messages: messages)
 
         expect(agent.client.messages).to eq([
-          { role: "user", content: "First message" },
-          { role: "assistant", content: "Second message" }
+          { role: :user, content: "First message" },
+          { role: :assistant, content: "Second message" }
         ])
       end
 
-      it "converts symbol roles to strings" do
+      it "uses symbol roles" do
         messages = [{ role: :user, content: "Hello" }]
         agent = agent_class.new(query: "test", messages: messages)
 
-        expect(agent.client.messages.first[:role]).to eq("user")
+        expect(agent.client.messages.first[:role]).to eq(:user)
       end
 
-      it "supports string roles as well" do
+      it "converts string roles to symbols" do
         messages = [{ role: "assistant", content: "Hello" }]
         agent = agent_class.new(query: "test", messages: messages)
 
-        expect(agent.client.messages.first[:role]).to eq("assistant")
+        expect(agent.client.messages.first[:role]).to eq(:assistant)
       end
     end
 
@@ -731,7 +731,7 @@ RSpec.describe RubyLLM::Agents::Base do
         agent = agent_class.new(query: "What is my name?", messages: messages)
 
         expect(agent.client.messages).to eq([
-          { role: "user", content: "Remember my name is Alice" }
+          { role: :user, content: "Remember my name is Alice" }
         ])
       end
 

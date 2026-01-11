@@ -47,7 +47,7 @@ module RubyLLM
       self
     end
 
-    def with_message(role, content)
+    def add_message(role:, content:)
       @messages << { role: role, content: content }
       self
     end

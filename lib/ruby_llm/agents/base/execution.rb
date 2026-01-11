@@ -233,9 +233,10 @@ module RubyLLM
         # @param msgs [Array<Hash>] Messages with :role and :content keys
         # @return [RubyLLM::Chat] Client with messages applied
         def apply_messages(client, msgs)
-          msgs.reduce(client) do |c, message|
-            c.with_message(message[:role].to_s, message[:content])
+          msgs.each do |message|
+            client.add_message(role: message[:role].to_sym, content: message[:content])
           end
+          client
         end
 
         # Builds a client with pre-populated conversation history
