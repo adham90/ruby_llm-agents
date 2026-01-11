@@ -1,10 +1,14 @@
-<%= link_to ruby_llm_agents.agent_path(agent[:name]), class: "block bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow" do %>
+<%= link_to ruby_llm_agents.agent_path(ERB::Util.url_encode(agent[:name])), class: "block bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow" do %>
   <div class="p-4 sm:p-5">
     <!-- Row 1: Agent name + badge + model/timestamp -->
     <div class="flex items-center justify-between gap-2">
       <div class="flex items-center gap-2 min-w-0">
         <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate">
-          <%= agent[:name].gsub(/Agent$/, '') %>
+          <% name_parts = agent[:name].gsub(/Agent$/, '').split('::') %>
+          <% if name_parts.length > 1 %>
+            <span class="text-gray-400 dark:text-gray-500 font-normal"><%= name_parts[0..-2].join('::') %>::</span>
+          <% end %>
+          <%= name_parts.last %>
         </h3>
         <span class="hidden sm:inline text-sm text-gray-500 dark:text-gray-400">v<%= agent[:version] %></span>
         <% if agent[:active] %>

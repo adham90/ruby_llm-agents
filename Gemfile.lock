@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    ruby_llm-agents (0.3.4)
+    ruby_llm-agents (0.3.5)
       csv
       rails (>= 7.0)
       ruby_llm (>= 1.0)

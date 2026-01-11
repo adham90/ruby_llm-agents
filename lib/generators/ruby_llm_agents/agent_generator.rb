@@ -29,20 +29,45 @@ module RubyLlmAgents
                  desc: "Cache TTL (e.g., '1.hour', '30.minutes')"
 
     def create_agent_file
-      template "agent.rb.tt", "app/agents/#{file_name}_agent.rb"
+      # Support nested paths: "chat/support" -> "app/agents/chat/support_agent.rb"
+      # Rails' class_name handles namespacing: "chat/support" -> "Chat::Support"
+      agent_path = name.underscore
+      template "agent.rb.tt", "app/agents/#{agent_path}_agent.rb"
     end
 
     def show_usage
+      full_class_name = (namespace_parts + [agent_class_name]).join("::")
       say ""
-      say "Agent #{class_name}Agent created!", :green
+      say "Agent #{full_class_name}Agent created!", :green
       say ""
       say "Usage:"
-      say "  #{class_name}Agent.call(#{usage_params})"
-      say "  #{class_name}Agent.call(#{usage_params}, dry_run: true)"
+      say "  #{full_class_name}Agent.call(#{usage_params})"
+      say "  #{full_class_name}Agent.call(#{usage_params}, dry_run: true)"
       say ""
     end
 
     private
+
+    # Returns the full class path as an array (e.g., ["Chat", "Support", "Ticket"] for "chat/support/ticket")
+    # Computed directly from name to avoid Rails namespace issues
+    def class_path_parts
+      @class_path_parts ||= name.split('/').map { |part| part.camelize }
+    end
+
+    # Returns the namespace modules as an array (e.g., ["Chat", "Support"] for "chat/support/ticket")
+    def namespace_parts
+      @namespace_parts ||= class_path_parts[0..-2]
+    end
+
+    # Returns just the agent class name without namespace (e.g., "Ticket" for "chat/support/ticket")
+    def agent_class_name
+      @agent_class_name ||= class_path_parts.last
+    end
+
+    # Returns true if this agent is namespaced
+    def namespaced?
+      namespace_parts.any?
+    end
 
     def parsed_params
       @parsed_params ||= params.map do |param|

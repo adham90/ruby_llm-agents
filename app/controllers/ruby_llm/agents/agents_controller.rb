@@ -58,7 +58,7 @@ module RubyLLM
       #
       # @return [void]
       def show
-        @agent_type = params[:id]
+        @agent_type = CGI.unescape(params[:id])
         @agent_class = AgentRegistry.find(@agent_type)
         @agent_active = @agent_class.present?
 
