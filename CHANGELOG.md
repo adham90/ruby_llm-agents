@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.6] - 2026-01-11
+
+### Added
+
+- Nested directory support for agents (e.g., `agents/chat/support_agent.rb` → `Chat::SupportAgent`)
+- Generator now supports namespaced agents: `rails g ruby_llm_agents:agent chat/support`
+- URL encoding for namespaced agent links in dashboard
+- Comprehensive Tools documentation (`wiki/Tools.md`)
+- Tools section added to Agent DSL documentation
+
+### Fixed
+
+- Fixed `with_message` → `add_message` API compatibility with ruby_llm gem
+- Dashboard now properly displays namespaced agent names with visual hierarchy
+
+### Changed
+
+- Agent generator uses compact class notation (`class Chat::TestAgent`) for namespaced agents
+
 ## [0.3.3] - 2025-11-27
 
 ### Added
