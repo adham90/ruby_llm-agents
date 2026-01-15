@@ -87,7 +87,7 @@ Register tools at the class level using the `tools` DSL:
 
 ```ruby
 class ProductAgent < ApplicationAgent
-  tools SearchTool, GetProductTool, CompareTool
+  tools [SearchTool, GetProductTool, CompareTool]
 
   param :query, required: true
 
@@ -251,7 +251,7 @@ end
 # app/agents/shopping_agent.rb
 class ShoppingAgent < ApplicationAgent
   model "gpt-4o"
-  tools Product::SearchTool, Product::GetTool
+  tools [Product::SearchTool, Product::GetTool]
 
   param :query, required: true
   param :user_id

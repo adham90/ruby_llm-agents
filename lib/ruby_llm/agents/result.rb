@@ -220,8 +220,78 @@ module RubyLLM
         }
       end
 
-      # Delegate hash methods to content for backward compatibility
-      delegate :[], :dig, :keys, :values, :each, :map, to: :content, allow_nil: true
+      # @!group Deprecated Hash Delegation
+      #
+      # These methods delegate to content for backward compatibility but are deprecated.
+      # Use result.content directly instead.
+      #
+      # @deprecated Access content directly via {#content} instead.
+      #   These methods will be removed in version 1.0.
+      #
+      # @example Migration
+      #   # Before (deprecated)
+      #   result[:key]
+      #   result.dig(:nested, :key)
+      #
+      #   # After (recommended)
+      #   result.content[:key]
+      #   result.content.dig(:nested, :key)
+
+      # @deprecated Use result.content[:key] instead
+      def [](key)
+        RubyLLM::Agents::Deprecations.warn(
+          "Result#[] is deprecated. Use result.content[:key] instead.",
+          caller
+        )
+        content&.[](key)
+      end
+
+      # @deprecated Use result.content.dig(...) instead
+      def dig(*keys)
+        RubyLLM::Agents::Deprecations.warn(
+          "Result#dig is deprecated. Use result.content.dig(...) instead.",
+          caller
+        )
+        content&.dig(*keys)
+      end
+
+      # @deprecated Use result.content.keys instead
+      def keys
+        RubyLLM::Agents::Deprecations.warn(
+          "Result#keys is deprecated. Use result.content.keys instead.",
+          caller
+        )
+        content&.keys
+      end
+
+      # @deprecated Use result.content.values instead
+      def values
+        RubyLLM::Agents::Deprecations.warn(
+          "Result#values is deprecated. Use result.content.values instead.",
+          caller
+        )
+        content&.values
+      end
+
+      # @deprecated Use result.content.each instead
+      def each(&block)
+        RubyLLM::Agents::Deprecations.warn(
+          "Result#each is deprecated. Use result.content.each instead.",
+          caller
+        )
+        content&.each(&block)
+      end
+
+      # @deprecated Use result.content.map instead
+      def map(&block)
+        RubyLLM::Agents::Deprecations.warn(
+          "Result#map is deprecated. Use result.content.map instead.",
+          caller
+        )
+        content&.map(&block)
+      end
+
+      # @!endgroup
 
       # Custom to_json that returns content as JSON for backward compatibility
       #

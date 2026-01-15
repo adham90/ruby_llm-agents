@@ -99,7 +99,7 @@ RSpec.describe RubyLLM::Agents::Base do
       it "sets and gets tools" do
         tool = mock_tool
         klass = Class.new(described_class) do
-          tools tool
+          tools [tool]
         end
         expect(klass.tools).to include(tool)
       end
@@ -113,14 +113,14 @@ RSpec.describe RubyLLM::Agents::Base do
         tool1 = mock_tool
         tool2 = Class.new { def self.name; "AnotherTool"; end }
         klass = Class.new(described_class) do
-          tools tool1, tool2
+          tools [tool1, tool2]
         end
         expect(klass.tools).to include(tool1, tool2)
       end
 
       it "inherits tools from parent" do
         tool = mock_tool
-        parent = Class.new(described_class) { tools tool }
+        parent = Class.new(described_class) { tools [tool] }
         child = Class.new(parent)
         expect(child.tools).to include(tool)
       end
@@ -155,7 +155,7 @@ RSpec.describe RubyLLM::Agents::Base do
     it "raises error for missing required parameters" do
       expect {
         agent_class.new(limit: 10)
-      }.to raise_error(ArgumentError, /missing required params/)
+      }.to raise_error(ArgumentError, /missing required param/)
     end
   end
 

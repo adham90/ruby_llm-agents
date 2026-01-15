@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "reliability_dsl"
+
 module RubyLLM
   module Agents
     class Base
@@ -73,6 +75,31 @@ module RubyLLM
         # @!endgroup
 
         # @!group Reliability DSL
+
+        # Configures reliability features using a block syntax
+        #
+        # Groups all reliability configuration in a single block for clarity.
+        # Individual methods (retries, fallback_models, etc.) remain available
+        # for backward compatibility.
+        #
+        # @yield Block containing reliability configuration
+        # @return [void]
+        # @example
+        #   reliability do
+        #     retries max: 3, backoff: :exponential
+        #     fallback_models "gpt-4o-mini"
+        #     total_timeout 30
+        #     circuit_breaker errors: 5
+        #   end
+        def reliability(&block)
+          builder = ReliabilityDSL.new
+          builder.instance_eval(&block)
+
+          @retries_config = builder.retries_config if builder.retries_config
+          @fallback_models = builder.fallback_models_list if builder.fallback_models_list.any?
+          @total_timeout = builder.total_timeout_value if builder.total_timeout_value
+          @circuit_breaker_config = builder.circuit_breaker_config if builder.circuit_breaker_config
+        end
 
         # Configures retry behavior for this agent
         #
@@ -162,13 +189,18 @@ module RubyLLM
         # @param name [Symbol] The parameter name
         # @param required [Boolean] Whether the parameter is required
         # @param default [Object, nil] Default value if not provided
+        # @param type [Class, nil] Optional type for validation (e.g., String, Integer, Array)
         # @return [void]
-        # @example
+        # @example Without type (accepts anything)
         #   param :query, required: true
-        #   param :limit, default: 10
-        def param(name, required: false, default: nil)
+        #   param :data, default: {}
+        # @example With type validation
+        #   param :limit, default: 10, type: Integer
+        #   param :name, type: String
+        #   param :tags, type: Array
+        def param(name, required: false, default: nil, type: nil)
           @params ||= {}
-          @params[name] = { required: required, default: default }
+          @params[name] = { required: required, default: default, type: type }
           define_method(name) do
             @options[name] || @options[name.to_s] || self.class.params.dig(name, :default)
           end
@@ -186,15 +218,35 @@ module RubyLLM
 
         # @!group Caching DSL
 
-        # Enables caching for this agent with optional TTL
+        # Enables caching for this agent with explicit TTL
+        #
+        # This is the preferred method for enabling caching.
         #
         # @param ttl [ActiveSupport::Duration] Time-to-live for cached responses
         # @return [void]
         # @example
-        #   cache 1.hour
-        def cache(ttl = CACHE_TTL)
+        #   cache_for 1.hour
+        #   cache_for 30.minutes
+        def cache_for(ttl)
           @cache_enabled = true
           @cache_ttl = ttl
+        end
+
+        # Enables caching for this agent with optional TTL
+        #
+        # @deprecated Use {#cache_for} instead for clarity.
+        #   This method will be removed in version 1.0.
+        # @param ttl [ActiveSupport::Duration] Time-to-live for cached responses
+        # @return [void]
+        # @example
+        #   cache 1.hour  # deprecated
+        #   cache_for 1.hour  # preferred
+        def cache(ttl = CACHE_TTL)
+          RubyLLM::Agents::Deprecations.warn(
+            "cache(ttl) is deprecated. Use cache_for(ttl) instead for clarity.",
+            caller
+          )
+          cache_for(ttl)
         end
 
         # Returns whether caching is enabled for this agent
@@ -243,13 +295,13 @@ module RubyLLM
         #
         # @param tool_classes [Array<Class>] Tool classes to make available
         # @return [Array<Class>] The current tools
+        # @example With array (preferred)
+        #   tools [WeatherTool, SearchTool, CalculatorTool]
         # @example Single tool
-        #   tools WeatherTool
-        # @example Multiple tools
-        #   tools WeatherTool, SearchTool, CalculatorTool
-        def tools(*tool_classes)
-          if tool_classes.any?
-            @tools = tool_classes.flatten
+        #   tools [WeatherTool]
+        def tools(tool_classes = nil)
+          if tool_classes
+            @tools = Array(tool_classes)
           end
           @tools || inherited_or_default(:tools, RubyLLM::Agents.configuration.default_tools)
         end

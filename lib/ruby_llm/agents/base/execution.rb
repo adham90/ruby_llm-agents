@@ -62,7 +62,7 @@ module RubyLLM
           reset_accumulated_tool_calls!
 
           Timeout.timeout(self.class.timeout) do
-            if self.class.streaming && block_given?
+            if streaming_enabled? && block_given?
               execute_with_streaming(current_client, &block)
             else
               response = current_client.ask(user_prompt, **ask_options)
@@ -177,6 +177,16 @@ module RubyLLM
             config[:circuit_breaker].present?
         end
 
+        # Returns whether streaming is enabled for this execution
+        #
+        # Checks both class-level DSL setting and instance-level override
+        # (set by the stream class method).
+        #
+        # @return [Boolean] true if streaming is enabled
+        def streaming_enabled?
+          @force_streaming || self.class.streaming
+        end
+
         # Returns options to pass to the ask method
         #
         # Currently supports :with for attachments (images, PDFs, etc.)
@@ -188,14 +198,28 @@ module RubyLLM
           opts
         end
 
-        # Validates that all required parameters are present
+        # Validates that all required parameters are present and types match
         #
-        # @raise [ArgumentError] If required parameters are missing
+        # @raise [ArgumentError] If required parameters are missing or types don't match
         # @return [void]
         def validate_required_params!
-          required = self.class.params.select { |_, v| v[:required] }.keys
-          missing = required.reject { |p| @options.key?(p) || @options.key?(p.to_s) }
-          raise ArgumentError, "#{self.class} missing required params: #{missing.join(', ')}" if missing.any?
+          self.class.params.each do |name, config|
+            value = @options[name] || @options[name.to_s]
+            has_value = @options.key?(name) || @options.key?(name.to_s)
+
+            # Check required
+            if config[:required] && !has_value
+              raise ArgumentError, "#{self.class} missing required param: #{name}"
+            end
+
+            # Check type if specified and value is present (not nil)
+            if config[:type] && has_value && !value.nil?
+              unless value.is_a?(config[:type])
+                raise ArgumentError,
+                  "#{self.class} expected #{config[:type]} for :#{name}, got #{value.class}"
+              end
+            end
+          end
         end
 
         # Builds and configures the RubyLLM client

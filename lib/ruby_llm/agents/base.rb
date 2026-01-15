@@ -83,6 +83,33 @@ module RubyLLM
         def call(*args, **kwargs, &block)
           new(*args, **kwargs).call(&block)
         end
+
+        # Streams agent execution, yielding chunks as they arrive
+        #
+        # A more explicit alternative to passing a block to call.
+        # Forces streaming mode for this invocation regardless of class setting.
+        #
+        # @param kwargs [Hash] Agent parameters
+        # @yield [chunk] Yields each chunk as it arrives
+        # @yieldparam chunk [RubyLLM::Chunk] Streaming chunk with content
+        # @return [Result] The final result after streaming completes
+        # @raise [ArgumentError] If no block is provided
+        #
+        # @example Basic streaming
+        #   MyAgent.stream(query: "test") do |chunk|
+        #     print chunk.content
+        #   end
+        #
+        # @example With result metadata
+        #   result = MyAgent.stream(query: "test") { |c| print c.content }
+        #   puts "\nTokens: #{result.total_tokens}"
+        def stream(**kwargs, &block)
+          raise ArgumentError, "Block required for streaming" unless block_given?
+
+          instance = new(**kwargs)
+          instance.instance_variable_set(:@force_streaming, true)
+          instance.call(&block)
+        end
       end
 
       # @!attribute [r] model

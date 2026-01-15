@@ -25,6 +25,11 @@ RubyLLM::Agents::Execution
 Dir[File.join(__dir__, "support/**/*.rb")].sort.each { |f| require f }
 
 RSpec.configure do |config|
+  # Silence deprecation warnings in tests by default
+  config.before(:suite) do
+    RubyLLM::Agents::Deprecations.silenced = true
+  end
+
   # Include FactoryBot methods
   config.include FactoryBot::Syntax::Methods
 

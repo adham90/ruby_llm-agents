@@ -1,0 +1,646 @@
+# RubyLLM::Agents
+
+> A Rails engine for building production-ready LLM-powered agents with built-in observability, reliability, and cost governance.
+
+Version: 0.4.0
+Repository: https://github.com/adham90/ruby_llm-agents
+License: MIT
+Requirements: Ruby >= 3.1.0, Rails >= 7.0, RubyLLM >= 1.0
+
+## Overview
+
+RubyLLM::Agents provides a declarative DSL for creating AI agents that interact with large language models. It handles the complexity of production LLM applications: retries, fallbacks, circuit breakers, caching, cost tracking, multi-tenancy, and observability through a mountable dashboard.
+
+## Installation
+
+```ruby
+# Gemfile
+gem "ruby_llm-agents"
+```
+
+```bash
+bundle install
+rails generate ruby_llm_agents:install
+rails db:migrate
+```
+
+This creates:
+- Migration for executions table
+- Initializer at config/initializers/ruby_llm_agents.rb
+- Base class at app/agents/application_agent.rb
+- Mounts dashboard at /agents
+
+## Core Concepts
+
+### Agent Structure
+
+Agents inherit from `RubyLLM::Agents::Base` (or your `ApplicationAgent`). They define:
+- Configuration via class-level DSL
+- Parameters via `param` declarations
+- Prompts via template methods (`system_prompt`, `user_prompt`)
+- Optional response schema for structured output
+- Optional response processing via `process_response`
+
+### Execution Flow
+
+1. `MyAgent.call(params)` instantiates agent and calls `#call`
+2. Parameters are validated (required check, type check if specified)
+3. Cache is checked if caching enabled
+4. Reliability wrapper handles retries/fallbacks/circuit breakers
+5. LLM client is built and request is made
+6. Response is processed and wrapped in Result object
+7. Execution is recorded to database for observability
+
+## Creating Agents
+
+### Basic Agent
+
+```ruby
+class SearchAgent < ApplicationAgent
+  model "gpt-4o"
+  temperature 0.0
+  description "Searches knowledge base for relevant documents"
+
+  param :query, required: true
+  param :limit, default: 10
+
+  def system_prompt
+    "You are a search assistant. Return relevant document IDs."
+  end
+
+  def user_prompt
+    "Search for: #{query}. Return up to #{limit} results."
+  end
+end
+
+# Usage
+result = SearchAgent.call(query: "ruby metaprogramming")
+result.content  # => processed response
+result.total_tokens  # => 150
+result.total_cost  # => 0.00025
+```
+
+### Agent with Structured Output
+
+```ruby
+class ClassifierAgent < ApplicationAgent
+  model "gpt-4o"
+
+  param :text, required: true
+
+  def system_prompt
+    "Classify the sentiment of the given text."
+  end
+
+  def user_prompt
+    text
+  end
+
+  def schema
+    @schema ||= RubyLLM::Schema.create do
+      string :sentiment, enum: %w[positive negative neutral]
+      number :confidence, minimum: 0, maximum: 1
+      string :reasoning
+    end
+  end
+end
+
+result = ClassifierAgent.call(text: "I love this product!")
+result.content[:sentiment]   # => "positive"
+result.content[:confidence]  # => 0.95
+```
+
+### Agent with Tools
+
+```ruby
+class WeatherTool < RubyLLM::Tool
+  description "Gets current weather for a location"
+
+  param :location, type: :string, required: true
+
+  def execute(location:)
+    # Fetch weather data
+    { temperature: 72, conditions: "sunny" }
+  end
+end
+
+class WeatherAgent < ApplicationAgent
+  model "gpt-4o"
+  tools [WeatherTool]
+
+  param :question, required: true
+
+  def user_prompt
+    question
+  end
+end
+
+result = WeatherAgent.call(question: "What's the weather in NYC?")
+result.tool_calls  # => [{ name: "weather_tool", arguments: { location: "NYC" } }]
+```
+
+## DSL Reference
+
+### Configuration
+
+```ruby
+class MyAgent < ApplicationAgent
+  model "gpt-4o"           # LLM model identifier
+  temperature 0.7          # 0.0-2.0, controls randomness
+  timeout 30               # Request timeout in seconds
+  version "2.0"            # Cache invalidation version
+  description "Agent description for documentation"
+end
+```
+
+### Parameters
+
+```ruby
+class MyAgent < ApplicationAgent
+  # Required parameter
+  param :query, required: true
+
+  # Optional with default
+  param :limit, default: 10
+
+  # With type validation (optional - validates if specified)
+  param :count, type: Integer
+  param :name, type: String
+  param :tags, type: Array
+  param :metadata, type: Hash
+
+  # Combined
+  param :page, default: 1, type: Integer
+end
+```
+
+Type validation raises `ArgumentError` if value doesn't match:
+```ruby
+MyAgent.call(count: "not an integer")
+# => ArgumentError: MyAgent expected Integer for :count, got String
+```
+
+### Caching
+
+```ruby
+class MyAgent < ApplicationAgent
+  cache_for 1.hour  # Preferred syntax (v0.4.0+)
+
+  # Or with explicit TTL
+  # cache 1.hour  # Deprecated, use cache_for instead
+end
+
+# Skip cache for specific call
+MyAgent.call(query: "test", skip_cache: true)
+```
+
+Cache key is generated from: agent name + version + parameters hash.
+
+### Streaming
+
+```ruby
+class ChatAgent < ApplicationAgent
+  model "gpt-4o"
+  streaming true
+
+  param :message, required: true
+
+  def user_prompt
+    message
+  end
+end
+
+# Block receives chunks as they arrive
+ChatAgent.call(message: "Hello") do |chunk|
+  print chunk.content
+end
+
+# Or use explicit stream method (forces streaming)
+ChatAgent.stream(message: "Hello") do |chunk|
+  print chunk.content
+end
+```
+
+### Reliability Configuration
+
+Individual methods (backward compatible):
+
+```ruby
+class MyAgent < ApplicationAgent
+  retries max: 3, backoff: :exponential, base: 0.4, max_delay: 3.0
+  fallback_models ["gpt-4o-mini", "gpt-3.5-turbo"]
+  total_timeout 30
+  circuit_breaker errors: 5, within: 60, cooldown: 300
+end
+```
+
+Block syntax (v0.4.0+, recommended):
+
+```ruby
+class MyAgent < ApplicationAgent
+  reliability do
+    retries max: 3, backoff: :exponential
+    fallback_models "gpt-4o-mini", "gpt-3.5-turbo"
+    total_timeout 30
+    circuit_breaker errors: 5, within: 60, cooldown: 300
+  end
+end
+```
+
+Reliability features:
+- **Retries**: Automatic retry with exponential/constant backoff for transient errors
+- **Fallback models**: Try alternate models when primary fails
+- **Circuit breaker**: Stop requests to failing models, auto-recover after cooldown
+- **Total timeout**: Cap total execution time across all retries/fallbacks
+
+### Tools
+
+```ruby
+class MyAgent < ApplicationAgent
+  tools [SearchTool, CalculatorTool, WeatherTool]
+end
+```
+
+## Template Methods
+
+Override these in your agent class:
+
+```ruby
+class MyAgent < ApplicationAgent
+  # Required: The user message sent to the LLM
+  def user_prompt
+    "Process: #{query}"
+  end
+
+  # Optional: System instructions
+  def system_prompt
+    "You are a helpful assistant."
+  end
+
+  # Optional: Structured output schema
+  def schema
+    @schema ||= RubyLLM::Schema.create do
+      string :result
+    end
+  end
+
+  # Optional: Conversation history
+  def messages
+    [
+      { role: :user, content: "Previous question" },
+      { role: :assistant, content: "Previous answer" }
+    ]
+  end
+
+  # Optional: Post-process the LLM response
+  def process_response(response)
+    content = response.content
+    content.is_a?(Hash) ? content.transform_keys(&:to_sym) : content
+  end
+end
+```
+
+## Result Object
+
+Every agent call returns a `RubyLLM::Agents::Result`:
+
+```ruby
+result = MyAgent.call(query: "test")
+
+# Content
+result.content           # Processed response content
+result.success?          # true if no error
+result.error?            # true if error occurred
+
+# Token usage
+result.input_tokens      # Input token count
+result.output_tokens     # Output token count
+result.total_tokens      # Total tokens
+result.cached_tokens     # Tokens served from cache
+
+# Cost (USD)
+result.input_cost        # Cost of input tokens
+result.output_cost       # Cost of output tokens
+result.total_cost        # Total cost
+
+# Model info
+result.model_id          # Requested model
+result.chosen_model_id   # Actual model used (may differ if fallback)
+result.used_fallback?    # true if fallback model was used
+
+# Timing
+result.started_at        # Execution start time
+result.completed_at      # Execution end time
+result.duration_ms       # Duration in milliseconds
+result.time_to_first_token_ms  # Streaming latency
+
+# Status
+result.finish_reason     # "stop", "length", "tool_calls", etc.
+result.truncated?        # true if hit max tokens
+result.streaming?        # true if streamed
+
+# Reliability
+result.attempts          # Array of attempt details
+result.attempts_count    # Number of attempts made
+
+# Tools
+result.tool_calls        # Array of tool call details
+result.tool_calls_count  # Number of tool calls
+result.has_tool_calls?   # true if tools were called
+
+# Serialization
+result.to_h              # Full result as hash
+result.to_json           # Content as JSON
+```
+
+## Workflows
+
+Workflows compose multiple agents into complex pipelines.
+
+### Pipeline (Sequential)
+
+```ruby
+class ContentPipeline < RubyLLM::Agents::Workflow::Pipeline
+  description "Processes content through multiple stages"
+  version "1.0"
+  timeout 60.seconds
+  max_cost 1.00
+
+  step :classify, agent: ClassifierAgent
+  step :summarize, agent: SummarizerAgent
+  step :format, agent: FormatterAgent, optional: true
+
+  # Transform output before next step
+  def before_summarize(context)
+    { text: context[:classify].content[:text] }
+  end
+end
+
+result = ContentPipeline.call(text: "Long article...")
+result.content  # Final formatted output
+```
+
+### Parallel (Concurrent)
+
+```ruby
+class MultiAnalyzer < RubyLLM::Agents::Workflow::Parallel
+  description "Runs multiple analyses concurrently"
+  concurrency 3
+  fail_fast false  # Continue even if one branch fails
+
+  branch :sentiment, agent: SentimentAgent
+  branch :entities, agent: EntityAgent
+  branch :keywords, agent: KeywordAgent, optional: true
+
+  def aggregate(results)
+    {
+      sentiment: results[:sentiment]&.content,
+      entities: results[:entities]&.content,
+      keywords: results[:keywords]&.content
+    }
+  end
+end
+```
+
+### Router (Conditional)
+
+```ruby
+class SupportRouter < RubyLLM::Agents::Workflow::Router
+  description "Routes support tickets to specialized agents"
+  classifier_model "gpt-4o-mini"
+  classifier_temperature 0.0
+
+  route :billing, to: BillingAgent, description: "Billing and payment issues"
+  route :technical, to: TechAgent, description: "Technical problems"
+  route :general, to: GeneralAgent, description: "General inquiries"
+  route :default, to: GeneralAgent
+
+  def before_route(input, chosen_route)
+    input.merge(route_context: chosen_route)
+  end
+end
+```
+
+## Global Configuration
+
+```ruby
+# config/initializers/ruby_llm_agents.rb
+RubyLLM::Agents.configure do |config|
+  # Defaults
+  config.default_model = "gpt-4o"
+  config.default_temperature = 0.0
+  config.default_timeout = 30
+
+  # Async logging (background job)
+  config.async_logging = true
+
+  # Retention
+  config.retention_period = 30.days
+
+  # Default reliability (opt-in, disabled by default)
+  config.default_retries = { max: 0 }
+  config.default_fallback_models = []
+  config.default_total_timeout = nil
+  config.default_streaming = false
+  config.default_tools = []
+
+  # Cost governance
+  config.budgets = {
+    global_daily: 100.0,
+    global_monthly: 2000.0,
+    per_agent_daily: { "ExpensiveAgent" => 50.0 },
+    enforcement: :hard  # :hard raises, :soft warns
+  }
+
+  # Alerts
+  config.alerts = {
+    slack_webhook_url: ENV["SLACK_WEBHOOK_URL"],
+    on_events: [:budget_soft_cap, :budget_hard_cap, :breaker_open]
+  }
+
+  # PII redaction in logs
+  config.redaction = {
+    fields: %w[password api_key email ssn],
+    patterns: [/\b\d{3}-\d{2}-\d{4}\b/],  # SSN pattern
+    placeholder: "[REDACTED]"
+  }
+
+  # Multi-tenancy
+  config.multi_tenancy_enabled = true
+  config.tenant_resolver = -> { Current.tenant&.id }
+
+  # Dashboard
+  config.dashboard_parent_controller = "AdminController"
+  config.basic_auth_username = ENV["AGENTS_DASHBOARD_USER"]
+  config.basic_auth_password = ENV["AGENTS_DASHBOARD_PASS"]
+  config.per_page = 25
+end
+```
+
+## Dashboard
+
+Mount the dashboard in routes:
+
+```ruby
+# config/routes.rb
+Rails.application.routes.draw do
+  mount RubyLLM::Agents::Engine => "/agents"
+end
+```
+
+Dashboard features:
+- Execution history with filtering and search
+- Agent registry with statistics
+- Cost analytics and charts
+- Real-time metrics
+- Multi-tenant filtering (if enabled)
+
+## Generators
+
+```bash
+# Install the gem
+rails generate ruby_llm_agents:install
+
+# Generate a new agent
+rails generate ruby_llm_agents:agent search query:required limit:10
+rails generate ruby_llm_agents:agent chat/support message:required
+
+# Upgrade migrations
+rails generate ruby_llm_agents:upgrade
+```
+
+## File Structure
+
+```
+app/
+  agents/
+    application_agent.rb      # Base class for your agents
+    search_agent.rb           # Your agents
+    chat/
+      support_agent.rb        # Nested agents
+
+lib/ruby_llm/agents/
+  base.rb                     # Main agent class
+  base/
+    dsl.rb                    # DSL methods (model, param, cache, etc.)
+    execution.rb              # Execution flow
+    reliability_execution.rb  # Retry/fallback orchestration
+    reliability_dsl.rb        # Block DSL for reliability config
+    caching.rb                # Cache helpers
+    instrumentation.rb        # Execution tracking
+    response_building.rb      # Result construction
+    cost_calculation.rb       # Token/cost calculation
+    tool_tracking.rb          # Tool call tracking
+  reliability/
+    retry_strategy.rb         # Backoff calculation
+    fallback_routing.rb       # Model fallback chain
+    breaker_manager.rb        # Circuit breaker coordination
+    execution_constraints.rb  # Timeout/budget constraints
+    executor.rb               # Reliability orchestrator
+  workflow.rb                 # Base workflow class
+  workflow/
+    pipeline.rb               # Sequential workflow
+    parallel.rb               # Concurrent workflow
+    router.rb                 # Conditional routing
+  result.rb                   # Result wrapper class
+  configuration.rb            # Global config
+  circuit_breaker.rb          # Circuit breaker implementation
+  budget_tracker.rb           # Cost governance
+  alert_manager.rb            # Alerting
+  deprecations.rb             # Deprecation warnings
+```
+
+## Deprecations (v0.4.0)
+
+These work but emit warnings:
+
+```ruby
+# Deprecated
+cache 1.hour
+result[:key]
+result.dig(:a, :b)
+
+# Preferred
+cache_for 1.hour
+result.content[:key]
+result.content.dig(:a, :b)
+```
+
+Silence warnings:
+```ruby
+RubyLLM::Agents::Deprecations.silenced = true
+```
+
+## Error Handling
+
+```ruby
+begin
+  result = MyAgent.call(query: "test")
+rescue RubyLLM::Agents::Reliability::AllModelsExhaustedError => e
+  # All models failed after retries
+  e.models_tried  # => ["gpt-4o", "gpt-4o-mini"]
+  e.last_error    # => Original error
+rescue RubyLLM::Agents::Reliability::TotalTimeoutError => e
+  # Total timeout exceeded
+  e.timeout_seconds  # => 30
+  e.elapsed_seconds  # => 31.5
+rescue RubyLLM::Agents::Reliability::BudgetExceededError => e
+  # Budget limit hit
+  e.scope   # => :global_daily
+  e.limit   # => 100.0
+  e.current # => 101.5
+rescue ArgumentError => e
+  # Missing required param or type mismatch
+end
+```
+
+## Testing
+
+```ruby
+# spec/agents/search_agent_spec.rb
+require "rails_helper"
+
+RSpec.describe SearchAgent do
+  describe "DSL" do
+    it "configures model" do
+      expect(described_class.model).to eq("gpt-4o")
+    end
+  end
+
+  describe "#call" do
+    let(:mock_response) do
+      double(content: { results: [] }, input_tokens: 10, output_tokens: 5)
+    end
+
+    before do
+      allow_any_instance_of(RubyLLM::Chat).to receive(:ask).and_return(mock_response)
+    end
+
+    it "returns results" do
+      result = described_class.call(query: "test")
+      expect(result.content[:results]).to eq([])
+    end
+  end
+
+  describe "dry_run" do
+    it "returns prompt info without API call" do
+      result = described_class.call(query: "test", dry_run: true)
+      expect(result.content[:dry_run]).to be true
+      expect(result.content[:user_prompt]).to include("test")
+    end
+  end
+end
+```
+
+## Best Practices
+
+1. **Use ApplicationAgent as base class** - Centralizes shared configuration
+2. **Set explicit versions** - Invalidates cache when agent logic changes
+3. **Use reliability for production** - Enable retries and fallbacks
+4. **Set budgets** - Prevent runaway costs
+5. **Use structured output** - Schemas ensure predictable responses
+6. **Monitor via dashboard** - Track costs, errors, latency
+7. **Use cache_for over cache** - Clearer intent, no deprecation warning
+8. **Type your params** - Catches bugs early with type validation
+9. **Use reliability block** - Groups related config together
+10. **Test with dry_run** - Debug prompts without API calls

@@ -87,7 +87,7 @@ Register tools for the agent to use:
 
 ```ruby
 class MyAgent < ApplicationAgent
-  tools SearchTool, CalculatorTool, WeatherTool
+  tools [SearchTool, CalculatorTool, WeatherTool]
 end
 ```
 
