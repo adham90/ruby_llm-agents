@@ -743,6 +743,88 @@
   </div>
 <% end %>
 
+<!-- Conversation Context -->
+<% if @execution.respond_to?(:messages_count) && @execution.messages_count.to_i > 0 %>
+  <%
+    messages_summary = @execution.messages_summary || {}
+    # Handle both string and symbol keys
+    first_message = messages_summary["first"] || messages_summary[:first]
+    last_message = messages_summary["last"] || messages_summary[:last]
+    max_len = RubyLLM::Agents.configuration.messages_summary_max_length || 500
+  %>
+  <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6">
+    <div class="flex items-center gap-2 mb-4">
+      <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+      </svg>
+      <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Conversation Context</h3>
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300">
+        <%= @execution.messages_count %> message<%= @execution.messages_count == 1 ? '' : 's' %>
+      </span>
+    </div>
+
+    <div class="space-y-4">
+      <% if first_message %>
+        <%
+          first_role = first_message["role"] || first_message[:role] || "unknown"
+          first_content = first_message["content"] || first_message[:content] || ""
+          first_truncated = first_content.length >= max_len
+          role_badge_class = case first_role.to_s
+            when "user" then "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300"
+            when "assistant" then "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300"
+            when "system" then "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300"
+            else "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300"
+          end
+        %>
+        <div class="border border-gray-100 dark:border-gray-700 rounded-lg p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">First Message</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= role_badge_class %>">
+              <%= first_role %>
+            </span>
+            <% if first_truncated %>
+              <span class="text-xs text-gray-400 dark:text-gray-500 italic">(truncated)</span>
+            <% end %>
+          </div>
+          <p class="text-sm text-gray-700 dark:text-gray-300 font-mono bg-gray-50 dark:bg-gray-900 rounded-lg p-3 whitespace-pre-wrap break-words"><%= first_content %></p>
+        </div>
+      <% end %>
+
+      <% if last_message %>
+        <%
+          last_role = last_message["role"] || last_message[:role] || "unknown"
+          last_content = last_message["content"] || last_message[:content] || ""
+          last_truncated = last_content.length >= max_len
+          role_badge_class = case last_role.to_s
+            when "user" then "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300"
+            when "assistant" then "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300"
+            when "system" then "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300"
+            else "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300"
+          end
+        %>
+        <div class="border border-gray-100 dark:border-gray-700 rounded-lg p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">Last Message</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= role_badge_class %>">
+              <%= last_role %>
+            </span>
+            <% if last_truncated %>
+              <span class="text-xs text-gray-400 dark:text-gray-500 italic">(truncated)</span>
+            <% end %>
+          </div>
+          <p class="text-sm text-gray-700 dark:text-gray-300 font-mono bg-gray-50 dark:bg-gray-900 rounded-lg p-3 whitespace-pre-wrap break-words"><%= last_content %></p>
+        </div>
+      <% end %>
+
+      <% if @execution.messages_count > 2 %>
+        <p class="text-xs text-gray-400 dark:text-gray-500 text-center">
+          + <%= @execution.messages_count - 2 %> more message<%= @execution.messages_count - 2 == 1 ? '' : 's' %> in between
+        </p>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
 <!-- Diagnostics Panel -->
 <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6">
   <div class="flex items-center justify-between mb-4">

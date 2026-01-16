@@ -89,6 +89,10 @@ ActiveRecord::Schema.define do
     # Multi-tenancy
     t.string :tenant_id
 
+    # Messages summary for conversation context
+    t.integer :messages_count, null: false, default: 0
+    t.json :messages_summary, null: false, default: {}
+
     t.timestamps
   end
 
@@ -115,6 +119,9 @@ ActiveRecord::Schema.define do
 
   # Multi-tenancy index
   add_index :ruby_llm_agents_executions, [:tenant_id, :agent_type]
+
+  # Messages summary index
+  add_index :ruby_llm_agents_executions, :messages_count
 
   # Tenant budgets table
   create_table :ruby_llm_agents_tenant_budgets, force: :cascade do |t|

@@ -245,7 +245,9 @@ module RubyLLM
           metadata: metadata,
           system_prompt: config.persist_prompts ? redacted_system_prompt : nil,
           user_prompt: config.persist_prompts ? redacted_user_prompt : nil,
-          streaming: self.class.streaming
+          streaming: self.class.streaming,
+          messages_count: resolved_messages.size,
+          messages_summary: config.persist_messages_summary ? messages_summary : {}
         }
 
         # Extract tracing fields from metadata if present
@@ -440,6 +442,8 @@ module RubyLLM
       # @param error [Exception, nil] The exception if failed
       # @return [void]
       def legacy_log_execution(completed_at:, status:, response: nil, error: nil)
+        config = RubyLLM::Agents.configuration
+
         execution_data = {
           agent_type: self.class.name,
           agent_version: self.class.version,
@@ -452,7 +456,9 @@ module RubyLLM
           parameters: sanitized_parameters,
           metadata: execution_metadata,
           system_prompt: safe_system_prompt,
-          user_prompt: safe_user_prompt
+          user_prompt: safe_user_prompt,
+          messages_count: resolved_messages.size,
+          messages_summary: config.persist_messages_summary ? messages_summary : {}
         }
 
         # Add response data if available (using safe extraction)
@@ -514,6 +520,38 @@ module RubyLLM
         return nil unless prompt
 
         Redactor.redact_string(prompt)
+      end
+
+      # Returns a summary of messages (first and last, truncated)
+      #
+      # Creates a summary of the conversation messages containing the first
+      # and last messages (if different) with content truncated for storage.
+      #
+      # @return [Hash] Summary with :first and :last message hashes, or empty hash
+      def messages_summary
+        msgs = resolved_messages
+        return {} if msgs.blank?
+
+        max_len = RubyLLM::Agents.configuration.messages_summary_max_length || 500
+
+        summary = {}
+
+        if msgs.first
+          summary[:first] = {
+            role: msgs.first[:role].to_s,
+            content: Redactor.redact_string(msgs.first[:content].to_s).truncate(max_len)
+          }
+        end
+
+        # Only add last if there are multiple messages and last is different from first
+        if msgs.size > 1 && msgs.last
+          summary[:last] = {
+            role: msgs.last[:role].to_s,
+            content: Redactor.redact_string(msgs.last[:content].to_s).truncate(max_len)
+          }
+        end
+
+        summary
       end
 
       # Returns the response with redaction applied
@@ -773,7 +811,9 @@ module RubyLLM
           total_cost: 0,
           parameters: redacted_parameters,
           metadata: execution_metadata,
-          streaming: self.class.streaming
+          streaming: self.class.streaming,
+          messages_count: resolved_messages.size,
+          messages_summary: config.persist_messages_summary ? messages_summary : {}
         }
 
         # Add tracing fields from metadata if present

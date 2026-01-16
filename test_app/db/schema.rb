@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_04_102502) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_17_120000) do
   create_table "ruby_llm_agents_executions", force: :cascade do |t|
     t.string "agent_type", null: false
     t.string "agent_version", default: "1.0"
@@ -32,6 +32,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_04_102502) do
     t.string "finish_reason"
     t.decimal "input_cost", precision: 12, scale: 6
     t.integer "input_tokens"
+    t.integer "messages_count", default: 0, null: false
+    t.json "messages_summary", default: {}, null: false
     t.json "metadata", default: {}, null: false
     t.string "model_id", null: false
     t.string "model_provider"
@@ -72,6 +74,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_04_102502) do
     t.index ["chosen_model_id"], name: "index_ruby_llm_agents_executions_on_chosen_model_id"
     t.index ["created_at"], name: "index_ruby_llm_agents_executions_on_created_at"
     t.index ["duration_ms"], name: "index_ruby_llm_agents_executions_on_duration_ms"
+    t.index ["messages_count"], name: "index_ruby_llm_agents_executions_on_messages_count"
     t.index ["parent_execution_id"], name: "index_ruby_llm_agents_executions_on_parent_execution_id"
     t.index ["request_id"], name: "index_ruby_llm_agents_executions_on_request_id"
     t.index ["response_cache_key"], name: "index_ruby_llm_agents_executions_on_response_cache_key"

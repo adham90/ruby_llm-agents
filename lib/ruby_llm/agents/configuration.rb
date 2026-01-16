@@ -195,6 +195,17 @@ module RubyLLM
       #   @example Using request store
       #     config.tenant_resolver = -> { RequestStore[:tenant_id] }
 
+      # @!attribute [rw] persist_messages_summary
+      #   Whether to persist a summary of conversation messages in execution records.
+      #   When true, stores message count and first/last messages (truncated).
+      #   Set to false to disable message summary persistence.
+      #   @return [Boolean] Enable messages summary persistence (default: true)
+
+      # @!attribute [rw] messages_summary_max_length
+      #   Maximum character length for message content in the summary.
+      #   Content exceeding this length will be truncated with "...".
+      #   @return [Integer] Max length for message content (default: 500)
+
       attr_accessor :default_model,
                     :default_temperature,
                     :default_timeout,
@@ -220,7 +231,9 @@ module RubyLLM
                     :persist_responses,
                     :redaction,
                     :multi_tenancy_enabled,
-                    :tenant_resolver
+                    :tenant_resolver,
+                    :persist_messages_summary,
+                    :messages_summary_max_length
 
       attr_writer :cache_store
 
@@ -264,6 +277,10 @@ module RubyLLM
         # Multi-tenancy defaults (disabled for backward compatibility)
         @multi_tenancy_enabled = false
         @tenant_resolver = -> { nil }
+
+        # Messages summary defaults
+        @persist_messages_summary = true
+        @messages_summary_max_length = 500
       end
 
       # Returns the configured cache store, falling back to Rails.cache
