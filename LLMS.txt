@@ -462,8 +462,13 @@ RubyLLM::Agents.configure do |config|
   config.redaction = {
     fields: %w[password api_key email ssn],
     patterns: [/\b\d{3}-\d{2}-\d{4}\b/],  # SSN pattern
-    placeholder: "[REDACTED]"
+    placeholder: "[REDACTED]",
+    max_value_length: 5000
   }
+
+  # Prompt/response persistence (set false for privacy)
+  config.persist_prompts = true
+  config.persist_responses = true
 
   # Multi-tenancy
   config.multi_tenancy_enabled = true
@@ -474,6 +479,276 @@ RubyLLM::Agents.configure do |config|
   config.basic_auth_username = ENV["AGENTS_DASHBOARD_USER"]
   config.basic_auth_password = ENV["AGENTS_DASHBOARD_PASS"]
   config.per_page = 25
+  config.recent_executions_limit = 10
+
+  # Anomaly detection thresholds
+  config.anomaly_cost_threshold = 5.00       # Log warning if cost > $5
+  config.anomaly_duration_threshold = 10_000 # Log warning if duration > 10s
+
+  # Background job settings
+  config.job_retry_attempts = 3
+end
+```
+
+## Configuration Reference
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `default_model` | String | `"gemini-2.0-flash"` | Default LLM model |
+| `default_temperature` | Float | `0.0` | Default temperature (0.0-2.0) |
+| `default_timeout` | Integer | `60` | Request timeout in seconds |
+| `default_streaming` | Boolean | `false` | Enable streaming by default |
+| `default_tools` | Array | `[]` | Default tools for all agents |
+| `default_retries` | Hash | `{max: 0}` | Default retry configuration |
+| `default_fallback_models` | Array | `[]` | Default fallback models |
+| `default_total_timeout` | Integer | `nil` | Default total timeout |
+| `async_logging` | Boolean | `true` | Log executions via background job |
+| `retention_period` | Duration | `30.days` | Execution record retention |
+| `cache_store` | Cache | `Rails.cache` | Custom cache store |
+| `budgets` | Hash | `nil` | Budget configuration |
+| `alerts` | Hash | `nil` | Alert configuration |
+| `redaction` | Hash | `nil` | PII redaction configuration |
+| `persist_prompts` | Boolean | `true` | Store prompts in executions |
+| `persist_responses` | Boolean | `true` | Store responses in executions |
+| `multi_tenancy_enabled` | Boolean | `false` | Enable multi-tenancy |
+| `tenant_resolver` | Proc | `-> { nil }` | Returns current tenant ID |
+| `dashboard_parent_controller` | String | `"ActionController::Base"` | Dashboard controller parent |
+| `dashboard_auth` | Proc | `->(_) { true }` | Custom auth lambda |
+| `basic_auth_username` | String | `nil` | HTTP Basic Auth username |
+| `basic_auth_password` | String | `nil` | HTTP Basic Auth password |
+| `per_page` | Integer | `25` | Dashboard records per page |
+| `recent_executions_limit` | Integer | `10` | Dashboard recent executions |
+| `anomaly_cost_threshold` | Float | `5.00` | Cost anomaly threshold (USD) |
+| `anomaly_duration_threshold` | Integer | `10_000` | Duration anomaly threshold (ms) |
+| `job_retry_attempts` | Integer | `3` | Background job retries |
+
+## PII Redaction
+
+The gem can automatically redact sensitive data from execution logs.
+
+### Configuration
+
+```ruby
+RubyLLM::Agents.configure do |config|
+  config.redaction = {
+    # Field names to redact (case-insensitive)
+    fields: %w[password api_key email ssn credit_card],
+
+    # Regex patterns to match and redact
+    patterns: [
+      /\b\d{3}-\d{2}-\d{4}\b/,          # SSN
+      /\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b/,  # Credit card
+      /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/  # Email
+    ],
+
+    # Replacement text
+    placeholder: "[REDACTED]",
+
+    # Truncate long values (optional)
+    max_value_length: 5000
+  }
+
+  # Optionally disable prompt/response storage entirely
+  config.persist_prompts = false    # Don't store system/user prompts
+  config.persist_responses = false  # Don't store LLM responses
+end
+```
+
+### Default Redacted Fields
+
+These fields are always redacted (in addition to configured ones):
+- `password`, `token`, `api_key`, `secret`, `credential`, `auth`, `key`, `access_token`
+
+### How It Works
+
+1. **Parameters** - Agent parameters are scanned before logging
+2. **Metadata** - Custom execution metadata is scanned
+3. **Field names** - Keys matching redacted fields have values replaced
+4. **Patterns** - Values matching regex patterns are replaced
+5. **Length** - Values exceeding max_value_length are truncated
+
+## Multi-Tenancy
+
+Multi-tenancy allows isolated budget tracking, execution logging, and circuit breakers per tenant.
+
+### Setup
+
+```bash
+# Generate multi-tenancy migrations
+rails generate ruby_llm_agents:multi_tenancy
+rails db:migrate
+```
+
+This creates:
+- `ruby_llm_agents_tenant_budgets` table for per-tenant budget configuration
+- Adds `tenant_id` column to `ruby_llm_agents_executions`
+
+### Configuration
+
+```ruby
+# config/initializers/ruby_llm_agents.rb
+RubyLLM::Agents.configure do |config|
+  config.multi_tenancy_enabled = true
+
+  # Resolver returns current tenant ID (called on every agent execution)
+  config.tenant_resolver = -> { Current.tenant&.id }
+end
+```
+
+### Setting Current Tenant
+
+```ruby
+# app/controllers/application_controller.rb
+class ApplicationController < ActionController::Base
+  before_action :set_current_tenant
+
+  private
+
+  def set_current_tenant
+    Current.tenant = current_user&.tenant
+  end
+end
+
+# app/models/current.rb
+class Current < ActiveSupport::CurrentAttributes
+  attribute :tenant
+end
+```
+
+### Tenant Budgets
+
+Per-tenant budget configuration stored in database:
+
+```ruby
+# Create tenant budget
+RubyLLM::Agents::TenantBudget.create!(
+  tenant_id: "acme_corp",
+  daily_limit: 50.0,
+  monthly_limit: 500.0,
+  per_agent_daily: { "ContentAgent" => 10.0, "SearchAgent" => 5.0 },
+  per_agent_monthly: { "ContentAgent" => 100.0 },
+  enforcement: "hard",              # "none", "soft", "hard"
+  inherit_global_defaults: true     # Fall back to global config for unset limits
+)
+
+# Query tenant budget
+budget = RubyLLM::Agents::TenantBudget.for_tenant("acme_corp")
+budget.effective_daily_limit        # => 50.0
+budget.effective_monthly_limit      # => 500.0
+budget.effective_per_agent_daily("ContentAgent")  # => 10.0
+budget.effective_enforcement        # => :hard
+budget.budgets_enabled?             # => true
+
+# Update tenant budget
+budget.update!(daily_limit: 75.0)
+```
+
+### Budget Tracking
+
+```ruby
+# Check current spend for a tenant
+RubyLLM::Agents::BudgetTracker.current_spend(:global, :daily, tenant_id: "acme_corp")
+RubyLLM::Agents::BudgetTracker.current_spend(:global, :monthly, tenant_id: "acme_corp")
+RubyLLM::Agents::BudgetTracker.current_spend(:agent, :daily, agent_type: "SearchAgent", tenant_id: "acme_corp")
+
+# Check remaining budget
+RubyLLM::Agents::BudgetTracker.remaining_budget(:global, :daily, tenant_id: "acme_corp")
+
+# Get full budget status
+RubyLLM::Agents::BudgetTracker.status(agent_type: "SearchAgent", tenant_id: "acme_corp")
+# => {
+#   tenant_id: "acme_corp",
+#   enabled: true,
+#   enforcement: :hard,
+#   global_daily: { limit: 50.0, current: 12.5, remaining: 37.5, percentage_used: 25.0 },
+#   global_monthly: { limit: 500.0, current: 125.0, remaining: 375.0, percentage_used: 25.0 },
+#   per_agent_daily: { limit: 5.0, current: 2.0, remaining: 3.0, percentage_used: 40.0 },
+#   forecast: { daily: {...}, monthly: {...} }
+# }
+
+# Budget forecasting
+RubyLLM::Agents::BudgetTracker.calculate_forecast(tenant_id: "acme_corp")
+# => {
+#   daily: { current: 12.5, projected: 50.0, limit: 50.0, on_track: true, ... },
+#   monthly: { current: 125.0, projected: 500.0, limit: 500.0, on_track: true, ... }
+# }
+```
+
+### Tenant-Scoped Queries
+
+```ruby
+# Query executions for a specific tenant
+RubyLLM::Agents::Execution.by_tenant("acme_corp").today
+RubyLLM::Agents::Execution.by_tenant("acme_corp").this_month.sum(:total_cost)
+
+# Query for current tenant (uses resolver)
+RubyLLM::Agents::Execution.for_current_tenant.recent(10)
+
+# Tenants with/without tenant_id
+RubyLLM::Agents::Execution.with_tenant      # Has tenant_id
+RubyLLM::Agents::Execution.without_tenant   # No tenant_id
+```
+
+### Tenant Isolation
+
+When multi-tenancy is enabled:
+- **Executions** are tagged with `tenant_id`
+- **Budgets** are tracked separately per tenant
+- **Circuit breakers** are isolated per tenant
+- **Dashboard** can filter by tenant
+
+## Alerting
+
+The gem can send alerts for important events like budget exceedance or circuit breaker activation.
+
+### Configuration
+
+```ruby
+RubyLLM::Agents.configure do |config|
+  config.alerts = {
+    # Slack webhook
+    slack_webhook_url: ENV["SLACK_WEBHOOK_URL"],
+
+    # Generic webhook (receives JSON POST)
+    webhook_url: ENV["ALERTS_WEBHOOK_URL"],
+
+    # Custom handler proc
+    custom: ->(event, payload) {
+      MyAlertService.notify(event, payload)
+    },
+
+    # Events to alert on
+    on_events: [:budget_soft_cap, :budget_hard_cap, :breaker_open, :agent_anomaly]
+  }
+end
+```
+
+### Alert Events
+
+| Event | Description |
+|-------|-------------|
+| `:budget_soft_cap` | Spending exceeded soft limit (warning) |
+| `:budget_hard_cap` | Spending exceeded hard limit (blocking) |
+| `:breaker_open` | Circuit breaker opened for a model |
+| `:agent_anomaly` | Unusual agent behavior detected |
+
+### Manual Alerts
+
+```ruby
+RubyLLM::Agents::AlertManager.notify(:custom_event, {
+  agent_type: "MyAgent",
+  message: "Something happened",
+  severity: "warning"
+})
+```
+
+### ActiveSupport Notifications
+
+All alerts also emit ActiveSupport::Notifications:
+
+```ruby
+ActiveSupport::Notifications.subscribe("ruby_llm_agents.alert.budget_soft_cap") do |name, start, finish, id, payload|
+  Rails.logger.warn("Budget alert: #{payload}")
 end
 ```
 
@@ -859,6 +1134,74 @@ RubyLLM::Agents::Execution.now_strip_data(range: "today")
 
 # Ranges: "today", "7d", "30d"
 RubyLLM::Agents::Execution.now_strip_data(range: "7d")
+```
+
+### Analytics Methods
+
+```ruby
+# Daily report with all metrics
+RubyLLM::Agents::Execution.daily_report
+# => {
+#   date: Date.current,
+#   total_executions: 156,
+#   successful: 150,
+#   failed: 6,
+#   total_cost: 12.50,
+#   total_tokens: 500000,
+#   avg_duration_ms: 1200,
+#   error_rate: 3.85,
+#   by_agent: { "SearchAgent" => 100, "ChatAgent" => 56 },
+#   top_errors: { "RateLimitError" => 4, "TimeoutError" => 2 }
+# }
+
+# Cost breakdown by agent
+RubyLLM::Agents::Execution.cost_by_agent(period: :this_week)
+# => { "ContentAgent" => 45.50, "SearchAgent" => 12.30 }
+
+# Stats for a specific agent
+RubyLLM::Agents::Execution.stats_for("SearchAgent", period: :today)
+# => {
+#   agent_type: "SearchAgent",
+#   count: 100,
+#   total_cost: 5.25,
+#   avg_cost: 0.0525,
+#   total_tokens: 150000,
+#   avg_tokens: 1500,
+#   avg_duration_ms: 800,
+#   success_rate: 98.0,
+#   error_rate: 2.0
+# }
+
+# Compare two agent versions
+RubyLLM::Agents::Execution.compare_versions("SearchAgent", "1.0", "2.0", period: :this_week)
+# => {
+#   version1: { version: "1.0", count: 50, avg_cost: 0.06, ... },
+#   version2: { version: "2.0", count: 75, avg_cost: 0.04, ... },
+#   improvements: { cost_change_pct: -33.3, speed_change_pct: -20.0 }
+# }
+
+# Trend analysis over time
+RubyLLM::Agents::Execution.trend_analysis(agent_type: "SearchAgent", days: 7)
+# => [
+#   { date: 7.days.ago.to_date, count: 100, total_cost: 5.0, avg_duration_ms: 850, error_count: 2 },
+#   { date: 6.days.ago.to_date, count: 120, ... },
+#   ...
+# ]
+
+# Chart data for dashboard
+RubyLLM::Agents::Execution.activity_chart_json(range: "today")  # Hourly
+RubyLLM::Agents::Execution.activity_chart_json(range: "7d")     # Daily for 7 days
+RubyLLM::Agents::Execution.activity_chart_json(range: "30d")    # Daily for 30 days
+
+# Cache and streaming metrics
+RubyLLM::Agents::Execution.today.cache_hit_rate        # => 45.2
+RubyLLM::Agents::Execution.today.streaming_rate        # => 12.5
+RubyLLM::Agents::Execution.today.avg_time_to_first_token  # => 150 (ms)
+RubyLLM::Agents::Execution.today.rate_limited_rate     # => 0.5
+
+# Finish reason distribution
+RubyLLM::Agents::Execution.today.finish_reason_distribution
+# => { "stop" => 145, "tool_calls" => 8, "length" => 3 }
 ```
 
 ### Rails Console Examples
