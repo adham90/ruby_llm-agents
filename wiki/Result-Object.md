@@ -20,14 +20,20 @@ result.content
 # => { refined_query: "red dress", filters: ["color:red"] }
 ```
 
-### Hash-Style Access
+### Hash-Style Access (Deprecated)
 
-The Result object delegates to content for backward compatibility:
+> **Deprecated (v0.4.0):** Direct hash-style access on the result object is deprecated. Use `result.content[:key]` instead of `result[:key]`.
+
+The Result object delegates to content for backward compatibility, but this will be removed in a future version:
 
 ```ruby
+# Deprecated - avoid this pattern
 result[:refined_query]        # => "red dress"
-result.dig(:nested, :key)     # => "value"
-result.fetch(:key, "default") # => "default"
+
+# Preferred - use content explicitly
+result.content[:refined_query]        # => "red dress"
+result.content.dig(:nested, :key)     # => "value"
+result.content.fetch(:key, "default") # => "default"
 ```
 
 ### Enumeration
@@ -108,6 +114,31 @@ When using retries or fallbacks:
 result.attempts_count  # => 3     - Number of attempts made
 result.used_fallback?  # => true  - Was a fallback model used?
 result.chosen_model_id # => "gpt-4o-mini"  - The model that succeeded
+```
+
+### Accessing Attempt Details (v0.4.0+)
+
+Get detailed information about each attempt:
+
+```ruby
+result.attempts
+# => [
+#   { model: "gpt-4o", status: "error", error: "Rate limit", duration_ms: 150 },
+#   { model: "gpt-4o", status: "error", error: "Rate limit", duration_ms: 320 },
+#   { model: "gpt-4o-mini", status: "success", duration_ms: 850 }
+# ]
+
+# Check specific conditions
+result.attempts.any? { |a| a[:status] == "error" }  # => true
+result.attempts.last[:model]                         # => "gpt-4o-mini"
+```
+
+### Fallback Information
+
+```ruby
+result.fallback_chain   # => ["gpt-4o", "gpt-4o-mini"] - Models tried in order
+result.fallback_reason  # => "rate_limited" - Why fallback was triggered
+result.cache_hit?       # => false - Whether response came from cache
 ```
 
 ## Full Metadata Hash

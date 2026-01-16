@@ -9,7 +9,8 @@ Every execution records:
 | Field | Description |
 |-------|-------------|
 | `agent_type` | Agent class name |
-| `model_id` | LLM model used |
+| `model_id` | LLM model configured for agent |
+| `chosen_model_id` | Actual model used (may differ if fallback triggered) |
 | `status` | success, error, timeout |
 | `input_tokens` | Tokens in the prompt |
 | `output_tokens` | Tokens in the response |
@@ -25,6 +26,26 @@ Every execution records:
 | `metadata` | Custom metadata |
 | `streaming` | Whether streaming was used |
 | `time_to_first_token_ms` | TTFT (streaming only) |
+| `tool_calls` | Array of tool invocations |
+| `tool_calls_count` | Number of tools called |
+
+### Reliability Fields (v0.4.0+)
+
+| Field | Description |
+|-------|-------------|
+| `attempts` | JSON array of all attempt details |
+| `attempts_count` | Number of attempts made |
+| `fallback_chain` | Models attempted in order |
+| `fallback_reason` | Why fallback was triggered |
+| `cache_hit` | Whether response came from cache |
+| `retryable` | Whether error was retryable |
+| `rate_limited` | Whether rate limit was hit |
+
+### Multi-Tenancy Fields (v0.4.0+)
+
+| Field | Description |
+|-------|-------------|
+| `tenant_id` | Tenant identifier (when multi-tenancy enabled) |
 
 ## Viewing Executions
 
@@ -219,6 +240,33 @@ RubyLLM::Agents::Execution.compare_versions(
 ```ruby
 .streaming
 .non_streaming
+```
+
+### Reliability (v0.4.0+)
+
+```ruby
+.with_fallback           # Executions that used fallback models
+.without_fallback        # Executions that used primary model
+.retryable_errors        # Executions with retryable failures
+.rate_limited            # Executions that hit rate limits
+.cached                  # Executions with cache hits
+.cache_miss              # Executions that missed cache
+```
+
+### Tool Calls
+
+```ruby
+.with_tool_calls         # Executions that called tools
+.without_tool_calls      # Executions without tool calls
+```
+
+### Multi-Tenancy (v0.4.0+)
+
+```ruby
+.by_tenant(tenant_id)    # Filter by specific tenant
+.for_current_tenant      # Filter by resolved current tenant
+.with_tenant             # Executions with tenant_id set
+.without_tenant          # Executions without tenant_id
 ```
 
 ## Complex Queries

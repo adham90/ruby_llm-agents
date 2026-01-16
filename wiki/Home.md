@@ -40,8 +40,13 @@ Welcome to the official documentation for **RubyLLM::Agents**, a production-read
 
 #### Governance
 - **[Budget Controls](Budget-Controls)** - Spending limits
+- **[Multi-Tenancy](Multi-Tenancy)** - Per-tenant isolation and budgets
 - **[Alerts](Alerts)** - Notifications and webhooks
 - **[PII Redaction](PII-Redaction)** - Data protection
+
+#### Development
+- **[Testing Agents](Testing-Agents)** - RSpec patterns and mocking
+- **[Error Handling](Error-Handling)** - Error types and recovery
 
 ### Operations
 - **[Dashboard](Dashboard)** - Monitoring UI guide
@@ -70,7 +75,7 @@ RubyLLM::Agents is a Rails engine that provides:
 
 ## Current Version
 
-**v0.3.5** - See [CHANGELOG](https://github.com/adham90/ruby_llm-agents/blob/main/CHANGELOG.md) for release history.
+**v0.4.0** - See [CHANGELOG](https://github.com/adham90/ruby_llm-agents/blob/main/CHANGELOG.md) for release history.
 
 ## Supported LLM Providers
 

@@ -1,5 +1,7 @@
 # RubyLLM::Agents
 
+> **AI Agents:** For comprehensive documentation optimized for AI consumption, see [LLMS.txt](LLMS.txt)
+
 > **Production-ready Rails engine for building, managing, and monitoring LLM-powered AI agents**
 
 [![Gem Version](https://badge.fury.io/rb/ruby_llm-agents.svg)](https://rubygems.org/gems/ruby_llm-agents)
@@ -22,11 +24,12 @@ Build intelligent AI agents in Ruby with a clean DSL, automatic execution tracki
 
 | Feature | Description | Docs |
 |---------|-------------|------|
-| **Agent DSL** | Declarative configuration with model, temperature, parameters | [Agent DSL](https://github.com/adham90/ruby_llm-agents/wiki/Agent-DSL) |
-| **Execution Tracking** | Automatic logging with token usage and cost analytics | [Tracking](https://github.com/adham90/ruby_llm-agents/wiki/Execution-Tracking) |
-| **Cost Analytics** | Track spending by agent, model, and time period | [Analytics](https://github.com/adham90/ruby_llm-agents/wiki/Execution-Tracking) |
-| **Reliability** | Automatic retries, model fallbacks, circuit breakers | [Reliability](https://github.com/adham90/ruby_llm-agents/wiki/Reliability) |
+| **Agent DSL** | Declarative configuration with model, temperature, parameters, description | [Agent DSL](https://github.com/adham90/ruby_llm-agents/wiki/Agent-DSL) |
+| **Execution Tracking** | Automatic logging with token usage, cost analytics, and fallback tracking | [Tracking](https://github.com/adham90/ruby_llm-agents/wiki/Execution-Tracking) |
+| **Cost Analytics** | Track spending by agent, model, tenant, and time period | [Analytics](https://github.com/adham90/ruby_llm-agents/wiki/Execution-Tracking) |
+| **Reliability** | Automatic retries, model fallbacks, circuit breakers with block DSL | [Reliability](https://github.com/adham90/ruby_llm-agents/wiki/Reliability) |
 | **Budget Controls** | Daily/monthly limits with hard and soft enforcement | [Budgets](https://github.com/adham90/ruby_llm-agents/wiki/Budget-Controls) |
+| **Multi-Tenancy** | Per-tenant budgets, circuit breakers, and execution isolation | [Multi-Tenancy](https://github.com/adham90/ruby_llm-agents/wiki/Multi-Tenancy) |
 | **Workflows** | Pipelines, parallel execution, conditional routers | [Workflows](https://github.com/adham90/ruby_llm-agents/wiki/Workflows) |
 | **Dashboard** | Real-time Turbo-powered monitoring UI | [Dashboard](https://github.com/adham90/ruby_llm-agents/wiki/Dashboard) |
 | **Streaming** | Real-time response streaming with TTFT tracking | [Streaming](https://github.com/adham90/ruby_llm-agents/wiki/Streaming) |
@@ -119,10 +122,13 @@ See [Conversation History](https://github.com/adham90/ruby_llm-agents/wiki/Conve
 | Guide | Description |
 |-------|-------------|
 | [Getting Started](https://github.com/adham90/ruby_llm-agents/wiki/Getting-Started) | Installation, configuration, first agent |
-| [Agent DSL](https://github.com/adham90/ruby_llm-agents/wiki/Agent-DSL) | All DSL options: model, temperature, params, caching |
-| [Reliability](https://github.com/adham90/ruby_llm-agents/wiki/Reliability) | Retries, fallbacks, circuit breakers, timeouts |
+| [Agent DSL](https://github.com/adham90/ruby_llm-agents/wiki/Agent-DSL) | All DSL options: model, temperature, params, caching, description |
+| [Reliability](https://github.com/adham90/ruby_llm-agents/wiki/Reliability) | Retries, fallbacks, circuit breakers, timeouts, reliability block |
 | [Workflows](https://github.com/adham90/ruby_llm-agents/wiki/Workflows) | Pipelines, parallel execution, routers |
 | [Budget Controls](https://github.com/adham90/ruby_llm-agents/wiki/Budget-Controls) | Spending limits, alerts, enforcement |
+| [Multi-Tenancy](https://github.com/adham90/ruby_llm-agents/wiki/Multi-Tenancy) | Per-tenant budgets, isolation, configuration |
+| [Testing Agents](https://github.com/adham90/ruby_llm-agents/wiki/Testing-Agents) | RSpec patterns, mocking, dry_run mode |
+| [Error Handling](https://github.com/adham90/ruby_llm-agents/wiki/Error-Handling) | Error types, recovery patterns |
 | [Dashboard](https://github.com/adham90/ruby_llm-agents/wiki/Dashboard) | Setup, authentication, analytics |
 | [Production](https://github.com/adham90/ruby_llm-agents/wiki/Production-Deployment) | Deployment best practices, background jobs |
 | [API Reference](https://github.com/adham90/ruby_llm-agents/wiki/API-Reference) | Complete class documentation |
@@ -135,18 +141,21 @@ Build resilient agents with built-in fault tolerance:
 ```ruby
 class ReliableAgent < ApplicationAgent
   model "gpt-4o"
+  description "A resilient agent with automatic retries and fallbacks"
 
-  # Retry on failures with exponential backoff
+  # Option 1: Individual DSL methods
   retries max: 3, backoff: :exponential
-
-  # Fall back to alternative models
   fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
-
-  # Prevent cascading failures
   circuit_breaker errors: 10, within: 60, cooldown: 300
-
-  # Maximum time for all attempts
   total_timeout 30
+
+  # Option 2: Grouped reliability block (equivalent to above)
+  reliability do
+    retries max: 3, backoff: :exponential
+    fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
+    circuit_breaker errors: 10, within: 60, cooldown: 300
+    total_timeout 30
+  end
 
   param :query, required: true
 
@@ -154,6 +163,28 @@ class ReliableAgent < ApplicationAgent
     query
   end
 end
+```
+
+### Enhanced Result Object
+
+The result object provides detailed execution metadata:
+
+```ruby
+result = ReliableAgent.call(query: "test")
+
+# Basic response
+result.content           # => { ... }
+result.success?          # => true
+
+# Reliability info
+result.attempts_count    # => 2 (if retry occurred)
+result.used_fallback?    # => true (if fallback model used)
+result.chosen_model_id   # => "gpt-4o-mini" (actual model used)
+
+# Cost & timing
+result.total_cost        # => 0.00025
+result.total_tokens      # => 150
+result.duration_ms       # => 850
 ```
 
 ## Workflow Orchestration

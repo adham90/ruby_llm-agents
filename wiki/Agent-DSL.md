@@ -24,6 +24,22 @@ end
 | Anthropic | `claude-3-5-sonnet`, `claude-3-opus`, `claude-3-haiku` |
 | Google | `gemini-2.0-flash`, `gemini-1.5-pro`, `gemini-1.5-flash` |
 
+### description
+
+Document what your agent does (displayed in dashboard and introspection):
+
+```ruby
+class MyAgent < ApplicationAgent
+  description "Extracts search intent and filters from user queries"
+end
+```
+
+Access programmatically:
+
+```ruby
+MyAgent.description  # => "Extracts search intent and filters from user queries"
+```
+
 ### temperature
 
 Control response randomness (0.0 = deterministic, 2.0 = very random):
@@ -57,15 +73,25 @@ class MyAgent < ApplicationAgent
 end
 ```
 
-### cache
+### cache_for (Preferred)
 
 Enable response caching with TTL:
 
 ```ruby
 class MyAgent < ApplicationAgent
-  cache 1.hour     # Cache for 1 hour
-  # cache 30.minutes
-  # cache 1.day
+  cache_for 1.hour     # Cache for 1 hour
+  # cache_for 30.minutes
+  # cache_for 1.day
+end
+```
+
+### cache (Deprecated)
+
+> **Deprecated:** Use `cache_for` instead. This method still works but may be removed in a future version.
+
+```ruby
+class MyAgent < ApplicationAgent
+  cache 1.hour  # Deprecated - use cache_for instead
 end
 ```
 
@@ -122,8 +148,25 @@ class MyAgent < ApplicationAgent
 
   # Optional parameter without default (nil)
   param :filters
+
+  # Parameter with type validation (v0.4.0+)
+  param :count, type: :integer, required: true
+  param :tags, type: :array, default: []
+  param :options, type: :hash
+  param :enabled, type: :boolean, default: true
 end
 ```
+
+**Supported Types:**
+
+| Type | Ruby Class | Example |
+|------|------------|---------|
+| `:string` | String | `"hello"` |
+| `:integer` | Integer | `42` |
+| `:float` | Float | `3.14` |
+| `:boolean` | TrueClass/FalseClass | `true` |
+| `:array` | Array | `[1, 2, 3]` |
+| `:hash` | Hash | `{ key: "value" }` |
 
 Parameters are accessible as methods:
 
@@ -187,6 +230,25 @@ class MyAgent < ApplicationAgent
   total_timeout 30  # Abort everything after 30 seconds
 end
 ```
+
+### reliability (Block DSL)
+
+Group all reliability settings in a single block (v0.4.0+):
+
+```ruby
+class MyAgent < ApplicationAgent
+  model "gpt-4o"
+
+  reliability do
+    retries max: 3, backoff: :exponential
+    fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
+    circuit_breaker errors: 10, within: 60, cooldown: 300
+    total_timeout 30
+  end
+end
+```
+
+This is equivalent to setting each option individually but provides better organization for complex configurations.
 
 ## Instance Methods to Override
 
@@ -305,18 +367,23 @@ end
 ```ruby
 class ContentGeneratorAgent < ApplicationAgent
   model "gpt-4o"
+  description "Generates SEO-optimized blog articles from topics"
   temperature 0.7
   version "1.2"
   timeout 90
-  cache 2.hours
+  cache_for 2.hours  # Use cache_for instead of cache
 
-  retries max: 3, backoff: :exponential
-  fallback_models "gpt-4o-mini"
+  # Grouped reliability configuration
+  reliability do
+    retries max: 3, backoff: :exponential
+    fallback_models "gpt-4o-mini"
+    total_timeout 120
+  end
 
   param :topic, required: true
   param :tone, default: "professional"
-  param :word_count, default: 500
-  param :user_id, required: true
+  param :word_count, type: :integer, default: 500
+  param :user_id, type: :integer, required: true
 
   private
 

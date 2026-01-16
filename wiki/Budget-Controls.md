@@ -332,8 +332,66 @@ rescue Faraday::TooManyRequestsError
 end
 ```
 
+## Multi-Tenant Budgets (v0.4.0+)
+
+For multi-tenant applications, you can set per-tenant budget limits using the `TenantBudget` model.
+
+### Configuration
+
+```ruby
+# config/initializers/ruby_llm_agents.rb
+RubyLLM::Agents.configure do |config|
+  config.multi_tenancy_enabled = true
+  config.tenant_resolver = -> { Current.tenant_id }
+end
+```
+
+### Setting Tenant Budgets
+
+```ruby
+# Create or update tenant budget
+RubyLLM::Agents::TenantBudget.find_or_create_by(tenant_id: "tenant_123") do |budget|
+  budget.daily_limit = 50.0
+  budget.monthly_limit = 500.0
+  budget.enforcement = :hard
+end
+
+# Update existing budget
+tenant_budget = RubyLLM::Agents::TenantBudget.find_by(tenant_id: "tenant_123")
+tenant_budget.update(daily_limit: 75.0)
+```
+
+### Checking Tenant Budget Status
+
+```ruby
+status = RubyLLM::Agents::BudgetTracker.status(tenant_id: "tenant_123")
+# => {
+#   tenant_daily: { limit: 50.0, current: 25.0, remaining: 25.0 },
+#   tenant_monthly: { limit: 500.0, current: 150.0, remaining: 350.0 }
+# }
+```
+
+### Querying Tenant Spending
+
+```ruby
+# Total spending for a tenant
+RubyLLM::Agents::Execution
+  .by_tenant("tenant_123")
+  .this_month
+  .sum(:total_cost)
+
+# Compare tenants
+RubyLLM::Agents::Execution
+  .this_month
+  .group(:tenant_id)
+  .sum(:total_cost)
+```
+
+See [Multi-Tenancy](Multi-Tenancy) for complete multi-tenancy documentation.
+
 ## Related Pages
 
+- [Multi-Tenancy](Multi-Tenancy) - Per-tenant configuration
 - [Alerts](Alerts) - Budget notifications
 - [Execution Tracking](Execution-Tracking) - Cost analytics
 - [Dashboard](Dashboard) - Budget monitoring

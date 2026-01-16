@@ -5,6 +5,70 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-01-16
+
+### Added
+
+- **Reliability Block DSL** - New grouped syntax for reliability configuration:
+  ```ruby
+  reliability do
+    retries max: 3, backoff: :exponential
+    fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
+    total_timeout 30
+    circuit_breaker errors: 10, within: 60, cooldown: 300
+  end
+  ```
+- **Enhanced Execution Model** - New tracked fields:
+  - `chosen_model_id` - Final model used (may differ from primary if fallback triggered)
+  - `attempts` - JSON array of all attempt details
+  - `attempts_count` - Number of attempts made
+  - `fallback_chain` - Models attempted in order
+  - `fallback_reason` - Why fallback was triggered
+  - `cache_hit` - Whether response came from cache
+  - `retryable` - Whether error was retryable
+  - `rate_limited` - Whether rate limit was hit
+  - `tenant_id` - Tenant identifier for multi-tenant apps
+- **Multi-Tenancy Support**:
+  - `multi_tenancy_enabled` configuration option
+  - `tenant_resolver` proc for identifying tenants
+  - `TenantBudget` model for per-tenant budget tracking
+  - Circuit breaker isolation per tenant
+- **New Execution Scopes**:
+  - `.by_tenant(id)` - Filter by tenant
+  - `.for_current_tenant` - Filter by resolved tenant
+  - `.with_tenant` / `.without_tenant` - Presence filters
+  - `.cached` / `.cache_miss` - Cache hit filters
+  - `.with_fallback` - Executions that used fallback models
+  - `.retryable_errors` - Executions with retryable failures
+  - `.rate_limited` - Executions that hit rate limits
+- **`description` DSL Attribute** - Document agent purpose:
+  ```ruby
+  class MyAgent < ApplicationAgent
+    description "Extracts search intent and filters from user queries"
+  end
+  ```
+- **`cache_for` DSL** - Preferred syntax for cache TTL (replaces `cache`):
+  ```ruby
+  cache_for 1.hour  # Preferred
+  # cache 1.hour    # Deprecated but still works
+  ```
+- **Parameter Type Validation** - Validate parameter types at call time:
+  ```ruby
+  param :count, type: :integer, required: true
+  param :tags, type: :array
+  ```
+
+### Changed
+
+- `cache` DSL method deprecated in favor of `cache_for`
+- Result object hash-style access (`result[:key]`) deprecated in favor of `result.content[:key]`
+- Execution model now stores more granular reliability metadata
+
+### Fixed
+
+- Circuit breaker state now properly isolated per tenant in multi-tenant mode
+- Fallback chain properly records all attempted models
+
 ## [0.3.6] - 2026-01-11
 
 ### Added
@@ -143,6 +207,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[0.4.0]: https://github.com/adham90/ruby_llm-agents/compare/v0.3.6...v0.4.0
+[0.3.6]: https://github.com/adham90/ruby_llm-agents/compare/v0.3.3...v0.3.6
 [0.3.3]: https://github.com/adham90/ruby_llm-agents/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/adham90/ruby_llm-agents/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/adham90/ruby_llm-agents/compare/v0.3.0...v0.3.1

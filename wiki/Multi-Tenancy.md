@@ -1,0 +1,279 @@
+# Multi-Tenancy
+
+RubyLLM::Agents supports multi-tenant applications with per-tenant budgets, circuit breaker isolation, and execution tracking.
+
+## Configuration
+
+Enable multi-tenancy in your initializer:
+
+```ruby
+# config/initializers/ruby_llm_agents.rb
+RubyLLM::Agents.configure do |config|
+  # Enable multi-tenancy support
+  config.multi_tenancy_enabled = true
+
+  # Define how to resolve the current tenant
+  config.tenant_resolver = -> { Current.tenant_id }
+end
+```
+
+### Tenant Resolver
+
+The `tenant_resolver` is a proc that returns the current tenant identifier. Common patterns:
+
+```ruby
+# Using Rails Current attributes
+config.tenant_resolver = -> { Current.tenant_id }
+
+# Using RequestStore gem
+config.tenant_resolver = -> { RequestStore.store[:tenant_id] }
+
+# Using Apartment gem
+config.tenant_resolver = -> { Apartment::Tenant.current }
+
+# Using ActsAsTenant gem
+config.tenant_resolver = -> { ActsAsTenant.current_tenant&.id }
+```
+
+## TenantBudget Model
+
+The `TenantBudget` model stores per-tenant spending limits:
+
+```ruby
+# Create a tenant budget
+RubyLLM::Agents::TenantBudget.create!(
+  tenant_id: "tenant_123",
+  daily_limit: 50.0,
+  monthly_limit: 500.0,
+  enforcement: :hard
+)
+```
+
+### Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `tenant_id` | string | Unique tenant identifier |
+| `daily_limit` | decimal | Daily spending limit in USD |
+| `monthly_limit` | decimal | Monthly spending limit in USD |
+| `enforcement` | string | `:hard` (block) or `:soft` (warn) |
+
+### Managing Tenant Budgets
+
+```ruby
+# Find or create with defaults
+budget = RubyLLM::Agents::TenantBudget.find_or_create_by(tenant_id: tenant_id) do |b|
+  b.daily_limit = 25.0
+  b.monthly_limit = 250.0
+  b.enforcement = :hard
+end
+
+# Update limits
+budget.update(daily_limit: 50.0)
+
+# Check current spending
+budget.current_daily_spending   # => 12.50
+budget.current_monthly_spending # => 125.00
+budget.daily_remaining          # => 37.50
+budget.monthly_remaining        # => 125.00
+```
+
+## Execution Filtering by Tenant
+
+Filter executions by tenant:
+
+```ruby
+# All executions for a specific tenant
+RubyLLM::Agents::Execution.by_tenant("tenant_123")
+
+# Executions for the current tenant (uses tenant_resolver)
+RubyLLM::Agents::Execution.for_current_tenant
+
+# Executions with tenant_id set
+RubyLLM::Agents::Execution.with_tenant
+
+# Executions without tenant_id (global/system executions)
+RubyLLM::Agents::Execution.without_tenant
+```
+
+### Tenant Analytics
+
+```ruby
+# Cost by tenant this month
+RubyLLM::Agents::Execution
+  .this_month
+  .with_tenant
+  .group(:tenant_id)
+  .sum(:total_cost)
+# => { "tenant_a" => 150.00, "tenant_b" => 75.00, ... }
+
+# Execution count by tenant
+RubyLLM::Agents::Execution
+  .this_week
+  .with_tenant
+  .group(:tenant_id)
+  .count
+# => { "tenant_a" => 1250, "tenant_b" => 890, ... }
+
+# Top spending tenants
+RubyLLM::Agents::Execution
+  .this_month
+  .with_tenant
+  .group(:tenant_id)
+  .sum(:total_cost)
+  .sort_by { |_, cost| -cost }
+  .first(10)
+```
+
+## Circuit Breaker Isolation
+
+When multi-tenancy is enabled, circuit breakers are isolated per tenant. This prevents one tenant's failures from affecting other tenants.
+
+```ruby
+class MyAgent < ApplicationAgent
+  model "gpt-4o"
+  circuit_breaker errors: 10, within: 60, cooldown: 300
+end
+```
+
+With multi-tenancy enabled:
+- Tenant A's errors only affect Tenant A's circuit breaker
+- Tenant B can continue operating even if Tenant A's circuit is open
+- Each tenant has their own error count and cooldown state
+
+### Checking Circuit Breaker State
+
+```ruby
+# Check if circuit is open for current tenant
+RubyLLM::Agents::CircuitBreaker.open_for?(
+  agent: MyAgent,
+  tenant_id: Current.tenant_id
+)
+
+# Check for specific tenant
+RubyLLM::Agents::CircuitBreaker.open_for?(
+  agent: MyAgent,
+  tenant_id: "tenant_123"
+)
+```
+
+## Adding Custom Tenant Metadata
+
+Include tenant information in execution metadata:
+
+```ruby
+class TenantAwareAgent < ApplicationAgent
+  model "gpt-4o"
+
+  def execution_metadata
+    {
+      tenant_id: Current.tenant_id,
+      tenant_name: Current.tenant&.name,
+      tenant_plan: Current.tenant&.plan
+    }
+  end
+end
+```
+
+## Budget Enforcement
+
+With multi-tenancy enabled, budget checks happen at both global and tenant levels:
+
+```ruby
+# Global limits (all tenants combined)
+config.budgets = {
+  global_daily: 1000.0,
+  global_monthly: 20000.0
+}
+
+# Per-tenant limits (via TenantBudget model)
+RubyLLM::Agents::TenantBudget.create!(
+  tenant_id: "tenant_123",
+  daily_limit: 50.0,
+  monthly_limit: 500.0,
+  enforcement: :hard
+)
+```
+
+Execution is blocked if either limit is exceeded (when using `:hard` enforcement).
+
+### Handling Tenant Budget Errors
+
+```ruby
+begin
+  result = MyAgent.call(query: params[:query])
+rescue RubyLLM::Agents::BudgetExceededError => e
+  if e.tenant_budget?
+    # Tenant-specific budget exceeded
+    render json: { error: "Your organization has exceeded its daily limit" }
+  else
+    # Global budget exceeded
+    render json: { error: "Service temporarily unavailable" }
+  end
+end
+```
+
+## Dashboard Integration
+
+The dashboard automatically shows:
+- Spending breakdown by tenant (when multi-tenancy enabled)
+- Tenant budget status and utilization
+- Per-tenant execution filtering
+
+Filter executions by tenant in the dashboard URL:
+```
+/agents/executions?tenant_id=tenant_123
+```
+
+## Example: Full Multi-Tenant Setup
+
+```ruby
+# config/initializers/ruby_llm_agents.rb
+RubyLLM::Agents.configure do |config|
+  config.multi_tenancy_enabled = true
+  config.tenant_resolver = -> { Current.tenant_id }
+
+  # Global limits as a safety net
+  config.budgets = {
+    global_daily: 1000.0,
+    global_monthly: 20000.0,
+    enforcement: :hard
+  }
+end
+
+# app/models/current.rb
+class Current < ActiveSupport::CurrentAttributes
+  attribute :tenant_id, :tenant
+end
+
+# app/controllers/application_controller.rb
+class ApplicationController < ActionController::Base
+  before_action :set_current_tenant
+
+  private
+
+  def set_current_tenant
+    Current.tenant_id = current_user&.tenant_id
+    Current.tenant = current_user&.tenant
+  end
+end
+
+# Create tenant budgets (in a service or admin panel)
+class TenantOnboardingService
+  def call(tenant)
+    RubyLLM::Agents::TenantBudget.create!(
+      tenant_id: tenant.id,
+      daily_limit: tenant.plan.daily_ai_limit,
+      monthly_limit: tenant.plan.monthly_ai_limit,
+      enforcement: :hard
+    )
+  end
+end
+```
+
+## Related Pages
+
+- [Budget Controls](Budget-Controls) - Spending limits
+- [Execution Tracking](Execution-Tracking) - Filtering and analytics
+- [Circuit Breakers](Circuit-Breakers) - Failure handling
+- [Configuration](Configuration) - Full setup guide

@@ -443,8 +443,326 @@ RSpec.describe SearchIntentAgent do
 end
 ```
 
+## Rails Integration
+
+### Controller Integration
+
+```ruby
+# app/controllers/api/v1/search_controller.rb
+class Api::V1::SearchController < ApplicationController
+  def search
+    result = SearchIntentAgent.call(
+      query: params[:q],
+      user_id: current_user.id
+    )
+
+    if result.success?
+      render json: {
+        data: result.content,
+        meta: {
+          model: result.chosen_model_id,
+          tokens: result.total_tokens,
+          cost: result.total_cost,
+          duration_ms: result.duration_ms
+        }
+      }
+    else
+      render json: {
+        error: result.error,
+        retryable: result.retryable?
+      }, status: :unprocessable_entity
+    end
+  rescue RubyLLM::Agents::BudgetExceededError
+    render json: { error: "Service limit reached" }, status: :service_unavailable
+  rescue RubyLLM::Agents::CircuitBreakerOpenError => e
+    response.headers["Retry-After"] = (e.remaining_ms / 1000).to_s
+    render json: { error: "Service temporarily unavailable" }, status: :service_unavailable
+  end
+end
+```
+
+### Background Job Pattern
+
+```ruby
+# app/jobs/content_generation_job.rb
+class ContentGenerationJob < ApplicationJob
+  queue_as :default
+
+  # Retry on transient errors
+  retry_on RubyLLM::Agents::CircuitBreakerOpenError, wait: :polynomially_longer, attempts: 3
+
+  # Don't retry budget errors
+  discard_on RubyLLM::Agents::BudgetExceededError
+
+  def perform(article_id)
+    article = Article.find(article_id)
+
+    result = ContentGeneratorAgent.call(
+      topic: article.topic,
+      tone: article.tone,
+      word_count: article.target_word_count
+    )
+
+    if result.success?
+      article.update!(
+        content: result.content[:content],
+        title: result.content[:title],
+        status: :completed,
+        generation_cost: result.total_cost
+      )
+    else
+      article.update!(
+        status: :failed,
+        error_message: result.error
+      )
+    end
+  end
+end
+
+# Enqueue the job
+ContentGenerationJob.perform_later(article.id)
+```
+
+### Streaming with Action Cable
+
+```ruby
+# app/agents/streaming_chat_agent.rb
+class StreamingChatAgent < ApplicationAgent
+  model "gpt-4o"
+  streaming true
+
+  param :message, required: true
+  param :channel, required: true
+
+  def user_prompt
+    message
+  end
+
+  def on_chunk(chunk)
+    channel.broadcast_chunk(chunk)
+  end
+end
+
+# app/channels/chat_channel.rb
+class ChatChannel < ApplicationCable::Channel
+  def subscribed
+    stream_from "chat_#{params[:room_id]}"
+  end
+
+  def receive(data)
+    StreamingChatAgent.call(
+      message: data["message"],
+      channel: self
+    )
+  end
+
+  def broadcast_chunk(chunk)
+    ActionCable.server.broadcast(
+      "chat_#{params[:room_id]}",
+      { type: "chunk", content: chunk }
+    )
+  end
+end
+```
+
+### Multi-Tenant Agent with Execution Metadata
+
+```ruby
+# app/agents/tenant_aware_agent.rb
+class TenantAwareAgent < ApplicationAgent
+  model "gpt-4o"
+  description "Processes queries with tenant isolation"
+
+  reliability do
+    retries max: 3, backoff: :exponential
+    fallback_models "gpt-4o-mini"
+    circuit_breaker errors: 5, within: 60, cooldown: 180
+  end
+
+  param :query, required: true
+
+  def user_prompt
+    query
+  end
+
+  def execution_metadata
+    {
+      tenant_id: Current.tenant_id,
+      tenant_name: Current.tenant&.name,
+      user_id: Current.user&.id,
+      request_id: Current.request_id,
+      source: "web"
+    }
+  end
+end
+
+# Usage in controller
+class QueriesController < ApplicationController
+  def create
+    result = TenantAwareAgent.call(query: params[:query])
+
+    respond_to do |format|
+      format.json { render json: result.content }
+    end
+  end
+end
+```
+
+### Rake Task Usage
+
+```ruby
+# lib/tasks/agents.rake
+namespace :agents do
+  desc "Generate content for pending articles"
+  task generate_content: :environment do
+    Article.pending.find_each do |article|
+      print "Processing article #{article.id}..."
+
+      result = ContentGeneratorAgent.call(
+        topic: article.topic,
+        dry_run: ENV["DRY_RUN"].present?
+      )
+
+      if result.success?
+        article.update!(content: result.content[:content], status: :completed)
+        puts " done (#{result.total_tokens} tokens, $#{result.total_cost})"
+      else
+        puts " failed: #{result.error}"
+      end
+    rescue RubyLLM::Agents::BudgetExceededError
+      puts "\nBudget exceeded, stopping."
+      break
+    end
+  end
+
+  desc "Show agent statistics"
+  task stats: :environment do
+    puts "Agent Statistics (Last 7 Days)"
+    puts "=" * 50
+
+    RubyLLM::Agents::Execution
+      .last_7_days
+      .group(:agent_type)
+      .select(
+        :agent_type,
+        "COUNT(*) as total",
+        "SUM(total_cost) as cost",
+        "AVG(duration_ms) as avg_duration"
+      )
+      .each do |stat|
+        puts "#{stat.agent_type}:"
+        puts "  Executions: #{stat.total}"
+        puts "  Total Cost: $#{stat.cost.round(4)}"
+        puts "  Avg Duration: #{stat.avg_duration.round}ms"
+        puts
+      end
+  end
+end
+```
+
+### Error Handling and Recovery
+
+```ruby
+# app/services/resilient_agent_service.rb
+class ResilientAgentService
+  def initialize(agent_class)
+    @agent_class = agent_class
+  end
+
+  def call(**params)
+    result = @agent_class.call(**params)
+
+    if result.success?
+      Success.new(result.content)
+    else
+      handle_failure(result)
+    end
+  rescue RubyLLM::Agents::BudgetExceededError => e
+    Failure.new(:budget_exceeded, e.message)
+  rescue RubyLLM::Agents::CircuitBreakerOpenError => e
+    Failure.new(:circuit_open, e.message, retry_after: e.remaining_ms)
+  rescue RubyLLM::Agents::TimeoutError => e
+    Failure.new(:timeout, e.message)
+  end
+
+  private
+
+  def handle_failure(result)
+    if result.retryable?
+      Failure.new(:retryable, result.error)
+    else
+      Failure.new(:permanent, result.error)
+    end
+  end
+
+  Success = Struct.new(:data) do
+    def success? = true
+    def failure? = false
+  end
+
+  Failure = Struct.new(:type, :message, :retry_after) do
+    def success? = false
+    def failure? = true
+  end
+end
+
+# Usage
+service = ResilientAgentService.new(SearchAgent)
+result = service.call(query: "test")
+
+case result
+in Success(data:)
+  render json: data
+in Failure(type: :budget_exceeded)
+  render json: { error: "Limit reached" }, status: 503
+in Failure(type: :circuit_open, retry_after:)
+  response.headers["Retry-After"] = (retry_after / 1000).to_s
+  render json: { error: "Try again later" }, status: 503
+in Failure(type: :retryable, message:)
+  AgentRetryJob.perform_later(params)
+  render json: { status: "queued" }, status: 202
+in Failure(type: :permanent, message:)
+  render json: { error: message }, status: 422
+end
+```
+
+### Service Object Pattern
+
+```ruby
+# app/services/document_analyzer.rb
+class DocumentAnalyzer
+  def initialize(document)
+    @document = document
+  end
+
+  def analyze
+    # Run multiple analyses in parallel using workflow
+    result = AnalysisWorkflow.call(text: @document.content)
+
+    {
+      sentiment: result.branches[:sentiment].content,
+      entities: result.branches[:entities].content,
+      summary: result.branches[:summary].content,
+      total_cost: result.total_cost
+    }
+  end
+end
+
+# app/workflows/analysis_workflow.rb
+class AnalysisWorkflow < RubyLLM::Agents::Workflow::Parallel
+  fail_fast false
+
+  branch :sentiment, agent: SentimentAgent
+  branch :entities, agent: EntityExtractorAgent
+  branch :summary, agent: SummarizerAgent
+end
+```
+
 ## Related Pages
 
 - [Agent DSL](Agent-DSL) - Configuration reference
 - [Workflows](Workflows) - Workflow patterns
 - [Prompts and Schemas](Prompts-and-Schemas) - Structuring outputs
+- [Error Handling](Error-Handling) - Error types and recovery
+- [Testing Agents](Testing-Agents) - Testing patterns
+- [Multi-Tenancy](Multi-Tenancy) - Multi-tenant configuration
