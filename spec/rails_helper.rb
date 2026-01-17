@@ -7,6 +7,7 @@ require_relative "dummy/config/environment"
 require "rspec/rails"
 require "factory_bot_rails"
 require "database_cleaner/active_record"
+require "securerandom"
 
 # Register turbo_stream MIME type if not already registered
 Mime::Type.register "text/vnd.turbo-stream.html", :turbo_stream unless Mime::Type.lookup_by_extension(:turbo_stream)
@@ -44,6 +45,11 @@ RSpec.configure do |config|
   # Infer spec type from file location
   config.infer_spec_type_from_file_location!
 
+  # Define :migration spec type for spec/migrations/ directory
+  config.define_derived_metadata(file_path: %r{spec/migrations/}) do |metadata|
+    metadata[:type] = :migration
+  end
+
   # Filter Rails from backtraces
   config.filter_rails_from_backtrace!
 
@@ -57,9 +63,28 @@ RSpec.configure do |config|
     DatabaseCleaner.clean_with(:truncation)
   end
 
-  config.around(:each) do |example|
+  # Migration tests manage their own schema and need truncation strategy
+  config.around(:each, type: :migration) do |example|
+    DatabaseCleaner.strategy = :truncation
     DatabaseCleaner.cleaning do
       example.run
     end
+    # Restore default strategy after migration tests
+    DatabaseCleaner.strategy = :transaction
+  end
+
+  config.around(:each, type: ->(v) { v != :migration }) do |example|
+    DatabaseCleaner.cleaning do
+      example.run
+    end
+  end
+
+  # After migration tests, reload the schema for other tests
+  config.after(:each, type: :migration) do
+    # Only reload if there are more tests to run that need the schema
+    ActiveRecord::Schema.verbose = false
+    load File.join(__dir__, "dummy/db/schema.rb")
+  rescue StandardError
+    # Ignore errors during schema reload
   end
 end
