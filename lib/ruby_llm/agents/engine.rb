@@ -34,6 +34,7 @@ module RubyLLM
       config.to_prepare do
         require_relative "execution_logger_job"
         require_relative "instrumentation"
+        require_relative "resolved_config"
         require_relative "base"
         require_relative "workflow"
 

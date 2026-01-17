@@ -10,7 +10,51 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_17_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_17_130001) do
+  create_table "ruby_llm_agents_api_configurations", force: :cascade do |t|
+    t.text "anthropic_api_key_ciphertext"
+    t.text "bedrock_api_key_ciphertext"
+    t.string "bedrock_region"
+    t.text "bedrock_secret_key_ciphertext"
+    t.text "bedrock_session_token_ciphertext"
+    t.datetime "created_at", null: false
+    t.text "deepseek_api_key_ciphertext"
+    t.string "default_embedding_model"
+    t.string "default_image_model"
+    t.string "default_model"
+    t.string "default_moderation_model"
+    t.string "gemini_api_base"
+    t.text "gemini_api_key_ciphertext"
+    t.string "gpustack_api_base"
+    t.text "gpustack_api_key_ciphertext"
+    t.string "http_proxy"
+    t.boolean "inherit_global_defaults", default: true
+    t.integer "max_retries"
+    t.text "mistral_api_key_ciphertext"
+    t.string "ollama_api_base"
+    t.text "ollama_api_key_ciphertext"
+    t.string "openai_api_base"
+    t.text "openai_api_key_ciphertext"
+    t.string "openai_organization_id"
+    t.string "openai_project_id"
+    t.text "openrouter_api_key_ciphertext"
+    t.text "perplexity_api_key_ciphertext"
+    t.integer "request_timeout"
+    t.decimal "retry_backoff_factor", precision: 5, scale: 2
+    t.decimal "retry_interval", precision: 5, scale: 2
+    t.decimal "retry_interval_randomness", precision: 5, scale: 2
+    t.string "scope_id"
+    t.string "scope_type", default: "global", null: false
+    t.datetime "updated_at", null: false
+    t.text "vertexai_credentials_ciphertext"
+    t.string "vertexai_location"
+    t.string "vertexai_project_id"
+    t.string "xai_api_base"
+    t.text "xai_api_key_ciphertext"
+    t.index ["scope_id"], name: "idx_api_configs_scope_id"
+    t.index ["scope_type", "scope_id"], name: "idx_api_configs_scope", unique: true
+  end
+
   create_table "ruby_llm_agents_executions", force: :cascade do |t|
     t.string "agent_type", null: false
     t.string "agent_version", default: "1.0"

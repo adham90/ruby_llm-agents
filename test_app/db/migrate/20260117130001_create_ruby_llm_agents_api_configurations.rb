@@ -1,0 +1,90 @@
+# frozen_string_literal: true
+
+# Migration to create the api_configurations table
+#
+# This table stores API key configurations that can be managed via the dashboard.
+# Supports both global settings and per-tenant overrides.
+#
+# Resolution priority: per-tenant DB > global DB > config file (RubyLLM.configure)
+#
+# Features:
+# - Encrypted storage for all API keys (using Rails encrypted attributes)
+# - Support for all major LLM providers
+# - Custom endpoint configuration
+# - Connection settings
+# - Default model configuration
+#
+# Run with: rails db:migrate
+class CreateRubyLLMAgentsApiConfigurations < ActiveRecord::Migration[8.1]
+  def change
+    create_table :ruby_llm_agents_api_configurations do |t|
+      # Scope type: 'global' or 'tenant'
+      t.string :scope_type, null: false, default: 'global'
+      # Tenant ID when scope_type='tenant'
+      t.string :scope_id
+
+      # === Encrypted API Keys ===
+      # Rails encrypts stores encrypted data in the same-named column
+      # Primary providers
+      t.text :openai_api_key
+      t.text :anthropic_api_key
+      t.text :gemini_api_key
+
+      # Additional providers
+      t.text :deepseek_api_key
+      t.text :mistral_api_key
+      t.text :perplexity_api_key
+      t.text :openrouter_api_key
+      t.text :gpustack_api_key
+      t.text :xai_api_key
+      t.text :ollama_api_key
+
+      # AWS Bedrock
+      t.text :bedrock_api_key
+      t.text :bedrock_secret_key
+      t.text :bedrock_session_token
+      t.string :bedrock_region
+
+      # Google Vertex AI
+      t.text :vertexai_credentials
+      t.string :vertexai_project_id
+      t.string :vertexai_location
+
+      # === Custom Endpoints ===
+      t.string :openai_api_base
+      t.string :gemini_api_base
+      t.string :ollama_api_base
+      t.string :gpustack_api_base
+      t.string :xai_api_base
+
+      # === OpenAI Options ===
+      t.string :openai_organization_id
+      t.string :openai_project_id
+
+      # === Default Models ===
+      t.string :default_model
+      t.string :default_embedding_model
+      t.string :default_image_model
+      t.string :default_moderation_model
+
+      # === Connection Settings ===
+      t.integer :request_timeout
+      t.integer :max_retries
+      t.decimal :retry_interval, precision: 5, scale: 2
+      t.decimal :retry_backoff_factor, precision: 5, scale: 2
+      t.decimal :retry_interval_randomness, precision: 5, scale: 2
+      t.string :http_proxy
+
+      # Whether to inherit from global config for unset values
+      t.boolean :inherit_global_defaults, default: true
+
+      t.timestamps
+    end
+
+    # Ensure unique scope_type + scope_id combinations
+    add_index :ruby_llm_agents_api_configurations, [:scope_type, :scope_id], unique: true, name: 'idx_api_configs_scope'
+
+    # Index for faster tenant lookups
+    add_index :ruby_llm_agents_api_configurations, :scope_id, name: 'idx_api_configs_scope_id'
+  end
+end

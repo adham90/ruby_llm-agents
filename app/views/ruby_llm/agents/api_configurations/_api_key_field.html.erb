@@ -1,0 +1,28 @@
+<% # Partial for API key input field %>
+<% # Local variables: f (form builder), config (ApiConfiguration), attr (symbol), label (string), placeholder (string, optional), hint (string, optional) %>
+
+<div>
+  <%= f.label attr, label, class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+  <div class="mt-1 relative rounded-md shadow-sm">
+    <%= f.password_field attr,
+        class: "block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm pr-10",
+        placeholder: config.has_value?(attr) ? "[Key set - leave blank to keep]" : (local_assigns[:placeholder] || "Enter API key..."),
+        autocomplete: "off",
+        data: { key_field: attr } %>
+    <% if config.has_value?(attr) %>
+      <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+        <svg class="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+        </svg>
+      </div>
+    <% end %>
+  </div>
+  <% if local_assigns[:hint] %>
+    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400"><%= hint %></p>
+  <% end %>
+  <% if config.has_value?(attr) %>
+    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+      Current: <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded"><%= config.masked_key(attr) %></code>
+    </p>
+  <% end %>
+</div>

@@ -270,6 +270,9 @@ module RubyLLM
         #
         # @return [RubyLLM::Chat] Configured chat client
         def build_client
+          # Apply database-backed API configuration if available
+          apply_api_configuration!
+
           client = RubyLLM.chat
             .with_model(model)
             .with_temperature(temperature)
@@ -280,11 +283,42 @@ module RubyLLM
           client
         end
 
+        # Applies database-backed API configuration to RubyLLM
+        #
+        # Resolution priority: per-tenant DB > global DB > RubyLLM.configure
+        # Only applies if the api_configurations table exists.
+        #
+        # @return [void]
+        def apply_api_configuration!
+          return unless api_configuration_available?
+
+          resolved_config = ApiConfiguration.resolve(tenant_id: resolved_tenant_id)
+          resolved_config.apply_to_ruby_llm!
+        rescue StandardError => e
+          Rails.logger.warn("[RubyLLM::Agents] Failed to apply API config: #{e.message}")
+        end
+
+        # Checks if API configuration table is available
+        #
+        # @return [Boolean] true if table exists and is accessible
+        def api_configuration_available?
+          return @api_config_available if defined?(@api_config_available)
+
+          @api_config_available = begin
+            ApiConfiguration.table_exists?
+          rescue StandardError
+            false
+          end
+        end
+
         # Builds a client with a specific model
         #
         # @param model_id [String] The model identifier
         # @return [RubyLLM::Chat] Configured chat client
         def build_client_with_model(model_id)
+          # Apply database-backed API configuration if available
+          apply_api_configuration!
+
           client = RubyLLM.chat
             .with_model(model_id)
             .with_temperature(temperature)

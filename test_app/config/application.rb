@@ -23,6 +23,12 @@ module TestApp
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 8.1
 
+    # Configure Active Record Encryption for API keys
+    # In production, use Rails credentials or environment variables
+    config.active_record.encryption.primary_key = ENV.fetch("RAILS_ENCRYPTION_PRIMARY_KEY", "test-primary-key-that-is-at-least-32-bytes-long")
+    config.active_record.encryption.deterministic_key = ENV.fetch("RAILS_ENCRYPTION_DETERMINISTIC_KEY", "test-deterministic-key-32-bytes!")
+    config.active_record.encryption.key_derivation_salt = ENV.fetch("RAILS_ENCRYPTION_KEY_DERIVATION_SALT", "test-key-derivation-salt-value!")
+
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # Common ones are `templates`, `generators`, or `middleware`, for example.

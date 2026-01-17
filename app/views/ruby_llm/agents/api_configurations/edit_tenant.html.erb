@@ -1,0 +1,28 @@
+<%= render "ruby_llm/agents/shared/breadcrumbs", items: [
+  { label: "Dashboard", path: ruby_llm_agents.root_path },
+  { label: "Tenants", path: tenants_path },
+  { label: @tenant_id },
+  { label: "API Configuration", path: tenant_api_configuration_path(@tenant_id) },
+  { label: "Edit" }
+] %>
+
+<!-- Header -->
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+  <div class="flex items-center space-x-3">
+    <div class="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
+      <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+      </svg>
+    </div>
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Edit Tenant API Configuration</h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400">
+        Tenant: <span class="font-medium"><%= @tenant_id %></span>
+      </p>
+    </div>
+  </div>
+</div>
+
+<%= form_with model: @config, url: tenant_api_configuration_path(@tenant_id), method: :patch, local: true, scope: :api_configuration do |f| %>
+  <%= render "form", f: f, config: @config %>
+<% end %>

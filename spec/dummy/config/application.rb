@@ -21,5 +21,11 @@ module Dummy
 
     # Don't generate system test files
     config.generators.system_tests = nil
+
+    # Configure Active Record Encryption for testing
+    # These are deterministic test keys - NOT for production use
+    config.active_record.encryption.primary_key = "test-primary-key-that-is-at-least-32-bytes-long"
+    config.active_record.encryption.deterministic_key = "test-deterministic-key-32-bytes!"
+    config.active_record.encryption.key_derivation_salt = "test-key-derivation-salt-value!"
   end
 end

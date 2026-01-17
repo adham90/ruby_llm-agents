@@ -1,0 +1,287 @@
+<% # Shared form partial for API configuration %>
+<% # Local variables: f (form builder), config (ApiConfiguration instance) %>
+
+<% if config.errors.any? %>
+  <div class="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 border border-red-200 dark:border-red-800 mb-6">
+    <div class="flex">
+      <svg class="w-5 h-5 text-red-400 mr-3 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+      </svg>
+      <div>
+        <h4 class="text-sm font-medium text-red-800 dark:text-red-200">Please fix the following errors:</h4>
+        <ul class="mt-2 text-sm text-red-700 dark:text-red-300 list-disc list-inside">
+          <% config.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<div class="space-y-6">
+  <!-- Primary Providers -->
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+    <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Primary Providers</h3>
+    <div class="space-y-4">
+      <%= render "api_key_field", f: f, config: config, attr: :openai_api_key, label: "OpenAI API Key", placeholder: "sk-..." %>
+      <%= render "api_key_field", f: f, config: config, attr: :anthropic_api_key, label: "Anthropic API Key", placeholder: "sk-ant-..." %>
+      <%= render "api_key_field", f: f, config: config, attr: :gemini_api_key, label: "Google Gemini API Key", placeholder: "AI..." %>
+    </div>
+  </div>
+
+  <!-- Additional Providers -->
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+    <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Additional Providers</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <%= render "api_key_field", f: f, config: config, attr: :deepseek_api_key, label: "DeepSeek API Key" %>
+      <%= render "api_key_field", f: f, config: config, attr: :mistral_api_key, label: "Mistral API Key" %>
+      <%= render "api_key_field", f: f, config: config, attr: :perplexity_api_key, label: "Perplexity API Key" %>
+      <%= render "api_key_field", f: f, config: config, attr: :openrouter_api_key, label: "OpenRouter API Key" %>
+      <%= render "api_key_field", f: f, config: config, attr: :gpustack_api_key, label: "GPUStack API Key" %>
+      <%= render "api_key_field", f: f, config: config, attr: :xai_api_key, label: "xAI API Key" %>
+      <%= render "api_key_field", f: f, config: config, attr: :ollama_api_key, label: "Ollama API Key", hint: "Usually not required for local Ollama" %>
+    </div>
+  </div>
+
+  <!-- AWS Bedrock -->
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+    <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">AWS Bedrock</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <%= render "api_key_field", f: f, config: config, attr: :bedrock_api_key, label: "Access Key ID" %>
+      <%= render "api_key_field", f: f, config: config, attr: :bedrock_secret_key, label: "Secret Access Key" %>
+      <%= render "api_key_field", f: f, config: config, attr: :bedrock_session_token, label: "Session Token", hint: "Optional, for temporary credentials" %>
+
+      <div>
+        <%= f.label :bedrock_region, "Region", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+        <%= f.text_field :bedrock_region,
+            class: "mt-1 block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+            placeholder: "us-east-1" %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Google Vertex AI -->
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+    <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Google Vertex AI</h3>
+    <div class="space-y-4">
+      <div>
+        <%= f.label :vertexai_credentials, "Service Account Credentials (JSON)", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+        <%= f.text_area :vertexai_credentials,
+            rows: 4,
+            class: "mt-1 block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono",
+            placeholder: config.has_value?(:vertexai_credentials) ? "[Credentials set - leave blank to keep]" : '{"type": "service_account", ...}' %>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Paste the full JSON service account key</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <%= f.label :vertexai_project_id, "Project ID", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+          <%= f.text_field :vertexai_project_id,
+              class: "mt-1 block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+              placeholder: "my-gcp-project" %>
+        </div>
+
+        <div>
+          <%= f.label :vertexai_location, "Location", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+          <%= f.text_field :vertexai_location,
+              class: "mt-1 block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+              placeholder: "us-central1" %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Endpoints -->
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+    <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Custom Endpoints</h3>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Override default API base URLs for self-hosted or proxy endpoints</p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <%= f.label :openai_api_base, "OpenAI Base URL", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+        <%= f.text_field :openai_api_base,
+            class: "mt-1 block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+            placeholder: "https://api.openai.com/v1" %>
+      </div>
+
+      <div>
+        <%= f.label :gemini_api_base, "Gemini Base URL", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+        <%= f.text_field :gemini_api_base,
+            class: "mt-1 block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+            placeholder: "https://generativelanguage.googleapis.com" %>
+      </div>
+
+      <div>
+        <%= f.label :ollama_api_base, "Ollama Base URL", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+        <%= f.text_field :ollama_api_base,
+            class: "mt-1 block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+            placeholder: "http://localhost:11434" %>
+      </div>
+
+      <div>
+        <%= f.label :gpustack_api_base, "GPUStack Base URL", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+        <%= f.text_field :gpustack_api_base,
+            class: "mt-1 block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+            placeholder: "http://localhost:8000" %>
+      </div>
+
+      <div>
+        <%= f.label :xai_api_base, "xAI Base URL", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+        <%= f.text_field :xai_api_base,
+            class: "mt-1 block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+            placeholder: "https://api.x.ai/v1" %>
+      </div>
+    </div>
+  </div>
+
+  <!-- OpenAI Options -->
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+    <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">OpenAI Options</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <%= f.label :openai_organization_id, "Organization ID", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+        <%= f.text_field :openai_organization_id,
+            class: "mt-1 block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+            placeholder: "org-..." %>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">For users belonging to multiple organizations</p>
+      </div>
+
+      <div>
+        <%= f.label :openai_project_id, "Project ID", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+        <%= f.text_field :openai_project_id,
+            class: "mt-1 block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+            placeholder: "proj_..." %>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Scopes requests to a specific project</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Default Models -->
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+    <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Default Models</h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <%= f.label :default_model, "Default Chat Model", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+        <%= f.text_field :default_model,
+            class: "mt-1 block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+            placeholder: "gpt-4o" %>
+      </div>
+
+      <div>
+        <%= f.label :default_embedding_model, "Default Embedding Model", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+        <%= f.text_field :default_embedding_model,
+            class: "mt-1 block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+            placeholder: "text-embedding-3-small" %>
+      </div>
+
+      <div>
+        <%= f.label :default_image_model, "Default Image Model", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+        <%= f.text_field :default_image_model,
+            class: "mt-1 block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+            placeholder: "dall-e-3" %>
+      </div>
+
+      <div>
+        <%= f.label :default_moderation_model, "Default Moderation Model", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+        <%= f.text_field :default_moderation_model,
+            class: "mt-1 block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+            placeholder: "text-moderation-stable" %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Connection Settings -->
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+    <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Connection Settings</h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <%= f.label :request_timeout, "Request Timeout (seconds)", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+        <%= f.number_field :request_timeout,
+            class: "mt-1 block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+            min: 1,
+            placeholder: "120" %>
+      </div>
+
+      <div>
+        <%= f.label :max_retries, "Max Retries", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+        <%= f.number_field :max_retries,
+            class: "mt-1 block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+            min: 0,
+            max: 10,
+            placeholder: "3" %>
+      </div>
+
+      <div>
+        <%= f.label :retry_interval, "Retry Interval (seconds)", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+        <%= f.number_field :retry_interval,
+            class: "mt-1 block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+            min: 0,
+            step: 0.1,
+            placeholder: "1.0" %>
+      </div>
+
+      <div>
+        <%= f.label :retry_backoff_factor, "Retry Backoff Factor", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+        <%= f.number_field :retry_backoff_factor,
+            class: "mt-1 block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+            min: 1,
+            step: 0.1,
+            placeholder: "2.0" %>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Multiplier for exponential backoff</p>
+      </div>
+
+      <div>
+        <%= f.label :retry_interval_randomness, "Retry Randomness", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+        <%= f.number_field :retry_interval_randomness,
+            class: "mt-1 block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+            min: 0,
+            max: 1,
+            step: 0.1,
+            placeholder: "0.5" %>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">0-1, adds jitter to retry interval</p>
+      </div>
+
+      <div>
+        <%= f.label :http_proxy, "HTTP Proxy", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
+        <%= f.text_field :http_proxy,
+            class: "mt-1 block w-full px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+            placeholder: "http://proxy.example.com:8080" %>
+      </div>
+    </div>
+  </div>
+
+  <% if config.scope_type == "tenant" %>
+    <!-- Inheritance Settings (tenant only) -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+      <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Inheritance</h3>
+      <div class="flex items-start">
+        <div class="flex items-center h-5">
+          <%= f.check_box :inherit_global_defaults, class: "h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded" %>
+        </div>
+        <div class="ml-3">
+          <%= f.label :inherit_global_defaults, "Inherit Global Defaults", class: "text-sm font-medium text-gray-700 dark:text-gray-300" %>
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            When enabled, any unset values will fall back to the global configuration.
+            When disabled, only values explicitly set for this tenant will be used.
+          </p>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Form Actions -->
+  <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 rounded-lg px-6 py-4">
+    <p class="text-sm text-gray-500 dark:text-gray-400">
+      <svg class="inline w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+      </svg>
+      API keys are encrypted at rest
+    </p>
+
+    <div class="flex items-center space-x-3">
+      <% cancel_path = config.scope_type == "tenant" ? tenant_api_configuration_path(config.scope_id) : api_configuration_path %>
+      <%= link_to "Cancel", cancel_path, class: "px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-500" %>
+      <%= f.submit "Save Configuration", class: "inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer" %>
+    </div>
+  </div>
+</div>
