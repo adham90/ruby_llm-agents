@@ -136,6 +136,7 @@ module RubyLLM
         @options = options
         @accumulated_tool_calls = []
         validate_required_params!
+        resolve_tenant_context!  # Resolve tenant before building client for API key resolution
         @client = build_client
       end
 

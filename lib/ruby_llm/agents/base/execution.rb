@@ -47,6 +47,9 @@ module RubyLLM
         #
         # @return [void]
         def resolve_tenant_context!
+          # Idempotency guard - only resolve once
+          return if defined?(@tenant_context_resolved) && @tenant_context_resolved
+
           tenant_option = @options[:tenant]
           return unless tenant_option
 
@@ -59,6 +62,8 @@ module RubyLLM
             @tenant_id = tenant_option.to_s
             @tenant_config = nil
           end
+
+          @tenant_context_resolved = true
         end
 
         # Returns the resolved tenant ID
