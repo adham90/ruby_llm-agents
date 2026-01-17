@@ -119,6 +119,8 @@ See [Conversation History](https://github.com/adham90/ruby_llm-agents/wiki/Conve
 
 ## Documentation
 
+> **Note:** Wiki content lives in the [`wiki/`](wiki/) folder and is automatically synced to the [GitHub Wiki](https://github.com/adham90/ruby_llm-agents/wiki) on push. To contribute to documentation, edit files in the `wiki/` folder.
+
 | Guide | Description |
 |-------|-------------|
 | [Getting Started](https://github.com/adham90/ruby_llm-agents/wiki/Getting-Started) | Installation, configuration, first agent |
