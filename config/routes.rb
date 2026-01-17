@@ -29,5 +29,5 @@ RubyLLM::Agents::Engine.routes.draw do
 
   # Redirect old analytics route to dashboard
   get "analytics", to: redirect("/")
-  resource :settings, only: [:show]
+  resource :system_config, only: [:show], controller: "system_config"
 end

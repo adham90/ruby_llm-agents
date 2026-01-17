@@ -2,14 +2,14 @@
 
 module RubyLLM
   module Agents
-    # Controller for displaying global configuration settings
+    # Controller for displaying system configuration
     #
     # Shows all configuration options from RubyLLM::Agents.configuration
     # in a read-only dashboard view.
     #
     # @api private
-    class SettingsController < ApplicationController
-      # Displays the global configuration settings
+    class SystemConfigController < ApplicationController
+      # Displays the system configuration
       #
       # @return [void]
       def show
