@@ -126,8 +126,11 @@ ActiveRecord::Schema.define do
   # Tenant budgets table
   create_table :ruby_llm_agents_tenant_budgets, force: :cascade do |t|
     t.string :tenant_id, null: false
+    t.string :name
     t.decimal :daily_limit, precision: 12, scale: 6
     t.decimal :monthly_limit, precision: 12, scale: 6
+    t.bigint :daily_token_limit
+    t.bigint :monthly_token_limit
     t.json :per_agent_daily, null: false, default: {}
     t.json :per_agent_monthly, null: false, default: {}
     t.string :enforcement, default: "soft"
@@ -137,4 +140,5 @@ ActiveRecord::Schema.define do
   end
 
   add_index :ruby_llm_agents_tenant_budgets, :tenant_id, unique: true
+  add_index :ruby_llm_agents_tenant_budgets, :name
 end

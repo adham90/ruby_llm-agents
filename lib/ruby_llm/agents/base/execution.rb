@@ -17,6 +17,9 @@ module RubyLLM
         # @yieldparam chunk [RubyLLM::Chunk] A streaming chunk with content
         # @return [Object] The processed LLM response
         def call(&block)
+          # Resolve tenant configuration before execution
+          resolve_tenant_context!
+
           return dry_run_response if @options[:dry_run]
           return uncached_call(&block) if @options[:skip_cache] || !self.class.cache_enabled?
 
@@ -34,6 +37,47 @@ module RubyLLM
           cache_store.fetch(cache_key, expires_in: self.class.cache_ttl) do
             uncached_call(&block)
           end
+        end
+
+        # Resolves tenant context from the :tenant option
+        #
+        # The tenant option can be:
+        # - String: Just the tenant_id (uses resolver or DB for config)
+        # - Hash: Full config { id:, name:, daily_limit:, daily_token_limit:, ... }
+        #
+        # @return [void]
+        def resolve_tenant_context!
+          tenant_option = @options[:tenant]
+          return unless tenant_option
+
+          if tenant_option.is_a?(Hash)
+            # Full config passed - extract id and store config
+            @tenant_id = tenant_option[:id]&.to_s
+            @tenant_config = tenant_option.except(:id)
+          else
+            # Just tenant_id passed
+            @tenant_id = tenant_option.to_s
+            @tenant_config = nil
+          end
+        end
+
+        # Returns the resolved tenant ID
+        #
+        # @return [String, nil] The tenant identifier
+        def resolved_tenant_id
+          return @tenant_id if defined?(@tenant_id) && @tenant_id.present?
+
+          config = RubyLLM::Agents.configuration
+          return nil unless config.multi_tenancy_enabled?
+
+          config.current_tenant_id
+        end
+
+        # Returns the runtime tenant config (if passed via :tenant option)
+        #
+        # @return [Hash, nil] Runtime tenant configuration
+        def runtime_tenant_config
+          @tenant_config if defined?(@tenant_config)
         end
 
         # Executes the agent without caching

@@ -328,6 +328,9 @@ module RubyLLM
             Rails.logger.warn("[RubyLLM::Agents] Cost calculation failed: #{cost_error.message}")
           end
         end
+
+        # Record token usage for budget tracking
+        record_token_usage(execution)
       rescue ActiveRecord::RecordInvalid => e
         Rails.logger.error("[RubyLLM::Agents] Validation failed for execution #{execution&.id}: #{e.record.errors.full_messages.join(', ')}")
         if Rails.env.development? || Rails.env.test?
@@ -417,6 +420,9 @@ module RubyLLM
             Rails.logger.warn("[RubyLLM::Agents] Cost calculation failed: #{cost_error.message}")
           end
         end
+
+        # Record token usage for budget tracking
+        record_token_usage(execution)
       rescue ActiveRecord::RecordInvalid => e
         Rails.logger.error("[RubyLLM::Agents] Validation failed for execution #{execution&.id}: #{e.record.errors.full_messages.join(', ')}")
         if Rails.env.development? || Rails.env.test?
@@ -836,6 +842,28 @@ module RubyLLM
         end
       rescue StandardError => e
         Rails.logger.error("[RubyLLM::Agents] Failed to record cache hit execution: #{e.message}")
+      end
+
+      # Records token usage to the BudgetTracker
+      #
+      # @param execution [Execution] The completed execution record
+      # @return [void]
+      def record_token_usage(execution)
+        return unless execution&.total_tokens && execution.total_tokens > 0
+
+        begin
+          tenant_id = respond_to?(:resolved_tenant_id) ? resolved_tenant_id : nil
+          tenant_config = respond_to?(:runtime_tenant_config) ? runtime_tenant_config : nil
+
+          BudgetTracker.record_tokens!(
+            self.class.name,
+            execution.total_tokens,
+            tenant_id: tenant_id,
+            tenant_config: tenant_config
+          )
+        rescue StandardError => e
+          Rails.logger.warn("[RubyLLM::Agents] Failed to record token usage: #{e.message}")
+        end
       end
 
       # Emergency fallback to mark execution as failed

@@ -36,11 +36,12 @@ module RubyLLM
         #
         # @param agent_type [String] The agent class name
         # @param tenant_id [String, nil] Optional tenant identifier (uses resolver if not provided)
+        # @param tenant_config [Hash, nil] Optional runtime tenant config (takes priority over resolver/DB)
         # @raise [Reliability::BudgetExceededError] If hard cap is exceeded
         # @return [void]
-        def check_budget!(agent_type, tenant_id: nil)
+        def check_budget!(agent_type, tenant_id: nil, tenant_config: nil)
           tenant_id = resolve_tenant_id(tenant_id)
-          budget_config = resolve_budget_config(tenant_id)
+          budget_config = resolve_budget_config(tenant_id, runtime_config: tenant_config)
 
           return unless budget_config[:enabled]
           return unless budget_config[:enforcement] == :hard
@@ -48,13 +49,31 @@ module RubyLLM
           check_budget_limits!(agent_type, tenant_id, budget_config)
         end
 
+        # Checks if the current token usage exceeds budget limits
+        #
+        # @param agent_type [String] The agent class name
+        # @param tenant_id [String, nil] Optional tenant identifier (uses resolver if not provided)
+        # @param tenant_config [Hash, nil] Optional runtime tenant config (takes priority over resolver/DB)
+        # @raise [Reliability::BudgetExceededError] If hard cap is exceeded
+        # @return [void]
+        def check_token_budget!(agent_type, tenant_id: nil, tenant_config: nil)
+          tenant_id = resolve_tenant_id(tenant_id)
+          budget_config = resolve_budget_config(tenant_id, runtime_config: tenant_config)
+
+          return unless budget_config[:enabled]
+          return unless budget_config[:enforcement] == :hard
+
+          check_token_limits!(agent_type, tenant_id, budget_config)
+        end
+
         # Records spend and checks for soft cap alerts
         #
         # @param agent_type [String] The agent class name
         # @param amount [Float] The amount spent in USD
         # @param tenant_id [String, nil] Optional tenant identifier (uses resolver if not provided)
+        # @param tenant_config [Hash, nil] Optional runtime tenant config (takes priority over resolver/DB)
         # @return [void]
-        def record_spend!(agent_type, amount, tenant_id: nil)
+        def record_spend!(agent_type, amount, tenant_id: nil, tenant_config: nil)
           return if amount.nil? || amount <= 0
 
           tenant_id = resolve_tenant_id(tenant_id)
@@ -66,8 +85,31 @@ module RubyLLM
           increment_spend(:agent, :monthly, amount, agent_type: agent_type, tenant_id: tenant_id)
 
           # Check for soft cap alerts
-          budget_config = resolve_budget_config(tenant_id)
+          budget_config = resolve_budget_config(tenant_id, runtime_config: tenant_config)
           check_soft_cap_alerts(agent_type, tenant_id, budget_config) if budget_config[:enabled]
+        end
+
+        # Records token usage and checks for soft cap alerts
+        #
+        # @param agent_type [String] The agent class name
+        # @param tokens [Integer] The number of tokens used
+        # @param tenant_id [String, nil] Optional tenant identifier (uses resolver if not provided)
+        # @param tenant_config [Hash, nil] Optional runtime tenant config (takes priority over resolver/DB)
+        # @return [void]
+        def record_tokens!(agent_type, tokens, tenant_id: nil, tenant_config: nil)
+          return if tokens.nil? || tokens <= 0
+
+          tenant_id = resolve_tenant_id(tenant_id)
+
+          # Increment all relevant token counters
+          increment_tokens(:global, :daily, tokens, tenant_id: tenant_id)
+          increment_tokens(:global, :monthly, tokens, tenant_id: tenant_id)
+          increment_tokens(:agent, :daily, tokens, agent_type: agent_type, tenant_id: tenant_id)
+          increment_tokens(:agent, :monthly, tokens, agent_type: agent_type, tenant_id: tenant_id)
+
+          # Check for soft cap alerts
+          budget_config = resolve_budget_config(tenant_id, runtime_config: tenant_config)
+          check_soft_token_alerts(agent_type, tenant_id, budget_config) if budget_config[:enabled]
         end
 
         # Returns the current spend for a scope and period
@@ -81,6 +123,17 @@ module RubyLLM
           tenant_id = resolve_tenant_id(tenant_id)
           key = budget_cache_key(scope, period, agent_type: agent_type, tenant_id: tenant_id)
           (BudgetTracker.cache_read(key) || 0).to_f
+        end
+
+        # Returns the current token usage for a period (global only)
+        #
+        # @param period [Symbol] :daily or :monthly
+        # @param tenant_id [String, nil] Optional tenant identifier (uses resolver if not provided)
+        # @return [Integer] Current token usage
+        def current_tokens(period, tenant_id: nil)
+          tenant_id = resolve_tenant_id(tenant_id)
+          key = token_cache_key(period, tenant_id: tenant_id)
+          (BudgetTracker.cache_read(key) || 0).to_i
         end
 
         # Returns the remaining budget for a scope and period
@@ -110,6 +163,27 @@ module RubyLLM
           [limit - current_spend(scope, period, agent_type: agent_type, tenant_id: tenant_id), 0].max
         end
 
+        # Returns the remaining token budget for a period (global only)
+        #
+        # @param period [Symbol] :daily or :monthly
+        # @param tenant_id [String, nil] Optional tenant identifier (uses resolver if not provided)
+        # @return [Integer, nil] Remaining token budget, or nil if no limit configured
+        def remaining_token_budget(period, tenant_id: nil)
+          tenant_id = resolve_tenant_id(tenant_id)
+          budget_config = resolve_budget_config(tenant_id)
+
+          limit = case period
+          when :daily
+            budget_config[:global_daily_tokens]
+          when :monthly
+            budget_config[:global_monthly_tokens]
+          end
+
+          return nil unless limit
+
+          [limit - current_tokens(period, tenant_id: tenant_id), 0].max
+        end
+
         # Returns a summary of all budget statuses
         #
         # @param agent_type [String, nil] Optional agent type for per-agent budgets
@@ -123,10 +197,14 @@ module RubyLLM
             tenant_id: tenant_id,
             enabled: budget_config[:enabled],
             enforcement: budget_config[:enforcement],
+            # Cost budgets
             global_daily: budget_status(:global, :daily, budget_config[:global_daily], tenant_id: tenant_id),
             global_monthly: budget_status(:global, :monthly, budget_config[:global_monthly], tenant_id: tenant_id),
             per_agent_daily: agent_type ? budget_status(:agent, :daily, budget_config[:per_agent_daily]&.dig(agent_type), agent_type: agent_type, tenant_id: tenant_id) : nil,
             per_agent_monthly: agent_type ? budget_status(:agent, :monthly, budget_config[:per_agent_monthly]&.dig(agent_type), agent_type: agent_type, tenant_id: tenant_id) : nil,
+            # Token budgets (global only)
+            global_daily_tokens: token_status(:daily, budget_config[:global_daily_tokens], tenant_id: tenant_id),
+            global_monthly_tokens: token_status(:monthly, budget_config[:global_monthly_tokens], tenant_id: tenant_id),
             forecast: calculate_forecast(tenant_id: tenant_id)
           }.compact
         end
@@ -225,39 +303,84 @@ module RubyLLM
 
         # Resolves budget configuration for a tenant
         #
+        # Priority order:
+        # 1. runtime_config (passed to run())
+        # 2. tenant_config_resolver (configured lambda)
+        # 3. TenantBudget database record
+        # 4. Global configuration
+        #
         # @param tenant_id [String, nil] The tenant identifier
+        # @param runtime_config [Hash, nil] Runtime config passed to run()
         # @return [Hash] Budget configuration
-        def resolve_budget_config(tenant_id)
+        def resolve_budget_config(tenant_id, runtime_config: nil)
           config = RubyLLM::Agents.configuration
+
+          # Priority 1: Runtime config passed directly to run()
+          if runtime_config.present?
+            return normalize_budget_config(runtime_config, config)
+          end
 
           # If multi-tenancy is disabled or no tenant, use global config
           if tenant_id.nil? || !config.multi_tenancy_enabled?
-            return {
-              enabled: config.budgets_enabled?,
-              enforcement: config.budget_enforcement,
-              global_daily: config.budgets&.dig(:global_daily),
-              global_monthly: config.budgets&.dig(:global_monthly),
-              per_agent_daily: config.budgets&.dig(:per_agent_daily),
-              per_agent_monthly: config.budgets&.dig(:per_agent_monthly)
-            }
+            return global_budget_config(config)
           end
 
-          # Look up tenant-specific budget from database (if table exists)
+          # Priority 2: tenant_config_resolver lambda
+          if config.tenant_config_resolver.present?
+            resolved_config = config.tenant_config_resolver.call(tenant_id)
+            if resolved_config.present?
+              return normalize_budget_config(resolved_config, config)
+            end
+          end
+
+          # Priority 3: Look up tenant-specific budget from database
           tenant_budget = lookup_tenant_budget(tenant_id)
 
           if tenant_budget
             tenant_budget.to_budget_config
           else
-            # Fall back to global config for unknown tenants
-            {
-              enabled: config.budgets_enabled?,
-              enforcement: config.budget_enforcement,
-              global_daily: config.budgets&.dig(:global_daily),
-              global_monthly: config.budgets&.dig(:global_monthly),
-              per_agent_daily: config.budgets&.dig(:per_agent_daily),
-              per_agent_monthly: config.budgets&.dig(:per_agent_monthly)
-            }
+            # Priority 4: Fall back to global config for unknown tenants
+            global_budget_config(config)
           end
+        end
+
+        # Builds global budget config from configuration
+        #
+        # @param config [Configuration] The configuration object
+        # @return [Hash] Budget configuration
+        def global_budget_config(config)
+          {
+            enabled: config.budgets_enabled?,
+            enforcement: config.budget_enforcement,
+            global_daily: config.budgets&.dig(:global_daily),
+            global_monthly: config.budgets&.dig(:global_monthly),
+            per_agent_daily: config.budgets&.dig(:per_agent_daily),
+            per_agent_monthly: config.budgets&.dig(:per_agent_monthly),
+            global_daily_tokens: config.budgets&.dig(:global_daily_tokens),
+            global_monthly_tokens: config.budgets&.dig(:global_monthly_tokens)
+          }
+        end
+
+        # Normalizes runtime/resolver config to standard budget config format
+        #
+        # @param raw_config [Hash] Raw config from runtime or resolver
+        # @param global_config [Configuration] Global config for fallbacks
+        # @return [Hash] Normalized budget configuration
+        def normalize_budget_config(raw_config, global_config)
+          enforcement = raw_config[:enforcement]&.to_sym || global_config.budget_enforcement
+
+          {
+            enabled: enforcement != :none,
+            enforcement: enforcement,
+            # Cost/budget limits (USD)
+            global_daily: raw_config[:daily_budget_limit],
+            global_monthly: raw_config[:monthly_budget_limit],
+            per_agent_daily: raw_config[:per_agent_daily] || {},
+            per_agent_monthly: raw_config[:per_agent_monthly] || {},
+            # Token limits
+            global_daily_tokens: raw_config[:daily_token_limit],
+            global_monthly_tokens: raw_config[:monthly_token_limit]
+          }
         end
 
         # Safely looks up tenant budget, handling missing table
@@ -464,6 +587,145 @@ module RubyLLM
             tenant_id: tenant_id,
             timestamp: Date.current.to_s
           })
+        end
+
+        # Increments the token counter for a period
+        #
+        # @param scope [Symbol] :global (only global supported for tokens)
+        # @param period [Symbol] :daily or :monthly
+        # @param tokens [Integer] Tokens to add
+        # @param tenant_id [String, nil] The tenant identifier
+        # @return [Integer] New total
+        def increment_tokens(scope, period, tokens, agent_type: nil, tenant_id: nil)
+          # For now, we only track global token usage (not per-agent)
+          key = token_cache_key(period, tenant_id: tenant_id)
+          ttl = period == :daily ? 1.day : 31.days
+
+          current = (BudgetTracker.cache_read(key) || 0).to_i
+          new_total = current + tokens
+          BudgetTracker.cache_write(key, new_total, expires_in: ttl)
+          new_total
+        end
+
+        # Generates a cache key for token tracking
+        #
+        # @param period [Symbol] :daily or :monthly
+        # @param tenant_id [String, nil] The tenant identifier
+        # @return [String] Cache key
+        def token_cache_key(period, tenant_id: nil)
+          date_part = period == :daily ? Date.current.to_s : Date.current.strftime("%Y-%m")
+          tenant_part = tenant_id.present? ? "tenant:#{tenant_id}" : "global"
+
+          BudgetTracker.cache_key("tokens", tenant_part, date_part)
+        end
+
+        # Checks token limits and raises error if exceeded
+        #
+        # @param agent_type [String] The agent class name
+        # @param tenant_id [String, nil] The tenant identifier
+        # @param budget_config [Hash] The budget configuration
+        # @raise [Reliability::BudgetExceededError] If limit exceeded
+        # @return [void]
+        def check_token_limits!(agent_type, tenant_id, budget_config)
+          # Check global daily token budget
+          if budget_config[:global_daily_tokens]
+            current = current_tokens(:daily, tenant_id: tenant_id)
+            if current >= budget_config[:global_daily_tokens]
+              raise Reliability::BudgetExceededError.new(
+                :global_daily_tokens,
+                budget_config[:global_daily_tokens],
+                current,
+                tenant_id: tenant_id
+              )
+            end
+          end
+
+          # Check global monthly token budget
+          if budget_config[:global_monthly_tokens]
+            current = current_tokens(:monthly, tenant_id: tenant_id)
+            if current >= budget_config[:global_monthly_tokens]
+              raise Reliability::BudgetExceededError.new(
+                :global_monthly_tokens,
+                budget_config[:global_monthly_tokens],
+                current,
+                tenant_id: tenant_id
+              )
+            end
+          end
+        end
+
+        # Checks for soft cap token alerts after recording usage
+        #
+        # @param agent_type [String] The agent class name
+        # @param tenant_id [String, nil] The tenant identifier
+        # @param budget_config [Hash] Budget configuration
+        # @return [void]
+        def check_soft_token_alerts(agent_type, tenant_id, budget_config)
+          config = RubyLLM::Agents.configuration
+          return unless config.alerts_enabled?
+          return unless config.alert_events.include?(:token_soft_cap) || config.alert_events.include?(:token_hard_cap)
+
+          # Check global daily tokens
+          check_token_alert(:global_daily_tokens, budget_config[:global_daily_tokens],
+                           current_tokens(:daily, tenant_id: tenant_id),
+                           agent_type, tenant_id, budget_config)
+
+          # Check global monthly tokens
+          check_token_alert(:global_monthly_tokens, budget_config[:global_monthly_tokens],
+                           current_tokens(:monthly, tenant_id: tenant_id),
+                           agent_type, tenant_id, budget_config)
+        end
+
+        # Checks if a token alert should be fired
+        #
+        # @param scope [Symbol] Token scope
+        # @param limit [Integer, nil] Token limit
+        # @param current [Integer] Current token usage
+        # @param agent_type [String] Agent type
+        # @param tenant_id [String, nil] The tenant identifier
+        # @param budget_config [Hash] Budget configuration
+        # @return [void]
+        def check_token_alert(scope, limit, current, agent_type, tenant_id, budget_config)
+          return unless limit
+          return if current <= limit
+
+          event = budget_config[:enforcement] == :hard ? :token_hard_cap : :token_soft_cap
+          config = RubyLLM::Agents.configuration
+          return unless config.alert_events.include?(event)
+
+          # Prevent duplicate alerts
+          tenant_part = tenant_id.present? ? "tenant:#{tenant_id}" : "global"
+          alert_key = BudgetTracker.cache_key("token_alert", tenant_part, scope, Date.current.to_s)
+          return if BudgetTracker.cache_exist?(alert_key)
+
+          BudgetTracker.cache_write(alert_key, true, expires_in: 1.hour)
+
+          AlertManager.notify(event, {
+            scope: scope,
+            limit: limit,
+            total: current,
+            agent_type: agent_type,
+            tenant_id: tenant_id,
+            timestamp: Date.current.to_s
+          })
+        end
+
+        # Returns token status for a period
+        #
+        # @param period [Symbol] :daily or :monthly
+        # @param limit [Integer, nil] The token limit
+        # @param tenant_id [String, nil] The tenant identifier
+        # @return [Hash, nil] Status hash or nil if no limit
+        def token_status(period, limit, tenant_id: nil)
+          return nil unless limit
+
+          current = current_tokens(period, tenant_id: tenant_id)
+          {
+            limit: limit,
+            current: current,
+            remaining: [limit - current, 0].max,
+            percentage_used: ((current.to_f / limit) * 100).round(2)
+          }
         end
       end
     end

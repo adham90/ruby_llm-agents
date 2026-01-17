@@ -195,6 +195,24 @@ module RubyLLM
       #   @example Using request store
       #     config.tenant_resolver = -> { RequestStore[:tenant_id] }
 
+      # @!attribute [rw] tenant_config_resolver
+      #   Lambda that returns tenant configuration without querying the database.
+      #   Called when resolving tenant budget config. If set, this takes priority
+      #   over the TenantBudget database lookup.
+      #   @return [Proc, nil] Tenant config resolver lambda (default: nil)
+      #   @example Using an external tenant service
+      #     config.tenant_config_resolver = ->(tenant_id) {
+      #       tenant = Tenant.find(tenant_id)
+      #       {
+      #         name: tenant.name,
+      #         daily_limit: tenant.subscription.daily_budget,
+      #         monthly_limit: tenant.subscription.monthly_budget,
+      #         daily_token_limit: tenant.subscription.daily_tokens,
+      #         monthly_token_limit: tenant.subscription.monthly_tokens,
+      #         enforcement: tenant.subscription.hard_limits? ? :hard : :soft
+      #       }
+      #     }
+
       # @!attribute [rw] persist_messages_summary
       #   Whether to persist a summary of conversation messages in execution records.
       #   When true, stores message count and first/last messages (truncated).
@@ -232,6 +250,7 @@ module RubyLLM
                     :redaction,
                     :multi_tenancy_enabled,
                     :tenant_resolver,
+                    :tenant_config_resolver,
                     :persist_messages_summary,
                     :messages_summary_max_length
 
@@ -277,6 +296,7 @@ module RubyLLM
         # Multi-tenancy defaults (disabled for backward compatibility)
         @multi_tenancy_enabled = false
         @tenant_resolver = -> { nil }
+        @tenant_config_resolver = nil
 
         # Messages summary defaults
         @persist_messages_summary = true

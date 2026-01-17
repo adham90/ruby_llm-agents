@@ -1,0 +1,129 @@
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Tenants</h1>
+  <p class="text-gray-500 dark:text-gray-400 mt-1">Manage tenant budget configurations</p>
+</div>
+
+<% if @tenants.empty? %>
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-8 text-center">
+    <svg class="w-12 h-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+    </svg>
+    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">No tenants configured</h3>
+    <p class="text-gray-500 dark:text-gray-400">Tenant budgets will appear here once created via the API or configuration.</p>
+  </div>
+<% else %>
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead class="bg-gray-50 dark:bg-gray-900/50">
+          <tr>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Tenant
+            </th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Daily Budget
+            </th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Monthly Budget
+            </th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Daily Tokens
+            </th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Monthly Tokens
+            </th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Enforcement
+            </th>
+            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+          <% @tenants.each do |tenant| %>
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" data-href="<%= tenant_path(tenant) %>">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0 h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+                    <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                  </div>
+                  <div class="ml-3">
+                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <%= tenant.display_name %>
+                    </div>
+                    <% if tenant.name.present? && tenant.name != tenant.tenant_id %>
+                      <div class="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                        <%= tenant.tenant_id %>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <% if tenant.effective_daily_limit %>
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    $<%= number_with_precision(tenant.effective_daily_limit, precision: 2) %>
+                  </span>
+                <% else %>
+                  <span class="text-sm text-gray-400 dark:text-gray-500">No limit</span>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <% if tenant.effective_monthly_limit %>
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    $<%= number_with_precision(tenant.effective_monthly_limit, precision: 2) %>
+                  </span>
+                <% else %>
+                  <span class="text-sm text-gray-400 dark:text-gray-500">No limit</span>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <% if tenant.effective_daily_token_limit %>
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    <%= number_with_delimiter(tenant.effective_daily_token_limit) %>
+                  </span>
+                <% else %>
+                  <span class="text-sm text-gray-400 dark:text-gray-500">No limit</span>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <% if tenant.effective_monthly_token_limit %>
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    <%= number_with_delimiter(tenant.effective_monthly_token_limit) %>
+                  </span>
+                <% else %>
+                  <span class="text-sm text-gray-400 dark:text-gray-500">No limit</span>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <%
+                  enforcement = tenant.effective_enforcement.to_s
+                  badge_class = case enforcement
+                                when "hard" then "bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200"
+                                when "soft" then "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200"
+                                else "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
+                                end
+                %>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <%= badge_class %>">
+                  <%= enforcement.capitalize %>
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
+                <%= link_to tenant_path(tenant), class: "text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300" do %>
+                  View
+                <% end %>
+                <span class="text-gray-300 dark:text-gray-600 mx-2">|</span>
+                <%= link_to edit_tenant_path(tenant), class: "text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300" do %>
+                  Edit
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>

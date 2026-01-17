@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_17_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_17_130000) do
   create_table "ruby_llm_agents_executions", force: :cascade do |t|
     t.string "agent_type", null: false
     t.string "agent_version", default: "1.0"
@@ -95,13 +95,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_17_120000) do
   create_table "ruby_llm_agents_tenant_budgets", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.decimal "daily_limit", precision: 12, scale: 6
+    t.bigint "daily_token_limit"
     t.string "enforcement", default: "soft"
     t.boolean "inherit_global_defaults", default: true
     t.decimal "monthly_limit", precision: 12, scale: 6
+    t.bigint "monthly_token_limit"
+    t.string "name"
     t.json "per_agent_daily", default: {}, null: false
     t.json "per_agent_monthly", default: {}, null: false
     t.string "tenant_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["name"], name: "index_ruby_llm_agents_tenant_budgets_on_name"
     t.index ["tenant_id"], name: "index_ruby_llm_agents_tenant_budgets_on_tenant_id", unique: true
   end
 
