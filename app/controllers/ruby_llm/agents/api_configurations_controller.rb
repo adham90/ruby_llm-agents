@@ -26,7 +26,7 @@ module RubyLLM
       #
       # @return [void]
       def edit
-        # @config set by before_action
+        @resolved = ApiConfiguration.resolve
       end
 
       # Updates the global API configuration
@@ -54,7 +54,7 @@ module RubyLLM
       #
       # @return [void]
       def edit_tenant
-        # @config set by before_action
+        @resolved = ApiConfiguration.resolve(tenant_id: @tenant_id)
       end
 
       # Updates a tenant-specific API configuration

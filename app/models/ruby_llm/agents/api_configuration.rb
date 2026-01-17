@@ -237,18 +237,14 @@ module RubyLLM
         end
 
         # Attempts to get the current RubyLLM configuration object
-        #
-        # RubyLLM doesn't expose a .configuration accessor, so we try
-        # to access it via the internal config object if available.
+        # Gets the current RubyLLM configuration object
         #
         # @return [Object, nil] The RubyLLM config object or nil
         def ruby_llm_current_config
           return nil unless defined?(::RubyLLM)
+          return nil unless RubyLLM.respond_to?(:config)
 
-          # RubyLLM stores config in an internal object
-          # We'll return nil since we can't access it directly
-          # The database configuration takes priority anyway
-          nil
+          RubyLLM.config
         rescue StandardError
           nil
         end

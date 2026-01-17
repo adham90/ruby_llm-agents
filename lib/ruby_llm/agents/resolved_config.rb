@@ -198,6 +198,27 @@ module RubyLLM
         summary
       end
 
+      # Public method to get raw RubyLLM config value for an attribute
+      # This returns the value from RubyLLM.configuration (initializer/ENV)
+      # regardless of any database overrides.
+      #
+      # @param attr_name [Symbol, String] The attribute name
+      # @return [Object, nil] The RubyLLM config value
+      def ruby_llm_value_for(attr_name)
+        ruby_llm_value(attr_name.to_sym)
+      end
+
+      # Masks a string for display (public wrapper)
+      #
+      # @param value [String] The string to mask
+      # @return [String] Masked string
+      def mask_string(value)
+        return nil if value.blank?
+        return "****" if value.length <= 8
+
+        "#{value[0..1]}****#{value[-4..]}"
+      end
+
       private
 
       # Resolves a single attribute using the priority chain
@@ -322,16 +343,6 @@ module RubyLLM
           ]
       end
 
-      # Masks a string for display
-      #
-      # @param value [String] The string to mask
-      # @return [String] Masked string
-      def mask_string(value)
-        return nil if value.blank?
-        return "****" if value.length <= 8
-
-        "#{value[0..1]}****#{value[-4..]}"
-      end
     end
   end
 end

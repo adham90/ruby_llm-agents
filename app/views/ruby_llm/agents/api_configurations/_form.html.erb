@@ -1,5 +1,6 @@
 <% # Shared form partial for API configuration %>
-<% # Local variables: f (form builder), config (ApiConfiguration instance) %>
+<% # Local variables: f (form builder), config (ApiConfiguration instance), resolved (ResolvedConfig, optional) %>
+<% resolved = local_assigns[:resolved] %>
 
 <% if config.errors.any? %>
   <div class="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 border border-red-200 dark:border-red-800 mb-6">
@@ -24,9 +25,9 @@
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
     <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Primary Providers</h3>
     <div class="space-y-4">
-      <%= render "api_key_field", f: f, config: config, attr: :openai_api_key, label: "OpenAI API Key", placeholder: "sk-..." %>
-      <%= render "api_key_field", f: f, config: config, attr: :anthropic_api_key, label: "Anthropic API Key", placeholder: "sk-ant-..." %>
-      <%= render "api_key_field", f: f, config: config, attr: :gemini_api_key, label: "Google Gemini API Key", placeholder: "AI..." %>
+      <%= render "api_key_field", f: f, config: config, resolved: resolved, attr: :openai_api_key, label: "OpenAI API Key", placeholder: "sk-..." %>
+      <%= render "api_key_field", f: f, config: config, resolved: resolved, attr: :anthropic_api_key, label: "Anthropic API Key", placeholder: "sk-ant-..." %>
+      <%= render "api_key_field", f: f, config: config, resolved: resolved, attr: :gemini_api_key, label: "Google Gemini API Key", placeholder: "AI..." %>
     </div>
   </div>
 
@@ -34,13 +35,13 @@
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
     <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Additional Providers</h3>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <%= render "api_key_field", f: f, config: config, attr: :deepseek_api_key, label: "DeepSeek API Key" %>
-      <%= render "api_key_field", f: f, config: config, attr: :mistral_api_key, label: "Mistral API Key" %>
-      <%= render "api_key_field", f: f, config: config, attr: :perplexity_api_key, label: "Perplexity API Key" %>
-      <%= render "api_key_field", f: f, config: config, attr: :openrouter_api_key, label: "OpenRouter API Key" %>
-      <%= render "api_key_field", f: f, config: config, attr: :gpustack_api_key, label: "GPUStack API Key" %>
-      <%= render "api_key_field", f: f, config: config, attr: :xai_api_key, label: "xAI API Key" %>
-      <%= render "api_key_field", f: f, config: config, attr: :ollama_api_key, label: "Ollama API Key", hint: "Usually not required for local Ollama" %>
+      <%= render "api_key_field", f: f, config: config, resolved: resolved, attr: :deepseek_api_key, label: "DeepSeek API Key" %>
+      <%= render "api_key_field", f: f, config: config, resolved: resolved, attr: :mistral_api_key, label: "Mistral API Key" %>
+      <%= render "api_key_field", f: f, config: config, resolved: resolved, attr: :perplexity_api_key, label: "Perplexity API Key" %>
+      <%= render "api_key_field", f: f, config: config, resolved: resolved, attr: :openrouter_api_key, label: "OpenRouter API Key" %>
+      <%= render "api_key_field", f: f, config: config, resolved: resolved, attr: :gpustack_api_key, label: "GPUStack API Key" %>
+      <%= render "api_key_field", f: f, config: config, resolved: resolved, attr: :xai_api_key, label: "xAI API Key" %>
+      <%= render "api_key_field", f: f, config: config, resolved: resolved, attr: :ollama_api_key, label: "Ollama API Key", hint: "Usually not required for local Ollama" %>
     </div>
   </div>
 
@@ -48,9 +49,9 @@
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
     <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">AWS Bedrock</h3>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <%= render "api_key_field", f: f, config: config, attr: :bedrock_api_key, label: "Access Key ID" %>
-      <%= render "api_key_field", f: f, config: config, attr: :bedrock_secret_key, label: "Secret Access Key" %>
-      <%= render "api_key_field", f: f, config: config, attr: :bedrock_session_token, label: "Session Token", hint: "Optional, for temporary credentials" %>
+      <%= render "api_key_field", f: f, config: config, resolved: resolved, attr: :bedrock_api_key, label: "Access Key ID" %>
+      <%= render "api_key_field", f: f, config: config, resolved: resolved, attr: :bedrock_secret_key, label: "Secret Access Key" %>
+      <%= render "api_key_field", f: f, config: config, resolved: resolved, attr: :bedrock_session_token, label: "Session Token", hint: "Optional, for temporary credentials" %>
 
       <div>
         <%= f.label :bedrock_region, "Region", class: "block text-sm font-medium text-gray-700 dark:text-gray-300" %>
