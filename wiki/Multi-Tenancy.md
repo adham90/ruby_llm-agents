@@ -35,6 +35,50 @@ config.tenant_resolver = -> { Apartment::Tenant.current }
 config.tenant_resolver = -> { ActsAsTenant.current_tenant&.id }
 ```
 
+### Tenant Config Resolver
+
+The optional `tenant_config_resolver` allows you to provide tenant configuration dynamically, overriding database lookups:
+
+```ruby
+config.tenant_config_resolver = ->(tenant_id) {
+  tenant = Tenant.find(tenant_id)
+  {
+    name: tenant.name,
+    daily_limit: tenant.subscription.daily_budget,
+    monthly_limit: tenant.subscription.monthly_budget,
+    daily_token_limit: tenant.subscription.daily_tokens,
+    monthly_token_limit: tenant.subscription.monthly_tokens,
+    enforcement: tenant.subscription.hard_limits? ? :hard : :soft
+  }
+}
+```
+
+This is useful when tenant budgets are managed in a different system or derived from subscription plans.
+
+## Explicit Tenant Override
+
+You can bypass the tenant resolver by passing the tenant explicitly to `.call()`:
+
+```ruby
+# Pass tenant_id explicitly (bypasses resolver, uses DB or config_resolver)
+MyAgent.call(query: "Analyze this data", tenant: "acme_corp")
+
+# Pass full config as a hash (runtime override, no DB lookup)
+MyAgent.call(query: "Analyze this data", tenant: {
+  id: "acme_corp",
+  daily_limit: 100.0,
+  monthly_limit: 1000.0,
+  daily_token_limit: 1_000_000,
+  monthly_token_limit: 10_000_000,
+  enforcement: :hard
+})
+```
+
+This is useful for:
+- Background jobs where `Current.tenant` isn't set
+- Cross-tenant operations by admin users
+- Testing with specific tenant configurations
+
 ## TenantBudget Model
 
 The `TenantBudget` model stores per-tenant spending limits:
@@ -45,6 +89,8 @@ RubyLLM::Agents::TenantBudget.create!(
   tenant_id: "tenant_123",
   daily_limit: 50.0,
   monthly_limit: 500.0,
+  daily_token_limit: 500_000,
+  monthly_token_limit: 5_000_000,
   enforcement: :hard
 )
 ```
@@ -56,6 +102,8 @@ RubyLLM::Agents::TenantBudget.create!(
 | `tenant_id` | string | Unique tenant identifier |
 | `daily_limit` | decimal | Daily spending limit in USD |
 | `monthly_limit` | decimal | Monthly spending limit in USD |
+| `daily_token_limit` | integer | Daily token usage limit |
+| `monthly_token_limit` | integer | Monthly token usage limit |
 | `enforcement` | string | `:hard` (block) or `:soft` (warn) |
 
 ### Managing Tenant Budgets
@@ -76,6 +124,10 @@ budget.current_daily_spending   # => 12.50
 budget.current_monthly_spending # => 125.00
 budget.daily_remaining          # => 37.50
 budget.monthly_remaining        # => 125.00
+
+# Query effective token limits (includes inheritance from global config)
+budget.effective_daily_token_limit   # => 500_000
+budget.effective_monthly_token_limit # => 5_000_000
 ```
 
 ## Execution Filtering by Tenant
@@ -265,6 +317,8 @@ class TenantOnboardingService
       tenant_id: tenant.id,
       daily_limit: tenant.plan.daily_ai_limit,
       monthly_limit: tenant.plan.monthly_ai_limit,
+      daily_token_limit: tenant.plan.daily_token_limit,
+      monthly_token_limit: tenant.plan.monthly_token_limit,
       enforcement: :hard
     )
   end

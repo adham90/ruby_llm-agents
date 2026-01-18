@@ -592,6 +592,19 @@ RubyLLM::Agents.configure do |config|
 
   # Resolver returns current tenant ID (called on every agent execution)
   config.tenant_resolver = -> { Current.tenant&.id }
+
+  # Optional: Custom config resolver (overrides DB lookup)
+  config.tenant_config_resolver = ->(tenant_id) {
+    tenant = Tenant.find(tenant_id)
+    {
+      name: tenant.name,
+      daily_limit: tenant.subscription.daily_budget,
+      monthly_limit: tenant.subscription.monthly_budget,
+      daily_token_limit: tenant.subscription.daily_tokens,
+      monthly_token_limit: tenant.subscription.monthly_tokens,
+      enforcement: tenant.subscription.hard_limits? ? :hard : :soft
+    }
+  }
 end
 ```
 
@@ -615,6 +628,25 @@ class Current < ActiveSupport::CurrentAttributes
 end
 ```
 
+### Explicit Tenant Override
+
+Pass tenant explicitly to `.call()` to bypass the resolver:
+
+```ruby
+# Pass tenant_id explicitly (uses DB or config_resolver for limits)
+MyAgent.call(query: "...", tenant: "acme_corp")
+
+# Pass full config hash (runtime override, no DB lookup)
+MyAgent.call(query: "...", tenant: {
+  id: "acme_corp",
+  daily_limit: 100.0,
+  monthly_limit: 1000.0,
+  daily_token_limit: 1_000_000,
+  monthly_token_limit: 10_000_000,
+  enforcement: :hard
+})
+```
+
 ### Tenant Budgets
 
 Per-tenant budget configuration stored in database:
@@ -625,6 +657,8 @@ RubyLLM::Agents::TenantBudget.create!(
   tenant_id: "acme_corp",
   daily_limit: 50.0,
   monthly_limit: 500.0,
+  daily_token_limit: 500_000,
+  monthly_token_limit: 5_000_000,
   per_agent_daily: { "ContentAgent" => 10.0, "SearchAgent" => 5.0 },
   per_agent_monthly: { "ContentAgent" => 100.0 },
   enforcement: "hard",              # "none", "soft", "hard"
@@ -635,6 +669,8 @@ RubyLLM::Agents::TenantBudget.create!(
 budget = RubyLLM::Agents::TenantBudget.for_tenant("acme_corp")
 budget.effective_daily_limit        # => 50.0
 budget.effective_monthly_limit      # => 500.0
+budget.effective_daily_token_limit  # => 500_000
+budget.effective_monthly_token_limit # => 5_000_000
 budget.effective_per_agent_daily("ContentAgent")  # => 10.0
 budget.effective_enforcement        # => :hard
 budget.budgets_enabled?             # => true
