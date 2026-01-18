@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-01-18
+
+### Added
+
+- **Tenant Token Limits** - Explicit tenant configuration resolver with token limit support
+- **Database-backed API Configuration** - Store and manage API configurations in the database
+- **Tenant Budgets Management** - UI and backend for managing tenant token limits and budgets
+- **Conversation Messages Summary** - Display conversation message summaries in agent executions
+- **GitHub Wiki Sync** - GitHub Action to auto-sync wiki folder with GitHub Wiki
+- **Comprehensive Test Coverage** - New specs for DSL, ReliabilityDSL, Engine, deprecations, migrations, and inflections
+
+### Changed
+
+- Renamed `SettingsController` to `SystemConfigController` for clarity
+- Resolved config values now shown with API key visibility toggle in dashboard
+- Tenant context resolved before building client in agent initialization
+
 ## [0.4.0] - 2026-01-16
 
 ### Added
@@ -207,6 +224,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[0.5.0]: https://github.com/adham90/ruby_llm-agents/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/adham90/ruby_llm-agents/compare/v0.3.6...v0.4.0
 [0.3.6]: https://github.com/adham90/ruby_llm-agents/compare/v0.3.3...v0.3.6
 [0.3.3]: https://github.com/adham90/ruby_llm-agents/compare/v0.3.2...v0.3.3
