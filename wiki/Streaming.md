@@ -34,13 +34,46 @@ Process chunks as they arrive:
 
 ```ruby
 StreamingAgent.call(prompt: "Write a story") do |chunk|
-  print chunk  # Each chunk is a string fragment
+  print chunk.content  # chunk is a RubyLLM::Chunk object
 end
 ```
 
 Output appears progressively:
 ```
 Once... upon... a... time...
+```
+
+## Explicit Stream Method
+
+For more explicit streaming, use the `.stream()` class method which forces streaming regardless of class settings:
+
+```ruby
+result = MyAgent.stream(prompt: "Write a story") do |chunk|
+  print chunk.content
+end
+
+# Access result metadata after streaming
+puts "Tokens: #{result.total_tokens}"
+puts "TTFT: #{result.time_to_first_token_ms}ms"
+```
+
+This method:
+- Forces streaming even if `streaming false` is set at class level
+- Requires a block (raises `ArgumentError` if none provided)
+- Returns a `Result` object with full metadata
+
+## Streaming Result Metadata
+
+When streaming completes, the returned Result contains streaming-specific metadata:
+
+```ruby
+result = StreamingAgent.call(prompt: "test") do |chunk|
+  print chunk.content
+end
+
+result.streaming?             # => true
+result.time_to_first_token_ms # => 245 (ms until first chunk arrived)
+result.duration_ms            # => 2500 (total execution time)
 ```
 
 ## HTTP Streaming
@@ -186,7 +219,7 @@ end
 ```ruby
 class MyAgent < ApplicationAgent
   streaming true
-  cache 1.hour  # Cache is ignored when streaming
+  cache_for 1.hour  # Cache is ignored when streaming
 end
 ```
 
