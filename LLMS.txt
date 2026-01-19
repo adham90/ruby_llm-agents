@@ -221,6 +221,107 @@ ChatAgent.stream(message: "Hello") do |chunk|
 end
 ```
 
+### Content Moderation
+
+Content moderation allows agents to automatically check user input and/or LLM output against safety policies before processing. Uses RubyLLM's moderation API (powered by OpenAI).
+
+```ruby
+class SafeAgent < ApplicationAgent
+  model "gpt-4o"
+  moderation :input  # Check user input before LLM call
+
+  param :message, required: true
+
+  def user_prompt
+    message
+  end
+end
+
+# Safe content proceeds normally
+result = SafeAgent.call(message: "Hello!")
+result.content  # => "Hi there! How can I help?"
+
+# Flagged content is blocked before LLM call
+result = SafeAgent.call(message: "harmful content")
+result.moderation_flagged?  # => true
+result.moderation_phase     # => :input
+result.status               # => :input_moderation_blocked
+```
+
+**Moderation phases:**
+- `:input` - Check user input before LLM call
+- `:output` - Check LLM response before returning
+- `:both` - Check both input and output
+
+**Configuration options:**
+
+```ruby
+class ModeratedAgent < ApplicationAgent
+  # Simple usage
+  moderation :input
+
+  # With options
+  moderation :input,
+    threshold: 0.7,                    # Score threshold (0.0-1.0)
+    categories: [:hate, :violence],    # Only flag specific categories
+    on_flagged: :block,                # :block, :raise, :warn, :log
+    model: "omni-moderation-latest"    # Moderation model
+
+  # Block syntax for complex config
+  moderation do
+    input enabled: true, threshold: 0.7
+    output enabled: true, threshold: 0.9
+    model "omni-moderation-latest"
+    categories :hate, :violence, :harassment
+    on_flagged :block
+  end
+end
+```
+
+**Runtime override:**
+
+```ruby
+# Disable moderation for specific call
+result = SafeAgent.call(message: "test", moderation: false)
+
+# Override threshold at runtime
+result = SafeAgent.call(message: "test", moderation: { threshold: 0.95 })
+```
+
+**Standalone Moderator (without agents):**
+
+```ruby
+class ContentModerator < RubyLLM::Agents::Moderator
+  model "omni-moderation-latest"
+  threshold 0.7
+  categories :hate, :violence, :harassment
+end
+
+result = ContentModerator.call(text: "content to check")
+result.flagged?           # => true/false
+result.flagged_categories # => [:hate]
+result.category_scores    # => { hate: 0.9, violence: 0.1, ... }
+result.max_score          # => 0.9
+```
+
+**ModerationError:**
+
+```ruby
+class StrictAgent < ApplicationAgent
+  moderation :input, on_flagged: :raise
+end
+
+begin
+  result = StrictAgent.call(message: user_input)
+rescue RubyLLM::Agents::ModerationError => e
+  puts "Content blocked: #{e.flagged_categories.join(', ')}"
+  puts "Phase: #{e.phase}"
+  puts "Scores: #{e.category_scores}"
+end
+```
+
+**Supported categories:** `hate`, `hate/threatening`, `harassment`, `harassment/threatening`, `self-harm`, `self-harm/intent`, `self-harm/instructions`, `sexual`, `sexual/minors`, `violence`, `violence/graphic`
+
 ### Extended Thinking
 
 Extended thinking allows models to show their reasoning process before providing a final answer.
@@ -393,6 +494,15 @@ result.thinking_text       # String - reasoning content
 result.thinking_signature  # String - for multi-turn (Claude)
 result.thinking_tokens     # Integer - tokens used for thinking
 result.has_thinking?       # Boolean - whether thinking was used
+
+# Moderation
+result.status               # :success, :input_moderation_blocked, :output_moderation_blocked
+result.moderation_flagged?  # Boolean - was content flagged?
+result.moderation_passed?   # Boolean - opposite of flagged?
+result.moderation_phase     # :input or :output (if blocked)
+result.moderation_result    # Raw moderation result from RubyLLM
+result.moderation_categories # Array of flagged categories
+result.moderation_scores    # Hash of category => score
 
 # Serialization
 result.to_h              # Full result as hash
@@ -602,6 +712,12 @@ RubyLLM::Agents.configure do |config|
   config.default_embedding_batch_size = 100
   config.track_embeddings = true
 
+  # Moderation defaults
+  config.default_moderation_model = "omni-moderation-latest"
+  config.default_moderation_threshold = nil  # No threshold (any flagged)
+  config.default_moderation_action = :block
+  config.track_moderation = true  # Log moderation to executions table
+
   # Cost governance
   config.budgets = {
     global_daily: 100.0,
@@ -665,6 +781,10 @@ end
 | `default_embedding_dimensions` | Integer | `nil` | Default embedding dimensions |
 | `default_embedding_batch_size` | Integer | `100` | Default batch size for embeddings |
 | `track_embeddings` | Boolean | `true` | Track embedding executions |
+| `default_moderation_model` | String | `"omni-moderation-latest"` | Default moderation model |
+| `default_moderation_threshold` | Float | `nil` | Default moderation threshold (0.0-1.0) |
+| `default_moderation_action` | Symbol | `:block` | Default action: `:block`, `:raise`, `:warn`, `:log` |
+| `track_moderation` | Boolean | `true` | Track moderation to executions table |
 | `async_logging` | Boolean | `true` | Log executions via background job |
 | `retention_period` | Duration | `30.days` | Execution record retention |
 | `cache_store` | Cache | `Rails.cache` | Custom cache store |
@@ -1036,6 +1156,8 @@ app/
   embedders/
     application_embedder.rb   # Base class for your embedders
     document_embedder.rb      # Your embedders
+  moderators/
+    content_moderator.rb      # Standalone moderators
 
 lib/ruby_llm/agents/
   base.rb                     # Main agent class
@@ -1049,6 +1171,8 @@ lib/ruby_llm/agents/
     execution.rb              # Execution flow
     reliability_execution.rb  # Retry/fallback orchestration
     reliability_dsl.rb        # Block DSL for reliability config
+    moderation_dsl.rb         # DSL for moderation configuration
+    moderation_execution.rb   # Moderation execution flow
     caching.rb                # Cache helpers
     instrumentation.rb        # Execution tracking
     response_building.rb      # Result construction
@@ -1066,6 +1190,9 @@ lib/ruby_llm/agents/
     parallel.rb               # Concurrent workflow
     router.rb                 # Conditional routing
   result.rb                   # Result wrapper class
+  moderation_result.rb        # Moderation result wrapper
+  moderator.rb                # Standalone moderator class
+  errors.rb                   # Error classes including ModerationError
   configuration.rb            # Global config
   circuit_breaker.rb          # Circuit breaker implementation
   budget_tracker.rb           # Cost governance
@@ -1112,6 +1239,11 @@ rescue RubyLLM::Agents::Reliability::BudgetExceededError => e
   e.scope   # => :global_daily
   e.limit   # => 100.0
   e.current # => 101.5
+rescue RubyLLM::Agents::ModerationError => e
+  # Content moderation blocked (when on_flagged: :raise)
+  e.phase               # => :input or :output
+  e.flagged_categories  # => [:hate, :violence]
+  e.category_scores     # => { hate: 0.9, violence: 0.7 }
 rescue ArgumentError => e
   # Missing required param or type mismatch
 end
