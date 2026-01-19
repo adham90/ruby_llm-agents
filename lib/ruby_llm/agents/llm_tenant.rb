@@ -39,6 +39,24 @@ module RubyLLM
     #     )
     #   end
     #
+    # @example With API keys from model columns/methods
+    #   class Organization < ApplicationRecord
+    #     encrypts :openai_api_key, :anthropic_api_key  # Rails 7+ encryption
+    #
+    #     llm_tenant(
+    #       id: :slug,
+    #       api_keys: {
+    #         openai: :openai_api_key,        # column name
+    #         anthropic: :anthropic_api_key,  # column name
+    #         gemini: :fetch_gemini_key       # custom method
+    #       }
+    #     )
+    #
+    #     def fetch_gemini_key
+    #       Vault.read("secret/#{slug}/gemini")
+    #     end
+    #   end
+    #
     # @see RubyLLM::Agents::TenantBudget
     # @api public
     module LLMTenant
@@ -70,15 +88,17 @@ module RubyLLM
         # @param limits [Hash] Default budget limits (implies budget: true)
         # @param enforcement [Symbol] Budget enforcement mode (:none, :soft, :hard)
         # @param inherit_global [Boolean] Inherit from global config (default: true)
+        # @param api_keys [Hash] Provider API keys mapping (e.g., { openai: :openai_api_key })
         # @return [void]
-        def llm_tenant(id: :id, name: :to_s, budget: false, limits: nil, enforcement: nil, inherit_global: true)
+        def llm_tenant(id: :id, name: :to_s, budget: false, limits: nil, enforcement: nil, inherit_global: true, api_keys: nil)
           self.llm_tenant_options = {
             id: id,
             name: name,
             budget: budget || limits.present?,
             limits: normalize_limits(limits),
             enforcement: enforcement,
-            inherit_global: inherit_global
+            inherit_global: inherit_global,
+            api_keys: api_keys
           }
 
           # Auto-create budget callback
@@ -111,6 +131,25 @@ module RubyLLM
       def llm_tenant_id
         id_method = self.class.llm_tenant_options[:id] || :id
         send(id_method).to_s
+      end
+
+      # Returns API keys resolved from the DSL configuration
+      #
+      # Maps provider names (e.g., :openai, :anthropic) to their resolved values
+      # by calling the configured method/column on this model instance.
+      #
+      # @return [Hash] Provider to API key mapping (e.g., { openai: "sk-..." })
+      # @example
+      #   org.llm_api_keys
+      #   # => { openai: "sk-abc123", anthropic: "sk-ant-xyz789" }
+      def llm_api_keys
+        api_keys_config = self.class.llm_tenant_options[:api_keys]
+        return {} if api_keys_config.blank?
+
+        api_keys_config.transform_values do |method_name|
+          value = send(method_name)
+          value.presence
+        end.compact
       end
 
       # Returns cost for a given period

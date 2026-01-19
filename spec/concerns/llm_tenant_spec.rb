@@ -311,6 +311,82 @@ RSpec.describe RubyLLM::Agents::LLMTenant do
     end
   end
 
+  describe ".llm_tenant with api_keys" do
+    before(:all) do
+      unless Object.const_defined?(:ApiKeysOrg)
+        Object.const_set(:ApiKeysOrg, Class.new(ActiveRecord::Base) do
+          self.table_name = "test_organizations"
+
+          include RubyLLM::Agents::LLMTenant
+
+          # Simulate encrypted columns
+          attr_accessor :openai_api_key, :anthropic_api_key
+
+          llm_tenant(
+            id: :slug,
+            api_keys: {
+              openai: :openai_api_key,
+              anthropic: :anthropic_api_key,
+              gemini: :fetch_gemini_key
+            }
+          )
+
+          def fetch_gemini_key
+            "gemini-key-from-vault"
+          end
+        end)
+      end
+    end
+
+    after(:all) do
+      Object.send(:remove_const, :ApiKeysOrg) if Object.const_defined?(:ApiKeysOrg)
+    end
+
+    let(:api_keys_class) { ApiKeysOrg }
+
+    it "stores api_keys option in class options" do
+      expect(api_keys_class.llm_tenant_options[:api_keys]).to eq({
+        openai: :openai_api_key,
+        anthropic: :anthropic_api_key,
+        gemini: :fetch_gemini_key
+      })
+    end
+
+    describe "#llm_api_keys" do
+      let(:org) do
+        api_keys_class.create!(name: "API Keys Org", slug: "api-keys-org")
+      end
+
+      it "resolves api keys from columns" do
+        org.openai_api_key = "sk-openai-123"
+        org.anthropic_api_key = "sk-ant-456"
+
+        keys = org.llm_api_keys
+        expect(keys[:openai]).to eq("sk-openai-123")
+        expect(keys[:anthropic]).to eq("sk-ant-456")
+      end
+
+      it "resolves api keys from methods" do
+        keys = org.llm_api_keys
+        expect(keys[:gemini]).to eq("gemini-key-from-vault")
+      end
+
+      it "excludes blank values" do
+        org.openai_api_key = ""
+        org.anthropic_api_key = nil
+
+        keys = org.llm_api_keys
+        expect(keys).not_to have_key(:openai)
+        expect(keys).not_to have_key(:anthropic)
+        expect(keys[:gemini]).to eq("gemini-key-from-vault")
+      end
+
+      it "returns empty hash when no api_keys configured" do
+        expect(organization.llm_api_keys).to eq({})
+      end
+    end
+  end
+
   describe "period scoping" do
     before do
       # Create an execution from yesterday

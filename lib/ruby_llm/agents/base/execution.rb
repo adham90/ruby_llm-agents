@@ -323,13 +323,24 @@ module RubyLLM
           client
         end
 
-        # Applies database-backed API configuration to RubyLLM
+        # Applies API configuration to RubyLLM
         #
-        # Resolution priority: per-tenant DB > global DB > RubyLLM.configure
-        # Only applies if the api_configurations table exists.
+        # Resolution priority:
+        # 1. Tenant object api_keys (from llm_tenant DSL)
+        # 2. Runtime hash api_keys (from tenant: { api_keys: {...} })
+        # 3. ApiConfiguration.for_tenant (database per-tenant config)
+        # 4. ApiConfiguration.global (database global config)
+        # 5. RubyLLM.configure (config file/environment)
         #
         # @return [void]
         def apply_api_configuration!
+          # Check tenant object for api_keys first (highest priority)
+          apply_tenant_object_api_keys!
+
+          # Check runtime hash config for api_keys
+          apply_runtime_tenant_api_keys!
+
+          # Fall back to database-backed ApiConfiguration
           return unless api_configuration_available?
 
           resolved_config = ApiConfiguration.resolve(tenant_id: resolved_tenant_id)
@@ -348,6 +359,49 @@ module RubyLLM
             ApiConfiguration.table_exists?
           rescue StandardError
             false
+          end
+        end
+
+        # Applies API keys from the tenant object's llm_api_keys method
+        #
+        # This uses the api_keys: option from the llm_tenant DSL to resolve
+        # API keys from model columns or methods.
+        #
+        # @return [void]
+        def apply_tenant_object_api_keys!
+          return unless @tenant_object.respond_to?(:llm_api_keys)
+
+          api_keys = @tenant_object.llm_api_keys
+          return if api_keys.blank?
+
+          apply_api_keys_to_ruby_llm!(api_keys)
+        end
+
+        # Applies API keys from runtime tenant config hash
+        #
+        # This uses the api_keys key from tenant: { id: ..., api_keys: {...} }
+        # passed at runtime.
+        #
+        # @return [void]
+        def apply_runtime_tenant_api_keys!
+          return unless @tenant_config.is_a?(Hash)
+
+          api_keys = @tenant_config[:api_keys]
+          return if api_keys.blank?
+
+          apply_api_keys_to_ruby_llm!(api_keys)
+        end
+
+        # Applies API keys hash to RubyLLM configuration
+        #
+        # @param api_keys [Hash] Provider to API key mapping
+        # @return [void]
+        def apply_api_keys_to_ruby_llm!(api_keys)
+          RubyLLM.configure do |config|
+            api_keys.each do |provider, key|
+              setter = "#{provider}_api_key="
+              config.public_send(setter, key) if config.respond_to?(setter)
+            end
           end
         end
 
