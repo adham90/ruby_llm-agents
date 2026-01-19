@@ -24,6 +24,14 @@ RSpec.describe RubyLlmAgents::InstallGenerator, type: :generator do
       expect(file_exists?("app/agents/application_agent.rb")).to be true
     end
 
+    it "creates the embedders directory" do
+      expect(directory_exists?("app/embedders")).to be true
+    end
+
+    it "creates application_embedder.rb" do
+      expect(file_exists?("app/embedders/application_embedder.rb")).to be true
+    end
+
     it "mounts the dashboard engine in routes" do
       routes_content = file_content("config/routes.rb")
       expect(routes_content).to include('mount RubyLLM::Agents::Engine => "/agents"')
@@ -63,6 +71,20 @@ RSpec.describe RubyLlmAgents::InstallGenerator, type: :generator do
       content = file_content("app/agents/application_agent.rb")
       expect(content).to include("class MyAgent < ApplicationAgent")
       expect(content).to include("MyAgent.call(query:")
+    end
+  end
+
+  describe "application_embedder.rb content" do
+    before { run_generator }
+
+    it "inherits from RubyLLM::Agents::Embedder" do
+      content = file_content("app/embedders/application_embedder.rb")
+      expect(content).to include("class ApplicationEmbedder < RubyLLM::Agents::Embedder")
+    end
+
+    it "includes default model configuration" do
+      content = file_content("app/embedders/application_embedder.rb")
+      expect(content).to include('model "text-embedding-3-small"')
     end
   end
 
@@ -111,7 +133,7 @@ RSpec.describe RubyLlmAgents::InstallGenerator, type: :generator do
   describe "combined options" do
     before { run_generator ["--skip-migration", "--skip-initializer", "--no-mount-dashboard"] }
 
-    it "skips all optional files but still creates agents directory and base class" do
+    it "skips all optional files but still creates agents and embedders directories" do
       migration_files = Dir[file("db/migrate/*_create_ruby_llm_agents_executions.rb")]
       expect(migration_files).to be_empty
       expect(file_exists?("config/initializers/ruby_llm_agents.rb")).to be false
@@ -121,6 +143,8 @@ RSpec.describe RubyLlmAgents::InstallGenerator, type: :generator do
 
       expect(directory_exists?("app/agents")).to be true
       expect(file_exists?("app/agents/application_agent.rb")).to be true
+      expect(directory_exists?("app/embedders")).to be true
+      expect(file_exists?("app/embedders/application_embedder.rb")).to be true
     end
   end
 end

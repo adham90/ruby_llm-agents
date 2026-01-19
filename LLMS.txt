@@ -467,6 +467,111 @@ class SupportRouter < RubyLLM::Agents::Workflow::Router
 end
 ```
 
+## Embeddings
+
+Transform text into numerical vectors for semantic search, RAG pipelines, and similarity matching.
+
+### Basic Usage
+
+```ruby
+class DocumentEmbedder < ApplicationEmbedder
+  model "text-embedding-3-small"
+  dimensions 512  # Optional: reduce for storage
+end
+
+# Single text
+result = DocumentEmbedder.call(text: "Ruby is great")
+result.vector        # [0.123, -0.456, ...]
+result.dimensions    # 512
+result.input_tokens  # 4
+result.total_cost    # 0.00001
+
+# Batch processing
+result = DocumentEmbedder.call(texts: ["Hello", "World"])
+result.vectors  # [[...], [...]]
+result.count    # 2
+```
+
+### Embedder DSL
+
+```ruby
+class MyEmbedder < ApplicationEmbedder
+  model "text-embedding-3-small"   # Embedding model
+  dimensions 512                    # Vector dimensions (nil = model default)
+  batch_size 50                     # Texts per API call
+  version "1.0"                     # Cache invalidation
+  cache_for 1.week                  # Enable caching
+
+  # Optional: preprocess text before embedding
+  def preprocess(text)
+    text.strip.downcase.gsub(/\s+/, ' ')
+  end
+end
+```
+
+### EmbeddingResult
+
+```ruby
+result = MyEmbedder.call(text: "Hello")
+
+# Vectors
+result.vector           # Single vector (for single text)
+result.vectors          # Array of vectors (for batch)
+result.dimensions       # Vector size
+
+# Metadata
+result.model_id         # Model used
+result.input_tokens     # Tokens consumed
+result.total_cost       # Cost in USD
+result.duration_ms      # Execution time
+result.count            # Number of texts embedded
+
+# Status
+result.success?         # true if no error
+result.error?           # true if failed
+result.single?          # true if single text
+result.batch?           # true if batch
+
+# Similarity helpers
+result.similarity(other_result)          # Cosine similarity (-1 to 1)
+result.similarity([0.1, 0.2, 0.3])       # Compare with raw vector
+result.most_similar(vectors, limit: 5)   # Find top N similar
+```
+
+### Batch Processing with Progress
+
+```ruby
+texts = Document.pluck(:content)
+
+DocumentEmbedder.call(texts: texts) do |batch_result, index|
+  puts "Batch #{index}: #{batch_result.count} texts"
+end
+```
+
+### Semantic Search Example
+
+```ruby
+# Index documents
+Document.find_each do |doc|
+  result = DocumentEmbedder.call(text: doc.content)
+  doc.update!(embedding: result.vector)
+end
+
+# Search with pgvector
+def search(query)
+  embedding = DocumentEmbedder.call(text: query)
+  Document.nearest_neighbors(:embedding, embedding.vector, distance: :cosine).limit(10)
+end
+```
+
+### Supported Models
+
+| Provider | Model | Default Dimensions |
+|----------|-------|-------------------|
+| OpenAI | `text-embedding-3-small` | 1536 |
+| OpenAI | `text-embedding-3-large` | 3072 |
+| Google | `text-embedding-004` | 768 |
+
 ## Global Configuration
 
 ```ruby
@@ -490,6 +595,12 @@ RubyLLM::Agents.configure do |config|
   config.default_streaming = false
   config.default_tools = []
   config.default_thinking = nil  # { effort: :medium } to enable globally
+
+  # Embedding defaults
+  config.default_embedding_model = "text-embedding-3-small"
+  config.default_embedding_dimensions = nil  # Use model default
+  config.default_embedding_batch_size = 100
+  config.track_embeddings = true
 
   # Cost governance
   config.budgets = {
@@ -550,6 +661,10 @@ end
 | `default_retries` | Hash | `{max: 0}` | Default retry configuration |
 | `default_fallback_models` | Array | `[]` | Default fallback models |
 | `default_total_timeout` | Integer | `nil` | Default total timeout |
+| `default_embedding_model` | String | `"text-embedding-3-small"` | Default embedding model |
+| `default_embedding_dimensions` | Integer | `nil` | Default embedding dimensions |
+| `default_embedding_batch_size` | Integer | `100` | Default batch size for embeddings |
+| `track_embeddings` | Boolean | `true` | Track embedding executions |
 | `async_logging` | Boolean | `true` | Log executions via background job |
 | `retention_period` | Duration | `30.days` | Execution record retention |
 | `cache_store` | Cache | `Rails.cache` | Custom cache store |
@@ -900,6 +1015,11 @@ rails generate ruby_llm_agents:install
 rails generate ruby_llm_agents:agent search query:required limit:10
 rails generate ruby_llm_agents:agent chat/support message:required
 
+# Generate a new embedder
+rails generate ruby_llm_agents:embedder document
+rails generate ruby_llm_agents:embedder document --model text-embedding-3-large
+rails generate ruby_llm_agents:embedder document --dimensions 512
+
 # Upgrade migrations
 rails generate ruby_llm_agents:upgrade
 ```
@@ -913,9 +1033,17 @@ app/
     search_agent.rb           # Your agents
     chat/
       support_agent.rb        # Nested agents
+  embedders/
+    application_embedder.rb   # Base class for your embedders
+    document_embedder.rb      # Your embedders
 
 lib/ruby_llm/agents/
   base.rb                     # Main agent class
+  embedder.rb                 # Main embedder class
+  embedder/
+    dsl.rb                    # Embedder DSL methods
+    execution.rb              # Embedding execution flow
+  embedding_result.rb         # Embedding result wrapper
   base/
     dsl.rb                    # DSL methods (model, param, cache, etc.)
     execution.rb              # Execution flow

@@ -26,6 +26,7 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
       expect(Dir[file("db/migrate/*_add_finish_reason_to_ruby_llm_agents_executions.rb")]).not_to be_empty
       expect(Dir[file("db/migrate/*_add_caching_to_ruby_llm_agents_executions.rb")]).not_to be_empty
       expect(Dir[file("db/migrate/*_add_tool_calls_to_ruby_llm_agents_executions.rb")]).not_to be_empty
+      expect(Dir[file("db/migrate/*_add_execution_type_to_ruby_llm_agents_executions.rb")]).not_to be_empty
     end
   end
 
@@ -75,6 +76,7 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
       expect(Dir[file("db/migrate/*_add_finish_reason_to_ruby_llm_agents_executions.rb")]).not_to be_empty
       expect(Dir[file("db/migrate/*_add_caching_to_ruby_llm_agents_executions.rb")]).not_to be_empty
       expect(Dir[file("db/migrate/*_add_tool_calls_to_ruby_llm_agents_executions.rb")]).not_to be_empty
+      expect(Dir[file("db/migrate/*_add_execution_type_to_ruby_llm_agents_executions.rb")]).not_to be_empty
     end
   end
 
@@ -134,6 +136,12 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
       migration_file = Dir[file("db/migrate/*_add_tool_calls_to_ruby_llm_agents_executions.rb")].first
       content = File.read(migration_file)
       expect(content).to include("tool_calls")
+    end
+
+    it "add_execution_type migration adds execution_type column" do
+      migration_file = Dir[file("db/migrate/*_add_execution_type_to_ruby_llm_agents_executions.rb")].first
+      content = File.read(migration_file)
+      expect(content).to include("execution_type")
     end
   end
 end

@@ -62,6 +62,13 @@ RSpec.describe RubyLLM::Agents::Configuration do
       expect(config.redaction).to be_nil
     end
 
+    it "sets embedding defaults" do
+      expect(config.default_embedding_model).to eq("text-embedding-3-small")
+      expect(config.default_embedding_dimensions).to be_nil
+      expect(config.default_embedding_batch_size).to eq(100)
+      expect(config.track_embeddings).to be true
+    end
+
     it "sets multi-tenancy defaults" do
       expect(config.multi_tenancy_enabled).to be false
       expect(config.tenant_resolver).to be_a(Proc)
@@ -307,6 +314,10 @@ RSpec.describe RubyLLM::Agents::Configuration do
       config.default_tools = [String]
       config.persist_prompts = false
       config.persist_responses = false
+      config.default_embedding_model = "text-embedding-3-large"
+      config.default_embedding_dimensions = 512
+      config.default_embedding_batch_size = 50
+      config.track_embeddings = false
 
       expect(config.default_model).to eq("gpt-4")
       expect(config.default_temperature).to eq(0.7)
@@ -328,6 +339,10 @@ RSpec.describe RubyLLM::Agents::Configuration do
       expect(config.default_tools).to eq([String])
       expect(config.persist_prompts).to be false
       expect(config.persist_responses).to be false
+      expect(config.default_embedding_model).to eq("text-embedding-3-large")
+      expect(config.default_embedding_dimensions).to eq(512)
+      expect(config.default_embedding_batch_size).to eq(50)
+      expect(config.track_embeddings).to be false
     end
   end
 
@@ -559,6 +574,48 @@ RSpec.describe RubyLLM::Agents::Configuration do
       it "raises ArgumentError for invalid enforcement" do
         expect { config.budgets = { enforcement: :invalid } }.to raise_error(
           ArgumentError, "budgets[:enforcement] must be :none, :soft, or :hard"
+        )
+      end
+    end
+
+    describe "#default_embedding_batch_size=" do
+      it "accepts positive values" do
+        expect { config.default_embedding_batch_size = 1 }.not_to raise_error
+        expect { config.default_embedding_batch_size = 100 }.not_to raise_error
+      end
+
+      it "raises ArgumentError for zero" do
+        expect { config.default_embedding_batch_size = 0 }.to raise_error(
+          ArgumentError, "default_embedding_batch_size must be greater than 0"
+        )
+      end
+
+      it "raises ArgumentError for negative values" do
+        expect { config.default_embedding_batch_size = -1 }.to raise_error(
+          ArgumentError, "default_embedding_batch_size must be greater than 0"
+        )
+      end
+    end
+
+    describe "#default_embedding_dimensions=" do
+      it "accepts nil" do
+        expect { config.default_embedding_dimensions = nil }.not_to raise_error
+      end
+
+      it "accepts positive values" do
+        expect { config.default_embedding_dimensions = 256 }.not_to raise_error
+        expect { config.default_embedding_dimensions = 1536 }.not_to raise_error
+      end
+
+      it "raises ArgumentError for zero" do
+        expect { config.default_embedding_dimensions = 0 }.to raise_error(
+          ArgumentError, "default_embedding_dimensions must be nil or greater than 0"
+        )
+      end
+
+      it "raises ArgumentError for negative values" do
+        expect { config.default_embedding_dimensions = -1 }.to raise_error(
+          ArgumentError, "default_embedding_dimensions must be nil or greater than 0"
         )
       end
     end

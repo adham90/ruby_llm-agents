@@ -432,6 +432,27 @@ module RubyLLM
         @budgets = value
       end
 
+      # Sets default_embedding_batch_size with validation
+      #
+      # @param value [Integer] Batch size (must be > 0)
+      # @raise [ArgumentError] If value is not positive
+      def default_embedding_batch_size=(value)
+        validate_positive!(:default_embedding_batch_size, value)
+        @default_embedding_batch_size = value
+      end
+
+      # Sets default_embedding_dimensions with validation
+      #
+      # @param value [Integer, nil] Dimensions (must be nil or > 0)
+      # @raise [ArgumentError] If value is not nil or positive
+      def default_embedding_dimensions=(value)
+        unless value.nil? || (value.is_a?(Numeric) && value > 0)
+          raise ArgumentError, "default_embedding_dimensions must be nil or greater than 0"
+        end
+
+        @default_embedding_dimensions = value
+      end
+
       # Initializes configuration with default values
       #
       # @return [Configuration] A new configuration instance with defaults
