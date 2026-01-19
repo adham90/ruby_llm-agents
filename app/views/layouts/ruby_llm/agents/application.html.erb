@@ -281,7 +281,7 @@
                   class="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1"
                 >
                   <a
-                    href="<%= url_for(request.query_parameters.except('tenant_id').merge(tenant_id: nil)) %>"
+                    href="<%= all_tenants_url %>"
                     class="block px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 <%= 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' if current_tenant_id.blank? %>"
                   >
                     All Tenants
