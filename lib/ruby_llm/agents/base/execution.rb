@@ -39,31 +39,66 @@ module RubyLLM
           end
         end
 
-        # Resolves tenant context from the :tenant option
+        # Resolves tenant context from the :tenant option or def tenant method
         #
-        # The tenant option can be:
-        # - String: Just the tenant_id (uses resolver or DB for config)
+        # The tenant can be:
+        # - Object with llm_tenant DSL: Uses llm_tenant_id method
         # - Hash: Full config { id:, name:, daily_limit:, daily_token_limit:, ... }
+        # - nil: No tenant tracking
+        #
+        # Agents can override the `tenant` method for dynamic resolution.
         #
         # @return [void]
+        # @raise [ArgumentError] if tenant is a string (must be an object)
         def resolve_tenant_context!
           # Idempotency guard - only resolve once
           return if defined?(@tenant_context_resolved) && @tenant_context_resolved
 
-          tenant_option = @options[:tenant]
-          return unless tenant_option
+          # Check if agent defines custom tenant method (not the base accessor)
+          tenant_value = if self.class.instance_methods(false).include?(:tenant)
+                           tenant # Call the overridden method
+                         else
+                           @options[:tenant]
+                         end
 
-          if tenant_option.is_a?(Hash)
-            # Full config passed - extract id and store config
-            @tenant_id = tenant_option[:id]&.to_s
-            @tenant_config = tenant_option.except(:id)
-          else
-            # Just tenant_id passed
-            @tenant_id = tenant_option.to_s
+          if tenant_value.nil?
+            @tenant_id = nil
+            @tenant_object = nil
             @tenant_config = nil
+            @tenant_context_resolved = true
+            return
+          end
+
+          if tenant_value.is_a?(String)
+            raise ArgumentError,
+                  "tenant must be an object with llm_tenant_id method, not a string. " \
+                  "Use the llm_tenant DSL in your model."
+          end
+
+          if tenant_value.is_a?(Hash)
+            # Full config passed - extract id and store config
+            @tenant_id = tenant_value[:id]&.to_s
+            @tenant_object = nil
+            @tenant_config = tenant_value.except(:id)
+          elsif tenant_value.respond_to?(:llm_tenant_id)
+            # Object with llm_tenant DSL
+            @tenant_id = tenant_value.llm_tenant_id
+            @tenant_object = tenant_value
+            @tenant_config = nil
+          else
+            raise ArgumentError,
+                  "tenant must respond to :llm_tenant_id (use llm_tenant in your model), " \
+                  "got #{tenant_value.class}"
           end
 
           @tenant_context_resolved = true
+        end
+
+        # Returns the resolved tenant object (if an object was passed)
+        #
+        # @return [Object, nil] The tenant object
+        def resolved_tenant
+          @tenant_object if defined?(@tenant_object)
         end
 
         # Returns the resolved tenant ID

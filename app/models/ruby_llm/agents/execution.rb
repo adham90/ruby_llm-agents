@@ -72,6 +72,9 @@ module RubyLLM
       has_many :child_executions, class_name: "RubyLLM::Agents::Execution",
                foreign_key: :parent_execution_id, dependent: :nullify, inverse_of: :parent_execution
 
+      # Polymorphic association to tenant model (for llm_tenant DSL)
+      belongs_to :tenant_record, polymorphic: true, optional: true
+
       # Validations
       validates :agent_type, :model_id, :started_at, presence: true
       validates :status, inclusion: { in: statuses.keys }

@@ -89,6 +89,10 @@ ActiveRecord::Schema.define do
     # Multi-tenancy
     t.string :tenant_id
 
+    # Polymorphic association to tenant model (for llm_tenant DSL)
+    t.string :tenant_record_type
+    t.bigint :tenant_record_id
+
     # Messages summary for conversation context
     t.integer :messages_count, null: false, default: 0
     t.json :messages_summary, null: false, default: {}
@@ -119,6 +123,7 @@ ActiveRecord::Schema.define do
 
   # Multi-tenancy index
   add_index :ruby_llm_agents_executions, [:tenant_id, :agent_type]
+  add_index :ruby_llm_agents_executions, [:tenant_record_type, :tenant_record_id], name: "index_executions_on_tenant_record"
 
   # Messages summary index
   add_index :ruby_llm_agents_executions, :messages_count
@@ -131,16 +136,23 @@ ActiveRecord::Schema.define do
     t.decimal :monthly_limit, precision: 12, scale: 6
     t.bigint :daily_token_limit
     t.bigint :monthly_token_limit
+    t.bigint :daily_execution_limit
+    t.bigint :monthly_execution_limit
     t.json :per_agent_daily, null: false, default: {}
     t.json :per_agent_monthly, null: false, default: {}
     t.string :enforcement, default: "soft"
     t.boolean :inherit_global_defaults, default: true
+
+    # Polymorphic association to tenant model
+    t.string :tenant_record_type
+    t.bigint :tenant_record_id
 
     t.timestamps
   end
 
   add_index :ruby_llm_agents_tenant_budgets, :tenant_id, unique: true
   add_index :ruby_llm_agents_tenant_budgets, :name
+  add_index :ruby_llm_agents_tenant_budgets, [:tenant_record_type, :tenant_record_id], name: "index_tenant_budgets_on_tenant_record"
 
   # API configurations table for storing encrypted API keys and settings
   create_table :ruby_llm_agents_api_configurations, force: :cascade do |t|

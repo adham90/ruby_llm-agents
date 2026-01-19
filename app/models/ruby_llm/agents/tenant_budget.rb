@@ -6,7 +6,7 @@ module RubyLLM
     #
     # Stores per-tenant budget limits that override the global configuration.
     # Supports runtime updates without application restarts.
-    # Supports both cost-based (USD) and token-based limits.
+    # Supports cost-based (USD), token-based, and execution-based limits.
     #
     # @!attribute [rw] tenant_id
     #   @return [String] Unique identifier for the tenant
@@ -20,6 +20,10 @@ module RubyLLM
     #   @return [Integer, nil] Daily token limit (across all models)
     # @!attribute [rw] monthly_token_limit
     #   @return [Integer, nil] Monthly token limit (across all models)
+    # @!attribute [rw] daily_execution_limit
+    #   @return [Integer, nil] Daily execution/call limit
+    # @!attribute [rw] monthly_execution_limit
+    #   @return [Integer, nil] Monthly execution/call limit
     # @!attribute [rw] per_agent_daily
     #   @return [Hash] Per-agent daily cost limits: { "AgentName" => limit }
     # @!attribute [rw] per_agent_monthly
@@ -28,31 +32,39 @@ module RubyLLM
     #   @return [String] Enforcement mode: "none", "soft", or "hard"
     # @!attribute [rw] inherit_global_defaults
     #   @return [Boolean] Whether to fall back to global config for unset limits
+    # @!attribute [rw] tenant_record
+    #   @return [ActiveRecord::Base, nil] Polymorphic association to tenant model
     #
-    # @example Creating a tenant budget with cost and token limits
+    # @example Creating a tenant budget with cost, token, and execution limits
     #   TenantBudget.create!(
     #     tenant_id: "acme_corp",
     #     name: "Acme Corporation",
-    #     daily_limit: 50.0,           # USD
-    #     monthly_limit: 500.0,        # USD
+    #     daily_limit: 50.0,              # USD
+    #     monthly_limit: 500.0,           # USD
     #     daily_token_limit: 1_000_000,
     #     monthly_token_limit: 10_000_000,
-    #     per_agent_daily: { "ContentAgent" => 10.0 },
+    #     daily_execution_limit: 500,
+    #     monthly_execution_limit: 10_000,
     #     enforcement: "hard"
     #   )
     #
-    # @example Fetching budget for a tenant
-    #   budget = TenantBudget.for_tenant("acme_corp")
-    #   budget.effective_daily_limit        # => 50.0 (cost)
-    #   budget.effective_daily_token_limit  # => 1_000_000 (tokens)
+    # @example Fetching budget for a tenant object
+    #   budget = TenantBudget.for_tenant(organization)
+    #   budget.effective_daily_limit           # => 50.0 (cost)
+    #   budget.effective_daily_token_limit     # => 1_000_000 (tokens)
+    #   budget.effective_daily_execution_limit # => 500 (executions)
     #
     # @see RubyLLM::Agents::BudgetTracker
+    # @see RubyLLM::Agents::LLMTenant
     # @api public
     class TenantBudget < ::ActiveRecord::Base
       self.table_name = "ruby_llm_agents_tenant_budgets"
 
       # Valid enforcement modes
       ENFORCEMENT_MODES = %w[none soft hard].freeze
+
+      # Polymorphic association to the tenant model (e.g., Organization, Account)
+      belongs_to :tenant_record, polymorphic: true, optional: true
 
       # Validations
       validates :tenant_id, presence: true, uniqueness: true
@@ -61,15 +73,23 @@ module RubyLLM
                 numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
       validates :daily_token_limit, :monthly_token_limit,
                 numericality: { greater_than_or_equal_to: 0, only_integer: true }, allow_nil: true
+      validates :daily_execution_limit, :monthly_execution_limit,
+                numericality: { greater_than_or_equal_to: 0, only_integer: true }, allow_nil: true
 
       # Finds a budget for the given tenant
       #
-      # @param tenant_id [String] The tenant identifier
+      # @param tenant [String, Object] The tenant identifier string or object with llm_tenant_id
       # @return [TenantBudget, nil] The budget record or nil if not found
-      def self.for_tenant(tenant_id)
-        return nil if tenant_id.blank?
+      def self.for_tenant(tenant)
+        return nil if tenant.blank?
 
-        find_by(tenant_id: tenant_id)
+        if tenant.respond_to?(:llm_tenant_id)
+          # Object with llm_tenant DSL - try polymorphic first, then tenant_id
+          find_by(tenant_record: tenant) || find_by(tenant_id: tenant.llm_tenant_id)
+        else
+          # String tenant_id
+          find_by(tenant_id: tenant.to_s)
+        end
       end
 
       # Finds or creates a budget for the given tenant
@@ -154,6 +174,26 @@ module RubyLLM
         global_config&.dig(:global_monthly_tokens)
       end
 
+      # Returns the effective daily execution limit, considering inheritance
+      #
+      # @return [Integer, nil] The daily execution limit or nil if not set
+      def effective_daily_execution_limit
+        return daily_execution_limit if daily_execution_limit.present?
+        return nil unless inherit_global_defaults
+
+        global_config&.dig(:global_daily_executions)
+      end
+
+      # Returns the effective monthly execution limit, considering inheritance
+      #
+      # @return [Integer, nil] The monthly execution limit or nil if not set
+      def effective_monthly_execution_limit
+        return monthly_execution_limit if monthly_execution_limit.present?
+        return nil unless inherit_global_defaults
+
+        global_config&.dig(:global_monthly_executions)
+      end
+
       # Returns the effective enforcement mode
       #
       # @return [Symbol] :none, :soft, or :hard
@@ -183,9 +223,12 @@ module RubyLLM
           global_monthly: effective_monthly_limit,
           per_agent_daily: merged_per_agent_daily,
           per_agent_monthly: merged_per_agent_monthly,
-          # Token limits (global only)
+          # Token limits
           global_daily_tokens: effective_daily_token_limit,
-          global_monthly_tokens: effective_monthly_token_limit
+          global_monthly_tokens: effective_monthly_token_limit,
+          # Execution limits
+          global_daily_executions: effective_daily_execution_limit,
+          global_monthly_executions: effective_monthly_execution_limit
         }
       end
 

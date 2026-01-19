@@ -284,7 +284,8 @@ RSpec.describe "API Key Resolution Integration", type: :integration do
         end
 
         # Execute with tenant option - tenant context resolved before client build
-        agent = test_agent_class.new(query: "test", tenant: "tenant123")
+        # Note: tenant must be an object with llm_tenant_id or a hash with :id key
+        agent = test_agent_class.new(query: "test", tenant: { id: "tenant123" })
         agent.call
 
         # Tenant-specific API key should be applied during initialize
@@ -394,7 +395,8 @@ RSpec.describe "API Key Resolution Integration", type: :integration do
         end
 
         # Create agent with tenant, then use with_messages (which rebuilds client)
-        agent = test_agent_class.new(query: "test", tenant: "messages_tenant")
+        # Note: tenant must be an object with llm_tenant_id or a hash with :id key
+        agent = test_agent_class.new(query: "test", tenant: { id: "messages_tenant" })
         agent.with_messages([{ role: :user, content: "Hello" }])
         agent.call
 
@@ -416,7 +418,8 @@ RSpec.describe "API Key Resolution Integration", type: :integration do
         end
 
         # Execute via stream class method with tenant option
-        test_agent_class.stream(query: "test", tenant: "stream_tenant") { |_chunk| }
+        # Note: tenant must be an object with llm_tenant_id or a hash with :id key
+        test_agent_class.stream(query: "test", tenant: { id: "stream_tenant" }) { |_chunk| }
 
         expect(key_at_chat_creation).to eq("stream-tenant-key")
       end
@@ -436,7 +439,8 @@ RSpec.describe "API Key Resolution Integration", type: :integration do
           mock_chat_client
         end
 
-        agent = test_agent_class.new(query: "test", tenant: "missing_tenant")
+        # Note: tenant must be an object with llm_tenant_id or a hash with :id key
+        agent = test_agent_class.new(query: "test", tenant: { id: "missing_tenant" })
         agent.call
 
         # Should fall back to global key since tenant has no config
@@ -451,7 +455,8 @@ RSpec.describe "API Key Resolution Integration", type: :integration do
 
         allow(RubyLLM).to receive(:chat).and_return(mock_chat_client)
 
-        agent = test_agent_class.new(query: "test", tenant: "idempotent_tenant")
+        # Note: tenant must be an object with llm_tenant_id or a hash with :id key
+        agent = test_agent_class.new(query: "test", tenant: { id: "idempotent_tenant" })
 
         # The tenant_id should be set after initialize
         expect(agent.instance_variable_get(:@tenant_id)).to eq("idempotent_tenant")
