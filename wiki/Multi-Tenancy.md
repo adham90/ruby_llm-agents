@@ -277,6 +277,85 @@ Filter executions by tenant in the dashboard URL:
 /agents/executions?tenant_id=tenant_123
 ```
 
+## Tenant API Keys
+
+Each tenant can have their own API keys stored on the model and resolved at runtime via the `api_keys:` option in the `llm_tenant` DSL.
+
+### Configuration
+
+```ruby
+class Organization < ApplicationRecord
+  include RubyLLM::Agents::LLMTenant
+
+  # Encrypt API keys at rest (Rails 7+)
+  encrypts :openai_api_key, :anthropic_api_key
+
+  llm_tenant(
+    id: :slug,
+    name: :company_name,
+    api_keys: {
+      openai: :openai_api_key,        # Column name
+      anthropic: :anthropic_api_key,  # Column name
+      gemini: :fetch_gemini_key       # Custom method
+    }
+  )
+
+  # Custom method to fetch from external source
+  def fetch_gemini_key
+    Vault.read("secret/#{slug}/gemini")
+  end
+end
+```
+
+### API Key Resolution Priority
+
+When an agent executes, API keys are resolved in this order:
+
+1. **Tenant object `api_keys:`** → DSL-defined methods/columns (highest priority)
+2. **Runtime hash `api_keys:`** → Passed via `tenant: { id: ..., api_keys: {...} }`
+3. **ApiConfiguration.for_tenant** → Database per-tenant config
+4. **ApiConfiguration.global** → Database global config
+5. **RubyLLM.configure** → Config file/environment (lowest priority)
+
+### Usage
+
+```ruby
+# Tenant's API keys are automatically applied when agent executes
+org = Organization.find_by(slug: "acme-corp")
+result = MyAgent.call(query: "Hello", tenant: org)
+# Uses org.openai_api_key for OpenAI requests
+
+# Runtime hash also supports api_keys
+result = MyAgent.call(
+  query: "Hello",
+  tenant: {
+    id: "acme-corp",
+    api_keys: {
+      openai: "sk-runtime-key-123"
+    }
+  }
+)
+```
+
+### Supported Providers
+
+The `api_keys:` hash maps provider names to RubyLLM config setters:
+
+| Key | RubyLLM Setter |
+|-----|----------------|
+| `openai:` | `openai_api_key=` |
+| `anthropic:` | `anthropic_api_key=` |
+| `gemini:` | `gemini_api_key=` |
+| `deepseek:` | `deepseek_api_key=` |
+| `mistral:` | `mistral_api_key=` |
+
+### Security Considerations
+
+- **Always encrypt API keys** - Use `encrypts` (Rails 7+) or `attr_encrypted`
+- **Avoid logging** - Ensure API keys aren't exposed in logs
+- **Rotate regularly** - Allow tenants to rotate their keys through your UI
+- **Validate keys** - Consider validating keys before storing them
+
 ## Example: Full Multi-Tenant Setup
 
 ```ruby

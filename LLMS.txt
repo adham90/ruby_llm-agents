@@ -647,6 +647,42 @@ MyAgent.call(query: "...", tenant: {
 })
 ```
 
+### Tenant API Keys
+
+Each tenant can have their own API keys stored on the model via the `api_keys:` option:
+
+```ruby
+class Organization < ApplicationRecord
+  include RubyLLM::Agents::LLMTenant
+
+  encrypts :openai_api_key, :anthropic_api_key  # Rails 7+ encryption
+
+  llm_tenant(
+    id: :slug,
+    api_keys: {
+      openai: :openai_api_key,        # Column name
+      anthropic: :anthropic_api_key,  # Column name
+      gemini: :fetch_gemini_key       # Custom method
+    }
+  )
+
+  def fetch_gemini_key
+    Vault.read("secret/#{slug}/gemini")
+  end
+end
+
+# API keys are automatically applied when agent executes
+org = Organization.find_by(slug: "acme-corp")
+MyAgent.call(query: "Hello", tenant: org)  # Uses org's API keys
+```
+
+API Key Resolution Priority:
+1. Tenant object `api_keys:` (DSL-defined methods/columns)
+2. Runtime hash `api_keys:` (via `tenant: { id: ..., api_keys: {...} }`)
+3. ApiConfiguration.for_tenant (database per-tenant config)
+4. ApiConfiguration.global (database global config)
+5. RubyLLM.configure (config file/environment)
+
 ### Tenant Budgets
 
 Per-tenant budget configuration stored in database:
