@@ -145,16 +145,43 @@ module RubyLLM
           @execution_started_at ||= Time.current
           reset_accumulated_tool_calls!
 
+          # Input moderation check (before LLM call)
+          if self.class.moderation_enabled?
+            input_text = build_moderation_input
+            moderate_input(input_text)
+
+            return build_moderation_blocked_result(:input) if moderation_blocked?
+          end
+
           Timeout.timeout(self.class.timeout) do
             if streaming_enabled? && block_given?
-              execute_with_streaming(current_client, &block)
+              result = execute_with_streaming(current_client, &block)
+              return check_output_moderation(result)
             else
               response = current_client.ask(user_prompt, **ask_options)
               extract_tool_calls_from_client(current_client)
               capture_response(response)
-              build_result(process_response(response), response)
+              result = build_result(process_response(response), response)
+              return check_output_moderation(result)
             end
           end
+        end
+
+        # Checks output moderation if enabled
+        #
+        # @param result [Result] The result to check
+        # @return [Result] Original result or moderation blocked result
+        def check_output_moderation(result)
+          return result unless self.class.moderation_enabled?
+
+          content = result.content
+          text_content = content.is_a?(String) ? content : content.to_s
+
+          moderate_output(text_content)
+
+          return build_moderation_blocked_result(:output) if moderation_blocked?
+
+          result
         end
 
         # Executes an LLM request with streaming enabled

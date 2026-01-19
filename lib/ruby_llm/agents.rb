@@ -17,9 +17,12 @@ require_relative "agents/circuit_breaker"
 require_relative "agents/budget_tracker"
 require_relative "agents/alert_manager"
 require_relative "agents/attempt_tracker"
+require_relative "agents/errors"
 require_relative "agents/result"
 require_relative "agents/embedding_result"
+require_relative "agents/moderation_result"
 require_relative "agents/embedder"
+require_relative "agents/moderator"
 require_relative "agents/llm_tenant"
 require_relative "agents/inflections" if defined?(Rails)
 require_relative "agents/engine" if defined?(Rails::Engine)
@@ -52,9 +55,6 @@ module RubyLLM
   # @see RubyLLM::Agents::Base
   # @see RubyLLM::Agents::Configuration
   module Agents
-    # Base error class for agent-related exceptions
-    class Error < StandardError; end
-
     class << self
       # Returns the global configuration instance
       #

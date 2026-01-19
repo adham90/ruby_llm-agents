@@ -102,6 +102,15 @@ module RubyLLM
       #   @return [Integer, nil] Number of tokens used for thinking
       attr_reader :thinking_text, :thinking_signature, :thinking_tokens
 
+      # @!group Moderation
+      # @!attribute [r] status
+      #   @return [Symbol, nil] Result status (:success, :input_moderation_blocked, :output_moderation_blocked)
+      # @!attribute [r] moderation_result
+      #   @return [Object, nil] The raw moderation result from RubyLLM
+      # @!attribute [r] moderation_phase
+      #   @return [Symbol, nil] The phase where moderation blocked (:input or :output)
+      attr_reader :status, :moderation_result, :moderation_phase
+
       # Creates a new Result instance
       #
       # @param content [Hash, String] The processed response content
@@ -151,6 +160,12 @@ module RubyLLM
         @thinking_text = options[:thinking_text]
         @thinking_signature = options[:thinking_signature]
         @thinking_tokens = options[:thinking_tokens]
+
+        # Moderation
+        @status = options[:status] || :success
+        @moderation_flagged = options[:moderation_flagged] || false
+        @moderation_result = options[:moderation_result]
+        @moderation_phase = options[:moderation_phase]
       end
 
       # Returns total tokens (input + output)
@@ -209,6 +224,34 @@ module RubyLLM
         thinking_text.present?
       end
 
+      # Returns whether content was flagged by moderation
+      #
+      # @return [Boolean] true if moderation flagged the content
+      def moderation_flagged?
+        @moderation_flagged == true
+      end
+
+      # Returns whether content passed moderation
+      #
+      # @return [Boolean] true if content was not flagged
+      def moderation_passed?
+        !moderation_flagged?
+      end
+
+      # Returns the categories flagged by moderation
+      #
+      # @return [Array<String, Symbol>] Flagged category names
+      def moderation_categories
+        @moderation_result&.flagged_categories || []
+      end
+
+      # Returns the moderation category scores
+      #
+      # @return [Hash{String, Symbol => Float}] Category to score mapping
+      def moderation_scores
+        @moderation_result&.category_scores || {}
+      end
+
       # Converts the result to a hash
       #
       # @return [Hash] All result data as a hash
@@ -240,7 +283,12 @@ module RubyLLM
           tool_calls_count: tool_calls_count,
           thinking_text: thinking_text,
           thinking_signature: thinking_signature,
-          thinking_tokens: thinking_tokens
+          thinking_tokens: thinking_tokens,
+          status: status,
+          moderation_flagged: moderation_flagged?,
+          moderation_phase: moderation_phase,
+          moderation_categories: moderation_categories,
+          moderation_scores: moderation_scores
         }
       end
 

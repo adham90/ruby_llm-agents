@@ -5,6 +5,8 @@ require_relative "base/caching"
 require_relative "base/cost_calculation"
 require_relative "base/tool_tracking"
 require_relative "base/response_building"
+require_relative "base/moderation_dsl"
+require_relative "base/moderation_execution"
 require_relative "base/execution"
 require_relative "base/reliability_execution"
 
@@ -49,10 +51,12 @@ module RubyLLM
       include CostCalculation
       include ToolTracking
       include ResponseBuilding
+      include ModerationExecution
       include Execution
       include ReliabilityExecution
 
       extend DSL
+      extend ModerationDSL
 
       class << self
         # Factory method to instantiate and execute an agent

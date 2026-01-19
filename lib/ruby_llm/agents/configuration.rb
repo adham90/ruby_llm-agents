@@ -274,6 +274,35 @@ module RubyLLM
       #   @example
       #     config.track_embeddings = false
 
+      # @!attribute [rw] default_moderation_model
+      #   The default moderation model identifier for all agents.
+      #   Can be overridden per-agent using the `moderation` DSL method.
+      #   @return [String] Model identifier (default: "omni-moderation-latest")
+      #   @example
+      #     config.default_moderation_model = "text-moderation-007"
+
+      # @!attribute [rw] default_moderation_threshold
+      #   The default threshold for moderation scores.
+      #   Content with scores at or above this threshold will be flagged.
+      #   Set to nil to use the provider's default flagging.
+      #   @return [Float, nil] Threshold (0.0-1.0) or nil for provider default (default: nil)
+      #   @example
+      #     config.default_moderation_threshold = 0.8
+
+      # @!attribute [rw] default_moderation_action
+      #   The default action when content is flagged.
+      #   Can be overridden per-agent using the `moderation` DSL method.
+      #   @return [Symbol] Action (:block, :raise, :warn, :log) (default: :block)
+      #   @example
+      #     config.default_moderation_action = :raise
+
+      # @!attribute [rw] track_moderation
+      #   Whether to track moderation executions in the database.
+      #   When enabled, moderation operations are logged as executions.
+      #   @return [Boolean] Enable moderation tracking (default: true)
+      #   @example
+      #     config.track_moderation = false
+
       # Attributes without validation (simple accessors)
       attr_accessor :default_model,
                     :async_logging,
@@ -296,7 +325,11 @@ module RubyLLM
                     :default_embedding_model,
                     :default_embedding_dimensions,
                     :default_embedding_batch_size,
-                    :track_embeddings
+                    :track_embeddings,
+                    :default_moderation_model,
+                    :default_moderation_threshold,
+                    :default_moderation_action,
+                    :track_moderation
 
       # Attributes with validation (readers only, custom setters below)
       attr_reader :default_temperature,
@@ -511,6 +544,12 @@ module RubyLLM
         @default_embedding_dimensions = nil
         @default_embedding_batch_size = 100
         @track_embeddings = true
+
+        # Moderation defaults
+        @default_moderation_model = "omni-moderation-latest"
+        @default_moderation_threshold = nil
+        @default_moderation_action = :block
+        @track_moderation = true
       end
 
       # Returns the configured cache store, falling back to Rails.cache
