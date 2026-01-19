@@ -69,12 +69,12 @@ class Organization < ApplicationRecord
   llm_tenant key: :slug, budget: true
 
   # Auto-create budget with specific limits
-  llm_tenant key: :slug, limits: { daily: 100, monthly: 1000 }
+  llm_tenant key: :slug, limits: { daily_cost: 100, monthly_cost: 1000 }
 
   # Full configuration
   llm_tenant(
     key: :slug,
-    limits: { daily: 100, monthly: 1000, daily_tokens: 1_000_000 },
+    limits: { daily_cost: 100, monthly_cost: 1000, daily_tokens: 1_000_000 },
     enforcement: :hard
   )
 end
@@ -175,12 +175,10 @@ module RubyLLM
           return {} if limits.blank?
 
           {
-            daily_cost: limits[:daily],
-            monthly_cost: limits[:monthly],
+            daily_cost: limits[:daily_cost],
+            monthly_cost: limits[:monthly_cost],
             daily_tokens: limits[:daily_tokens],
-            monthly_tokens: limits[:monthly_tokens],
-            per_agent_daily: limits[:per_agent_daily] || {},
-            per_agent_monthly: limits[:per_agent_monthly] || {}
+            monthly_tokens: limits[:monthly_tokens]
           }.compact
         end
       end
@@ -212,12 +210,10 @@ end
 
 ```ruby
 limits: {
-  daily: 100.0,              # daily_limit column (USD)
-  monthly: 1000.0,           # monthly_limit column (USD)
+  daily_cost: 100.0,         # daily_limit column (USD)
+  monthly_cost: 1000.0,      # monthly_limit column (USD)
   daily_tokens: 1_000_000,   # daily_token_limit column
-  monthly_tokens: 10_000_000,# monthly_token_limit column
-  per_agent_daily: {},       # per_agent_daily JSON
-  per_agent_monthly: {}      # per_agent_monthly JSON
+  monthly_tokens: 10_000_000 # monthly_token_limit column
 }
 ```
 
@@ -474,8 +470,6 @@ def create_default_llm_budget
     daily_token_limit: limits[:daily_tokens],
     monthly_token_limit: limits[:monthly_tokens],
     enforcement: options[:enforcement]&.to_s || "soft",
-    per_agent_daily: limits[:per_agent_daily] || {},
-    per_agent_monthly: limits[:per_agent_monthly] || {},
     inherit_global_defaults: options.fetch(:inherit_global, true)
   )
 
@@ -587,7 +581,7 @@ class Organization < ApplicationRecord
   llm_tenant budget: true
 
   # With limits (auto-creates budget)
-  llm_tenant limits: { daily: 100, monthly: 1000 }
+  llm_tenant limits: { daily_cost: 100, monthly_cost: 1000 }
 end
 
 # Usage
@@ -628,8 +622,8 @@ llm_tenant(
 
 # Limits hash
 limits: {
-  daily: 100.0,            # Daily cost limit (USD)
-  monthly: 1000.0,         # Monthly cost limit (USD)
+  daily_cost: 100.0,       # Daily cost limit (USD)
+  monthly_cost: 1000.0,    # Monthly cost limit (USD)
   daily_tokens: 1_000_000, # Daily token limit
   monthly_tokens: 10_000_000
 }
