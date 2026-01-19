@@ -1,0 +1,76 @@
+<%
+  # Parallel workflow structure visualization
+  # Shows branches executing concurrently
+  branches = local_assigns[:branches] || []
+%>
+
+<% if branches.any? %>
+  <!-- Visual Parallel Flow -->
+  <div class="py-4">
+    <div class="flex items-stretch gap-4">
+      <!-- Parallel Symbol -->
+      <div class="flex items-center">
+        <span class="text-3xl font-light text-cyan-500 dark:text-cyan-400">⫿</span>
+      </div>
+
+      <!-- Branches Container -->
+      <div class="flex-1 border-l-4 border-cyan-300 dark:border-cyan-600 pl-4">
+        <div class="space-y-2">
+          <% branches.each do |branch| %>
+            <div class="flex items-center gap-3 py-2 px-3 rounded-lg bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800 <%= branch[:optional] ? 'border-dashed' : '' %>">
+              <span class="font-semibold text-cyan-700 dark:text-cyan-300 min-w-28">
+                <%= branch[:name] %>
+              </span>
+              <span class="text-cyan-400 dark:text-cyan-500">-></span>
+              <code class="text-sm font-mono text-gray-600 dark:text-gray-400">
+                <%= branch[:agent] %>
+              </code>
+              <% if branch[:optional] %>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 ml-auto">
+                  optional
+                </span>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-sm text-gray-500 dark:text-gray-400 mt-4 ml-12">
+      All branches execute concurrently
+    </p>
+  </div>
+
+  <!-- Branch Details Table -->
+  <div class="border-t border-gray-100 dark:border-gray-700 pt-4 mt-4">
+    <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+      Branch Details
+    </p>
+
+    <div class="space-y-2">
+      <% branches.each_with_index do |branch, index| %>
+        <div class="flex items-center gap-3 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900/50">
+          <span class="w-6 h-6 flex items-center justify-center rounded-full bg-cyan-100 dark:bg-cyan-900/50 text-xs font-medium text-cyan-600 dark:text-cyan-300">
+            <%= index + 1 %>
+          </span>
+          <span class="font-medium text-gray-700 dark:text-gray-300 min-w-24">
+            <%= branch[:name] %>
+          </span>
+          <span class="text-gray-400 dark:text-gray-500 text-sm">-></span>
+          <code class="text-sm font-mono text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
+            <%= branch[:agent] %>
+          </code>
+          <% if branch[:optional] %>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+              optional
+            </span>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% else %>
+  <p class="text-gray-500 dark:text-gray-400 italic py-4">
+    No branches defined for this parallel workflow.
+  </p>
+<% end %>
