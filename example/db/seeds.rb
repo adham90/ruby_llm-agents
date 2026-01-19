@@ -237,6 +237,16 @@ showcase_agents = %w[
   FullFeaturedAgent
 ]
 
+# Moderation showcase agents
+moderation_agents = %w[
+  ModeratedAgent
+  OutputModeratedAgent
+  FullyModeratedAgent
+  BlockBasedModerationAgent
+  CustomHandlerModerationAgent
+  ModerationActionsAgent
+]
+
 showcase_agents.each do |agent|
   2.times do |i|
     create_execution(
@@ -251,6 +261,71 @@ showcase_agents.each do |agent|
   end
 end
 puts "  Created #{showcase_agents.length * 2} showcase agent executions"
+
+# Moderation agent executions
+moderation_agents.each do |agent|
+  create_execution(
+    tenant_id: acme.llm_tenant_id,
+    agent_type: agent,
+    model_id: "gpt-4o",
+    parameters: { message: "Moderation test" },
+    response: { content: "Moderated response" },
+    metadata: {
+      showcase: true,
+      moderation: {
+        phase: agent.include?("Output") ? "output" : "input",
+        passed: true
+      }
+    },
+    created_at: Time.current - rand(10..120).minutes
+  )
+end
+puts "  Created #{moderation_agents.length} moderation agent executions"
+
+# Moderation flagged execution example (uses :raise action, so it's an error)
+create_execution(
+  tenant_id: acme.llm_tenant_id,
+  agent_type: "FullyModeratedAgent",
+  model_id: "gpt-4o",
+  status: "error",
+  error_class: "RubyLLM::Agents::ModerationError",
+  error_message: "Content flagged by moderation: harassment (score: 0.85)",
+  parameters: { message: "[simulated harmful content]" },
+  response: nil,
+  metadata: {
+    showcase: true,
+    moderation: {
+      phase: "input",
+      passed: false,
+      flagged_categories: ["harassment"],
+      max_score: 0.85
+    }
+  },
+  created_at: Time.current - 25.minutes
+)
+puts "  Created 1 moderation flagged execution"
+
+# Moderation with custom handler (allowed with warning)
+create_execution(
+  tenant_id: acme.llm_tenant_id,
+  agent_type: "CustomHandlerModerationAgent",
+  model_id: "gpt-4o",
+  status: "success",
+  parameters: { message: "Borderline content test" },
+  response: { content: "Processed with warning" },
+  metadata: {
+    showcase: true,
+    moderation: {
+      phase: "input",
+      passed: true,
+      handler_result: "continue",
+      warning: true,
+      max_score: 0.65
+    }
+  },
+  created_at: Time.current - 35.minutes
+)
+puts "  Created 1 custom moderation handler execution"
 
 # Standard agents
 create_org_executions(acme, count: 8, agents: %w[SearchAgent SummaryAgent], models: %w[gpt-4o gpt-4o-mini])
@@ -309,6 +384,29 @@ create_execution(
 )
 puts "  Created 1 budget warning execution"
 
+# Moderation execution (input blocked - uses default :block action)
+# When on_flagged: :block, execution completes but with moderation_flagged metadata
+create_execution(
+  tenant_id: startup.llm_tenant_id,
+  agent_type: "ModeratedAgent",
+  model_id: "gpt-4o-mini",
+  status: "success",
+  parameters: { message: "[content flagged for moderation]" },
+  response: { content: nil, moderation_blocked: true },
+  metadata: {
+    moderation: {
+      phase: "input",
+      passed: false,
+      action: "block",
+      flagged_categories: ["hate"],
+      threshold: 0.7,
+      max_score: 0.82
+    }
+  },
+  created_at: Time.current - 45.minutes
+)
+puts "  Created 1 moderation blocked execution"
+
 # =============================================================================
 # ENTERPRISE PLUS EXECUTIONS - Premium usage
 # =============================================================================
@@ -332,6 +430,48 @@ create_execution(
   created_at: Time.current - 15.minutes
 )
 puts "  Created 1 streaming execution"
+
+# Output moderation execution
+create_execution(
+  tenant_id: enterprise.llm_tenant_id,
+  agent_type: "OutputModeratedAgent",
+  model_id: "gpt-4o",
+  status: "success",
+  parameters: { topic: "teamwork and collaboration" },
+  response: { content: "A story about working together..." },
+  metadata: {
+    moderation: {
+      phase: "output",
+      passed: true,
+      threshold: 0.6,
+      max_score: 0.12
+    }
+  },
+  created_at: Time.current - 20.minutes
+)
+puts "  Created 1 output moderation execution"
+
+# Block-based moderation execution (different thresholds for input/output)
+create_execution(
+  tenant_id: enterprise.llm_tenant_id,
+  agent_type: "BlockBasedModerationAgent",
+  model_id: "gpt-4o",
+  status: "success",
+  parameters: { message: "Help me write a creative story" },
+  response: { content: "Once upon a time..." },
+  metadata: {
+    moderation: {
+      input_threshold: 0.5,
+      output_threshold: 0.8,
+      input_passed: true,
+      output_passed: true,
+      input_max_score: 0.08,
+      output_max_score: 0.15
+    }
+  },
+  created_at: Time.current - 12.minutes
+)
+puts "  Created 1 block-based moderation execution"
 
 # =============================================================================
 # DEMO ACCOUNT EXECUTIONS - Various states
@@ -412,6 +552,51 @@ end
 puts "  Created 5 high-token executions"
 
 # =============================================================================
+# EMBEDDER DEMONSTRATIONS
+# =============================================================================
+puts "\n" + "=" * 60
+puts "Demonstrating Embedders..."
+puts "=" * 60
+
+embedder_configs = [
+  { name: "ApplicationEmbedder", description: "Base class with DSL documentation" },
+  { name: "DocumentEmbedder", model: "text-embedding-3-small", dimensions: 512, cache: "1 week" },
+  { name: "SearchEmbedder", model: "text-embedding-3-large", dimensions: 3072, cache: "2 weeks" },
+  { name: "BatchEmbedder", model: "text-embedding-3-small", dimensions: 1024, batch_size: 100 },
+  { name: "CleanTextEmbedder", model: "text-embedding-3-small", dimensions: 512, preprocessing: true },
+  { name: "CodeEmbedder", model: "text-embedding-3-large", dimensions: 1536, preprocessing: true }
+]
+
+embedder_configs.each do |config|
+  klass = Object.const_get(config[:name])
+  puts "  #{config[:name]}:"
+  puts "    Model: #{klass.model}"
+  puts "    Dimensions: #{klass.dimensions || 'default'}"
+  puts "    Cache: #{klass.cache_enabled? ? klass.cache_ttl.inspect : 'disabled'}"
+end
+
+# =============================================================================
+# STANDALONE MODERATOR DEMONSTRATIONS
+# =============================================================================
+puts "\n" + "=" * 60
+puts "Demonstrating Standalone Moderators..."
+puts "=" * 60
+
+moderator_configs = [
+  { name: "ContentModerator", threshold: 0.7, categories: [:hate, :violence, :harassment, :sexual] },
+  { name: "ChildSafeModerator", threshold: 0.3, categories: [:sexual, :violence, :self_harm, :hate, :harassment] },
+  { name: "ForumModerator", threshold: 0.8, categories: [:hate, :harassment] }
+]
+
+moderator_configs.each do |config|
+  klass = Object.const_get(config[:name])
+  puts "  #{config[:name]}:"
+  puts "    Model: #{klass.model}"
+  puts "    Threshold: #{klass.threshold}"
+  puts "    Categories: #{klass.categories.inspect}"
+end
+
+# =============================================================================
 # LEGACY EXECUTIONS (no tenant - backward compatibility)
 # =============================================================================
 puts "\n" + "=" * 60
@@ -471,6 +656,24 @@ puts "\nShowcase Agent Executions:"
 showcase_agents.each do |agent|
   count = RubyLLM::Agents::Execution.where(agent_type: agent).count
   puts "  #{agent}: #{count}" if count > 0
+end
+
+puts "\nModeration Agent Executions:"
+moderation_agents.each do |agent|
+  count = RubyLLM::Agents::Execution.where(agent_type: agent).count
+  puts "  #{agent}: #{count}" if count > 0
+end
+
+puts "\nEmbedders Available:"
+%w[ApplicationEmbedder DocumentEmbedder SearchEmbedder BatchEmbedder CleanTextEmbedder CodeEmbedder].each do |embedder|
+  klass = Object.const_get(embedder)
+  puts "  #{embedder}: model=#{klass.model}, dimensions=#{klass.dimensions || 'default'}"
+end
+
+puts "\nStandalone Moderators Available:"
+%w[ContentModerator ChildSafeModerator ForumModerator].each do |moderator|
+  klass = Object.const_get(moderator)
+  puts "  #{moderator}: threshold=#{klass.threshold}, categories=#{klass.categories.length}"
 end
 
 puts "\nTotal: #{Organization.count} organizations, #{RubyLLM::Agents::Execution.count} executions"

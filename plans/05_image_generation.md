@@ -1,13 +1,68 @@
-# Image Generation Support Plan
+# Image Generation & Manipulation Support Plan
 
 ## Overview
 
-Add image generation capabilities to ruby_llm-agents through a new `ImageGenerator` class that wraps `RubyLLM.paint()`. This follows the established patterns from `Embedder` and `Moderator` - a standalone class with its own DSL, execution flow, and result wrapper.
+Add comprehensive image capabilities to ruby_llm-agents through a family of image-focused classes:
+
+- **ImageGenerator** - Text-to-image generation (core)
+- **ImageEditor** - Inpainting and image editing
+- **ImageTransformer** - Image-to-image style transfer
+- **ImageUpscaler** - Resolution enhancement
+- **ImageVariator** - Generate variations of existing images
+- **ImageAnalyzer** - Image understanding and captioning
+- **BackgroundRemover** - Subject extraction
+- **ImagePipeline** - Chain multiple operations
+
+This follows the established patterns from `Embedder` and `Moderator` - standalone classes with their own DSL, execution flow, and result wrappers.
+
+---
+
+## Supported Models
+
+### Currently in RubyLLM
+
+| Model | Provider | Type | Output | Notes |
+|-------|----------|------|--------|-------|
+| `gpt-image-1` (DALL-E 3) | OpenAI | Text-to-Image | URL | Best quality, supports size/quality/style |
+| `imagen-3.0-generate-002` | Google | Text-to-Image | Base64 | Fast, good quality |
+
+### Extended Model Support (via Replicate/Custom Endpoints)
+
+| Model | Provider | Type | Strengths | Est. Cost |
+|-------|----------|------|-----------|-----------|
+| **FLUX.2 Pro** | Black Forest Labs | Text-to-Image | Best open-source, character consistency | $0.05/image |
+| **FLUX.2 Dev** | Black Forest Labs | Text-to-Image | Fast, good quality | $0.025/image |
+| **FLUX.2 Schnell** | Black Forest Labs | Text-to-Image | Ultra-fast (<1s) | $0.003/image |
+| **Stable Diffusion 3.5** | Stability AI | Text-to-Image | Highly customizable, ControlNet | $0.03/image |
+| **SDXL** | Stability AI | Text-to-Image | Mature, wide support | $0.002/image |
+| **SDXL Lightning** | Stability AI | Text-to-Image | Fastest (<1s), 1024x1024 | $0.002/image |
+| **Ideogram 2.0** | Ideogram | Text-to-Image | Best text rendering in images | $0.04/image |
+| **Real-ESRGAN** | Various | Upscaling | 4x upscale, photo-realistic | $0.01/image |
+| **GFPGAN** | Various | Face Restoration | Face enhancement | $0.01/image |
+| **Segment Anything** | Meta | Segmentation | Background removal | $0.01/image |
+| **BLIP-2** | Salesforce | Analysis | Image captioning | $0.001/image |
+
+### Model Aliases (Convenience)
+
+```ruby
+RubyLLM::Agents.configure do |config|
+  config.image_model_aliases = {
+    fast: "flux-schnell",
+    quality: "gpt-image-1",
+    cheap: "sdxl",
+    open_source: "flux-2-dev"
+  }
+end
+
+# Usage
+result = LogoGenerator.call(prompt: "...", model: :fast)
+```
+
+---
 
 ## RubyLLM API Reference
 
-RubyLLM provides image generation via `RubyLLM.paint()`:
-
+### Text-to-Image
 ```ruby
 image = RubyLLM.paint("A photorealistic red panda coding Ruby")
 image = RubyLLM.paint("prompt", model: "gpt-image-1", size: "1024x1024")
@@ -23,25 +78,72 @@ image.save("path")   # Save to file
 image.to_blob        # Binary data for storage
 ```
 
-## Supported Models
+### Image Editing (if supported by RubyLLM)
+```ruby
+# Inpainting - edit specific regions
+edited = RubyLLM.edit_image(
+  image: source_image,
+  mask: mask_image,
+  prompt: "Replace with a red car"
+)
 
-### Currently in RubyLLM
-- **OpenAI**: `gpt-image-1` (DALL-E 3) - Returns URLs
-- **Google**: `imagen-3.0-generate-002` - Returns Base64 data
-
-### Future/Custom Model Support
-The design should be extensible for additional providers:
-- **Stability AI**: Stable Diffusion models
-- **Replicate**: Various models (SDXL, etc.)
-- **Custom endpoints**: Via `assume_model_exists: true`
-
-Note: Support for additional models depends on RubyLLM provider support. Our implementation will be model-agnostic and work with any model RubyLLM supports.
+# Variations - generate similar images
+variations = RubyLLM.create_variations(
+  image: source_image,
+  count: 4
+)
+```
 
 ---
 
-## API Design
+## Class Hierarchy
 
-### Basic Usage
+```
+RubyLLM::Agents::
+├── ImageGenerator                    # Text-to-image (Phase 1)
+│   ├── DSL
+│   ├── Execution
+│   ├── ContentPolicy
+│   ├── Templates
+│   └── ActiveStorageSupport
+├── ImageEditor                       # Inpainting/editing (Phase 2)
+│   ├── DSL
+│   └── Execution
+├── ImageTransformer                  # Style transfer / img2img (Phase 2)
+│   ├── DSL
+│   └── Execution
+├── ImageUpscaler                     # Resolution enhancement (Phase 2)
+│   ├── DSL
+│   └── Execution
+├── ImageVariator                     # Generate variations (Phase 2)
+│   ├── DSL
+│   └── Execution
+├── ImageAnalyzer                     # Captioning/understanding (Phase 3)
+│   ├── DSL
+│   └── Execution
+├── BackgroundRemover                 # Subject extraction (Phase 3)
+│   ├── DSL
+│   └── Execution
+├── ImagePipeline                     # Chain operations (Phase 4)
+│   ├── DSL
+│   └── Execution
+└── Results/
+    ├── ImageGenerationResult
+    ├── ImageEditResult
+    ├── ImageTransformResult
+    ├── ImageUpscaleResult
+    ├── ImageVariationResult
+    ├── ImageAnalysisResult
+    └── BackgroundRemovalResult
+```
+
+---
+
+## Phase 1: Core Image Generation
+
+### API Design
+
+#### Basic Usage
 
 ```ruby
 class LogoGenerator < ApplicationImageGenerator
@@ -60,7 +162,7 @@ result.model_id      # => "gpt-image-1"
 result.success?      # => true
 ```
 
-### Configuration Options
+#### Configuration Options
 
 ```ruby
 class ProductImageGenerator < ApplicationImageGenerator
@@ -80,7 +182,7 @@ class ProductImageGenerator < ApplicationImageGenerator
 end
 ```
 
-### Runtime Overrides
+#### Runtime Overrides
 
 ```ruby
 # Override at call time
@@ -93,7 +195,7 @@ result = LogoGenerator.call(
 )
 ```
 
-### Batch Generation
+#### Batch Generation
 
 ```ruby
 # Generate multiple images from same prompt (variations)
@@ -107,7 +209,7 @@ result.count         # => 4
 result.batch?        # => true
 ```
 
-### Multi-tenancy
+#### Multi-tenancy
 
 ```ruby
 result = LogoGenerator.call(
@@ -120,9 +222,9 @@ result = LogoGenerator.call(
 
 ---
 
-## Implementation Tasks
+### Implementation Tasks
 
-### Task 1: Create ImageGenerator Base Class
+#### Task 1: Create ImageGenerator Base Class
 
 **File: `lib/ruby_llm/agents/image_generator.rb`**
 
@@ -172,7 +274,7 @@ require_relative "image_generator/dsl"
 require_relative "image_generator/execution"
 ```
 
-### Task 2: Create DSL Module
+#### Task 2: Create DSL Module
 
 **File: `lib/ruby_llm/agents/image_generator/dsl.rb`**
 
@@ -251,6 +353,39 @@ module RubyLLM
           end
         end
 
+        # Provider-specific options
+        def negative_prompt(value = nil)
+          if value
+            @negative_prompt = value
+          else
+            @negative_prompt || inherited_or_default(:negative_prompt, nil)
+          end
+        end
+
+        def seed(value = nil)
+          if value
+            @seed = value
+          else
+            @seed || inherited_or_default(:seed, nil)
+          end
+        end
+
+        def guidance_scale(value = nil)
+          if value
+            @guidance_scale = value
+          else
+            @guidance_scale || inherited_or_default(:guidance_scale, nil)
+          end
+        end
+
+        def steps(value = nil)
+          if value
+            @steps = value
+          else
+            @steps || inherited_or_default(:steps, nil)
+          end
+        end
+
         private
 
         def config
@@ -270,7 +405,7 @@ module RubyLLM
 end
 ```
 
-### Task 3: Create Execution Module
+#### Task 3: Create Execution Module
 
 **File: `lib/ruby_llm/agents/image_generator/execution.rb`**
 
@@ -287,6 +422,7 @@ module RubyLLM
           resolve_tenant_context!
           check_budget! if budget_tracking_enabled?
           validate_prompt!
+          validate_content_policy!
 
           # Check cache for single image requests
           cached = check_cache if cache_enabled? && single_image_request?
@@ -345,19 +481,46 @@ module RubyLLM
           end
         end
 
+        def validate_content_policy!
+          policy = self.class.content_policy
+          return if policy == :none || policy == :standard
+
+          ContentPolicy.validate!(prompt, policy)
+        end
+
         def generate_images
           count = resolve_count
           model = resolve_model
 
           Array.new(count) do
-            RubyLLM.paint(
-              prompt,
-              model: model,
-              size: resolve_size,
-              quality: resolve_quality,
-              style: resolve_style
-            )
+            paint_options = build_paint_options
+            RubyLLM.paint(apply_template(prompt), **paint_options)
           end
+        end
+
+        def build_paint_options
+          opts = {
+            model: resolve_model,
+            size: resolve_size
+          }
+
+          # Add optional parameters if set
+          opts[:quality] = resolve_quality if resolve_quality
+          opts[:style] = resolve_style if resolve_style
+          opts[:negative_prompt] = resolve_negative_prompt if resolve_negative_prompt
+          opts[:seed] = resolve_seed if resolve_seed
+          opts[:guidance_scale] = resolve_guidance_scale if resolve_guidance_scale
+          opts[:steps] = resolve_steps if resolve_steps
+          opts[:assume_model_exists] = true if options[:assume_model_exists]
+
+          opts
+        end
+
+        def apply_template(text)
+          template = self.class.try(:template_string)
+          return text unless template
+
+          template.gsub("{prompt}", text)
         end
 
         def build_result(images:, started_at:, completed_at:)
@@ -394,7 +557,9 @@ module RubyLLM
 
         # Resolution methods (runtime options override class config)
         def resolve_model
-          options[:model] || self.class.model
+          model = options[:model] || self.class.model
+          # Handle aliases
+          config.image_model_aliases&.dig(model.to_sym) || model
         end
 
         def resolve_size
@@ -407,6 +572,22 @@ module RubyLLM
 
         def resolve_style
           options[:style] || self.class.style
+        end
+
+        def resolve_negative_prompt
+          options[:negative_prompt] || self.class.negative_prompt
+        end
+
+        def resolve_seed
+          options[:seed] || self.class.seed
+        end
+
+        def resolve_guidance_scale
+          options[:guidance_scale] || self.class.guidance_scale
+        end
+
+        def resolve_steps
+          options[:steps] || self.class.steps
         end
 
         def resolve_count
@@ -512,7 +693,7 @@ module RubyLLM
 end
 ```
 
-### Task 4: Create Result Class
+#### Task 4: Create Result Class
 
 **File: `lib/ruby_llm/agents/image_generation_result.rb`**
 
@@ -612,24 +793,7 @@ module RubyLLM
       def total_cost
         return 0 if error?
 
-        # Cost per image based on model and settings
-        # These are approximate - actual costs depend on provider pricing
-        cost_per_image = case model_id
-                         when /gpt-image|dall-e-3/i
-                           case quality
-                           when "hd"
-                             size_based_cost(:dalle3_hd)
-                           else
-                             size_based_cost(:dalle3_standard)
-                           end
-                         when /dall-e-2/i
-                           size_based_cost(:dalle2)
-                         when /imagen/i
-                           0.02 # Google Imagen approximate
-                         else
-                           0.04 # Default estimate
-                         end
-
+        cost_per_image = estimate_cost_per_image
         cost_per_image * count
       end
 
@@ -699,32 +863,56 @@ module RubyLLM
       end
 
       def self.from_cache(data)
-        # Reconstruct from cached data
-        # Note: This creates a lightweight result without full RubyLLM::Image objects
         CachedImageGenerationResult.new(data)
       end
 
       private
 
-      def size_based_cost(model_type)
-        # Pricing tiers based on size
-        width, height = size.split("x").map(&:to_i)
-        pixels = width * height
-
-        case model_type
-        when :dalle3_hd
-          pixels >= 1_000_000 ? 0.12 : 0.08
-        when :dalle3_standard
-          pixels >= 1_000_000 ? 0.08 : 0.04
-        when :dalle2
-          case size
-          when "1024x1024" then 0.02
-          when "512x512" then 0.018
-          else 0.016
-          end
-        else
+      def estimate_cost_per_image
+        case model_id
+        when /gpt-image|dall-e-3/i
+          dalle3_cost
+        when /dall-e-2/i
+          dalle2_cost
+        when /imagen/i
+          0.02
+        when /flux.*pro/i
+          0.05
+        when /flux.*dev/i
+          0.025
+        when /flux.*schnell/i
+          0.003
+        when /sdxl|stable-diffusion/i
+          0.002
+        when /ideogram/i
           0.04
+        else
+          0.04 # Default estimate
         end
+      end
+
+      def dalle3_cost
+        pixels = parse_pixels
+        case quality
+        when "hd"
+          pixels >= 1_000_000 ? 0.12 : 0.08
+        else
+          pixels >= 1_000_000 ? 0.08 : 0.04
+        end
+      end
+
+      def dalle2_cost
+        case size
+        when "1024x1024" then 0.02
+        when "512x512" then 0.018
+        else 0.016
+        end
+      end
+
+      def parse_pixels
+        return 1_048_576 unless size # Default 1024x1024
+        width, height = size.split("x").map(&:to_i)
+        width * height
       end
     end
 
@@ -783,7 +971,7 @@ module RubyLLM
 end
 ```
 
-### Task 5: Add Configuration Options
+#### Task 5: Add Configuration Options
 
 **Update: `lib/ruby_llm/agents/configuration.rb`**
 
@@ -797,6 +985,7 @@ attr_accessor :default_image_quality
 attr_accessor :default_image_style
 attr_accessor :max_image_prompt_length
 attr_accessor :track_image_generation
+attr_accessor :image_model_aliases
 
 # In initialize, add defaults:
 def initialize
@@ -809,20 +998,137 @@ def initialize
   @default_image_style = "vivid"
   @max_image_prompt_length = 4000
   @track_image_generation = true
+  @image_model_aliases = {
+    fast: "flux-schnell",
+    quality: "gpt-image-1",
+    cheap: "sdxl"
+  }
 end
 ```
 
-### Task 6: Update Main Module
+#### Task 6: Add Content Policy Support
 
-**Update: `lib/ruby_llm/agents.rb`**
+**File: `lib/ruby_llm/agents/image_generator/content_policy.rb`**
 
 ```ruby
-# Add require for image generator:
-require_relative "agents/image_generator"
-require_relative "agents/image_generation_result"
+# frozen_string_literal: true
+
+module RubyLLM
+  module Agents
+    class ImageGenerator
+      module ContentPolicy
+        BLOCKED_PATTERNS = {
+          strict: [
+            /\b(violence|violent|gore|blood|death|kill|murder)\b/i,
+            /\b(nude|naked|nsfw|explicit|sexual|porn)\b/i,
+            /\b(hate|racist|discrimination|slur)\b/i,
+            /\b(weapon|gun|knife|bomb|explosive)\b/i,
+            /\b(drug|cocaine|heroin|meth)\b/i
+          ],
+          moderate: [
+            /\b(nude|naked|nsfw|explicit|sexual|porn)\b/i,
+            /\b(gore|graphic.?violence)\b/i,
+            /\b(hate.?speech|slur)\b/i
+          ],
+          standard: []
+        }.freeze
+
+        class << self
+          def validate!(prompt, level)
+            return if level == :none
+
+            patterns = BLOCKED_PATTERNS[level] || BLOCKED_PATTERNS[:standard]
+
+            patterns.each do |pattern|
+              if prompt.match?(pattern)
+                raise ContentPolicyViolation, "Prompt contains blocked content matching policy: #{level}"
+              end
+            end
+          end
+        end
+      end
+
+      class ContentPolicyViolation < StandardError; end
+    end
+  end
+end
 ```
 
-### Task 7: Create Rails Generator
+#### Task 7: Add Prompt Templates Support
+
+**File: `lib/ruby_llm/agents/image_generator/templates.rb`**
+
+```ruby
+# frozen_string_literal: true
+
+module RubyLLM
+  module Agents
+    class ImageGenerator
+      module Templates
+        extend ActiveSupport::Concern
+
+        class_methods do
+          def template(template_string)
+            @template = template_string
+          end
+
+          def template_string
+            @template || inherited_or_default(:template_string, nil)
+          end
+        end
+      end
+    end
+  end
+end
+```
+
+#### Task 8: Add ActiveStorage Integration
+
+**File: `lib/ruby_llm/agents/image_generator/active_storage_support.rb`**
+
+```ruby
+# frozen_string_literal: true
+
+module RubyLLM
+  module Agents
+    class ImageGenerator
+      module ActiveStorageSupport
+        extend ActiveSupport::Concern
+
+        class_methods do
+          def generate_and_attach(prompt:, record:, attachment_name:, **options)
+            result = call(prompt: prompt, **options)
+
+            return result unless result.success?
+
+            attachment = record.public_send(attachment_name)
+
+            if result.base64?
+              attachment.attach(
+                io: StringIO.new(result.to_blob),
+                filename: "generated_#{Time.current.to_i}.png",
+                content_type: result.mime_type
+              )
+            else
+              require "open-uri"
+              downloaded = URI.open(result.url)
+              attachment.attach(
+                io: downloaded,
+                filename: "generated_#{Time.current.to_i}.png",
+                content_type: "image/png"
+              )
+            end
+
+            result
+          end
+        end
+      end
+    end
+  end
+end
+```
+
+#### Task 9: Create Rails Generator
 
 **File: `lib/generators/ruby_llm_agents/image_generator_generator.rb`**
 
@@ -845,21 +1151,13 @@ module RubyLlmAgents
         say ""
         say "Image generator base class created!", :green
         say ""
-        say "Create your own image generators by inheriting from ApplicationImageGenerator:"
+        say "Create your own generators:"
         say ""
         say "  class LogoGenerator < ApplicationImageGenerator"
         say "    model 'gpt-image-1'"
         say "    size '1024x1024'"
         say "    quality 'hd'"
-        say "    style 'vivid'"
-        say ""
-        say "    description 'Generates company logos'"
         say "  end"
-        say ""
-        say "Then use it:"
-        say ""
-        say "  result = LogoGenerator.call(prompt: 'A minimalist tech logo')"
-        say "  result.url  # => 'https://...'"
         say ""
       end
     end
@@ -867,68 +1165,386 @@ module RubyLlmAgents
 end
 ```
 
-**File: `lib/generators/ruby_llm_agents/templates/application_image_generator.rb.tt`**
+---
+
+## Phase 2: Image Editing & Transformation
+
+### ImageEditor (Inpainting)
 
 ```ruby
-# frozen_string_literal: true
-
-class ApplicationImageGenerator < RubyLLM::Agents::ImageGenerator
-  # Default model for all image generators
-  model "gpt-image-1"
-
-  # Default size
-  size "1024x1024"
-
-  # Default quality
-  quality "standard"
-
-  # Default style
-  style "vivid"
+class ProductEditor < ApplicationImageEditor
+  model "gpt-image-1"  # or "sdxl-inpaint"
 end
+
+# Edit a specific region
+result = ProductEditor.call(
+  image: source_image_path_or_url,
+  mask: mask_image,  # White = edit, Black = keep
+  prompt: "Replace with a blue version"
+)
+
+result.url  # Edited image
 ```
 
-### Task 8: Add ActiveStorage Integration Helper
-
-**File: `lib/ruby_llm/agents/image_generator/active_storage_support.rb`**
+**File: `lib/ruby_llm/agents/image_editor.rb`**
 
 ```ruby
 # frozen_string_literal: true
 
 module RubyLLM
   module Agents
-    class ImageGenerator
-      module ActiveStorageSupport
-        extend ActiveSupport::Concern
+    class ImageEditor
+      extend ImageEditor::DSL
+      include ImageEditor::Execution
 
-        class_methods do
-          # Convenience method to generate and attach to a record
-          def generate_and_attach(prompt:, record:, attachment_name:, **options)
-            result = call(prompt: prompt, **options)
+      class << self
+        def call(image:, mask:, prompt:, **options)
+          new(image: image, mask: mask, prompt: prompt, **options).call
+        end
+      end
 
-            return result unless result.success?
+      attr_reader :image, :mask, :prompt, :options, :tenant_id
 
-            attachment = record.public_send(attachment_name)
+      def initialize(image:, mask:, prompt:, **options)
+        @image = image
+        @mask = mask
+        @prompt = prompt
+        @options = options
+        @tenant_id = nil
+      end
 
-            if result.base64?
-              # Google Imagen returns base64
-              attachment.attach(
-                io: StringIO.new(result.to_blob),
-                filename: "generated_#{Time.current.to_i}.png",
-                content_type: result.mime_type
-              )
-            else
-              # OpenAI returns URLs - download and attach
-              require "open-uri"
-              downloaded = URI.open(result.url) # rubocop:disable Security/Open
-              attachment.attach(
-                io: downloaded,
-                filename: "generated_#{Time.current.to_i}.png",
-                content_type: "image/png"
-              )
-            end
+      def call
+        execute
+      end
+    end
+  end
+end
+```
 
-            result
-          end
+### ImageTransformer (Style Transfer / Img2Img)
+
+```ruby
+class StyleTransformer < ApplicationImageTransformer
+  model "sdxl"
+  strength 0.7  # How much to transform (0.0-1.0)
+end
+
+# Transform an existing image
+result = StyleTransformer.call(
+  image: photo_path,
+  prompt: "Convert to watercolor painting style"
+)
+
+result.url
+```
+
+**File: `lib/ruby_llm/agents/image_transformer.rb`**
+
+```ruby
+# frozen_string_literal: true
+
+module RubyLLM
+  module Agents
+    class ImageTransformer
+      extend ImageTransformer::DSL
+      include ImageTransformer::Execution
+
+      class << self
+        def call(image:, prompt:, **options)
+          new(image: image, prompt: prompt, **options).call
+        end
+      end
+
+      attr_reader :image, :prompt, :options, :tenant_id
+
+      def initialize(image:, prompt:, **options)
+        @image = image
+        @prompt = prompt
+        @options = options
+        @tenant_id = nil
+      end
+
+      def call
+        execute
+      end
+    end
+  end
+end
+```
+
+**DSL additions:**
+
+```ruby
+module DSL
+  def strength(value = nil)
+    if value
+      @strength = value
+    else
+      @strength || inherited_or_default(:strength, 0.75)
+    end
+  end
+
+  def preserve_composition(value = nil)
+    if value
+      @preserve_composition = value
+    else
+      @preserve_composition || inherited_or_default(:preserve_composition, true)
+    end
+  end
+end
+```
+
+### ImageUpscaler
+
+```ruby
+class PhotoUpscaler < ApplicationImageUpscaler
+  model "real-esrgan"  # or "real-esrgan-x4plus"
+  scale 4              # 2x, 4x, or 8x
+end
+
+result = PhotoUpscaler.call(image: low_res_image)
+result.url      # High resolution version
+result.scale    # 4
+result.size     # "4096x4096" (if input was 1024x1024)
+```
+
+**File: `lib/ruby_llm/agents/image_upscaler.rb`**
+
+```ruby
+# frozen_string_literal: true
+
+module RubyLLM
+  module Agents
+    class ImageUpscaler
+      extend ImageUpscaler::DSL
+      include ImageUpscaler::Execution
+
+      class << self
+        def call(image:, **options)
+          new(image: image, **options).call
+        end
+      end
+
+      attr_reader :image, :options, :tenant_id
+
+      def initialize(image:, **options)
+        @image = image
+        @options = options
+        @tenant_id = nil
+      end
+
+      def call
+        execute
+      end
+    end
+  end
+end
+```
+
+**DSL:**
+
+```ruby
+module DSL
+  def scale(value = nil)
+    if value
+      raise ArgumentError, "Scale must be 2, 4, or 8" unless [2, 4, 8].include?(value)
+      @scale = value
+    else
+      @scale || inherited_or_default(:scale, 4)
+    end
+  end
+
+  def face_enhance(value = nil)
+    if value.nil?
+      @face_enhance || inherited_or_default(:face_enhance, false)
+    else
+      @face_enhance = value
+    end
+  end
+end
+```
+
+### ImageVariator
+
+```ruby
+class LogoVariator < ApplicationImageVariator
+  model "gpt-image-1"
+  variation_strength 0.3  # How different variations should be
+end
+
+result = LogoVariator.call(
+  image: original_logo,
+  count: 4
+)
+
+result.urls  # 4 variations of the original
+```
+
+---
+
+## Phase 3: Analysis & Extraction
+
+### ImageAnalyzer
+
+```ruby
+class ProductAnalyzer < ApplicationImageAnalyzer
+  model "blip-2"  # or "gpt-4-vision"
+  analysis_type :detailed  # :caption, :detailed, :tags, :objects
+end
+
+result = ProductAnalyzer.call(image: product_photo)
+
+result.caption      # "A silver laptop on a wooden desk"
+result.tags         # [:electronics, :laptop, :desk, :technology]
+result.objects      # [{name: "laptop", confidence: 0.98, bbox: [...]}, ...]
+result.colors       # [{hex: "#C0C0C0", name: "silver", percentage: 45}, ...]
+result.description  # Detailed multi-sentence description
+```
+
+**File: `lib/ruby_llm/agents/image_analyzer.rb`**
+
+```ruby
+# frozen_string_literal: true
+
+module RubyLLM
+  module Agents
+    class ImageAnalyzer
+      extend ImageAnalyzer::DSL
+      include ImageAnalyzer::Execution
+
+      class << self
+        def call(image:, **options)
+          new(image: image, **options).call
+        end
+      end
+
+      attr_reader :image, :options, :tenant_id
+
+      def initialize(image:, **options)
+        @image = image
+        @options = options
+        @tenant_id = nil
+      end
+
+      def call
+        execute
+      end
+    end
+  end
+end
+```
+
+### BackgroundRemover
+
+```ruby
+class ProductBackgroundRemover < ApplicationBackgroundRemover
+  model "segment-anything"  # or "rembg"
+  output_format :png        # Transparent PNG
+end
+
+result = ProductBackgroundRemover.call(image: product_photo)
+
+result.url           # Transparent PNG
+result.foreground    # Just the subject
+result.mask          # Segmentation mask
+result.has_alpha?    # true
+```
+
+---
+
+## Phase 4: Pipeline Orchestration
+
+### ImagePipeline
+
+Chain multiple operations together:
+
+```ruby
+class ProductImagePipeline < ApplicationImagePipeline
+  # Define the pipeline steps
+  step :generate, generator: ProductGenerator
+  step :upscale, upscaler: PhotoUpscaler, scale: 2
+  step :remove_background, remover: BackgroundRemover
+  step :analyze, analyzer: ProductAnalyzer
+
+  # Optional: Add watermark at the end
+  after_pipeline :add_watermark
+end
+
+result = ProductImagePipeline.call(prompt: "A sleek laptop")
+
+result.final_image   # Final processed image
+result.steps         # Array of intermediate results
+result.analysis      # Analysis from the analyzer step
+result.total_cost    # Combined cost of all steps
+result.duration_ms   # Total time
+```
+
+**File: `lib/ruby_llm/agents/image_pipeline.rb`**
+
+```ruby
+# frozen_string_literal: true
+
+module RubyLLM
+  module Agents
+    class ImagePipeline
+      extend ImagePipeline::DSL
+      include ImagePipeline::Execution
+
+      class << self
+        def call(**options)
+          new(**options).call
+        end
+
+        def steps
+          @steps ||= []
+        end
+
+        def step(name, **config)
+          steps << { name: name, config: config }
+        end
+      end
+
+      attr_reader :options, :tenant_id, :step_results
+
+      def initialize(**options)
+        @options = options
+        @tenant_id = nil
+        @step_results = []
+      end
+
+      def call
+        execute
+      end
+
+      private
+
+      def execute
+        started_at = Time.current
+        current_image = nil
+
+        self.class.steps.each do |step|
+          result = execute_step(step, current_image)
+          @step_results << { name: step[:name], result: result }
+
+          break unless result.success?
+          current_image = result.url || result.data
+        end
+
+        build_pipeline_result(started_at)
+      end
+
+      def execute_step(step, input_image)
+        case step[:name]
+        when :generate
+          step[:config][:generator].call(prompt: options[:prompt], **step[:config])
+        when :upscale
+          step[:config][:upscaler].call(image: input_image, **step[:config])
+        when :remove_background
+          step[:config][:remover].call(image: input_image, **step[:config])
+        when :transform
+          step[:config][:transformer].call(image: input_image, **step[:config])
+        when :analyze
+          step[:config][:analyzer].call(image: input_image, **step[:config])
         end
       end
     end
@@ -936,121 +1552,59 @@ module RubyLLM
 end
 ```
 
-Usage:
-```ruby
-class ProductImage < ApplicationImageGenerator
-  include RubyLLM::Agents::ImageGenerator::ActiveStorageSupport
+---
 
-  model "gpt-image-1"
-  size "1024x1024"
+## ControlNet Support (Advanced)
+
+For models that support ControlNet (SDXL, SD 3.5):
+
+```ruby
+class ArchitectureGenerator < ApplicationImageGenerator
+  model "sdxl"
+  control_type :canny_edge  # :depth, :pose, :segmentation, :scribble
+  control_strength 0.8
 end
 
-# Attach generated image to a Product record
-result = ProductImage.generate_and_attach(
-  prompt: "A professional product photo",
-  record: product,
-  attachment_name: :hero_image
+result = ArchitectureGenerator.call(
+  prompt: "Modern glass skyscraper, photorealistic",
+  control_image: sketch_image  # Edge/structure reference
 )
 ```
 
-### Task 9: Add Content Policy Support
-
-**File: `lib/ruby_llm/agents/image_generator/content_policy.rb`**
+**DSL additions:**
 
 ```ruby
-# frozen_string_literal: true
+module ControlNetDSL
+  CONTROL_TYPES = %i[
+    canny_edge
+    depth
+    pose
+    segmentation
+    scribble
+    lineart
+    softedge
+    normal
+    mlsd
+  ].freeze
 
-module RubyLLM
-  module Agents
-    class ImageGenerator
-      module ContentPolicy
-        BLOCKED_PATTERNS = {
-          strict: [
-            /\b(violence|violent|gore|blood|death|kill|murder)\b/i,
-            /\b(nude|naked|nsfw|explicit|sexual)\b/i,
-            /\b(hate|racist|discrimination)\b/i,
-            /\b(weapon|gun|knife|bomb)\b/i
-          ],
-          moderate: [
-            /\b(nude|naked|nsfw|explicit|sexual)\b/i,
-            /\b(gore|graphic violence)\b/i
-          ],
-          standard: []
-        }.freeze
+  def control_type(value = nil)
+    if value
+      raise ArgumentError, "Unknown control type" unless CONTROL_TYPES.include?(value)
+      @control_type = value
+    else
+      @control_type || inherited_or_default(:control_type, nil)
+    end
+  end
 
-        def validate_content_policy!(prompt, level)
-          return if level == :none
-
-          patterns = BLOCKED_PATTERNS[level] || BLOCKED_PATTERNS[:standard]
-
-          patterns.each do |pattern|
-            if prompt.match?(pattern)
-              raise ContentPolicyViolation, "Prompt contains blocked content"
-            end
-          end
-        end
-      end
-
-      class ContentPolicyViolation < StandardError; end
+  def control_strength(value = nil)
+    if value
+      raise ArgumentError, "Strength must be 0.0-1.0" unless value.between?(0.0, 1.0)
+      @control_strength = value
+    else
+      @control_strength || inherited_or_default(:control_strength, 0.75)
     end
   end
 end
-```
-
-### Task 10: Add Prompt Templates Support
-
-**File: `lib/ruby_llm/agents/image_generator/templates.rb`**
-
-```ruby
-# frozen_string_literal: true
-
-module RubyLLM
-  module Agents
-    class ImageGenerator
-      module Templates
-        extend ActiveSupport::Concern
-
-        class_methods do
-          def template(template_string)
-            @template = template_string
-          end
-
-          def template_string
-            @template || inherited_or_default(:template_string, nil)
-          end
-        end
-
-        private
-
-        def apply_template(prompt)
-          template = self.class.template_string
-          return prompt unless template
-
-          template.gsub("{prompt}", prompt)
-        end
-      end
-    end
-  end
-end
-```
-
-Usage:
-```ruby
-class ProductPhotoGenerator < ApplicationImageGenerator
-  include RubyLLM::Agents::ImageGenerator::Templates
-
-  model "gpt-image-1"
-  quality "hd"
-
-  # All prompts will be wrapped in this template
-  template "Professional product photography of {prompt}, " \
-           "studio lighting, white background, 4K quality"
-end
-
-# User provides simple prompt, template enhances it
-result = ProductPhotoGenerator.call(prompt: "a red sneaker")
-# Actual prompt: "Professional product photography of a red sneaker,
-#                studio lighting, white background, 4K quality"
 ```
 
 ---
@@ -1059,137 +1613,144 @@ result = ProductPhotoGenerator.call(prompt: "a red sneaker")
 
 ```
 lib/ruby_llm/agents/
-├── image_generator.rb                        # Main class
+├── image_generator.rb
 ├── image_generator/
-│   ├── dsl.rb                                # Configuration DSL
-│   ├── execution.rb                          # Execution logic
-│   ├── content_policy.rb                     # Content filtering
-│   ├── templates.rb                          # Prompt templates
-│   └── active_storage_support.rb             # Rails integration
-├── image_generation_result.rb                # Result wrapper
+│   ├── dsl.rb
+│   ├── execution.rb
+│   ├── content_policy.rb
+│   ├── templates.rb
+│   ├── control_net.rb
+│   └── active_storage_support.rb
+├── image_editor.rb
+├── image_editor/
+│   ├── dsl.rb
+│   └── execution.rb
+├── image_transformer.rb
+├── image_transformer/
+│   ├── dsl.rb
+│   └── execution.rb
+├── image_upscaler.rb
+├── image_upscaler/
+│   ├── dsl.rb
+│   └── execution.rb
+├── image_variator.rb
+├── image_variator/
+│   ├── dsl.rb
+│   └── execution.rb
+├── image_analyzer.rb
+├── image_analyzer/
+│   ├── dsl.rb
+│   └── execution.rb
+├── background_remover.rb
+├── background_remover/
+│   ├── dsl.rb
+│   └── execution.rb
+├── image_pipeline.rb
+├── image_pipeline/
+│   ├── dsl.rb
+│   └── execution.rb
+└── results/
+    ├── image_generation_result.rb
+    ├── image_edit_result.rb
+    ├── image_transform_result.rb
+    ├── image_upscale_result.rb
+    ├── image_variation_result.rb
+    ├── image_analysis_result.rb
+    ├── background_removal_result.rb
+    └── image_pipeline_result.rb
 
 lib/generators/ruby_llm_agents/
-├── image_generator_generator.rb              # Rails generator
+├── image_generator_generator.rb
+├── image_editor_generator.rb
+├── image_transformer_generator.rb
+├── image_upscaler_generator.rb
+├── image_analyzer_generator.rb
+├── background_remover_generator.rb
 └── templates/
-    └── application_image_generator.rb.tt     # Generator template
+    ├── application_image_generator.rb.tt
+    ├── application_image_editor.rb.tt
+    ├── application_image_transformer.rb.tt
+    ├── application_image_upscaler.rb.tt
+    ├── application_image_analyzer.rb.tt
+    └── application_background_remover.rb.tt
 
 spec/ruby_llm/agents/
-├── image_generator_spec.rb                   # Main specs
-├── image_generator/
-│   ├── dsl_spec.rb
-│   ├── execution_spec.rb
-│   └── content_policy_spec.rb
-└── image_generation_result_spec.rb
+├── image_generator_spec.rb
+├── image_editor_spec.rb
+├── image_transformer_spec.rb
+├── image_upscaler_spec.rb
+├── image_variator_spec.rb
+├── image_analyzer_spec.rb
+├── background_remover_spec.rb
+└── image_pipeline_spec.rb
 ```
 
 ---
 
 ## Usage Examples
 
-### Basic Generation
+### Basic Generation with Model Selection
 
 ```ruby
 class ArtGenerator < ApplicationImageGenerator
-  model "gpt-image-1"
+  model "flux-2-pro"  # Use FLUX for best open-source quality
   size "1024x1024"
-  quality "hd"
-  style "vivid"
+  guidance_scale 7.5
+  steps 30
 end
 
-result = ArtGenerator.call(prompt: "A sunset over mountains in impressionist style")
-puts result.url
+result = ArtGenerator.call(prompt: "A sunset over mountains, impressionist style")
 ```
 
-### With Caching (Deterministic Results)
+### Fast Generation for Previews
 
 ```ruby
-class IconGenerator < ApplicationImageGenerator
-  model "gpt-image-1"
+class PreviewGenerator < ApplicationImageGenerator
+  model :fast  # Uses flux-schnell via alias
   size "512x512"
-  quality "standard"
-
-  cache_for 24.hours
-  version "v2"  # Bump to invalidate cache
 end
 
-# First call generates, subsequent calls return cached
-result = IconGenerator.call(prompt: "A simple home icon")
-```
-
-### Batch Generation for Variations
-
-```ruby
-class LogoGenerator < ApplicationImageGenerator
-  model "gpt-image-1"
-  size "1024x1024"
-  quality "hd"
-end
-
-# Generate 4 variations
-result = LogoGenerator.call(prompt: "A tech startup logo", count: 4)
-result.urls.each_with_index do |url, idx|
-  puts "Variation #{idx + 1}: #{url}"
+# Generate quick preview, then high quality
+preview = PreviewGenerator.call(prompt: "Logo concept")
+if user_approves?(preview)
+  final = LogoGenerator.call(prompt: "Logo concept", model: :quality)
 end
 ```
 
-### With ActiveStorage
+### Complete Product Pipeline
 
 ```ruby
-class ProductImageGenerator < ApplicationImageGenerator
-  include RubyLLM::Agents::ImageGenerator::ActiveStorageSupport
-
-  model "gpt-image-1"
-  quality "hd"
+class ProductPipeline < ApplicationImagePipeline
+  step :generate, generator: ProductGenerator
+  step :upscale, upscaler: PhotoUpscaler, scale: 2
+  step :remove_background, remover: BackgroundRemover
 end
 
-# In a controller or service
-ProductImageGenerator.generate_and_attach(
-  prompt: "A professional photo of #{product.name}",
-  record: product,
-  attachment_name: :featured_image,
+result = ProductPipeline.call(
+  prompt: "Professional photo of wireless earbuds",
   tenant: current_organization
 )
+
+# Attach to product
+product.images.attach(
+  io: StringIO.new(result.to_blob),
+  filename: "product_hero.png"
+)
 ```
 
-### With Templates
+### Style Transfer
 
 ```ruby
-class MarketingImageGenerator < ApplicationImageGenerator
-  include RubyLLM::Agents::ImageGenerator::Templates
-
-  model "gpt-image-1"
-  quality "hd"
-  style "vivid"
-
-  template "High-quality marketing image: {prompt}. " \
-           "Professional, modern, clean design, suitable for advertising."
+class AnimeTransformer < ApplicationImageTransformer
+  model "sdxl"
+  strength 0.8
+  template "anime style, studio ghibli, {prompt}"
 end
 
-# Simple prompt gets enhanced automatically
-result = MarketingImageGenerator.call(prompt: "coffee cup on desk")
-```
-
-### Multi-Provider Support
-
-```ruby
-class FlexibleGenerator < ApplicationImageGenerator
-  model "gpt-image-1"  # Default to OpenAI
-end
-
-# Use OpenAI
-openai_result = FlexibleGenerator.call(
-  prompt: "A landscape photo",
-  model: "gpt-image-1"
+result = AnimeTransformer.call(
+  image: user_photo,
+  prompt: "portrait of a person"
 )
-openai_result.url  # Returns URL
-
-# Use Google Imagen
-google_result = FlexibleGenerator.call(
-  prompt: "A landscape photo",
-  model: "imagen-3.0-generate-002"
-)
-google_result.data     # Returns base64
-google_result.base64?  # => true
 ```
 
 ---
@@ -1201,33 +1762,15 @@ google_result.base64?  # => true
 ```ruby
 RSpec.describe RubyLLM::Agents::ImageGenerator do
   describe "DSL" do
-    it "inherits configuration from parent" do
-      parent = Class.new(described_class) { model "gpt-image-1" }
-      child = Class.new(parent)
-      expect(child.model).to eq("gpt-image-1")
+    it "supports model aliases" do
+      generator = Class.new(described_class) { model :fast }
+      expect(generator.new(prompt: "test").send(:resolve_model)).to eq("flux-schnell")
     end
 
-    it "allows overriding in subclass" do
-      parent = Class.new(described_class) { model "gpt-image-1" }
-      child = Class.new(parent) { model "dall-e-2" }
-      expect(child.model).to eq("dall-e-2")
-    end
-  end
-
-  describe "validation" do
-    it "rejects blank prompts" do
-      generator = Class.new(described_class)
+    it "validates strength range" do
       expect {
-        generator.call(prompt: "")
-      }.to raise_error(ArgumentError, /cannot be blank/)
-    end
-
-    it "rejects prompts exceeding max length" do
-      generator = Class.new(described_class)
-      long_prompt = "x" * 5000
-      expect {
-        generator.call(prompt: long_prompt)
-      }.to raise_error(ArgumentError, /exceeds maximum/)
+        Class.new(described_class) { strength 1.5 }
+      }.to raise_error(ArgumentError)
     end
   end
 end
@@ -1237,69 +1780,13 @@ end
 
 ```ruby
 RSpec.describe "Image Generation Integration" do
-  let(:generator_class) do
-    Class.new(RubyLLM::Agents::ImageGenerator) do
-      model "gpt-image-1"
-      size "1024x1024"
-    end
-  end
-
-  it "generates an image via RubyLLM" do
-    mock_image = double(
-      url: "https://example.com/image.png",
-      data: nil,
-      mime_type: "image/png",
-      base64?: false,
-      revised_prompt: "Enhanced prompt"
-    )
-
-    allow(RubyLLM).to receive(:paint).and_return(mock_image)
-
-    result = generator_class.call(prompt: "A test image")
-
-    expect(result.success?).to be true
-    expect(result.url).to eq("https://example.com/image.png")
-    expect(RubyLLM).to have_received(:paint).with(
-      "A test image",
-      model: "gpt-image-1",
-      size: "1024x1024",
-      quality: "standard",
-      style: "vivid"
-    )
-  end
-
-  it "records execution" do
-    allow(RubyLLM).to receive(:paint).and_return(mock_image)
-
-    expect {
-      generator_class.call(prompt: "Test", tenant: { id: 123 })
-    }.to change(RubyLLM::Agents::Execution, :count).by(1)
-
-    execution = RubyLLM::Agents::Execution.last
-    expect(execution.execution_type).to eq("image_generation")
-    expect(execution.tenant_id).to eq(123)
-  end
-end
-```
-
-### Cost Calculation Tests
-
-```ruby
-RSpec.describe RubyLLM::Agents::ImageGenerationResult do
-  describe "#total_cost" do
-    it "calculates DALL-E 3 HD 1024x1024 cost" do
-      result = build_result(model_id: "gpt-image-1", size: "1024x1024", quality: "hd")
-      expect(result.total_cost).to eq(0.08)
-    end
-
-    it "calculates DALL-E 3 HD large size cost" do
-      result = build_result(model_id: "gpt-image-1", size: "1792x1024", quality: "hd")
-      expect(result.total_cost).to eq(0.12)
-    end
-
-    it "multiplies by count for batch" do
-      result = build_result(model_id: "gpt-image-1", size: "1024x1024", quality: "standard", count: 4)
-      expect(result.total_cost).to eq(0.04 * 4)
+  it "generates with FLUX model" do
+    VCR.use_cassette("flux_generation") do
+      result = TestGenerator.call(
+        prompt: "A simple red circle",
+        model: "flux-schnell"
+      )
+      expect(result.success?).to be true
     end
   end
 end
@@ -1307,86 +1794,65 @@ end
 
 ---
 
-## Open Questions
+## Implementation Priority
 
-### 1. Should we support image editing/inpainting?
-
-RubyLLM may support image editing (providing a source image + mask). This would be a more complex feature.
-
-**Recommendation**: Start with generation only. Add editing as a separate `ImageEditor` class later if needed.
-
-### 2. Should we support image-to-image generation?
-
-Some models support using an image as input to generate variations.
-
-**Recommendation**: This could be a future enhancement. For now, focus on text-to-image.
-
-### 3. How should we handle rate limiting?
-
-Image generation APIs often have stricter rate limits than text APIs.
-
-**Recommendation**: Add optional retry logic with exponential backoff. Consider adding a `rate_limit` DSL option.
-
-### 4. Should we auto-download and cache image data?
-
-URLs from OpenAI expire after some time.
-
-**Recommendation**: Add an optional `persist_images: true` option that downloads and stores images locally or in cloud storage. Default to returning URLs only.
-
-### 5. Model aliasing for portability?
-
-Should we support model aliases like `fast_image` -> `dall-e-2` to make switching easier?
-
-**Recommendation**: Not in v1. Keep it explicit for clarity. Consider for future.
-
----
-
-## Implementation Order
-
-### Phase 1: Core Implementation
-1. Create `ImageGenerator` base class
-2. Create `DSL` module
-3. Create `Execution` module
-4. Create `ImageGenerationResult` class
-5. Add configuration options
-6. Update main module requires
-
-### Phase 2: Rails Integration
-7. Create Rails generator
-8. Add ActiveStorage support helper
-
-### Phase 3: Enhanced Features
-9. Add content policy support
-10. Add prompt templates support
-
-### Phase 4: Testing & Documentation
-11. Write comprehensive specs
-12. Add documentation and examples
-13. Update README
+| Phase | Feature | Priority | Complexity | Dependencies |
+|-------|---------|----------|------------|--------------|
+| **1** | ImageGenerator | P1 | Medium | RubyLLM.paint |
+| **1** | Model Aliases | P1 | Low | Configuration |
+| **1** | Content Policy | P1 | Low | None |
+| **1** | Templates | P1 | Low | None |
+| **1** | ActiveStorage | P1 | Low | Rails |
+| **2** | ImageVariator | P2 | Low | RubyLLM |
+| **2** | ImageTransformer | P2 | Medium | Replicate/Custom |
+| **2** | ImageEditor | P2 | Medium | Replicate/Custom |
+| **2** | ImageUpscaler | P2 | Low | Replicate/Custom |
+| **3** | ImageAnalyzer | P3 | Medium | Vision models |
+| **3** | BackgroundRemover | P3 | Medium | Replicate/Custom |
+| **3** | ControlNet | P3 | High | SDXL/SD3 |
+| **4** | ImagePipeline | P4 | Medium | All above |
 
 ---
 
 ## Dependencies
 
-- RubyLLM gem with image generation support (`RubyLLM.paint`)
-- Rails (optional, for ActiveStorage integration)
-- No additional gems required
+### Required
+- RubyLLM gem with `RubyLLM.paint` support
+
+### Optional
+- Rails (for ActiveStorage, generators, caching)
+- Replicate gem (for FLUX, SDXL, upscaling models)
+- AWS SDK / GCS (for cloud storage of generated images)
+
+### Provider Support Status
+
+| Provider | Generation | Editing | Variations | Upscaling | Analysis |
+|----------|------------|---------|------------|-----------|----------|
+| OpenAI | ✅ | ✅ | ✅ | ❌ | Via GPT-4V |
+| Google | ✅ | ❌ | ❌ | ❌ | Via Gemini |
+| Replicate | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Stability | ✅ | ✅ | ✅ | ✅ | ❌ |
 
 ---
 
-## Notes on Additional Model Support
+## Open Questions
 
-The implementation is designed to be model-agnostic. Support for additional models (like models from Stability AI, Replicate, etc.) depends on RubyLLM adding provider support. Once RubyLLM supports a new image provider, this implementation will automatically work with it by simply specifying the model name.
+1. **Replicate Integration**: Should we add first-class Replicate support for additional models, or rely on custom endpoints?
+   - **Recommendation**: Add optional Replicate adapter in Phase 2
 
-For custom/self-hosted models, use the `assume_model_exists: true` option:
+2. **Image Storage**: Should we auto-persist images to prevent URL expiration?
+   - **Recommendation**: Add `persist: true` option that saves to configured storage
 
-```ruby
-class CustomGenerator < ApplicationImageGenerator
-  model "my-custom-model"
-end
+3. **Async Generation**: Should long-running operations be async by default?
+   - **Recommendation**: Yes, add `async: true` option returning a job ID
 
-result = CustomGenerator.call(
-  prompt: "A test image",
-  assume_model_exists: true
-)
-```
+4. **Webhook Support**: Should we support webhooks for completion notification?
+   - **Recommendation**: Add in Phase 4 with ImagePipeline
+
+---
+
+## Notes
+
+- All model support depends on RubyLLM provider availability or custom endpoint configuration
+- Cost estimates are approximate and should be verified against current provider pricing
+- Some features (ControlNet, advanced editing) may require direct Replicate/Stability API integration

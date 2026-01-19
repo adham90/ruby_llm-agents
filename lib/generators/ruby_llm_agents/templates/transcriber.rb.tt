@@ -1,0 +1,34 @@
+# frozen_string_literal: true
+
+class <%= class_name %>Transcriber < ApplicationTranscriber
+  # Model configuration
+  model "<%= options[:model] %>"
+<% if options[:language] -%>
+  language "<%= options[:language] %>"
+<% end -%>
+<% if options[:output_format] != "text" -%>
+  output_format :<%= options[:output_format] %>
+<% end -%>
+<% if options[:cache] -%>
+
+  # Caching
+  cache_for <%= options[:cache] %>
+<% end -%>
+
+  # Optional: Provide context to improve accuracy
+  # Override this method to give the model hints about the audio content
+  #
+  # def prompt
+  #   "Technical discussion about Ruby programming"
+  # end
+
+  # Optional: Clean up transcription text
+  # Override this method to post-process the transcribed text
+  #
+  # def postprocess_text(text)
+  #   text
+  #     .gsub(/\bum\b/i, '')     # Remove filler words
+  #     .gsub(/\buh\b/i, '')
+  #     .squeeze(' ')             # Remove extra spaces
+  # end
+end

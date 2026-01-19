@@ -25,6 +25,11 @@ Welcome to the official documentation for **RubyLLM::Agents**, a production-read
 - **[Caching](Caching)** - Response caching with TTL
 - **[Execution Tracking](Execution-Tracking)** - Automatic logging and analytics
 
+### Specialized Capabilities
+- **[Embeddings](Embeddings)** - Text-to-vector embeddings
+- **[Moderation](Moderation)** - Content safety filtering
+- **[Audio](Audio)** - Transcription (speech-to-text) and TTS (text-to-speech)
+
 ### Production Features
 
 #### Reliability

@@ -303,6 +303,48 @@ module RubyLLM
       #   @example
       #     config.track_moderation = false
 
+      # @!attribute [rw] default_transcription_model
+      #   The default transcription model identifier for all transcribers.
+      #   Can be overridden per-transcriber using the `model` DSL method.
+      #   @return [String] Model identifier (default: "whisper-1")
+      #   @example
+      #     config.default_transcription_model = "gpt-4o-transcribe"
+
+      # @!attribute [rw] track_transcriptions
+      #   Whether to track transcription executions in the database.
+      #   When enabled, transcription operations are logged as executions.
+      #   @return [Boolean] Enable transcription tracking (default: true)
+      #   @example
+      #     config.track_transcriptions = false
+
+      # @!attribute [rw] default_tts_provider
+      #   The default TTS provider for all speakers.
+      #   Can be overridden per-speaker using the `provider` DSL method.
+      #   @return [Symbol] Provider (:openai, :elevenlabs, :google, :polly) (default: :openai)
+      #   @example
+      #     config.default_tts_provider = :elevenlabs
+
+      # @!attribute [rw] default_tts_model
+      #   The default TTS model identifier for all speakers.
+      #   Can be overridden per-speaker using the `model` DSL method.
+      #   @return [String] Model identifier (default: "tts-1")
+      #   @example
+      #     config.default_tts_model = "tts-1-hd"
+
+      # @!attribute [rw] default_tts_voice
+      #   The default voice for all speakers.
+      #   Can be overridden per-speaker using the `voice` DSL method.
+      #   @return [String] Voice name (default: "nova")
+      #   @example
+      #     config.default_tts_voice = "alloy"
+
+      # @!attribute [rw] track_speech
+      #   Whether to track speech executions in the database.
+      #   When enabled, speech operations are logged as executions.
+      #   @return [Boolean] Enable speech tracking (default: true)
+      #   @example
+      #     config.track_speech = false
+
       # Attributes without validation (simple accessors)
       attr_accessor :default_model,
                     :async_logging,
@@ -329,7 +371,13 @@ module RubyLLM
                     :default_moderation_model,
                     :default_moderation_threshold,
                     :default_moderation_action,
-                    :track_moderation
+                    :track_moderation,
+                    :default_transcription_model,
+                    :track_transcriptions,
+                    :default_tts_provider,
+                    :default_tts_model,
+                    :default_tts_voice,
+                    :track_speech
 
       # Attributes with validation (readers only, custom setters below)
       attr_reader :default_temperature,
@@ -550,6 +598,16 @@ module RubyLLM
         @default_moderation_threshold = nil
         @default_moderation_action = :block
         @track_moderation = true
+
+        # Transcription defaults
+        @default_transcription_model = "whisper-1"
+        @track_transcriptions = true
+
+        # TTS/Speech defaults
+        @default_tts_provider = :openai
+        @default_tts_model = "tts-1"
+        @default_tts_voice = "nova"
+        @track_speech = true
       end
 
       # Returns the configured cache store, falling back to Rails.cache

@@ -2,6 +2,24 @@
 
 # ContentModerator - Standalone moderation without an agent
 #
+# ============================================================================
+# RELATED MODERATOR EXAMPLES
+# ============================================================================
+#
+# See these files for other moderator configurations:
+#   - child_safe_moderator.rb  - Very strict (threshold 0.3) for children's content
+#   - forum_moderator.rb       - Balanced (threshold 0.8) for community forums
+#
+# See these files for agent-integrated moderation:
+#   - agents/moderated_agent.rb              - Input-only moderation
+#   - agents/output_moderated_agent.rb       - Output-only moderation
+#   - agents/fully_moderated_agent.rb        - Both input AND output moderation
+#   - agents/block_based_moderation_agent.rb - Block DSL with phase-specific thresholds
+#   - agents/custom_handler_moderation_agent.rb - Custom handler with business logic
+#   - agents/moderation_actions_agent.rb     - Using :raise action with exceptions
+#
+# ============================================================================
+#
 # Use this when you need to moderate content independently from
 # agent execution, such as:
 # - Background jobs for user-generated content

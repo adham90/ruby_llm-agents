@@ -1,0 +1,45 @@
+# frozen_string_literal: true
+
+# ApplicationSpeaker - Base class for all speakers in this application
+#
+# All speakers inherit from this class. Configure shared settings here
+# that apply to all speakers, or override them per-speaker as needed.
+#
+# Example:
+#   class NarratorSpeaker < ApplicationSpeaker
+#     voice "nova"
+#     speed 1.1
+#   end
+#
+# Usage:
+#   NarratorSpeaker.call(text: "Hello world")
+#
+class ApplicationSpeaker < RubyLLM::Agents::Speaker
+  # ============================================
+  # Shared Provider Configuration
+  # ============================================
+  # These settings are inherited by all speakers
+
+  # provider :openai              # TTS provider (:openai, :elevenlabs)
+  # model "tts-1"                 # TTS model
+  # voice "nova"                  # Default voice
+  # speed 1.0                     # Speech speed (0.25-4.0 for OpenAI)
+  # output_format :mp3            # Output format (:mp3, :wav, :ogg, :flac)
+
+  # ============================================
+  # Shared Caching
+  # ============================================
+  # Same text with same settings produces same audio, so caching is effective
+
+  # cache_for 7.days  # Cache generated audio for a week
+
+  # ============================================
+  # Shared Pronunciation Lexicon
+  # ============================================
+  # Define custom pronunciations for technical terms
+
+  # lexicon do
+  #   pronounce 'RubyLLM', 'ruby L L M'
+  #   pronounce 'PostgreSQL', 'post-gres-Q-L'
+  # end
+end

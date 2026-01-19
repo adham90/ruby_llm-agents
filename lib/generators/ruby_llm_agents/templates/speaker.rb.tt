@@ -1,0 +1,39 @@
+# frozen_string_literal: true
+
+class <%= class_name %>Speaker < ApplicationSpeaker
+  # Provider configuration
+  provider :<%= options[:provider] %>
+<% if options[:model] -%>
+  model "<%= options[:model] %>"
+<% end -%>
+  voice "<%= options[:voice] %>"
+<% if options[:speed] != 1.0 -%>
+  speed <%= options[:speed] %>
+<% end -%>
+<% if options[:format] != "mp3" -%>
+  output_format :<%= options[:format] %>
+<% end -%>
+<% if options[:cache] -%>
+
+  # Caching
+  cache_for <%= options[:cache] %>
+<% end -%>
+
+  # Optional: Custom pronunciation lexicon
+  # Define how specific words should be pronounced
+  #
+  # lexicon do
+  #   pronounce 'API', 'A P I'
+  #   pronounce 'SQL', 'sequel'
+  # end
+<% if options[:provider].to_s == "elevenlabs" -%>
+
+  # ElevenLabs voice settings
+  # voice_settings do
+  #   stability 0.5
+  #   similarity_boost 0.75
+  #   style 0.5
+  #   speaker_boost true
+  # end
+<% end -%>
+end

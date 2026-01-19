@@ -1,9 +1,30 @@
 # frozen_string_literal: true
 
-# ModeratedAgent - Demonstrates content moderation support
+# ModeratedAgent - Demonstrates input-only content moderation
 #
 # This agent showcases the moderation DSL for automatically checking
-# user input and/or LLM output against safety policies using
+# user input before the LLM call. This is the simplest moderation
+# pattern - check input and block harmful requests early.
+#
+# ============================================================================
+# RELATED MODERATION EXAMPLES
+# ============================================================================
+#
+# See these files for other moderation patterns:
+#   - output_moderated_agent.rb           - Output-only moderation
+#   - fully_moderated_agent.rb            - Both input AND output moderation
+#   - block_based_moderation_agent.rb     - Block DSL with phase-specific thresholds
+#   - custom_handler_moderation_agent.rb  - Custom handler with business logic
+#   - moderation_actions_agent.rb         - Using :raise action with exceptions
+#
+# See these files for standalone moderators:
+#   - moderators/content_moderator.rb     - Standard standalone moderator
+#   - moderators/child_safe_moderator.rb  - Very strict (threshold 0.3)
+#   - moderators/forum_moderator.rb       - Balanced (threshold 0.8)
+#
+# ============================================================================
+#
+# This agent checks user input against safety policies using
 # RubyLLM's moderation API (powered by OpenAI).
 #
 # Content moderation is essential for production applications to:

@@ -682,6 +682,216 @@ end
 | OpenAI | `text-embedding-3-large` | 3072 |
 | Google | `text-embedding-004` | 768 |
 
+## Audio: Transcription (Speech-to-Text)
+
+Convert audio files to text using speech recognition models.
+
+### Basic Usage
+
+```ruby
+class MeetingTranscriber < ApplicationTranscriber
+  model "whisper-1"
+  language "en"
+end
+
+# From file path
+result = MeetingTranscriber.call(audio: "meeting.mp3")
+result.text           # "Hello, welcome to the meeting..."
+result.audio_duration # 120.5 (seconds)
+result.total_cost     # 0.012
+
+# From URL
+result = MeetingTranscriber.call(audio: "https://example.com/audio.mp3")
+```
+
+### Transcriber DSL
+
+```ruby
+class MyTranscriber < ApplicationTranscriber
+  model "whisper-1"              # Transcription model
+  language "en"                   # Language code (nil = auto-detect)
+  output_format :text             # :text, :json, :srt, :vtt
+  include_timestamps :segment     # :none, :segment, :word
+  version "1.0"                   # Cache invalidation
+  cache_for 30.days               # Enable caching
+
+  # Optional: Provide context for better accuracy
+  def prompt
+    "Technical discussion about Ruby programming"
+  end
+
+  # Optional: Post-process transcription
+  def postprocess_text(text)
+    text
+      .gsub(/\bum\b/i, '')   # Remove filler words
+      .gsub(/\buh\b/i, '')
+      .squeeze(' ')
+  end
+end
+```
+
+### TranscriptionResult
+
+```ruby
+result = MeetingTranscriber.call(audio: "meeting.mp3")
+
+# Text content
+result.text              # Full transcription text
+result.segments          # Array of segments with timestamps
+result.words             # Array of words with timestamps (if requested)
+
+# Audio metadata
+result.audio_duration    # Duration in seconds
+result.audio_format      # Detected format
+result.language          # Requested language
+result.detected_language # Auto-detected language
+
+# Execution metadata
+result.model_id          # Model used
+result.duration_ms       # Processing time
+result.total_cost        # Cost in USD
+
+# Status
+result.success?          # true if no error
+result.error?            # true if failed
+
+# Subtitle generation
+result.srt               # SRT subtitle format
+result.vtt               # VTT subtitle format
+
+# Analysis helpers
+result.words_per_minute        # Speaking rate
+result.segment_at(30.5)        # Find segment at timestamp
+result.text_between(10, 60)    # Get text in time range
+```
+
+### Subtitle Generation
+
+```ruby
+# Generate subtitles from audio
+result = MeetingTranscriber.call(audio: "video.mp4")
+
+# SRT format (for video players)
+File.write("captions.srt", result.srt)
+
+# VTT format (for web video)
+File.write("captions.vtt", result.vtt)
+```
+
+## Audio: Text-to-Speech (TTS)
+
+Generate natural speech audio from text.
+
+### Basic Usage
+
+```ruby
+class ArticleNarrator < ApplicationSpeaker
+  provider :openai
+  model "tts-1"
+  voice "nova"
+end
+
+result = ArticleNarrator.call(text: "Hello, world!")
+result.audio        # Binary audio data
+result.save_to("output.mp3")
+```
+
+### Speaker DSL
+
+```ruby
+class MyNarrator < ApplicationSpeaker
+  provider :openai              # TTS provider (:openai, :elevenlabs)
+  model "tts-1-hd"              # TTS model
+  voice "nova"                  # Voice name
+  voice_id "21m00Tcm..."        # Voice ID (ElevenLabs)
+  speed 1.0                     # Speech speed (0.25-4.0 for OpenAI)
+  output_format :mp3            # :mp3, :wav, :ogg, :flac
+  streaming true                # Enable streaming
+  version "1.0"                 # Cache invalidation
+  cache_for 7.days              # Enable caching
+
+  # Custom pronunciation lexicon
+  lexicon do
+    pronounce "API", "A P I"
+    pronounce "SQL", "sequel"
+    pronounce "RubyLLM", "ruby L L M"
+  end
+end
+```
+
+### ElevenLabs Voice Settings
+
+```ruby
+class PremiumNarrator < ApplicationSpeaker
+  provider :elevenlabs
+  model "eleven_multilingual_v2"
+  voice_id "21m00Tcm4TlvDq8ikWAM"
+
+  voice_settings do
+    stability 0.5
+    similarity_boost 0.75
+    style 0.5
+    speaker_boost true
+  end
+end
+```
+
+### SpeechResult
+
+```ruby
+result = ArticleNarrator.call(text: "Hello!")
+
+# Audio data
+result.audio          # Binary audio data
+result.save_to(path)  # Save to file
+result.to_base64      # Base64 encoded
+result.to_data_uri    # Data URI for web
+
+# Metadata
+result.duration       # Audio duration (seconds)
+result.format         # Output format
+result.file_size      # Size in bytes
+result.characters     # Input character count
+
+# Provider info
+result.provider       # :openai, :elevenlabs
+result.model_id       # Model used
+result.voice_id       # Voice identifier
+result.voice_name     # Voice name
+
+# Execution
+result.duration_ms    # Processing time
+result.total_cost     # Cost in USD
+result.success?       # true if no error
+```
+
+### Streaming Audio
+
+```ruby
+class StreamingNarrator < ApplicationSpeaker
+  provider :elevenlabs
+  voice "Rachel"
+  streaming true
+end
+
+# Stream to audio player
+StreamingNarrator.stream(text: "Long article...") do |chunk|
+  audio_player.play(chunk.audio)
+end
+
+# Force streaming on any speaker
+ArticleNarrator.stream(text: "Hello!") do |chunk|
+  buffer << chunk.audio
+end
+```
+
+### Supported TTS Providers
+
+| Provider | Models | Voices |
+|----------|--------|--------|
+| OpenAI | `tts-1`, `tts-1-hd` | alloy, echo, fable, nova, onyx, shimmer |
+| ElevenLabs | `eleven_monolingual_v1`, `eleven_multilingual_v2` | Various voice IDs |
+
 ## Global Configuration
 
 ```ruby
@@ -717,6 +927,16 @@ RubyLLM::Agents.configure do |config|
   config.default_moderation_threshold = nil  # No threshold (any flagged)
   config.default_moderation_action = :block
   config.track_moderation = true  # Log moderation to executions table
+
+  # Transcription defaults
+  config.default_transcription_model = "whisper-1"
+  config.track_transcriptions = true
+
+  # TTS/Speech defaults
+  config.default_tts_provider = :openai
+  config.default_tts_model = "tts-1"
+  config.default_tts_voice = "nova"
+  config.track_speech = true
 
   # Cost governance
   config.budgets = {
@@ -785,6 +1005,12 @@ end
 | `default_moderation_threshold` | Float | `nil` | Default moderation threshold (0.0-1.0) |
 | `default_moderation_action` | Symbol | `:block` | Default action: `:block`, `:raise`, `:warn`, `:log` |
 | `track_moderation` | Boolean | `true` | Track moderation to executions table |
+| `default_transcription_model` | String | `"whisper-1"` | Default transcription model |
+| `track_transcriptions` | Boolean | `true` | Track transcription executions |
+| `default_tts_provider` | Symbol | `:openai` | Default TTS provider |
+| `default_tts_model` | String | `"tts-1"` | Default TTS model |
+| `default_tts_voice` | String | `"nova"` | Default TTS voice |
+| `track_speech` | Boolean | `true` | Track TTS executions |
 | `async_logging` | Boolean | `true` | Log executions via background job |
 | `retention_period` | Duration | `30.days` | Execution record retention |
 | `cache_store` | Cache | `Rails.cache` | Custom cache store |
@@ -1140,6 +1366,17 @@ rails generate ruby_llm_agents:embedder document
 rails generate ruby_llm_agents:embedder document --model text-embedding-3-large
 rails generate ruby_llm_agents:embedder document --dimensions 512
 
+# Generate a new transcriber (audio-to-text)
+rails generate ruby_llm_agents:transcriber meeting
+rails generate ruby_llm_agents:transcriber meeting --model gpt-4o-transcribe
+rails generate ruby_llm_agents:transcriber meeting --language es
+rails generate ruby_llm_agents:transcriber meeting --output-format srt
+
+# Generate a new speaker (text-to-speech)
+rails generate ruby_llm_agents:speaker narrator
+rails generate ruby_llm_agents:speaker narrator --provider elevenlabs
+rails generate ruby_llm_agents:speaker narrator --voice alloy --speed 1.25
+
 # Upgrade migrations
 rails generate ruby_llm_agents:upgrade
 ```
@@ -1158,6 +1395,12 @@ app/
     document_embedder.rb      # Your embedders
   moderators/
     content_moderator.rb      # Standalone moderators
+  transcribers/
+    application_transcriber.rb # Base class for your transcribers
+    meeting_transcriber.rb    # Your transcribers
+  speakers/
+    application_speaker.rb    # Base class for your speakers
+    narrator_speaker.rb       # Your speakers
 
 lib/ruby_llm/agents/
   base.rb                     # Main agent class
@@ -1166,6 +1409,16 @@ lib/ruby_llm/agents/
     dsl.rb                    # Embedder DSL methods
     execution.rb              # Embedding execution flow
   embedding_result.rb         # Embedding result wrapper
+  transcriber.rb              # Main transcriber class
+  transcriber/
+    dsl.rb                    # Transcriber DSL methods
+    execution.rb              # Transcription execution flow
+  transcription_result.rb     # Transcription result wrapper
+  speaker.rb                  # Main speaker class
+  speaker/
+    dsl.rb                    # Speaker DSL methods
+    execution.rb              # TTS execution flow
+  speech_result.rb            # TTS result wrapper
   base/
     dsl.rb                    # DSL methods (model, param, cache, etc.)
     execution.rb              # Execution flow
