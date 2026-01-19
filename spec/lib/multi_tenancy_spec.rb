@@ -94,7 +94,7 @@ RSpec.describe "Multi-tenancy support" do
         end
 
         # Reset memoized table check to ensure fresh lookup
-        described_class.send(:reset_tenant_budget_table_check!)
+        RubyLLM::Agents::Budget::ConfigResolver.reset_tenant_budget_table_check!
 
         # Skip if TenantBudget table doesn't exist (migration not run)
         skip "TenantBudget table not available" unless tenant_budget_table_exists?

@@ -224,37 +224,157 @@ module RubyLLM
       #   Content exceeding this length will be truncated with "...".
       #   @return [Integer] Max length for message content (default: 500)
 
+      # Attributes without validation (simple accessors)
       attr_accessor :default_model,
-                    :default_temperature,
-                    :default_timeout,
                     :async_logging,
                     :retention_period,
-                    :anomaly_cost_threshold,
-                    :anomaly_duration_threshold,
-                    :dashboard_auth,
                     :dashboard_parent_controller,
                     :basic_auth_username,
                     :basic_auth_password,
-                    :per_page,
-                    :recent_executions_limit,
-                    :job_retry_attempts,
-                    :default_retries,
                     :default_fallback_models,
                     :default_total_timeout,
                     :default_streaming,
                     :default_tools,
-                    :budgets,
                     :alerts,
                     :persist_prompts,
                     :persist_responses,
                     :redaction,
                     :multi_tenancy_enabled,
-                    :tenant_resolver,
-                    :tenant_config_resolver,
-                    :persist_messages_summary,
-                    :messages_summary_max_length
+                    :persist_messages_summary
+
+      # Attributes with validation (readers only, custom setters below)
+      attr_reader :default_temperature,
+                  :default_timeout,
+                  :anomaly_cost_threshold,
+                  :anomaly_duration_threshold,
+                  :per_page,
+                  :recent_executions_limit,
+                  :job_retry_attempts,
+                  :messages_summary_max_length,
+                  :dashboard_auth,
+                  :tenant_resolver,
+                  :tenant_config_resolver,
+                  :default_retries,
+                  :budgets
 
       attr_writer :cache_store
+
+      # Sets default_temperature with validation
+      #
+      # @param value [Float] Temperature (0.0 to 2.0)
+      # @raise [ArgumentError] If value is outside valid range
+      def default_temperature=(value)
+        validate_range!(:default_temperature, value, 0.0, 2.0)
+        @default_temperature = value
+      end
+
+      # Sets default_timeout with validation
+      #
+      # @param value [Integer] Timeout in seconds (must be > 0)
+      # @raise [ArgumentError] If value is not positive
+      def default_timeout=(value)
+        validate_positive!(:default_timeout, value)
+        @default_timeout = value
+      end
+
+      # Sets anomaly_cost_threshold with validation
+      #
+      # @param value [Float] Cost threshold (must be >= 0)
+      # @raise [ArgumentError] If value is negative
+      def anomaly_cost_threshold=(value)
+        validate_non_negative!(:anomaly_cost_threshold, value)
+        @anomaly_cost_threshold = value
+      end
+
+      # Sets anomaly_duration_threshold with validation
+      #
+      # @param value [Integer] Duration threshold in ms (must be >= 0)
+      # @raise [ArgumentError] If value is negative
+      def anomaly_duration_threshold=(value)
+        validate_non_negative!(:anomaly_duration_threshold, value)
+        @anomaly_duration_threshold = value
+      end
+
+      # Sets per_page with validation
+      #
+      # @param value [Integer] Records per page (must be > 0)
+      # @raise [ArgumentError] If value is not positive
+      def per_page=(value)
+        validate_positive!(:per_page, value)
+        @per_page = value
+      end
+
+      # Sets recent_executions_limit with validation
+      #
+      # @param value [Integer] Limit (must be > 0)
+      # @raise [ArgumentError] If value is not positive
+      def recent_executions_limit=(value)
+        validate_positive!(:recent_executions_limit, value)
+        @recent_executions_limit = value
+      end
+
+      # Sets job_retry_attempts with validation
+      #
+      # @param value [Integer] Retry attempts (must be >= 0)
+      # @raise [ArgumentError] If value is negative
+      def job_retry_attempts=(value)
+        validate_non_negative!(:job_retry_attempts, value)
+        @job_retry_attempts = value
+      end
+
+      # Sets messages_summary_max_length with validation
+      #
+      # @param value [Integer] Max length (must be > 0)
+      # @raise [ArgumentError] If value is not positive
+      def messages_summary_max_length=(value)
+        validate_positive!(:messages_summary_max_length, value)
+        @messages_summary_max_length = value
+      end
+
+      # Sets dashboard_auth with validation
+      #
+      # @param value [Proc, nil] Authentication lambda or nil
+      # @raise [ArgumentError] If value is not callable or nil
+      def dashboard_auth=(value)
+        validate_callable!(:dashboard_auth, value, allow_nil: true)
+        @dashboard_auth = value
+      end
+
+      # Sets tenant_resolver with validation
+      #
+      # @param value [Proc] Tenant resolution lambda (must be callable)
+      # @raise [ArgumentError] If value is not callable
+      def tenant_resolver=(value)
+        validate_callable!(:tenant_resolver, value, allow_nil: false)
+        @tenant_resolver = value
+      end
+
+      # Sets tenant_config_resolver with validation
+      #
+      # @param value [Proc, nil] Tenant config resolver lambda or nil
+      # @raise [ArgumentError] If value is not callable or nil
+      def tenant_config_resolver=(value)
+        validate_callable!(:tenant_config_resolver, value, allow_nil: true)
+        @tenant_config_resolver = value
+      end
+
+      # Sets default_retries with validation
+      #
+      # @param value [Hash] Retry configuration
+      # @raise [ArgumentError] If any values are invalid
+      def default_retries=(value)
+        validate_retries!(value)
+        @default_retries = value
+      end
+
+      # Sets budgets with validation
+      #
+      # @param value [Hash, nil] Budget configuration
+      # @raise [ArgumentError] If enforcement is invalid
+      def budgets=(value)
+        validate_budgets!(value)
+        @budgets = value
+      end
 
       # Initializes configuration with default values
       #
@@ -388,6 +508,93 @@ module RubyLLM
         return nil unless multi_tenancy_enabled?
 
         tenant_resolver&.call
+      end
+
+      private
+
+      # Validates that a value is within a range
+      #
+      # @param attr [Symbol] Attribute name for error message
+      # @param value [Numeric] Value to validate
+      # @param min [Numeric] Minimum value (inclusive)
+      # @param max [Numeric] Maximum value (inclusive)
+      # @raise [ArgumentError] If value is outside range
+      def validate_range!(attr, value, min, max)
+        return if value.is_a?(Numeric) && value >= min && value <= max
+
+        raise ArgumentError, "#{attr} must be between #{min} and #{max}"
+      end
+
+      # Validates that a value is positive (greater than 0)
+      #
+      # @param attr [Symbol] Attribute name for error message
+      # @param value [Numeric] Value to validate
+      # @raise [ArgumentError] If value is not positive
+      def validate_positive!(attr, value)
+        return if value.is_a?(Numeric) && value > 0
+
+        raise ArgumentError, "#{attr} must be greater than 0"
+      end
+
+      # Validates that a value is non-negative (>= 0)
+      #
+      # @param attr [Symbol] Attribute name for error message
+      # @param value [Numeric] Value to validate
+      # @raise [ArgumentError] If value is negative
+      def validate_non_negative!(attr, value)
+        return if value.is_a?(Numeric) && value >= 0
+
+        raise ArgumentError, "#{attr} must be >= 0"
+      end
+
+      # Validates that a value is callable (responds to :call)
+      #
+      # @param attr [Symbol] Attribute name for error message
+      # @param value [Object] Value to validate
+      # @param allow_nil [Boolean] Whether nil is allowed
+      # @raise [ArgumentError] If value is not callable (or nil when allowed)
+      def validate_callable!(attr, value, allow_nil:)
+        return if allow_nil && value.nil?
+        return if value.respond_to?(:call)
+
+        if allow_nil
+          raise ArgumentError, "#{attr} must be callable or nil"
+        else
+          raise ArgumentError, "#{attr} must be callable"
+        end
+      end
+
+      # Validates retries configuration hash
+      #
+      # @param value [Hash] Retries configuration
+      # @raise [ArgumentError] If any values are invalid
+      def validate_retries!(value)
+        return unless value.is_a?(Hash)
+
+        if value.key?(:backoff) && ![:exponential, :constant].include?(value[:backoff])
+          raise ArgumentError, "default_retries[:backoff] must be :exponential or :constant"
+        end
+
+        if value.key?(:base) && (!value[:base].is_a?(Numeric) || value[:base] <= 0)
+          raise ArgumentError, "default_retries[:base] must be greater than 0"
+        end
+
+        if value.key?(:max_delay) && (!value[:max_delay].is_a?(Numeric) || value[:max_delay] <= 0)
+          raise ArgumentError, "default_retries[:max_delay] must be greater than 0"
+        end
+      end
+
+      # Validates budgets configuration hash
+      #
+      # @param value [Hash, nil] Budgets configuration
+      # @raise [ArgumentError] If enforcement is invalid
+      def validate_budgets!(value)
+        return if value.nil?
+        return unless value.is_a?(Hash)
+
+        if value.key?(:enforcement) && ![:none, :soft, :hard].include?(value[:enforcement])
+          raise ArgumentError, "budgets[:enforcement] must be :none, :soft, or :hard"
+        end
       end
     end
   end

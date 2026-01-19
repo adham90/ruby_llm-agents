@@ -278,9 +278,9 @@ RSpec.describe RubyLLM::Agents::Configuration do
       expect(config.current_tenant_id).to eq("tenant_123")
     end
 
-    it "returns nil when tenant_resolver is nil" do
+    it "returns nil when tenant_resolver returns nil" do
       config.multi_tenancy_enabled = true
-      config.tenant_resolver = nil
+      config.tenant_resolver = -> { nil }
       expect(config.current_tenant_id).to be_nil
     end
   end
@@ -328,6 +328,239 @@ RSpec.describe RubyLLM::Agents::Configuration do
       expect(config.default_tools).to eq([String])
       expect(config.persist_prompts).to be false
       expect(config.persist_responses).to be false
+    end
+  end
+
+  describe "validation" do
+    describe "#default_temperature=" do
+      it "accepts values between 0.0 and 2.0" do
+        expect { config.default_temperature = 0.0 }.not_to raise_error
+        expect { config.default_temperature = 1.0 }.not_to raise_error
+        expect { config.default_temperature = 2.0 }.not_to raise_error
+      end
+
+      it "raises ArgumentError for values below 0.0" do
+        expect { config.default_temperature = -0.1 }.to raise_error(
+          ArgumentError, "default_temperature must be between 0.0 and 2.0"
+        )
+      end
+
+      it "raises ArgumentError for values above 2.0" do
+        expect { config.default_temperature = 2.1 }.to raise_error(
+          ArgumentError, "default_temperature must be between 0.0 and 2.0"
+        )
+      end
+
+      it "raises ArgumentError for non-numeric values" do
+        expect { config.default_temperature = "high" }.to raise_error(
+          ArgumentError, "default_temperature must be between 0.0 and 2.0"
+        )
+      end
+    end
+
+    describe "#default_timeout=" do
+      it "accepts positive values" do
+        expect { config.default_timeout = 1 }.not_to raise_error
+        expect { config.default_timeout = 120 }.not_to raise_error
+      end
+
+      it "raises ArgumentError for zero" do
+        expect { config.default_timeout = 0 }.to raise_error(
+          ArgumentError, "default_timeout must be greater than 0"
+        )
+      end
+
+      it "raises ArgumentError for negative values" do
+        expect { config.default_timeout = -1 }.to raise_error(
+          ArgumentError, "default_timeout must be greater than 0"
+        )
+      end
+    end
+
+    describe "#anomaly_cost_threshold=" do
+      it "accepts zero and positive values" do
+        expect { config.anomaly_cost_threshold = 0 }.not_to raise_error
+        expect { config.anomaly_cost_threshold = 10.0 }.not_to raise_error
+      end
+
+      it "raises ArgumentError for negative values" do
+        expect { config.anomaly_cost_threshold = -1 }.to raise_error(
+          ArgumentError, "anomaly_cost_threshold must be >= 0"
+        )
+      end
+    end
+
+    describe "#anomaly_duration_threshold=" do
+      it "accepts zero and positive values" do
+        expect { config.anomaly_duration_threshold = 0 }.not_to raise_error
+        expect { config.anomaly_duration_threshold = 5000 }.not_to raise_error
+      end
+
+      it "raises ArgumentError for negative values" do
+        expect { config.anomaly_duration_threshold = -100 }.to raise_error(
+          ArgumentError, "anomaly_duration_threshold must be >= 0"
+        )
+      end
+    end
+
+    describe "#per_page=" do
+      it "accepts positive values" do
+        expect { config.per_page = 1 }.not_to raise_error
+        expect { config.per_page = 100 }.not_to raise_error
+      end
+
+      it "raises ArgumentError for zero" do
+        expect { config.per_page = 0 }.to raise_error(
+          ArgumentError, "per_page must be greater than 0"
+        )
+      end
+
+      it "raises ArgumentError for negative values" do
+        expect { config.per_page = -10 }.to raise_error(
+          ArgumentError, "per_page must be greater than 0"
+        )
+      end
+    end
+
+    describe "#recent_executions_limit=" do
+      it "accepts positive values" do
+        expect { config.recent_executions_limit = 1 }.not_to raise_error
+        expect { config.recent_executions_limit = 50 }.not_to raise_error
+      end
+
+      it "raises ArgumentError for zero" do
+        expect { config.recent_executions_limit = 0 }.to raise_error(
+          ArgumentError, "recent_executions_limit must be greater than 0"
+        )
+      end
+    end
+
+    describe "#job_retry_attempts=" do
+      it "accepts zero and positive values" do
+        expect { config.job_retry_attempts = 0 }.not_to raise_error
+        expect { config.job_retry_attempts = 5 }.not_to raise_error
+      end
+
+      it "raises ArgumentError for negative values" do
+        expect { config.job_retry_attempts = -1 }.to raise_error(
+          ArgumentError, "job_retry_attempts must be >= 0"
+        )
+      end
+    end
+
+    describe "#messages_summary_max_length=" do
+      it "accepts positive values" do
+        expect { config.messages_summary_max_length = 1 }.not_to raise_error
+        expect { config.messages_summary_max_length = 1000 }.not_to raise_error
+      end
+
+      it "raises ArgumentError for zero" do
+        expect { config.messages_summary_max_length = 0 }.to raise_error(
+          ArgumentError, "messages_summary_max_length must be greater than 0"
+        )
+      end
+    end
+
+    describe "#dashboard_auth=" do
+      it "accepts callable objects" do
+        expect { config.dashboard_auth = -> { true } }.not_to raise_error
+        expect { config.dashboard_auth = proc { true } }.not_to raise_error
+      end
+
+      it "accepts nil" do
+        expect { config.dashboard_auth = nil }.not_to raise_error
+      end
+
+      it "raises ArgumentError for non-callable values" do
+        expect { config.dashboard_auth = "not callable" }.to raise_error(
+          ArgumentError, "dashboard_auth must be callable or nil"
+        )
+      end
+    end
+
+    describe "#tenant_resolver=" do
+      it "accepts callable objects" do
+        expect { config.tenant_resolver = -> { "tenant_123" } }.not_to raise_error
+      end
+
+      it "raises ArgumentError for nil" do
+        expect { config.tenant_resolver = nil }.to raise_error(
+          ArgumentError, "tenant_resolver must be callable"
+        )
+      end
+
+      it "raises ArgumentError for non-callable values" do
+        expect { config.tenant_resolver = "not callable" }.to raise_error(
+          ArgumentError, "tenant_resolver must be callable"
+        )
+      end
+    end
+
+    describe "#tenant_config_resolver=" do
+      it "accepts callable objects" do
+        expect { config.tenant_config_resolver = ->(id) { { daily: 100 } } }.not_to raise_error
+      end
+
+      it "accepts nil" do
+        expect { config.tenant_config_resolver = nil }.not_to raise_error
+      end
+
+      it "raises ArgumentError for non-callable values" do
+        expect { config.tenant_config_resolver = "not callable" }.to raise_error(
+          ArgumentError, "tenant_config_resolver must be callable or nil"
+        )
+      end
+    end
+
+    describe "#default_retries=" do
+      it "accepts valid retry configurations" do
+        expect { config.default_retries = { max: 3, backoff: :exponential, base: 0.5, max_delay: 5.0 } }.not_to raise_error
+        expect { config.default_retries = { max: 3, backoff: :constant, base: 1.0, max_delay: 10.0 } }.not_to raise_error
+        expect { config.default_retries = { max: 0 } }.not_to raise_error
+      end
+
+      it "raises ArgumentError for invalid backoff" do
+        expect { config.default_retries = { backoff: :invalid } }.to raise_error(
+          ArgumentError, "default_retries[:backoff] must be :exponential or :constant"
+        )
+      end
+
+      it "raises ArgumentError for non-positive base" do
+        expect { config.default_retries = { base: 0 } }.to raise_error(
+          ArgumentError, "default_retries[:base] must be greater than 0"
+        )
+        expect { config.default_retries = { base: -1 } }.to raise_error(
+          ArgumentError, "default_retries[:base] must be greater than 0"
+        )
+      end
+
+      it "raises ArgumentError for non-positive max_delay" do
+        expect { config.default_retries = { max_delay: 0 } }.to raise_error(
+          ArgumentError, "default_retries[:max_delay] must be greater than 0"
+        )
+      end
+    end
+
+    describe "#budgets=" do
+      it "accepts nil" do
+        expect { config.budgets = nil }.not_to raise_error
+      end
+
+      it "accepts valid enforcement values" do
+        expect { config.budgets = { enforcement: :none } }.not_to raise_error
+        expect { config.budgets = { enforcement: :soft } }.not_to raise_error
+        expect { config.budgets = { enforcement: :hard } }.not_to raise_error
+      end
+
+      it "accepts budget config without enforcement" do
+        expect { config.budgets = { global_daily: 100 } }.not_to raise_error
+      end
+
+      it "raises ArgumentError for invalid enforcement" do
+        expect { config.budgets = { enforcement: :invalid } }.to raise_error(
+          ArgumentError, "budgets[:enforcement] must be :none, :soft, or :hard"
+        )
+      end
     end
   end
 end

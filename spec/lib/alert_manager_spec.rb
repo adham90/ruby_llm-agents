@@ -5,8 +5,6 @@ require "rails_helper"
 RSpec.describe RubyLLM::Agents::AlertManager do
   before do
     RubyLLM::Agents.reset_configuration!
-    # Reset the cached HTTP client between tests
-    described_class.instance_variable_set(:@http_client, nil)
   end
 
   describe ".notify" do
@@ -16,8 +14,7 @@ RSpec.describe RubyLLM::Agents::AlertManager do
       end
 
       it "does nothing" do
-        # Should not make any HTTP calls
-        expect(Faraday).not_to receive(:new)
+        expect(Net::HTTP).not_to receive(:new)
         described_class.notify(:budget_soft_cap, { amount: 100 })
       end
     end
@@ -33,21 +30,14 @@ RSpec.describe RubyLLM::Agents::AlertManager do
       end
 
       it "does nothing for unconfigured events" do
-        # Create a stubs adapter to verify no requests are made
-        stubs = Faraday::Adapter::Test::Stubs.new
-        faraday = Faraday.new { |f| f.adapter(:test, stubs) }
-        allow(described_class).to receive(:http_client).and_return(faraday)
-
+        expect(Net::HTTP).not_to receive(:new)
         described_class.notify(:breaker_open, { model: "gpt-4o" })
-
-        # Verify no unexpected requests
-        stubs.verify_stubbed_calls
       end
     end
 
     context "with Slack webhook configured" do
-      let(:stubs) { Faraday::Adapter::Test::Stubs.new }
-      let(:faraday) { Faraday.new { |f| f.adapter(:test, stubs) } }
+      let(:http_double) { instance_double(Net::HTTP) }
+      let(:response_double) { instance_double(Net::HTTPSuccess, code: "200", body: "ok") }
 
       before do
         RubyLLM::Agents.configure do |config|
@@ -57,25 +47,29 @@ RSpec.describe RubyLLM::Agents::AlertManager do
           }
         end
 
-        allow(described_class).to receive(:http_client).and_return(faraday)
+        allow(Net::HTTP).to receive(:new).with("hooks.slack.com", 443).and_return(http_double)
+        allow(http_double).to receive(:use_ssl=)
+        allow(http_double).to receive(:open_timeout=)
+        allow(http_double).to receive(:read_timeout=)
+        allow(http_double).to receive(:request).and_return(response_double)
+        allow(response_double).to receive(:is_a?).with(Net::HTTPSuccess).and_return(true)
       end
 
       it "sends to Slack webhook" do
-        stubs.post("https://hooks.slack.com/services/test") do |env|
-          expect(env.request_headers["Content-Type"]).to eq("application/json")
-          [200, {}, "ok"]
+        expect(http_double).to receive(:request) do |request|
+          expect(request).to be_a(Net::HTTP::Post)
+          expect(request["Content-Type"]).to eq("application/json")
+          response_double
         end
 
         described_class.notify(:budget_soft_cap, { amount: 100, limit: 50 })
-
-        stubs.verify_stubbed_calls
       end
 
       it "formats payload for Slack with attachments" do
         captured_body = nil
-        stubs.post("https://hooks.slack.com/services/test") do |env|
-          captured_body = JSON.parse(env.body)
-          [200, {}, "ok"]
+        allow(http_double).to receive(:request) do |request|
+          captured_body = JSON.parse(request.body)
+          response_double
         end
 
         described_class.notify(:budget_soft_cap, { amount: 100 })
@@ -86,8 +80,8 @@ RSpec.describe RubyLLM::Agents::AlertManager do
     end
 
     context "with generic webhook configured" do
-      let(:stubs) { Faraday::Adapter::Test::Stubs.new }
-      let(:faraday) { Faraday.new { |f| f.adapter(:test, stubs) } }
+      let(:http_double) { instance_double(Net::HTTP) }
+      let(:response_double) { instance_double(Net::HTTPSuccess, code: "200", body: "ok") }
 
       before do
         RubyLLM::Agents.configure do |config|
@@ -97,14 +91,19 @@ RSpec.describe RubyLLM::Agents::AlertManager do
           }
         end
 
-        allow(described_class).to receive(:http_client).and_return(faraday)
+        allow(Net::HTTP).to receive(:new).with("example.com", 443).and_return(http_double)
+        allow(http_double).to receive(:use_ssl=)
+        allow(http_double).to receive(:open_timeout=)
+        allow(http_double).to receive(:read_timeout=)
+        allow(http_double).to receive(:request).and_return(response_double)
+        allow(response_double).to receive(:is_a?).with(Net::HTTPSuccess).and_return(true)
       end
 
       it "sends JSON payload with event" do
         captured_body = nil
-        stubs.post("https://example.com/webhook") do |env|
-          captured_body = JSON.parse(env.body)
-          [200, {}, "ok"]
+        allow(http_double).to receive(:request) do |request|
+          captured_body = JSON.parse(request.body)
+          response_double
         end
 
         described_class.notify(:budget_soft_cap, { amount: 100 })
@@ -149,6 +148,32 @@ RSpec.describe RubyLLM::Agents::AlertManager do
       it "logs errors from custom handlers but does not raise" do
         expect(Rails.logger).to receive(:warn).with(/Custom alert failed/)
         expect { described_class.notify(:budget_soft_cap, {}) }.not_to raise_error
+      end
+    end
+
+    context "with non-success HTTP response" do
+      let(:http_double) { instance_double(Net::HTTP) }
+      let(:response_double) { instance_double(Net::HTTPBadRequest, code: "400", body: "Bad Request") }
+
+      before do
+        RubyLLM::Agents.configure do |config|
+          config.alerts = {
+            on_events: [:budget_soft_cap],
+            webhook_url: "https://example.com/webhook"
+          }
+        end
+
+        allow(Net::HTTP).to receive(:new).with("example.com", 443).and_return(http_double)
+        allow(http_double).to receive(:use_ssl=)
+        allow(http_double).to receive(:open_timeout=)
+        allow(http_double).to receive(:read_timeout=)
+        allow(http_double).to receive(:request).and_return(response_double)
+        allow(response_double).to receive(:is_a?).with(Net::HTTPSuccess).and_return(false)
+      end
+
+      it "logs warning for non-success responses" do
+        expect(Rails.logger).to receive(:warn).with(/Webhook returned 400/)
+        described_class.notify(:budget_soft_cap, { amount: 100 })
       end
     end
   end
