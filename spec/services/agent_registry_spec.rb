@@ -118,8 +118,8 @@ RSpec.describe RubyLLM::Agents::AgentRegistry do
         allow(Rails.root).to receive(:join).and_return(Pathname.new("/nonexistent"))
         allow_any_instance_of(Pathname).to receive(:exist?).and_return(true)
 
-        # The require_dependency will fail for the nonexistent file
-        expect(Rails.logger).to receive(:error).with(/Failed to load agent file/)
+        # The require_dependency will fail for the nonexistent file (once per directory)
+        expect(Rails.logger).to receive(:error).with(/Failed to load file/).at_least(:once)
         described_class.send(:eager_load_agents!)
       end
     end

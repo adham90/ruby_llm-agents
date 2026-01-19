@@ -59,10 +59,10 @@ bundle exec standardrb
 bundle exec standardrb --fix
 ```
 
-### Running the Test App
+### Running the Example App
 
 ```bash
-cd test_app
+cd example
 bin/rails db:setup
 bin/rails server
 ```
@@ -210,7 +210,7 @@ ruby_llm-agents/
 │           ├── workflow.rb      # Workflow orchestration
 │           └── ...
 ├── spec/                 # Tests
-├── test_app/            # Test Rails application
+├── example/             # Example Rails application
 └── wiki/                # Documentation
 ```
 

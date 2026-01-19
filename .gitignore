@@ -11,18 +11,18 @@
 # rspec failure tracking
 .rspec_status
 
-# Test app generated files (not committed)
-/test_app/Gemfile.lock
-/test_app/db/*.sqlite3
-/test_app/db/*.sqlite3-*
-/test_app/log/*
-!/test_app/log/.keep
-/test_app/storage/*
-!/test_app/storage/.keep
-/test_app/tmp/*
-!/test_app/tmp/.keep
-/test_app/config/master.key
-/test_app/config/credentials.yml.enc
+# Example app generated files (not committed)
+/example/Gemfile.lock
+/example/db/*.sqlite3
+/example/db/*.sqlite3-*
+/example/log/*
+!/example/log/.keep
+/example/storage/*
+!/example/storage/.keep
+/example/tmp/*
+!/example/tmp/.keep
+/example/config/master.key
+/example/config/credentials.yml.enc
 
 # Wiki clone (separate git repo)
 ruby_llm-agents.wiki/

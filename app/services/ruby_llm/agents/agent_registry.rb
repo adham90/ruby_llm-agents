@@ -60,12 +60,14 @@ module RubyLLM
         #
         # @return [Array<String>] Agent class names
         def file_system_agents
-          # Ensure all agent classes are loaded
+          # Ensure all agent and workflow classes are loaded
           eager_load_agents!
 
-          # Find all descendants of the base class
-          base_class = RubyLLM::Agents::Base
-          base_class.descendants.map(&:name).compact
+          # Find all descendants of both base classes
+          agents = RubyLLM::Agents::Base.descendants.map(&:name).compact
+          workflows = RubyLLM::Agents::Workflow.descendants.map(&:name).compact
+
+          (agents + workflows).uniq
         rescue StandardError => e
           Rails.logger.error("[RubyLLM::Agents] Error loading agents from file system: #{e.message}")
           []
@@ -81,17 +83,19 @@ module RubyLLM
           []
         end
 
-        # Eager loads all agent files to register descendants
+        # Eager loads all agent and workflow files to register descendants
         #
         # @return [void]
         def eager_load_agents!
-          agents_path = Rails.root.join("app", "agents")
-          return unless agents_path.exist?
+          %w[agents workflows].each do |dir|
+            path = Rails.root.join("app", dir)
+            next unless path.exist?
 
-          Dir.glob(agents_path.join("**", "*.rb")).each do |file|
-            require_dependency file
-          rescue LoadError, StandardError => e
-            Rails.logger.error("[RubyLLM::Agents] Failed to load agent file #{file}: #{e.message}")
+            Dir.glob(path.join("**", "*.rb")).each do |file|
+              require_dependency file
+            rescue LoadError, StandardError => e
+              Rails.logger.error("[RubyLLM::Agents] Failed to load file #{file}: #{e.message}")
+            end
           end
         end
 

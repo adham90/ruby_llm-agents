@@ -1,12 +1,12 @@
-# Ruby LLM Agents - Test Application
+# Ruby LLM Agents - Example Application
 
-This is a reference Rails application for testing and demonstrating the `ruby_llm-agents` gem.
-Use it for manual testing of generators, running the dashboard, and as a reference for example code.
+This is a reference Rails application demonstrating the `ruby_llm-agents` gem.
+Use it to explore the dashboard, test generators, and as a reference for example code.
 
 ## Quick Start
 
 ```bash
-cd test_app
+cd example
 bundle install
 bin/rails db:setup
 bin/rails server
@@ -95,7 +95,7 @@ result.content           # Response from routed agent
 
 ## Relationship to Parent Gem
 
-This test_app references the parent gem via `gem "ruby_llm-agents", path: ".."` in the Gemfile.
+This example app references the parent gem via `gem "ruby_llm-agents", path: ".."` in the Gemfile.
 Any changes you make to the gem will be reflected here after restarting the Rails server.
 
 ## Notes
