@@ -179,10 +179,9 @@ module RubyLLM
         # @return [void]
         def reset!(tenant_id: nil)
           tenant_id = Budget::ConfigResolver.resolve_tenant_id(tenant_id)
-          today = Date.current.to_s
-          month = Date.current.strftime("%Y-%m")
-
-          tenant_part = tenant_id.present? ? "tenant:#{tenant_id}" : "global"
+          tenant_part = Budget::SpendRecorder.tenant_key_part(tenant_id)
+          today = Budget::SpendRecorder.date_key_part(:daily)
+          month = Budget::SpendRecorder.date_key_part(:monthly)
 
           BudgetTracker.cache_delete(BudgetTracker.cache_key("budget", tenant_part, today))
           BudgetTracker.cache_delete(BudgetTracker.cache_key("budget", tenant_part, month))

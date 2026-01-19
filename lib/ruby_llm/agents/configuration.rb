@@ -108,6 +108,17 @@ module RubyLLM
       #   @example
       #     config.default_retries = { max: 2, backoff: :exponential, base: 0.4, max_delay: 3.0, on: [] }
 
+      # @!attribute [rw] default_retryable_patterns
+      #   Default patterns in error messages that indicate retryable errors.
+      #   Organized by category for easy customization.
+      #   @return [Hash<Symbol, Array<String>>] Categorized patterns
+      #   @example
+      #     config.default_retryable_patterns = {
+      #       rate_limiting: ["rate limit", "429"],
+      #       server_errors: ["500", "502", "503"],
+      #       capacity: ["overloaded"]
+      #     }
+
       # @!attribute [rw] default_fallback_models
       #   Default fallback models for all agents.
       #   Can be overridden per-agent using the `fallback_models` DSL method.
@@ -240,7 +251,8 @@ module RubyLLM
                     :persist_responses,
                     :redaction,
                     :multi_tenancy_enabled,
-                    :persist_messages_summary
+                    :persist_messages_summary,
+                    :default_retryable_patterns
 
       # Attributes with validation (readers only, custom setters below)
       attr_reader :default_temperature,
@@ -401,6 +413,12 @@ module RubyLLM
         @default_retries = { max: 0, backoff: :exponential, base: 0.4, max_delay: 3.0, on: [] }
         @default_fallback_models = []
         @default_total_timeout = nil
+        @default_retryable_patterns = {
+          rate_limiting: ["rate limit", "rate_limit", "too many requests", "429"],
+          server_errors: ["500", "502", "503", "504", "service unavailable",
+                         "internal server error", "bad gateway", "gateway timeout"],
+          capacity: ["overloaded", "capacity"]
+        }
 
         # Streaming and tools defaults
         @default_streaming = false
@@ -444,6 +462,13 @@ module RubyLLM
       # @return [Symbol] :none, :soft, or :hard
       def budget_enforcement
         budgets&.dig(:enforcement) || :none
+      end
+
+      # Returns all retryable patterns as a flat array
+      #
+      # @return [Array<String>] All patterns from all categories
+      def all_retryable_patterns
+        default_retryable_patterns.values.flatten.uniq
       end
 
       # Returns whether alerts are configured

@@ -451,34 +451,6 @@ RSpec.describe RubyLLM::Agents::Base::ReliabilityExecution do
     end
   end
 
-  describe "#retryable_errors" do
-    it "returns default retryable errors" do
-      config = { retries: nil }
-      errors = agent.send(:retryable_errors, config)
-
-      expect(errors).to include(Timeout::Error)
-    end
-
-    it "includes custom errors from config" do
-      custom_error = Class.new(StandardError)
-      config = { retries: { on: [custom_error] } }
-
-      errors = agent.send(:retryable_errors, config)
-
-      expect(errors).to include(custom_error)
-    end
-
-    it "combines default and custom errors" do
-      custom_error = Class.new(StandardError)
-      config = { retries: { on: [custom_error] } }
-
-      errors = agent.send(:retryable_errors, config)
-
-      expect(errors).to include(Timeout::Error)
-      expect(errors).to include(custom_error)
-    end
-  end
-
   describe "#past_deadline?" do
     it "returns false when deadline is nil" do
       # Returns nil which is falsey (short-circuit evaluation)

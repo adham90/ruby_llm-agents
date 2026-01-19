@@ -32,7 +32,8 @@ module RubyLLM
             backoff: retries_config[:backoff] || :exponential,
             base: retries_config[:base] || 0.4,
             max_delay: retries_config[:max_delay] || 3.0,
-            on: retries_config[:on] || []
+            on: retries_config[:on] || [],
+            patterns: config[:retryable_patterns]
           )
 
           @fallback_routing = FallbackRouting.new(

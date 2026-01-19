@@ -99,6 +99,7 @@ module RubyLLM
           @fallback_models = builder.fallback_models_list if builder.fallback_models_list.any?
           @total_timeout = builder.total_timeout_value if builder.total_timeout_value
           @circuit_breaker_config = builder.circuit_breaker_config if builder.circuit_breaker_config
+          @retryable_patterns = builder.retryable_patterns_list if builder.retryable_patterns_list
         end
 
         # Configures retry behavior for this agent
@@ -177,6 +178,17 @@ module RubyLLM
         # @return [Hash, nil] The circuit breaker configuration
         def circuit_breaker_config
           @circuit_breaker_config || (superclass.respond_to?(:circuit_breaker_config) ? superclass.circuit_breaker_config : nil)
+        end
+
+        # Sets or returns additional retryable patterns for error message matching
+        #
+        # @param patterns [Array<String>] Pattern strings to match in error messages
+        # @return [Array<String>, nil] The current retryable patterns
+        # @example
+        #   retryable_patterns "my_custom_error", "another_pattern"
+        def retryable_patterns(*patterns)
+          @retryable_patterns = patterns.flatten if patterns.any?
+          @retryable_patterns || (superclass.respond_to?(:retryable_patterns) ? superclass.retryable_patterns : nil)
         end
 
         # @!endgroup

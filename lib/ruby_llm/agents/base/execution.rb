@@ -240,14 +240,15 @@ module RubyLLM
 
         # Returns the consolidated reliability configuration for this agent instance
         #
-        # @return [Hash] Reliability config with :retries, :fallback_models, :total_timeout, :circuit_breaker
+        # @return [Hash] Reliability config with :retries, :fallback_models, :total_timeout, :circuit_breaker, :retryable_patterns
         def reliability_config
           default_retries = RubyLLM::Agents.configuration.default_retries
           {
             retries: self.class.retries || default_retries,
             fallback_models: self.class.fallback_models,
             total_timeout: self.class.total_timeout,
-            circuit_breaker: self.class.circuit_breaker_config
+            circuit_breaker: self.class.circuit_breaker_config,
+            retryable_patterns: self.class.retryable_patterns
           }
         end
 

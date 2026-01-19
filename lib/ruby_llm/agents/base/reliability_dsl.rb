@@ -20,13 +20,15 @@ module RubyLLM
       #
       # @api public
       class ReliabilityDSL
-        attr_reader :retries_config, :fallback_models_list, :total_timeout_value, :circuit_breaker_config
+        attr_reader :retries_config, :fallback_models_list, :total_timeout_value,
+                    :circuit_breaker_config, :retryable_patterns_list
 
         def initialize
           @retries_config = nil
           @fallback_models_list = []
           @total_timeout_value = nil
           @circuit_breaker_config = nil
+          @retryable_patterns_list = nil
         end
 
         # Configures retry behavior
@@ -75,6 +77,18 @@ module RubyLLM
             within: within,
             cooldown: cooldown
           }
+        end
+
+        # Sets additional retryable patterns for error message matching
+        #
+        # These patterns are added to the global defaults from configuration.
+        #
+        # @param patterns [Array<String>] Pattern strings to match in error messages
+        # @return [void]
+        # @example
+        #   retryable_patterns "my_custom_error", "another_pattern"
+        def retryable_patterns(*patterns)
+          @retryable_patterns_list = patterns.flatten
         end
       end
     end

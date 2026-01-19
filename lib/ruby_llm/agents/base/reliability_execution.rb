@@ -67,12 +67,21 @@ module RubyLLM
                   # to properly complete the execution record before returning
                   throw :execution_success, result
 
-                rescue *retryable_errors(config) => e
+                rescue StandardError => e
                   last_error = e
                   attempt_tracker.complete_attempt(attempt, success: false, error: e)
                   breaker&.record_failure!
 
-                  if retries_remaining > 0 && !past_deadline?(total_deadline)
+                  # Check if error is retryable (by class or message pattern)
+                  custom_errors = config[:retries]&.dig(:on) || []
+                  custom_patterns = config[:retryable_patterns]
+                  is_retryable = Reliability.retryable_error?(
+                    e,
+                    custom_errors: custom_errors,
+                    custom_patterns: custom_patterns
+                  )
+
+                  if is_retryable && retries_remaining > 0 && !past_deadline?(total_deadline)
                     retries_remaining -= 1
                     attempt_index += 1
                     retries_config = config[:retries] || {}
@@ -84,15 +93,8 @@ module RubyLLM
                     )
                     sleep(delay)
                   else
-                    break # Move to next model
+                    break # Move to next model (non-retryable or no retries left)
                   end
-
-                rescue StandardError => e
-                  # Non-retryable error - record and move to next model
-                  last_error = e
-                  attempt_tracker.complete_attempt(attempt, success: false, error: e)
-                  breaker&.record_failure!
-                  break
                 end
               end
             end
@@ -100,15 +102,6 @@ module RubyLLM
             # All models exhausted
             raise Reliability::AllModelsExhaustedError.new(models_to_try, last_error)
           end
-        end
-
-        # Returns the list of retryable error classes
-        #
-        # @param config [Hash] Reliability configuration
-        # @return [Array<Class>] Error classes to retry on
-        def retryable_errors(config)
-          custom_errors = config[:retries]&.dig(:on) || []
-          Reliability.default_retryable_errors + custom_errors
         end
 
         # Checks if the total deadline has passed

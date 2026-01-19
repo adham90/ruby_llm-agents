@@ -2,6 +2,7 @@
 
 require_relative "workflow/result"
 require_relative "workflow/instrumentation"
+require_relative "workflow/thread_pool"
 require_relative "workflow/pipeline"
 require_relative "workflow/parallel"
 require_relative "workflow/router"

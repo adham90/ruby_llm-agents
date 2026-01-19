@@ -206,7 +206,7 @@ RSpec.describe RubyLLM::Agents::Reliability::RetryStrategy do
     it "delegates to Reliability.retryable_error?" do
       error = StandardError.new
       expect(RubyLLM::Agents::Reliability).to receive(:retryable_error?)
-        .with(error, custom_errors: [ArgumentError])
+        .with(error, custom_errors: [ArgumentError], custom_patterns: nil)
         .and_return(true)
 
       strategy.retryable?(error)

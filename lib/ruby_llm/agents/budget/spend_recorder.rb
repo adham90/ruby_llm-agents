@@ -90,6 +90,32 @@ module RubyLLM
             new_total
           end
 
+          # Returns the tenant key part for cache keys
+          #
+          # @param tenant_id [String, nil] The tenant identifier
+          # @return [String] "tenant:{id}" or "global"
+          def tenant_key_part(tenant_id)
+            tenant_id.present? ? "tenant:#{tenant_id}" : "global"
+          end
+
+          # Returns the date key part for cache keys based on period
+          #
+          # @param period [Symbol] :daily or :monthly
+          # @return [String] Date string
+          def date_key_part(period)
+            period == :daily ? Date.current.to_s : Date.current.strftime("%Y-%m")
+          end
+
+          # Generates an alert cache key
+          #
+          # @param alert_type [String] Type of alert (e.g., "budget_alert", "token_alert")
+          # @param scope [Symbol] Alert scope
+          # @param tenant_id [String, nil] The tenant identifier
+          # @return [String] Cache key
+          def alert_cache_key(alert_type, scope, tenant_id)
+            SpendRecorder.cache_key(alert_type, tenant_key_part(tenant_id), scope, Date.current.to_s)
+          end
+
           # Generates a cache key for budget tracking
           #
           # @param scope [Symbol] :global or :agent
@@ -98,8 +124,8 @@ module RubyLLM
           # @param tenant_id [String, nil] The tenant identifier
           # @return [String] Cache key
           def budget_cache_key(scope, period, agent_type: nil, tenant_id: nil)
-            date_part = period == :daily ? Date.current.to_s : Date.current.strftime("%Y-%m")
-            tenant_part = tenant_id.present? ? "tenant:#{tenant_id}" : "global"
+            date_part = date_key_part(period)
+            tenant_part = tenant_key_part(tenant_id)
 
             case scope
             when :global
@@ -117,10 +143,7 @@ module RubyLLM
           # @param tenant_id [String, nil] The tenant identifier
           # @return [String] Cache key
           def token_cache_key(period, tenant_id: nil)
-            date_part = period == :daily ? Date.current.to_s : Date.current.strftime("%Y-%m")
-            tenant_part = tenant_id.present? ? "tenant:#{tenant_id}" : "global"
-
-            SpendRecorder.cache_key("tokens", tenant_part, date_part)
+            SpendRecorder.cache_key("tokens", tenant_key_part(tenant_id), date_key_part(period))
           end
 
           private
@@ -181,11 +204,10 @@ module RubyLLM
             return unless config.alert_events.include?(event)
 
             # Prevent duplicate alerts by using a cache key (include tenant for isolation)
-            tenant_part = tenant_id.present? ? "tenant:#{tenant_id}" : "global"
-            alert_key = SpendRecorder.cache_key("budget_alert", tenant_part, scope, Date.current.to_s)
-            return if SpendRecorder.cache_exist?(alert_key)
+            key = alert_cache_key("budget_alert", scope, tenant_id)
+            return if SpendRecorder.cache_exist?(key)
 
-            SpendRecorder.cache_write(alert_key, true, expires_in: 1.hour)
+            SpendRecorder.cache_write(key, true, expires_in: 1.hour)
 
             AlertManager.notify(event, {
               scope: scope,
@@ -237,11 +259,10 @@ module RubyLLM
             return unless config.alert_events.include?(event)
 
             # Prevent duplicate alerts
-            tenant_part = tenant_id.present? ? "tenant:#{tenant_id}" : "global"
-            alert_key = SpendRecorder.cache_key("token_alert", tenant_part, scope, Date.current.to_s)
-            return if SpendRecorder.cache_exist?(alert_key)
+            key = alert_cache_key("token_alert", scope, tenant_id)
+            return if SpendRecorder.cache_exist?(key)
 
-            SpendRecorder.cache_write(alert_key, true, expires_in: 1.hour)
+            SpendRecorder.cache_write(key, true, expires_in: 1.hour)
 
             AlertManager.notify(event, {
               scope: scope,

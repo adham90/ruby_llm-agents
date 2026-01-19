@@ -124,10 +124,12 @@ module RubyLLM
         #
         # @param error [Exception] The error to check
         # @param custom_errors [Array<Class>] Additional error classes to consider retryable
+        # @param custom_patterns [Array<String>, nil] Additional patterns to check in error messages
         # @return [Boolean] true if the error is retryable
-        def retryable_error?(error, custom_errors: [])
+        def retryable_error?(error, custom_errors: [], custom_patterns: nil)
           all_retryable = default_retryable_errors + Array(custom_errors)
-          all_retryable.any? { |klass| error.is_a?(klass) } || retryable_by_message?(error)
+          all_retryable.any? { |klass| error.is_a?(klass) } ||
+            retryable_by_message?(error, custom_patterns: custom_patterns)
         end
 
         # Determines if an error is retryable based on its message content
@@ -136,32 +138,20 @@ module RubyLLM
         # but can be identified by their message.
         #
         # @param error [Exception] The error to check
+        # @param custom_patterns [Array<String>, nil] Additional patterns to check
         # @return [Boolean] true if the error message indicates a retryable condition
-        def retryable_by_message?(error)
+        def retryable_by_message?(error, custom_patterns: nil)
           message = error.message.to_s.downcase
-          retryable_patterns.any? { |pattern| message.include?(pattern) }
+          retryable_patterns(custom_patterns: custom_patterns).any? { |pattern| message.include?(pattern) }
         end
 
         # Patterns in error messages that indicate retryable errors
         #
+        # @param custom_patterns [Array<String>, nil] Additional patterns to include
         # @return [Array<String>] Patterns to match against error messages
-        def retryable_patterns
-          @retryable_patterns ||= [
-            "rate limit",
-            "rate_limit",
-            "too many requests",
-            "429",
-            "500",
-            "502",
-            "503",
-            "504",
-            "service unavailable",
-            "internal server error",
-            "bad gateway",
-            "gateway timeout",
-            "overloaded",
-            "capacity"
-          ].freeze
+        def retryable_patterns(custom_patterns: nil)
+          base = RubyLLM::Agents.configuration.all_retryable_patterns
+          custom_patterns ? (base + Array(custom_patterns)).uniq : base
         end
 
         # Calculates the backoff delay for a retry attempt

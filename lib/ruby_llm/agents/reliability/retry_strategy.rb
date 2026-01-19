@@ -15,19 +15,21 @@ module RubyLLM
       #
       # @api private
       class RetryStrategy
-        attr_reader :max, :backoff, :base, :max_delay, :custom_errors
+        attr_reader :max, :backoff, :base, :max_delay, :custom_errors, :custom_patterns
 
         # @param max [Integer] Maximum retry attempts
         # @param backoff [Symbol] :constant or :exponential
         # @param base [Float] Base delay in seconds
         # @param max_delay [Float] Maximum delay cap
         # @param on [Array<Class>] Additional error classes to retry on
-        def initialize(max: 0, backoff: :exponential, base: 0.4, max_delay: 3.0, on: [])
+        # @param patterns [Array<String>, nil] Additional patterns to match in error messages
+        def initialize(max: 0, backoff: :exponential, base: 0.4, max_delay: 3.0, on: [], patterns: nil)
           @max = max
           @backoff = backoff
           @base = base
           @max_delay = max_delay
           @custom_errors = Array(on)
+          @custom_patterns = patterns
         end
 
         # Determines if retry should occur
@@ -61,7 +63,11 @@ module RubyLLM
         # @param error [Exception] The error to check
         # @return [Boolean] true if retryable
         def retryable?(error)
-          RubyLLM::Agents::Reliability.retryable_error?(error, custom_errors: custom_errors)
+          RubyLLM::Agents::Reliability.retryable_error?(
+            error,
+            custom_errors: custom_errors,
+            custom_patterns: custom_patterns
+          )
         end
 
         # Returns all retryable error classes

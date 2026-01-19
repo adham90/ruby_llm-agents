@@ -149,17 +149,20 @@ module RubyLLM
           results = {}
           errors = {}
           mutex = Mutex.new
-          should_abort = false
 
-          # Create thread pool based on concurrency setting
-          threads = self.class.branches.map do |name, config|
-            Thread.new do
+          # Determine pool size based on concurrency setting
+          pool_size = self.class.concurrency || self.class.branches.size
+          pool = ThreadPool.new(size: pool_size)
+
+          # Submit all branches to the pool
+          self.class.branches.each do |name, config|
+            pool.post do
               Thread.current.name = "parallel-#{name}"
               Thread.current[:branch_name] = name
 
               begin
-                # Check if we should abort early
-                if self.class.fail_fast? && should_abort
+                # Check if pool was aborted (fail-fast triggered)
+                if pool.aborted?
                   mutex.synchronize { results[name] = nil }
                   next
                 end
@@ -178,29 +181,24 @@ module RubyLLM
                 mutex.synchronize do
                   results[name] = result
 
-                  # Check for failure
+                  # Check for failure and trigger fail-fast if needed
                   if result.respond_to?(:error?) && result.error? && !config[:optional]
-                    should_abort = true if self.class.fail_fast?
+                    pool.abort! if self.class.fail_fast?
                   end
                 end
               rescue StandardError => e
                 mutex.synchronize do
                   errors[name] = e
                   results[name] = nil
-                  should_abort = true if self.class.fail_fast? && !config[:optional]
+                  pool.abort! if self.class.fail_fast? && !config[:optional]
                 end
               end
             end
           end
 
-          # Apply concurrency limit if set
-          if self.class.concurrency
-            threads.each_slice(self.class.concurrency) do |thread_batch|
-              thread_batch.each(&:join)
-            end
-          else
-            threads.each(&:join)
-          end
+          # Wait for all branches to complete
+          pool.wait_for_completion
+          pool.shutdown
 
           # Determine overall status
           status = determine_parallel_status(results, errors)
