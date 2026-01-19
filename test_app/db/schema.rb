@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_17_130001) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_19_000000) do
   create_table "ruby_llm_agents_api_configurations", force: :cascade do |t|
     t.text "anthropic_api_key"
     t.text "bedrock_api_key"
@@ -138,10 +138,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_17_130001) do
 
   create_table "ruby_llm_agents_tenant_budgets", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.bigint "daily_execution_limit"
     t.decimal "daily_limit", precision: 12, scale: 6
     t.bigint "daily_token_limit"
     t.string "enforcement", default: "soft"
     t.boolean "inherit_global_defaults", default: true
+    t.bigint "monthly_execution_limit"
     t.decimal "monthly_limit", precision: 12, scale: 6
     t.bigint "monthly_token_limit"
     t.string "name"

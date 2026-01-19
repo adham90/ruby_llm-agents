@@ -50,6 +50,26 @@ RSpec.describe RubyLLM::Agents::TenantBudget, type: :model do
       budget = described_class.new(tenant_id: "test", monthly_limit: -10)
       expect(budget).not_to be_valid
     end
+
+    it "validates daily_token_limit is non-negative integer" do
+      budget = described_class.new(tenant_id: "test", daily_token_limit: -10)
+      expect(budget).not_to be_valid
+    end
+
+    it "validates monthly_token_limit is non-negative integer" do
+      budget = described_class.new(tenant_id: "test", monthly_token_limit: -10)
+      expect(budget).not_to be_valid
+    end
+
+    it "validates daily_execution_limit is non-negative integer" do
+      budget = described_class.new(tenant_id: "test", daily_execution_limit: -10)
+      expect(budget).not_to be_valid
+    end
+
+    it "validates monthly_execution_limit is non-negative integer" do
+      budget = described_class.new(tenant_id: "test", monthly_execution_limit: -10)
+      expect(budget).not_to be_valid
+    end
   end
 
   describe ".for_tenant" do
@@ -116,6 +136,108 @@ RSpec.describe RubyLLM::Agents::TenantBudget, type: :model do
       it "falls back to global config" do
         budget = described_class.new(monthly_limit: nil, inherit_global_defaults: true)
         expect(budget.effective_monthly_limit).to eq(250.0)
+      end
+    end
+  end
+
+  describe "#effective_daily_token_limit" do
+    context "when limit is set" do
+      it "returns the set limit" do
+        budget = described_class.new(daily_token_limit: 1_000_000)
+        expect(budget.effective_daily_token_limit).to eq(1_000_000)
+      end
+    end
+
+    context "when inherit_global_defaults is true and limit is not set" do
+      before do
+        RubyLLM::Agents.configure do |config|
+          config.budgets = { global_daily_tokens: 500_000 }
+        end
+      end
+
+      it "falls back to global config" do
+        budget = described_class.new(daily_token_limit: nil, inherit_global_defaults: true)
+        expect(budget.effective_daily_token_limit).to eq(500_000)
+      end
+    end
+
+    context "when inherit_global_defaults is false and limit is not set" do
+      it "returns nil" do
+        budget = described_class.new(daily_token_limit: nil, inherit_global_defaults: false)
+        expect(budget.effective_daily_token_limit).to be_nil
+      end
+    end
+  end
+
+  describe "#effective_monthly_token_limit" do
+    context "when limit is set" do
+      it "returns the set limit" do
+        budget = described_class.new(monthly_token_limit: 10_000_000)
+        expect(budget.effective_monthly_token_limit).to eq(10_000_000)
+      end
+    end
+
+    context "when inherit_global_defaults is true and limit is not set" do
+      before do
+        RubyLLM::Agents.configure do |config|
+          config.budgets = { global_monthly_tokens: 5_000_000 }
+        end
+      end
+
+      it "falls back to global config" do
+        budget = described_class.new(monthly_token_limit: nil, inherit_global_defaults: true)
+        expect(budget.effective_monthly_token_limit).to eq(5_000_000)
+      end
+    end
+  end
+
+  describe "#effective_daily_execution_limit" do
+    context "when limit is set" do
+      it "returns the set limit" do
+        budget = described_class.new(daily_execution_limit: 500)
+        expect(budget.effective_daily_execution_limit).to eq(500)
+      end
+    end
+
+    context "when inherit_global_defaults is true and limit is not set" do
+      before do
+        RubyLLM::Agents.configure do |config|
+          config.budgets = { global_daily_executions: 250 }
+        end
+      end
+
+      it "falls back to global config" do
+        budget = described_class.new(daily_execution_limit: nil, inherit_global_defaults: true)
+        expect(budget.effective_daily_execution_limit).to eq(250)
+      end
+    end
+
+    context "when inherit_global_defaults is false and limit is not set" do
+      it "returns nil" do
+        budget = described_class.new(daily_execution_limit: nil, inherit_global_defaults: false)
+        expect(budget.effective_daily_execution_limit).to be_nil
+      end
+    end
+  end
+
+  describe "#effective_monthly_execution_limit" do
+    context "when limit is set" do
+      it "returns the set limit" do
+        budget = described_class.new(monthly_execution_limit: 10_000)
+        expect(budget.effective_monthly_execution_limit).to eq(10_000)
+      end
+    end
+
+    context "when inherit_global_defaults is true and limit is not set" do
+      before do
+        RubyLLM::Agents.configure do |config|
+          config.budgets = { global_monthly_executions: 5_000 }
+        end
+      end
+
+      it "falls back to global config" do
+        budget = described_class.new(monthly_execution_limit: nil, inherit_global_defaults: true)
+        expect(budget.effective_monthly_execution_limit).to eq(5_000)
       end
     end
   end
@@ -191,6 +313,10 @@ RSpec.describe RubyLLM::Agents::TenantBudget, type: :model do
       budget = described_class.new(
         daily_limit: 50.0,
         monthly_limit: 500.0,
+        daily_token_limit: 1_000_000,
+        monthly_token_limit: 10_000_000,
+        daily_execution_limit: 500,
+        monthly_execution_limit: 10_000,
         per_agent_daily: { "AgentA" => 10.0 },
         per_agent_monthly: { "AgentA" => 100.0 },
         enforcement: "hard"
@@ -200,10 +326,17 @@ RSpec.describe RubyLLM::Agents::TenantBudget, type: :model do
 
       expect(config[:enabled]).to be true
       expect(config[:enforcement]).to eq(:hard)
+      # Cost limits
       expect(config[:global_daily]).to eq(50.0)
       expect(config[:global_monthly]).to eq(500.0)
       expect(config[:per_agent_daily]).to include("AgentA" => 10.0)
       expect(config[:per_agent_monthly]).to include("AgentA" => 100.0)
+      # Token limits
+      expect(config[:global_daily_tokens]).to eq(1_000_000)
+      expect(config[:global_monthly_tokens]).to eq(10_000_000)
+      # Execution limits
+      expect(config[:global_daily_executions]).to eq(500)
+      expect(config[:global_monthly_executions]).to eq(10_000)
     end
   end
 end

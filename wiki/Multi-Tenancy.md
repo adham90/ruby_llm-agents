@@ -79,6 +79,256 @@ This is useful for:
 - Cross-tenant operations by admin users
 - Testing with specific tenant configurations
 
+## LLMTenant DSL
+
+The `LLMTenant` concern provides a declarative DSL for making ActiveRecord models function as LLM tenants with automatic budget management and usage tracking.
+
+### Including the Concern
+
+```ruby
+class Organization < ApplicationRecord
+  include RubyLLM::Agents::LLMTenant
+
+  llm_tenant  # Minimal setup
+end
+```
+
+### DSL Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `id:` | Symbol | `:id` | Method to call for tenant_id string |
+| `name:` | Symbol | `:to_s` | Method for budget display name |
+| `budget:` | Boolean | `false` | Auto-create TenantBudget on model creation |
+| `limits:` | Hash | `nil` | Default budget limits (implies `budget: true`) |
+| `enforcement:` | Symbol | `nil` | `:none`, `:soft`, or `:hard` |
+| `inherit_global:` | Boolean | `true` | Inherit from global config for unset limits |
+| `api_keys:` | Hash | `nil` | Provider API key mapping |
+
+### Limits Hash Structure
+
+The `limits:` hash supports cost, token, and execution-based limits:
+
+```ruby
+limits: {
+  daily_cost: 100.0,           # USD per day
+  monthly_cost: 1000.0,        # USD per month
+  daily_tokens: 1_000_000,     # Tokens per day
+  monthly_tokens: 10_000_000,  # Tokens per month
+  daily_executions: 500,       # Agent calls per day
+  monthly_executions: 10_000   # Agent calls per month
+}
+```
+
+### Automatic Associations
+
+When you include `LLMTenant`, the following associations are added:
+
+```ruby
+has_many :llm_executions   # All agent executions for this tenant
+has_one :llm_budget        # The tenant's budget record
+```
+
+### Instance Methods
+
+#### Tenant Identity
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `llm_tenant_id` | String | Tenant identifier (from `id:` DSL option) |
+| `llm_api_keys` | Hash | Resolved API keys from `api_keys:` config |
+
+#### Cost Tracking
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `llm_cost(period:)` | BigDecimal | Total cost for the specified period |
+| `llm_cost_today` | BigDecimal | Today's cost |
+| `llm_cost_this_month` | BigDecimal | This month's cost |
+
+#### Token Tracking
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `llm_tokens(period:)` | Integer | Total tokens for the specified period |
+| `llm_tokens_today` | Integer | Today's tokens |
+| `llm_tokens_this_month` | Integer | This month's tokens |
+
+#### Execution Counting
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `llm_execution_count(period:)` | Integer | Execution count for the period |
+| `llm_executions_today` | Integer | Today's execution count |
+| `llm_executions_this_month` | Integer | This month's execution count |
+
+#### Budget Management
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `llm_budget` | TenantBudget | Get or build budget record |
+| `llm_configure_budget { }` | TenantBudget | Configure and save budget with block |
+| `llm_budget_status` | Hash | Full budget status from BudgetTracker |
+| `llm_within_budget?(type:)` | Boolean | Check if within budget for limit type |
+| `llm_remaining_budget(type:)` | Numeric | Remaining budget for limit type |
+| `llm_check_budget!` | void | Raises `BudgetExceededError` if over hard limit |
+
+#### Usage Summary
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `llm_usage_summary(period:)` | Hash | Combined metrics `{cost:, tokens:, executions:, period:}` |
+
+### Period Options
+
+All period-based methods accept these values:
+
+| Period | Description |
+|--------|-------------|
+| `:today` | Current day |
+| `:yesterday` | Previous day |
+| `:this_week` | Current week |
+| `:this_month` | Current month |
+| `Range` | Custom date/time range (e.g., `2.days.ago..Time.current`) |
+
+### Budget Limit Types
+
+For `llm_within_budget?` and `llm_remaining_budget`:
+
+| Type | Description |
+|------|-------------|
+| `:daily_cost` | Daily cost limit (default) |
+| `:monthly_cost` | Monthly cost limit |
+| `:daily_tokens` | Daily token limit |
+| `:monthly_tokens` | Monthly token limit |
+| `:daily_executions` | Daily execution limit |
+| `:monthly_executions` | Monthly execution limit |
+
+### Use Case Examples
+
+#### 1. Minimal Tracking Only
+
+Track executions without budgets:
+
+```ruby
+class Organization < ApplicationRecord
+  include RubyLLM::Agents::LLMTenant
+
+  llm_tenant id: :slug
+end
+
+# Usage
+org = Organization.find_by(slug: "acme")
+org.llm_cost_this_month        # => 125.50
+org.llm_executions_today       # => 42
+org.llm_usage_summary(period: :today)
+# => { cost: 12.50, tokens: 50000, executions: 42, period: :today }
+```
+
+#### 2. Auto-Budget with Global Defaults
+
+Create budgets automatically, inheriting global limits:
+
+```ruby
+class Account < ApplicationRecord
+  include RubyLLM::Agents::LLMTenant
+
+  llm_tenant id: :uuid, name: :company_name, budget: true
+end
+
+# Budget auto-created on Account.create, inherits from global config
+```
+
+#### 3. Custom Limits with Hard Enforcement
+
+Set specific limits with strict enforcement:
+
+```ruby
+class Workspace < ApplicationRecord
+  include RubyLLM::Agents::LLMTenant
+
+  llm_tenant(
+    id: :external_id,
+    name: :display_name,
+    limits: {
+      daily_cost: 50.0,
+      monthly_cost: 500.0,
+      daily_tokens: 500_000,
+      monthly_tokens: 5_000_000,
+      daily_executions: 200,
+      monthly_executions: 5_000
+    },
+    enforcement: :hard
+  )
+end
+
+# Check budget programmatically
+workspace = Workspace.find(1)
+workspace.llm_within_budget?(type: :daily_cost)  # => true
+workspace.llm_remaining_budget(type: :daily_cost) # => 37.50
+
+# This raises BudgetExceededError if over hard limit
+workspace.llm_check_budget!
+```
+
+#### 4. Full Configuration with API Keys
+
+Complete setup with per-tenant API keys:
+
+```ruby
+class Organization < ApplicationRecord
+  include RubyLLM::Agents::LLMTenant
+
+  encrypts :openai_api_key, :anthropic_api_key  # Rails 7+ encryption
+
+  llm_tenant(
+    id: :slug,
+    name: :company_name,
+    limits: {
+      daily_cost: 100.0,
+      monthly_cost: 1000.0,
+      daily_tokens: 1_000_000,
+      monthly_tokens: 10_000_000
+    },
+    enforcement: :hard,
+    inherit_global: true,
+    api_keys: {
+      openai: :openai_api_key,
+      anthropic: :anthropic_api_key,
+      gemini: :fetch_gemini_key
+    }
+  )
+
+  def fetch_gemini_key
+    Vault.read("secret/#{slug}/gemini")
+  end
+end
+
+# Tenant's API keys are automatically applied
+org = Organization.find_by(slug: "acme-corp")
+result = MyAgent.call(query: "Hello", tenant: org)
+```
+
+#### 5. Programmatic Budget Configuration
+
+Configure budgets dynamically after model creation:
+
+```ruby
+org = Organization.find(1)
+
+# Configure with block
+org.llm_configure_budget do |budget|
+  budget.daily_limit = 75.0
+  budget.monthly_limit = 750.0
+  budget.daily_execution_limit = 300
+  budget.enforcement = "hard"
+end
+
+# Or access and modify directly
+budget = org.llm_budget
+budget.update(monthly_limit: 1000.0)
+```
+
 ## TenantBudget Model
 
 The `TenantBudget` model stores per-tenant spending limits:
@@ -87,11 +337,14 @@ The `TenantBudget` model stores per-tenant spending limits:
 # Create a tenant budget
 RubyLLM::Agents::TenantBudget.create!(
   tenant_id: "tenant_123",
+  name: "Acme Corporation",
   daily_limit: 50.0,
   monthly_limit: 500.0,
   daily_token_limit: 500_000,
   monthly_token_limit: 5_000_000,
-  enforcement: :hard
+  daily_execution_limit: 500,
+  monthly_execution_limit: 10_000,
+  enforcement: "hard"
 )
 ```
 
@@ -100,34 +353,62 @@ RubyLLM::Agents::TenantBudget.create!(
 | Field | Type | Description |
 |-------|------|-------------|
 | `tenant_id` | string | Unique tenant identifier |
+| `name` | string | Human-readable display name |
 | `daily_limit` | decimal | Daily spending limit in USD |
 | `monthly_limit` | decimal | Monthly spending limit in USD |
 | `daily_token_limit` | integer | Daily token usage limit |
 | `monthly_token_limit` | integer | Monthly token usage limit |
-| `enforcement` | string | `:hard` (block) or `:soft` (warn) |
+| `daily_execution_limit` | integer | Daily agent call limit |
+| `monthly_execution_limit` | integer | Monthly agent call limit |
+| `enforcement` | string | `"none"`, `"soft"` (warn), or `"hard"` (block) |
+| `inherit_global_defaults` | boolean | Fall back to global config for unset limits |
 
 ### Managing Tenant Budgets
 
 ```ruby
 # Find or create with defaults
 budget = RubyLLM::Agents::TenantBudget.find_or_create_by(tenant_id: tenant_id) do |b|
+  b.name = "Acme Corp"
   b.daily_limit = 25.0
   b.monthly_limit = 250.0
-  b.enforcement = :hard
+  b.daily_execution_limit = 200
+  b.enforcement = "hard"
 end
 
 # Update limits
 budget.update(daily_limit: 50.0)
 
-# Check current spending
-budget.current_daily_spending   # => 12.50
-budget.current_monthly_spending # => 125.00
-budget.daily_remaining          # => 37.50
-budget.monthly_remaining        # => 125.00
+# Query effective limits (includes inheritance from global config)
+budget.effective_daily_limit           # => 50.0 (cost)
+budget.effective_monthly_limit         # => 250.0 (cost)
+budget.effective_daily_token_limit     # => 500_000 (tokens)
+budget.effective_monthly_token_limit   # => 5_000_000 (tokens)
+budget.effective_daily_execution_limit # => 200 (executions)
+budget.effective_monthly_execution_limit # => nil (not set)
 
-# Query effective token limits (includes inheritance from global config)
-budget.effective_daily_token_limit   # => 500_000
-budget.effective_monthly_token_limit # => 5_000_000
+# Check enforcement mode
+budget.effective_enforcement  # => :hard
+budget.budgets_enabled?       # => true
+
+# Get display name
+budget.display_name  # => "Acme Corp" (or tenant_id if name not set)
+
+# Convert to budget config hash (used by BudgetTracker)
+budget.to_budget_config
+# => { enabled: true, enforcement: :hard, global_daily: 50.0, ... }
+```
+
+### Finding Budgets
+
+```ruby
+# By tenant_id string
+budget = RubyLLM::Agents::TenantBudget.for_tenant("tenant_123")
+
+# By tenant object (uses polymorphic association or llm_tenant_id)
+budget = RubyLLM::Agents::TenantBudget.for_tenant(organization)
+
+# Find or create with name
+budget = RubyLLM::Agents::TenantBudget.for_tenant!("tenant_123", name: "Acme")
 ```
 
 ## Execution Filtering by Tenant
@@ -229,13 +510,17 @@ end
 
 ## Budget Enforcement
 
-With multi-tenancy enabled, budget checks happen at both global and tenant levels:
+With multi-tenancy enabled, budget checks happen at both global and tenant levels. Limits can be set for costs, tokens, and executions:
 
 ```ruby
 # Global limits (all tenants combined)
 config.budgets = {
   global_daily: 1000.0,
-  global_monthly: 20000.0
+  global_monthly: 20000.0,
+  global_daily_tokens: 10_000_000,
+  global_monthly_tokens: 100_000_000,
+  global_daily_executions: 5000,
+  global_monthly_executions: 100_000
 }
 
 # Per-tenant limits (via TenantBudget model)
@@ -243,11 +528,15 @@ RubyLLM::Agents::TenantBudget.create!(
   tenant_id: "tenant_123",
   daily_limit: 50.0,
   monthly_limit: 500.0,
-  enforcement: :hard
+  daily_token_limit: 500_000,
+  monthly_token_limit: 5_000_000,
+  daily_execution_limit: 200,
+  monthly_execution_limit: 5000,
+  enforcement: "hard"
 )
 ```
 
-Execution is blocked if either limit is exceeded (when using `:hard` enforcement).
+Execution is blocked if **any** limit is exceeded (when using `"hard"` enforcement). With `"soft"` enforcement, warnings are logged but execution continues.
 
 ### Handling Tenant Budget Errors
 
@@ -368,13 +657,40 @@ RubyLLM::Agents.configure do |config|
   config.budgets = {
     global_daily: 1000.0,
     global_monthly: 20000.0,
+    global_daily_tokens: 10_000_000,
+    global_monthly_executions: 50_000,
     enforcement: :hard
   }
 end
 
+# app/models/organization.rb
+class Organization < ApplicationRecord
+  include RubyLLM::Agents::LLMTenant
+
+  encrypts :openai_api_key, :anthropic_api_key
+
+  llm_tenant(
+    id: :slug,
+    name: :display_name,
+    limits: {
+      daily_cost: 100.0,
+      monthly_cost: 1000.0,
+      daily_tokens: 1_000_000,
+      monthly_tokens: 10_000_000,
+      daily_executions: 500,
+      monthly_executions: 10_000
+    },
+    enforcement: :hard,
+    api_keys: {
+      openai: :openai_api_key,
+      anthropic: :anthropic_api_key
+    }
+  )
+end
+
 # app/models/current.rb
 class Current < ActiveSupport::CurrentAttributes
-  attribute :tenant_id, :tenant
+  attribute :tenant_id, :organization
 end
 
 # app/controllers/application_controller.rb
@@ -384,24 +700,32 @@ class ApplicationController < ActionController::Base
   private
 
   def set_current_tenant
-    Current.tenant_id = current_user&.tenant_id
-    Current.tenant = current_user&.tenant
+    Current.organization = current_user&.organization
+    Current.tenant_id = Current.organization&.slug
   end
 end
 
-# Create tenant budgets (in a service or admin panel)
-class TenantOnboardingService
-  def call(tenant)
-    RubyLLM::Agents::TenantBudget.create!(
-      tenant_id: tenant.id,
-      daily_limit: tenant.plan.daily_ai_limit,
-      monthly_limit: tenant.plan.monthly_ai_limit,
-      daily_token_limit: tenant.plan.daily_token_limit,
-      monthly_token_limit: tenant.plan.monthly_token_limit,
-      enforcement: :hard
+# Usage in controllers
+class AiController < ApplicationController
+  def analyze
+    # Pass the organization as tenant - API keys and budget are automatic
+    result = AnalysisAgent.call(
+      query: params[:query],
+      tenant: Current.organization
     )
+    render json: result.response
+  rescue RubyLLM::Agents::BudgetExceededError => e
+    render json: { error: "Usage limit exceeded" }, status: 429
   end
 end
+
+# Usage in views/dashboards
+org = Organization.find(1)
+org.llm_usage_summary(period: :this_month)
+# => { cost: 450.50, tokens: 4_500_000, executions: 3200, period: :this_month }
+
+org.llm_within_budget?(type: :monthly_cost)  # => true
+org.llm_remaining_budget(type: :monthly_cost) # => 549.50
 ```
 
 ## Related Pages
