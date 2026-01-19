@@ -106,6 +106,34 @@ result.tool_calls_count  # => 1
 result.has_tool_calls?   # => true
 ```
 
+## Thinking Information
+
+For agents with extended thinking enabled:
+
+```ruby
+result.thinking_text       # => "Let me work through this step by step..."
+result.thinking_signature  # => "sig_abc123" (for multi-turn, Claude)
+result.thinking_tokens     # => 500 - Tokens used for thinking
+result.has_thinking?       # => true - Whether thinking was used
+```
+
+### Checking for Thinking
+
+```ruby
+result = ReasoningAgent.call(query: "Complex problem")
+
+if result.has_thinking?
+  puts "Reasoning:"
+  puts result.thinking_text
+  puts "\nThinking tokens used: #{result.thinking_tokens}"
+end
+
+puts "\nAnswer:"
+puts result.content
+```
+
+See [Thinking](Thinking) for configuration details.
+
 ## Reliability Information
 
 When using retries or fallbacks:

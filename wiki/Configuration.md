@@ -41,13 +41,32 @@ end
 | `default_temperature` | `0.0` | Default temperature (0.0-2.0) |
 | `default_timeout` | `60` | Default request timeout in seconds |
 | `default_streaming` | `false` | Enable streaming by default |
+| `default_thinking` | `nil` | Default thinking config (e.g., `{ effort: :medium }`) |
 
 ```ruby
 config.default_model = "gpt-4o"
 config.default_temperature = 0.7
 config.default_timeout = 120
 config.default_streaming = true
+config.default_thinking = nil  # Or { effort: :medium } to enable globally
 ```
+
+### Extended Thinking
+
+Configure default thinking/reasoning behavior:
+
+```ruby
+# Disable thinking by default (recommended)
+config.default_thinking = nil
+
+# Enable medium-effort thinking for all agents
+config.default_thinking = { effort: :medium }
+
+# Enable with token budget
+config.default_thinking = { effort: :high, budget: 10000 }
+```
+
+See [Thinking](Thinking) for details on supported providers and per-agent configuration.
 
 ### Caching
 

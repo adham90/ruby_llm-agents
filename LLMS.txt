@@ -221,6 +221,46 @@ ChatAgent.stream(message: "Hello") do |chunk|
 end
 ```
 
+### Extended Thinking
+
+Extended thinking allows models to show their reasoning process before providing a final answer.
+
+```ruby
+class ReasoningAgent < ApplicationAgent
+  model "claude-opus-4-5-20250514"
+  thinking effort: :high, budget: 10000
+
+  param :query, required: true
+
+  def user_prompt
+    query
+  end
+end
+
+result = ReasoningAgent.call(query: "What is 127 * 43?")
+result.thinking_text   # The reasoning process
+result.content         # Final answer
+result.has_thinking?   # true if thinking was used
+result.thinking_tokens # Tokens used for thinking
+```
+
+**Effort levels:** `:none`, `:low`, `:medium`, `:high`
+
+**Runtime override:**
+```ruby
+# Override at call time
+result = MyAgent.call(query: "Complex problem", thinking: { effort: :high, budget: 15000 })
+
+# Disable for simple questions
+result = MyAgent.call(query: "Quick question", thinking: false)
+```
+
+**Supported providers:**
+- Claude (Anthropic/Bedrock): Visible thinking with `effort` + `budget`
+- Gemini 2.5+: Visible thinking with `budget`
+- OpenAI (o1/o3): Hidden thinking with `effort` only
+- Perplexity, Mistral Magistral, Ollama Qwen3: Various support
+
 ### Reliability Configuration
 
 Individual methods (backward compatible):
@@ -348,6 +388,12 @@ result.tool_calls        # Array of tool call details
 result.tool_calls_count  # Number of tool calls
 result.has_tool_calls?   # true if tools were called
 
+# Thinking (extended reasoning)
+result.thinking_text       # String - reasoning content
+result.thinking_signature  # String - for multi-turn (Claude)
+result.thinking_tokens     # Integer - tokens used for thinking
+result.has_thinking?       # Boolean - whether thinking was used
+
 # Serialization
 result.to_h              # Full result as hash
 result.to_json           # Content as JSON
@@ -443,6 +489,7 @@ RubyLLM::Agents.configure do |config|
   config.default_total_timeout = nil
   config.default_streaming = false
   config.default_tools = []
+  config.default_thinking = nil  # { effort: :medium } to enable globally
 
   # Cost governance
   config.budgets = {
@@ -499,6 +546,7 @@ end
 | `default_timeout` | Integer | `60` | Request timeout in seconds |
 | `default_streaming` | Boolean | `false` | Enable streaming by default |
 | `default_tools` | Array | `[]` | Default tools for all agents |
+| `default_thinking` | Hash | `nil` | Default thinking config (e.g., `{effort: :medium}`) |
 | `default_retries` | Hash | `{max: 0}` | Default retry configuration |
 | `default_fallback_models` | Array | `[]` | Default fallback models |
 | `default_total_timeout` | Integer | `nil` | Default total timeout |

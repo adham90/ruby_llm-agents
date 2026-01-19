@@ -20,6 +20,7 @@ Welcome to the official documentation for **RubyLLM::Agents**, a production-read
 ### Features
 - **[Tools](Tools)** - Enable agents to call external functions
 - **[Streaming](Streaming)** - Real-time response streaming
+- **[Thinking](Thinking)** - Extended reasoning and chain-of-thought
 - **[Attachments](Attachments)** - Vision and multimodal support
 - **[Caching](Caching)** - Response caching with TTL
 - **[Execution Tracking](Execution-Tracking)** - Automatic logging and analytics

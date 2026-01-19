@@ -107,6 +107,40 @@ end
 
 See [Streaming](Streaming) for details.
 
+### thinking
+
+Enable extended thinking/reasoning for supported models:
+
+```ruby
+class MyAgent < ApplicationAgent
+  model "claude-opus-4-5-20250514"
+  thinking effort: :high, budget: 10000
+end
+```
+
+**Options:**
+- `effort:` - Thinking depth (`:none`, `:low`, `:medium`, `:high`)
+- `budget:` - Maximum tokens for thinking computation
+
+**Runtime override:**
+```ruby
+# Override at call time
+MyAgent.call(query: "Complex problem", thinking: { effort: :high, budget: 15000 })
+
+# Disable for simple questions
+MyAgent.call(query: "Quick question", thinking: false)
+```
+
+**Access thinking data:**
+```ruby
+result = MyAgent.call(query: "Solve this...")
+result.thinking_text   # The reasoning process
+result.has_thinking?   # Whether thinking was used
+result.thinking_tokens # Tokens used for thinking
+```
+
+See [Thinking](Thinking) for details on supported providers and best practices.
+
 ### tools
 
 Register tools for the agent to use:
@@ -430,5 +464,6 @@ end
 - [Prompts and Schemas](Prompts-and-Schemas) - Output structuring
 - [Conversation History](Conversation-History) - Multi-turn conversations
 - [Tools](Tools) - Using tools with agents
+- [Thinking](Thinking) - Extended reasoning support
 - [Reliability](Reliability) - Fault tolerance configuration
 - [Caching](Caching) - Cache configuration
