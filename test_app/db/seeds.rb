@@ -1,6 +1,14 @@
 # frozen_string_literal: true
 
-# Seeds for testing ruby_llm-agents dashboard and workflow visualizations
+# Seeds for testing ruby_llm-agents with Organizations and LLMTenant DSL
+#
+# This seed file demonstrates:
+# - Organization model with full LLMTenant DSL
+# - llm_configure_budget block syntax
+# - All limit types (cost, tokens, executions)
+# - All enforcement modes (none, soft, hard)
+# - Usage tracking methods
+# - Various agent executions including showcase agents
 #
 # Run with: bin/rails db:seed
 # Reset and reseed: bin/rails db:seed:replant
@@ -49,489 +57,367 @@ end
 puts "Clearing existing data..."
 RubyLLM::Agents::Execution.destroy_all
 RubyLLM::Agents::TenantBudget.destroy_all if RubyLLM::Agents::TenantBudget.table_exists?
+Organization.destroy_all if defined?(Organization) && Organization.table_exists?
 
 # =============================================================================
-# TENANT BUDGETS
-# =============================================================================
-puts "\n" + "=" * 60
-puts "Creating Tenant Budgets..."
-puts "=" * 60
-
-if RubyLLM::Agents::TenantBudget.table_exists?
-  # Tenant 1: Acme Corp - High usage enterprise customer
-  acme = RubyLLM::Agents::TenantBudget.create!(
-    tenant_id: "acme_corp",
-    daily_limit: 100.0,
-    monthly_limit: 2000.0,
-    per_agent_daily: {
-      "ContentPipeline" => 30.0,
-      "SearchAgent" => 20.0,
-      "SummaryAgent" => 15.0
-    },
-    per_agent_monthly: {
-      "ContentPipeline" => 600.0,
-      "SearchAgent" => 400.0
-    },
-    enforcement: "soft",
-    inherit_global_defaults: true
-  )
-  puts "  Created: acme_corp (daily: $#{acme.daily_limit}, monthly: $#{acme.monthly_limit}, enforcement: #{acme.enforcement})"
-
-  # Tenant 2: Startup Inc - Budget-conscious startup
-  startup = RubyLLM::Agents::TenantBudget.create!(
-    tenant_id: "startup_inc",
-    daily_limit: 25.0,
-    monthly_limit: 500.0,
-    per_agent_daily: {
-      "ContentPipeline" => 10.0,
-      "SearchAgent" => 5.0
-    },
-    enforcement: "hard",
-    inherit_global_defaults: true
-  )
-  puts "  Created: startup_inc (daily: $#{startup.daily_limit}, monthly: $#{startup.monthly_limit}, enforcement: #{startup.enforcement})"
-
-  # Tenant 3: Enterprise Plus - Premium unlimited customer
-  enterprise = RubyLLM::Agents::TenantBudget.create!(
-    tenant_id: "enterprise_plus",
-    daily_limit: 500.0,
-    monthly_limit: 10000.0,
-    per_agent_daily: {},
-    per_agent_monthly: {},
-    enforcement: "none",
-    inherit_global_defaults: false
-  )
-  puts "  Created: enterprise_plus (daily: $#{enterprise.daily_limit}, monthly: $#{enterprise.monthly_limit}, enforcement: #{enterprise.enforcement})"
-
-  # Tenant 4: Demo Account - For demos and testing
-  demo = RubyLLM::Agents::TenantBudget.create!(
-    tenant_id: "demo_account",
-    daily_limit: 10.0,
-    monthly_limit: 100.0,
-    per_agent_daily: {
-      "SearchAgent" => 3.0,
-      "SummaryAgent" => 2.0,
-      "TranslationAgent" => 2.0
-    },
-    enforcement: "soft",
-    inherit_global_defaults: true
-  )
-  puts "  Created: demo_account (daily: $#{demo.daily_limit}, monthly: $#{demo.monthly_limit}, enforcement: #{demo.enforcement})"
-else
-  puts "  Skipping TenantBudget creation - table does not exist"
-end
-
-# =============================================================================
-# TENANT: ACME CORP - High volume, various executions
+# ORGANIZATIONS (with LLMTenant DSL)
 # =============================================================================
 puts "\n" + "=" * 60
-puts "Creating executions for: acme_corp"
+puts "Creating Organizations with LLMTenant..."
 puts "=" * 60
 
-# Successful searches
-8.times do |i|
-  create_execution(
-    tenant_id: "acme_corp",
-    agent_type: "SearchAgent",
-    parameters: { query: "How to implement #{%w[authentication caching routing validation pagination].sample}?" },
-    response: { content: "Here's how to implement it..." },
-    metadata: { request_id: SecureRandom.uuid },
-    created_at: Time.current - (i * 2).hours
-  )
+# Organization 1: Acme Corp - Enterprise customer with high limits
+# Demonstrates: Full configuration, hard enforcement, multiple API keys
+acme = Organization.create!(
+  slug: "acme-corp",
+  name: "Acme Corporation",
+  plan: "enterprise",
+  industry: "Technology",
+  employee_count: 500,
+  openai_api_key: "sk-demo-acme-openai-key",
+  anthropic_api_key: "sk-ant-demo-acme-key",
+  gemini_api_key: nil,
+  active: true
+)
+
+# Manually configure budget to demonstrate llm_configure_budget block
+acme.llm_configure_budget do |budget|
+  budget.daily_limit = 200.0
+  budget.monthly_limit = 4000.0
+  budget.daily_token_limit = 2_000_000
+  budget.monthly_token_limit = 40_000_000
+  budget.daily_execution_limit = 1000
+  budget.monthly_execution_limit = 20_000
+  budget.enforcement = "hard"
+  budget.inherit_global_defaults = true
+  budget.per_agent_daily = {
+    "FullFeaturedAgent" => 50.0,
+    "ToolsAgent" => 30.0
+  }
 end
-puts "  Created 8 SearchAgent executions"
+puts "  Created: #{acme.name} (#{acme.slug}) - Enterprise, hard enforcement"
 
-# Summary executions
-5.times do |i|
-  create_execution(
-    tenant_id: "acme_corp",
-    agent_type: "SummaryAgent",
-    model_id: "gpt-4o",
-    parameters: { text: "Long document content #{i + 1}..." },
-    response: { summary: "This document discusses..." },
-    created_at: Time.current - (i * 3).hours
-  )
+# Organization 2: Startup Inc - Budget-conscious with soft enforcement
+# Demonstrates: Soft enforcement, lower limits
+startup = Organization.create!(
+  slug: "startup-inc",
+  name: "Startup Inc",
+  plan: "starter",
+  industry: "SaaS",
+  employee_count: 25,
+  openai_api_key: "sk-demo-startup-openai",
+  active: true
+)
+
+startup.llm_configure_budget do |budget|
+  budget.daily_limit = 25.0
+  budget.monthly_limit = 500.0
+  budget.daily_token_limit = 500_000
+  budget.monthly_token_limit = 10_000_000
+  budget.daily_execution_limit = 100
+  budget.monthly_execution_limit = 2000
+  budget.enforcement = "soft"
 end
-puts "  Created 5 SummaryAgent executions"
+puts "  Created: #{startup.name} (#{startup.slug}) - Starter, soft enforcement"
 
-# Pipeline workflow for acme
-workflow_id = SecureRandom.uuid
-pipeline_started = Time.current - 1.hour
-
-pipeline_root = create_execution(
-  tenant_id: "acme_corp",
-  agent_type: "ContentPipeline",
-  workflow_type: "pipeline",
-  workflow_id: workflow_id,
-  parameters: { text: "Analyze this content about machine learning and AI trends..." },
-  response: {
-    extracted: { entities: ["AI", "ML", "trends"], key_points: 3 },
-    classified: "technology",
-    formatted: "# Analysis Report\n\nKey findings..."
-  },
-  started_at: pipeline_started,
-  completed_at: pipeline_started + 4.5.seconds,
-  duration_ms: 4500,
-  created_at: pipeline_started
+# Organization 3: Enterprise Plus - Premium unlimited
+# Demonstrates: No enforcement, high limits
+enterprise = Organization.create!(
+  slug: "enterprise-plus",
+  name: "Enterprise Plus Global",
+  plan: "enterprise",
+  industry: "Finance",
+  employee_count: 5000,
+  openai_api_key: "sk-demo-enterprise-openai",
+  anthropic_api_key: "sk-ant-demo-enterprise",
+  gemini_api_key: "gemini-demo-enterprise",
+  active: true
 )
 
-# Pipeline steps
-create_execution(
-  tenant_id: "acme_corp",
-  agent_type: "ExtractorAgent",
-  workflow_type: "pipeline",
-  workflow_id: workflow_id,
-  workflow_step: "extract",
-  parent_execution_id: pipeline_root.id,
-  root_execution_id: pipeline_root.id,
-  model_id: "gpt-4o-mini",
-  parameters: { text: "Analyze this content about machine learning..." },
-  response: { entities: ["AI", "ML", "trends"], key_points: 3 },
-  started_at: pipeline_started,
-  completed_at: pipeline_started + 1.2.seconds,
-  duration_ms: 1200,
-  input_tokens: 450,
-  output_tokens: 120,
-  created_at: pipeline_started
+enterprise.llm_configure_budget do |budget|
+  budget.daily_limit = 10000.0
+  budget.monthly_limit = 200000.0
+  budget.enforcement = "none"
+  budget.inherit_global_defaults = false
+end
+puts "  Created: #{enterprise.name} (#{enterprise.slug}) - Enterprise, no enforcement"
+
+# Organization 4: Demo Account - Strict limits for demos
+# Demonstrates: Hard enforcement with very low limits
+demo = Organization.create!(
+  slug: "demo-account",
+  name: "Demo Account",
+  plan: "free",
+  industry: "Demo",
+  employee_count: 1,
+  active: true
 )
 
-create_execution(
-  tenant_id: "acme_corp",
-  agent_type: "ClassifierAgent",
-  workflow_type: "pipeline",
-  workflow_id: workflow_id,
-  workflow_step: "classify",
-  parent_execution_id: pipeline_root.id,
-  root_execution_id: pipeline_root.id,
-  model_id: "gpt-4o-mini",
-  parameters: { text: "Entities: AI, ML, trends" },
-  response: { category: "technology", confidence: 0.95 },
-  started_at: pipeline_started + 1.3.seconds,
-  completed_at: pipeline_started + 2.1.seconds,
-  duration_ms: 800,
-  input_tokens: 200,
-  output_tokens: 50,
-  created_at: pipeline_started + 1.3.seconds
+demo.llm_configure_budget do |budget|
+  budget.daily_limit = 5.0
+  budget.monthly_limit = 50.0
+  budget.daily_token_limit = 50_000
+  budget.monthly_token_limit = 500_000
+  budget.daily_execution_limit = 20
+  budget.monthly_execution_limit = 200
+  budget.enforcement = "hard"
+end
+puts "  Created: #{demo.name} (#{demo.slug}) - Free, hard enforcement (demo limits)"
+
+# Organization 5: Token Focused - Only token-based limits
+# Demonstrates: Token limits without cost limits
+token_focused = Organization.create!(
+  slug: "token-focused",
+  name: "Token Focused Corp",
+  plan: "business",
+  industry: "Healthcare",
+  employee_count: 100,
+  openai_api_key: "sk-demo-token-focused",
+  active: true
 )
 
-create_execution(
-  tenant_id: "acme_corp",
-  agent_type: "FormatterAgent",
-  workflow_type: "pipeline",
-  workflow_id: workflow_id,
-  workflow_step: "format",
-  parent_execution_id: pipeline_root.id,
-  root_execution_id: pipeline_root.id,
-  model_id: "gpt-4o-mini",
-  parameters: { text: "Entities and classification data...", category: "technology" },
-  response: { formatted: "# Analysis Report\n\nKey findings..." },
-  started_at: pipeline_started + 2.2.seconds,
-  completed_at: pipeline_started + 4.4.seconds,
-  duration_ms: 2200,
-  input_tokens: 350,
-  output_tokens: 400,
-  created_at: pipeline_started + 2.2.seconds
-)
-puts "  Created ContentPipeline workflow with 3 steps"
+token_focused.llm_configure_budget do |budget|
+  budget.daily_limit = nil
+  budget.monthly_limit = nil
+  budget.daily_token_limit = 1_000_000
+  budget.monthly_token_limit = 20_000_000
+  budget.daily_execution_limit = nil
+  budget.monthly_execution_limit = nil
+  budget.enforcement = "soft"
+end
+puts "  Created: #{token_focused.name} (#{token_focused.slug}) - Business, token-only limits"
 
 # =============================================================================
-# TENANT: STARTUP INC - Budget-conscious, fewer executions
+# Display LLMTenant DSL Methods
 # =============================================================================
 puts "\n" + "=" * 60
-puts "Creating executions for: startup_inc"
+puts "Demonstrating LLMTenant DSL Methods..."
 puts "=" * 60
 
-# Fewer searches (budget conscious)
-3.times do |i|
-  create_execution(
-    tenant_id: "startup_inc",
-    agent_type: "SearchAgent",
-    model_id: "gpt-4o-mini", # Cost-effective model
-    parameters: { query: "Best practices for #{%w[MVP deployment scaling].sample}" },
-    response: { content: "Here are the best practices..." },
-    created_at: Time.current - (i * 5).hours
-  )
-end
-puts "  Created 3 SearchAgent executions"
-
-# One failed execution (hit budget limit)
-create_execution(
-  tenant_id: "startup_inc",
-  agent_type: "SummaryAgent",
-  status: "error",
-  error_class: "RubyLLM::Agents::BudgetExceededError",
-  error_message: "Daily budget limit of $25.00 exceeded for tenant startup_inc",
-  parameters: { text: "Summarize this report..." },
-  created_at: Time.current - 2.hours
-)
-puts "  Created 1 budget-exceeded error"
-
-# One successful summary
-create_execution(
-  tenant_id: "startup_inc",
-  agent_type: "SummaryAgent",
-  model_id: "gpt-4o-mini",
-  parameters: { text: "Quarterly report..." },
-  response: { summary: "Q4 showed 20% growth..." },
-  created_at: Time.current - 6.hours
-)
-puts "  Created 1 SummaryAgent execution"
+puts "\nAcme Corp LLMTenant info:"
+puts "  llm_tenant_id: #{acme.llm_tenant_id}"
+puts "  llm_api_keys: #{acme.llm_api_keys.keys.inspect}"
+puts "  llm_budget.enforcement: #{acme.llm_budget.enforcement}"
 
 # =============================================================================
-# TENANT: ENTERPRISE PLUS - Heavy usage, premium models
+# EXECUTIONS FOR ORGANIZATIONS
+# =============================================================================
+
+# Helper to create executions for an organization
+def create_org_executions(org, count:, agents:, models: ["gpt-4o-mini"], statuses: ["success"])
+  count.times do |i|
+    create_execution(
+      tenant_id: org.llm_tenant_id,
+      agent_type: agents.sample,
+      model_id: models.sample,
+      status: statuses.sample,
+      parameters: { query: "Test query #{i + 1}" },
+      response: { content: "Response content" },
+      metadata: { request_id: SecureRandom.uuid },
+      created_at: Time.current - (i * rand(10..60)).minutes
+    )
+  end
+end
+
+# =============================================================================
+# ACME CORP EXECUTIONS - High volume
 # =============================================================================
 puts "\n" + "=" * 60
-puts "Creating executions for: enterprise_plus"
+puts "Creating executions for: #{acme.name}"
 puts "=" * 60
 
-# Heavy search usage with premium models
-10.times do |i|
-  model = ["gpt-4o", "claude-3-opus", "gpt-4o"].sample
-  create_execution(
-    tenant_id: "enterprise_plus",
-    agent_type: "SearchAgent",
-    model_id: model,
-    parameters: { query: "Enterprise #{%w[security compliance analytics governance].sample} strategy" },
-    response: { content: "Comprehensive analysis..." },
-    metadata: { request_id: SecureRandom.uuid, department: %w[engineering legal finance hr].sample },
-    created_at: Time.current - (i * 1.5).hours
-  )
+# Successful showcase agent executions
+showcase_agents = %w[
+  ReliabilityAgent
+  CachingAgent
+  StreamingAgent
+  ToolsAgent
+  SchemaAgent
+  ConversationAgent
+  FullFeaturedAgent
+]
+
+showcase_agents.each do |agent|
+  2.times do |i|
+    create_execution(
+      tenant_id: acme.llm_tenant_id,
+      agent_type: agent,
+      model_id: "gpt-4o",
+      parameters: { query: "Showcase test #{i + 1}" },
+      response: { content: "Showcase response" },
+      metadata: { showcase: true },
+      created_at: Time.current - (i * 30).minutes
+    )
+  end
 end
-puts "  Created 10 SearchAgent executions"
+puts "  Created #{showcase_agents.length * 2} showcase agent executions"
 
-# Summary executions
-6.times do |i|
-  create_execution(
-    tenant_id: "enterprise_plus",
-    agent_type: "SummaryAgent",
-    model_id: "gpt-4o",
-    parameters: { text: "Board meeting notes #{i + 1}..." },
-    response: { summary: "Key decisions from the meeting..." },
-    created_at: Time.current - (i * 2).hours
-  )
-end
-puts "  Created 6 SummaryAgent executions"
+# Standard agents
+create_org_executions(acme, count: 8, agents: %w[SearchAgent SummaryAgent], models: %w[gpt-4o gpt-4o-mini])
+puts "  Created 8 standard agent executions"
 
-# Parallel workflow
-parallel_workflow_id = SecureRandom.uuid
-parallel_started = Time.current - 45.minutes
-
-parallel_root = create_execution(
-  tenant_id: "enterprise_plus",
-  agent_type: "ContentAnalyzer",
-  workflow_type: "parallel",
-  workflow_id: parallel_workflow_id,
-  parameters: { text: "The new product launch exceeded expectations with 50% growth..." },
-  response: {
-    sentiment: "positive",
-    keywords: ["product", "launch", "growth", "expectations"],
-    summary: "Successful product launch with significant growth."
-  },
-  started_at: parallel_started,
-  completed_at: parallel_started + 2.8.seconds,
-  duration_ms: 2800,
-  created_at: parallel_started
-)
-
-# Parallel branches
+# Tool calls execution
 create_execution(
-  tenant_id: "enterprise_plus",
-  agent_type: "SentimentAgent",
-  workflow_type: "parallel",
-  workflow_id: parallel_workflow_id,
-  workflow_step: "sentiment",
-  parent_execution_id: parallel_root.id,
-  root_execution_id: parallel_root.id,
+  tenant_id: acme.llm_tenant_id,
+  agent_type: "ToolsAgent",
   model_id: "gpt-4o",
-  parameters: { text: "The new product launch exceeded expectations..." },
-  response: { sentiment: "positive", score: 0.89 },
-  started_at: parallel_started,
-  completed_at: parallel_started + 0.9.seconds,
-  duration_ms: 900,
-  input_tokens: 180,
-  output_tokens: 30,
-  created_at: parallel_started
+  finish_reason: "tool_calls",
+  tool_calls: [
+    { id: "call_calc_001", name: "calculator", arguments: { operation: "multiply", a: 25, b: 4 } },
+    { id: "call_weather_001", name: "weather", arguments: { location: "Tokyo" } }
+  ],
+  tool_calls_count: 2,
+  parameters: { query: "What's 25*4 and the weather in Tokyo?" },
+  response: { content: "25 times 4 is 100, and Tokyo is sunny at 22C." },
+  created_at: Time.current - 45.minutes
 )
-
-create_execution(
-  tenant_id: "enterprise_plus",
-  agent_type: "KeywordAgent",
-  workflow_type: "parallel",
-  workflow_id: parallel_workflow_id,
-  workflow_step: "keywords",
-  parent_execution_id: parallel_root.id,
-  root_execution_id: parallel_root.id,
-  model_id: "gpt-4o",
-  parameters: { text: "The new product launch exceeded expectations..." },
-  response: { keywords: ["product", "launch", "growth"] },
-  started_at: parallel_started,
-  completed_at: parallel_started + 1.5.seconds,
-  duration_ms: 1500,
-  input_tokens: 180,
-  output_tokens: 60,
-  created_at: parallel_started
-)
-
-create_execution(
-  tenant_id: "enterprise_plus",
-  agent_type: "SummaryAgent",
-  workflow_type: "parallel",
-  workflow_id: parallel_workflow_id,
-  workflow_step: "summary",
-  parent_execution_id: parallel_root.id,
-  root_execution_id: parallel_root.id,
-  model_id: "gpt-4o",
-  parameters: { text: "The new product launch exceeded expectations..." },
-  response: { summary: "Successful product launch with 50% growth." },
-  started_at: parallel_started,
-  completed_at: parallel_started + 2.7.seconds,
-  duration_ms: 2700,
-  input_tokens: 180,
-  output_tokens: 80,
-  created_at: parallel_started
-)
-puts "  Created ContentAnalyzer parallel workflow with 3 branches"
-
-# Router workflow
-router_workflow_id = SecureRandom.uuid
-router_started = Time.current - 30.minutes
-
-router_root = create_execution(
-  tenant_id: "enterprise_plus",
-  agent_type: "SupportRouter",
-  workflow_type: "router",
-  workflow_id: router_workflow_id,
-  routed_to: "technical",
-  classification_result: {
-    method: "llm",
-    classifier_model: "gpt-4o",
-    classification_time_ms: 450,
-    confidence: 0.95
-  },
-  parameters: { message: "Our API integration is returning 500 errors" },
-  response: { content: "Let me help you debug the API integration issue..." },
-  started_at: router_started,
-  completed_at: router_started + 3.2.seconds,
-  duration_ms: 3200,
-  created_at: router_started
-)
-
-create_execution(
-  tenant_id: "enterprise_plus",
-  agent_type: "TechnicalSupportAgent",
-  workflow_type: "router",
-  workflow_id: router_workflow_id,
-  workflow_step: "technical",
-  parent_execution_id: router_root.id,
-  root_execution_id: router_root.id,
-  model_id: "gpt-4o",
-  parameters: { message: "Our API integration is returning 500 errors" },
-  response: { content: "Based on the error logs, I recommend checking..." },
-  started_at: router_started + 0.5.seconds,
-  completed_at: router_started + 3.1.seconds,
-  duration_ms: 2600,
-  input_tokens: 380,
-  output_tokens: 250,
-  created_at: router_started + 0.5.seconds
-)
-puts "  Created SupportRouter workflow"
+puts "  Created 1 tool calls execution"
 
 # =============================================================================
-# TENANT: DEMO ACCOUNT - Variety of states for demos
+# STARTUP INC EXECUTIONS - Budget conscious
 # =============================================================================
 puts "\n" + "=" * 60
-puts "Creating executions for: demo_account"
+puts "Creating executions for: #{startup.name}"
 puts "=" * 60
 
-# Success
-create_execution(
-  tenant_id: "demo_account",
-  agent_type: "SearchAgent",
-  parameters: { query: "What is Ruby on Rails?" },
-  response: { content: "Ruby on Rails is a web framework..." },
-  created_at: Time.current - 10.minutes
-)
-puts "  Created 1 successful SearchAgent"
+create_org_executions(startup, count: 5, agents: %w[SummaryAgent SearchAgent], models: ["gpt-4o-mini"])
+puts "  Created 5 budget-conscious executions"
 
 # Cached response
 create_execution(
-  tenant_id: "demo_account",
-  agent_type: "SearchAgent",
+  tenant_id: startup.llm_tenant_id,
+  agent_type: "CachingAgent",
   cache_hit: true,
-  response_cache_key: "search_agent:v1:demo123",
+  response_cache_key: "showcase_caching:v1:startup",
   cached_at: Time.current - 1.hour,
   duration_ms: 5,
-  parameters: { query: "What is Ruby on Rails?" },
-  response: { content: "Ruby on Rails is a web framework..." },
+  parameters: { query: "What is caching?" },
+  response: { content: "Caching is storing data for quick retrieval..." },
+  created_at: Time.current - 10.minutes
+)
+puts "  Created 1 cached response"
+
+# Budget warning (soft enforcement)
+create_execution(
+  tenant_id: startup.llm_tenant_id,
+  agent_type: "SummaryAgent",
+  status: "success",
+  parameters: { text: "Long document..." },
+  response: { summary: "Summary of document..." },
+  metadata: { budget_warning: true, budget_percentage: 85 },
+  created_at: Time.current - 30.minutes
+)
+puts "  Created 1 budget warning execution"
+
+# =============================================================================
+# ENTERPRISE PLUS EXECUTIONS - Premium usage
+# =============================================================================
+puts "\n" + "=" * 60
+puts "Creating executions for: #{enterprise.name}"
+puts "=" * 60
+
+# Premium model usage
+create_org_executions(enterprise, count: 15, agents: showcase_agents + %w[SearchAgent SummaryAgent], models: %w[gpt-4o claude-3-opus])
+puts "  Created 15 premium model executions"
+
+# Streaming execution
+create_execution(
+  tenant_id: enterprise.llm_tenant_id,
+  agent_type: "StreamingAgent",
+  model_id: "gpt-4o",
+  streaming: true,
+  parameters: { query: "Tell me a story about AI" },
+  response: { content: "Once upon a time..." },
+  metadata: { time_to_first_token_ms: 234 },
+  created_at: Time.current - 15.minutes
+)
+puts "  Created 1 streaming execution"
+
+# =============================================================================
+# DEMO ACCOUNT EXECUTIONS - Various states
+# =============================================================================
+puts "\n" + "=" * 60
+puts "Creating executions for: #{demo.name}"
+puts "=" * 60
+
+# Successful execution
+create_execution(
+  tenant_id: demo.llm_tenant_id,
+  agent_type: "CachingAgent",
+  parameters: { query: "What is Ruby?" },
+  response: { content: "Ruby is a programming language..." },
   created_at: Time.current - 5.minutes
 )
-puts "  Created 1 cached SearchAgent"
+puts "  Created 1 successful execution"
+
+# Budget exceeded error (hard enforcement)
+create_execution(
+  tenant_id: demo.llm_tenant_id,
+  agent_type: "FullFeaturedAgent",
+  status: "error",
+  error_class: "RubyLLM::Agents::BudgetExceededError",
+  error_message: "Daily budget limit of $5.00 exceeded for tenant demo-account",
+  parameters: { query: "Complex analysis request" },
+  created_at: Time.current - 2.hours
+)
+puts "  Created 1 budget exceeded error"
 
 # Rate limited
 create_execution(
-  tenant_id: "demo_account",
-  agent_type: "TranslationAgent",
+  tenant_id: demo.llm_tenant_id,
+  agent_type: "ReliabilityAgent",
   status: "error",
   error_class: "RubyLLM::RateLimitError",
   error_message: "Rate limit exceeded. Please retry after 60 seconds.",
   rate_limited: true,
   retryable: true,
-  parameters: { text: "Hello world", target_language: "es" },
-  created_at: Time.current - 15.minutes
+  parameters: { query: "Quick question" },
+  created_at: Time.current - 1.hour
 )
-puts "  Created 1 rate-limited error"
+puts "  Created 1 rate limited error"
 
-# Timeout
+# Running execution
 create_execution(
-  tenant_id: "demo_account",
-  agent_type: "AnalysisAgent",
-  status: "timeout",
-  error_class: "Timeout::Error",
-  error_message: "Execution exceeded 30 second timeout",
-  parameters: { data: "Large dataset..." },
-  duration_ms: 30000,
-  created_at: Time.current - 20.minutes
-)
-puts "  Created 1 timeout error"
-
-# Running
-create_execution(
-  tenant_id: "demo_account",
-  agent_type: "ReportAgent",
+  tenant_id: demo.llm_tenant_id,
+  agent_type: "StreamingAgent",
   status: "running",
-  parameters: { report_type: "demo", format: "pdf" },
+  parameters: { query: "Long story request" },
   completed_at: nil,
   duration_ms: nil,
   output_tokens: nil,
-  created_at: Time.current - 1.minute
+  created_at: Time.current - 30.seconds
 )
 puts "  Created 1 running execution"
 
-# With tool calls
-create_execution(
-  tenant_id: "demo_account",
-  agent_type: "AssistantAgent",
-  model_id: "gpt-4o",
-  finish_reason: "tool_calls",
-  tool_calls: [
-    { id: "call_abc123", name: "search_web", arguments: { query: "latest news" } },
-    { id: "call_def456", name: "calculate", arguments: { expression: "2 + 2" } }
-  ],
-  tool_calls_count: 2,
-  parameters: { message: "Search for news and calculate 2+2" },
-  response: { content: "I found the news and the answer is 4." },
-  created_at: Time.current - 25.minutes
-)
-puts "  Created 1 execution with tool calls"
-
 # =============================================================================
-# NO TENANT (legacy/global executions)
+# TOKEN FOCUSED EXECUTIONS
 # =============================================================================
 puts "\n" + "=" * 60
-puts "Creating executions without tenant (global)"
+puts "Creating executions for: #{token_focused.name}"
 puts "=" * 60
 
-# Some executions without tenant_id (backward compatibility)
+# High token usage executions
+5.times do |i|
+  create_execution(
+    tenant_id: token_focused.llm_tenant_id,
+    agent_type: "ConversationAgent",
+    model_id: "gpt-4o-mini",
+    input_tokens: rand(5000..15000),
+    output_tokens: rand(3000..8000),
+    parameters: { message: "Conversation message #{i + 1}", conversation_history: [] },
+    response: { content: "Response #{i + 1}" },
+    created_at: Time.current - (i * 20).minutes
+  )
+end
+puts "  Created 5 high-token executions"
+
+# =============================================================================
+# LEGACY EXECUTIONS (no tenant - backward compatibility)
+# =============================================================================
+puts "\n" + "=" * 60
+puts "Creating executions without tenant (legacy)"
+puts "=" * 60
+
 3.times do |i|
   create_execution(
     tenant_id: nil,
@@ -541,7 +427,26 @@ puts "=" * 60
     created_at: Time.current - (i * 4).hours
   )
 end
-puts "  Created 3 LegacyAgent executions (no tenant)"
+puts "  Created 3 legacy agent executions (no tenant)"
+
+# =============================================================================
+# DISPLAY USAGE SUMMARIES
+# =============================================================================
+puts "\n" + "=" * 60
+puts "Usage Summaries (LLMTenant DSL Methods)"
+puts "=" * 60
+
+[acme, startup, enterprise, demo, token_focused].each do |org|
+  org.reload
+  puts "\n#{org.name} (#{org.slug}):"
+  puts "  llm_cost_today: $#{org.llm_cost_today.round(4)}"
+  puts "  llm_tokens_today: #{org.llm_tokens_today}"
+  puts "  llm_executions_today: #{org.llm_executions_today}"
+  puts "  llm_within_budget?(daily_cost): #{org.llm_within_budget?(type: :daily_cost)}"
+
+  summary = org.llm_usage_summary(period: :today)
+  puts "  llm_usage_summary: cost=$#{summary[:cost].round(4)}, tokens=#{summary[:tokens]}, executions=#{summary[:executions]}"
+end
 
 # =============================================================================
 # Summary
@@ -550,11 +455,9 @@ puts "\n" + "=" * 60
 puts "Seeding complete!"
 puts "=" * 60
 
-if RubyLLM::Agents::TenantBudget.table_exists?
-  puts "\nTenant Budgets:"
-  RubyLLM::Agents::TenantBudget.all.each do |budget|
-    puts "  #{budget.tenant_id}: daily=$#{budget.daily_limit}, monthly=$#{budget.monthly_limit}, enforcement=#{budget.enforcement}"
-  end
+puts "\nOrganizations:"
+Organization.all.each do |org|
+  puts "  #{org.slug}: plan=#{org.plan}, enforcement=#{org.llm_budget&.enforcement || 'none'}"
 end
 
 puts "\nExecutions by Tenant:"
@@ -564,12 +467,13 @@ tenant_counts.each do |tenant_id, count|
   puts "  #{tenant_name}: #{count} executions"
 end
 
-puts "\nWorkflows:"
-puts "  - #{RubyLLM::Agents::Execution.where(workflow_type: 'pipeline', parent_execution_id: nil).count} pipeline workflows"
-puts "  - #{RubyLLM::Agents::Execution.where(workflow_type: 'parallel', parent_execution_id: nil).count} parallel workflows"
-puts "  - #{RubyLLM::Agents::Execution.where(workflow_type: 'router', parent_execution_id: nil).count} router workflows"
+puts "\nShowcase Agent Executions:"
+showcase_agents.each do |agent|
+  count = RubyLLM::Agents::Execution.where(agent_type: agent).count
+  puts "  #{agent}: #{count}" if count > 0
+end
 
-puts "\nTotal: #{RubyLLM::Agents::Execution.count} executions"
+puts "\nTotal: #{Organization.count} organizations, #{RubyLLM::Agents::Execution.count} executions"
 puts "\nStart the server with: bin/rails server"
 puts "Then visit: http://localhost:3000/agents"
-puts "\nTo test tenant filtering, append ?tenant_id=acme_corp to the URL"
+puts "\nTo test tenant filtering, append ?tenant_id=acme-corp to the URL"

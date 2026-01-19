@@ -132,12 +132,14 @@ module RubyLLM
 
         # Sets or returns fallback models to try when primary model fails
         #
-        # @param models [Array<String>, nil] Model identifiers to use as fallbacks
+        # @param models [Array<String>] Model identifiers to use as fallbacks
         # @return [Array<String>] The current fallback models
-        # @example
+        # @example Array format
         #   fallback_models ["gpt-4o-mini", "gpt-4o"]
-        def fallback_models(models = nil)
-          @fallback_models = models if models
+        # @example Splat args format
+        #   fallback_models "gpt-4o-mini", "gpt-4o"
+        def fallback_models(*models)
+          @fallback_models = models.flatten if models.any?
           @fallback_models || inherited_or_default(:fallback_models, RubyLLM::Agents.configuration.default_fallback_models)
         end
 

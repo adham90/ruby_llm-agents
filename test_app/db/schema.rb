@@ -10,7 +10,24 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_19_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_19_100001) do
+  create_table "organizations", force: :cascade do |t|
+    t.boolean "active", default: true
+    t.string "anthropic_api_key"
+    t.datetime "created_at", null: false
+    t.integer "employee_count"
+    t.string "gemini_api_key"
+    t.string "industry"
+    t.string "name", null: false
+    t.string "openai_api_key"
+    t.string "plan", default: "free"
+    t.string "slug", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_organizations_on_active"
+    t.index ["plan"], name: "index_organizations_on_plan"
+    t.index ["slug"], name: "index_organizations_on_slug", unique: true
+  end
+
   create_table "ruby_llm_agents_api_configurations", force: :cascade do |t|
     t.text "anthropic_api_key"
     t.text "bedrock_api_key"
@@ -99,6 +116,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_19_000000) do
     t.text "system_prompt"
     t.decimal "temperature", precision: 3, scale: 2
     t.string "tenant_id"
+    t.integer "tenant_record_id"
+    t.string "tenant_record_type"
     t.integer "time_to_first_token_ms"
     t.json "tool_calls", default: [], null: false
     t.integer "tool_calls_count", default: 0, null: false
@@ -128,6 +147,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_19_000000) do
     t.index ["tenant_id", "created_at"], name: "index_ruby_llm_agents_executions_on_tenant_id_and_created_at"
     t.index ["tenant_id", "status"], name: "index_ruby_llm_agents_executions_on_tenant_id_and_status"
     t.index ["tenant_id"], name: "index_ruby_llm_agents_executions_on_tenant_id"
+    t.index ["tenant_record_type", "tenant_record_id"], name: "index_ruby_llm_agents_executions_on_tenant_record"
     t.index ["tool_calls_count"], name: "index_ruby_llm_agents_executions_on_tool_calls_count"
     t.index ["total_cost"], name: "index_ruby_llm_agents_executions_on_total_cost"
     t.index ["trace_id"], name: "index_ruby_llm_agents_executions_on_trace_id"
@@ -150,9 +170,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_19_000000) do
     t.json "per_agent_daily", default: {}, null: false
     t.json "per_agent_monthly", default: {}, null: false
     t.string "tenant_id", null: false
+    t.integer "tenant_record_id"
+    t.string "tenant_record_type"
     t.datetime "updated_at", null: false
     t.index ["name"], name: "index_ruby_llm_agents_tenant_budgets_on_name"
     t.index ["tenant_id"], name: "index_ruby_llm_agents_tenant_budgets_on_tenant_id", unique: true
+    t.index ["tenant_record_type", "tenant_record_id"], name: "index_ruby_llm_agents_tenant_budgets_on_tenant_record"
   end
 
   add_foreign_key "ruby_llm_agents_executions", "ruby_llm_agents_executions", column: "parent_execution_id", on_delete: :nullify

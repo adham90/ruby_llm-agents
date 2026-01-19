@@ -334,6 +334,16 @@ RSpec.describe RubyLLM::Agents::Base::DSL do
         child = Class.new(parent) { fallback_models ["child-backup"] }
         expect(child.fallback_models).to eq(["child-backup"])
       end
+
+      it "sets fallback models as splat args" do
+        klass = create_agent_class { fallback_models "claude-3", "gemini" }
+        expect(klass.fallback_models).to eq(["claude-3", "gemini"])
+      end
+
+      it "sets single fallback model without array" do
+        klass = create_agent_class { fallback_models "claude-3" }
+        expect(klass.fallback_models).to eq(["claude-3"])
+      end
     end
 
     describe ".total_timeout" do
