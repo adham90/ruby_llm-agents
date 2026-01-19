@@ -299,6 +299,46 @@ module RubyLLM
 
         # @!endgroup
 
+        # @!group Thinking DSL
+
+        # Configures extended thinking/reasoning for this agent
+        #
+        # Extended thinking allows models to show their reasoning process
+        # before providing a final answer. Supported providers include:
+        # - Claude (Anthropic/Bedrock): Visible thinking with effort + budget
+        # - Gemini 2.5/3: Visible thinking with budget or effort
+        # - OpenAI (o1/o3): Hidden thinking with effort only
+        # - Perplexity: Streams <think> blocks
+        # - Mistral Magistral: Always on
+        # - Ollama Qwen3: Default on, :none to disable
+        #
+        # @param effort [Symbol, nil] Thinking depth (:none, :low, :medium, :high)
+        # @param budget [Integer, nil] Token budget for thinking computation
+        # @return [Hash, nil] The current thinking configuration
+        # @example Enable high-effort thinking with token budget
+        #   thinking effort: :high, budget: 10000
+        # @example Enable medium-effort thinking
+        #   thinking effort: :medium
+        # @example Disable thinking
+        #   thinking effort: :none
+        def thinking(effort: nil, budget: nil)
+          if effort || budget
+            @thinking_config = {}
+            @thinking_config[:effort] = effort if effort
+            @thinking_config[:budget] = budget if budget
+          end
+          @thinking_config || inherited_or_default(:thinking, RubyLLM::Agents.configuration.default_thinking)
+        end
+
+        # Returns the thinking configuration for this agent
+        #
+        # @return [Hash, nil] The thinking configuration
+        def thinking_config
+          @thinking_config || (superclass.respond_to?(:thinking_config) ? superclass.thinking_config : nil)
+        end
+
+        # @!endgroup
+
         # @!group Tools DSL
 
         # Sets or returns the tools available to this agent

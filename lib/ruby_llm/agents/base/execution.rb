@@ -238,6 +238,32 @@ module RubyLLM
           messages
         end
 
+        # Resolves thinking configuration for this execution
+        #
+        # Priority order:
+        # 1. Runtime override via :thinking option (can be Hash or false)
+        # 2. Class-level DSL configuration via `thinking` method
+        # 3. Global default from RubyLLM::Agents.configuration.default_thinking
+        #
+        # @return [Hash, nil] Thinking configuration with :effort and/or :budget keys, or nil if disabled
+        # @example Runtime override
+        #   agent.call(query: "test", thinking: { effort: :high, budget: 5000 })
+        # @example Disable at runtime
+        #   agent.call(query: "test", thinking: false)
+        def resolved_thinking
+          # Check for runtime override
+          if @options.key?(:thinking)
+            thinking_option = @options[:thinking]
+            # Return nil if explicitly disabled
+            return nil if thinking_option == false || thinking_option == { effort: :none }
+            # Return the override if it's a hash
+            return thinking_option if thinking_option.is_a?(Hash)
+          end
+
+          # Fall back to class-level configuration
+          self.class.thinking
+        end
+
         # Returns the consolidated reliability configuration for this agent instance
         #
         # @return [Hash] Reliability config with :retries, :fallback_models, :total_timeout, :circuit_breaker, :retryable_patterns
@@ -321,6 +347,7 @@ module RubyLLM
           client = client.with_schema(schema) if schema
           client = client.with_tools(*resolved_tools) if resolved_tools.any?
           client = apply_messages(client, resolved_messages) if resolved_messages.any?
+          client = client.with_thinking(**resolved_thinking) if resolved_thinking
           client
         end
 
@@ -421,6 +448,7 @@ module RubyLLM
           client = client.with_schema(schema) if schema
           client = client.with_tools(*resolved_tools) if resolved_tools.any?
           client = apply_messages(client, resolved_messages) if resolved_messages.any?
+          client = client.with_thinking(**resolved_thinking) if resolved_thinking
           client
         end
 

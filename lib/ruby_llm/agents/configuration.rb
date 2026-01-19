@@ -145,6 +145,16 @@ module RubyLLM
       #   @example
       #     config.default_tools = [WeatherTool, SearchTool]
 
+      # @!attribute [rw] default_thinking
+      #   Default thinking/reasoning configuration for all agents.
+      #   When set, enables extended thinking for supported models (Claude, Gemini, etc.).
+      #   Can be overridden per-agent using the `thinking` DSL method.
+      #   @return [Hash, nil] Thinking config with :effort and/or :budget keys (default: nil)
+      #   @example Enable medium-effort thinking globally
+      #     config.default_thinking = { effort: :medium }
+      #   @example Enable high-effort thinking with budget
+      #     config.default_thinking = { effort: :high, budget: 10000 }
+
       # @!attribute [rw] budgets
       #   Budget configuration for cost governance.
       #   @return [Hash, nil] Budget config with :global_daily, :global_monthly, :per_agent_daily, :per_agent_monthly, :enforcement keys
@@ -246,6 +256,7 @@ module RubyLLM
                     :default_total_timeout,
                     :default_streaming,
                     :default_tools,
+                    :default_thinking,
                     :alerts,
                     :persist_prompts,
                     :persist_responses,
@@ -420,9 +431,10 @@ module RubyLLM
           capacity: ["overloaded", "capacity"]
         }
 
-        # Streaming and tools defaults
+        # Streaming, tools, and thinking defaults
         @default_streaming = false
         @default_tools = []
+        @default_thinking = nil
 
         # Governance defaults
         @budgets = nil

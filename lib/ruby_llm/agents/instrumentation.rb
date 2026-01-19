@@ -627,6 +627,9 @@ module RubyLLM
         # during multi-turn conversations (when tools are used)
         tool_calls_data = respond_to?(:accumulated_tool_calls) ? accumulated_tool_calls : []
 
+        # Extract thinking data if present
+        thinking_data = safe_extract_thinking_data(response)
+
         {
           input_tokens: safe_response_value(response, :input_tokens),
           output_tokens: safe_response_value(response, :output_tokens),
@@ -637,7 +640,7 @@ module RubyLLM
           response: safe_serialize_response(response),
           tool_calls: tool_calls_data || [],
           tool_calls_count: tool_calls_data&.size || 0
-        }.compact
+        }.merge(thinking_data).compact
       end
 
       # Extracts finish reason from response, normalizing to standard values
@@ -663,6 +666,24 @@ module RubyLLM
         else
           "other"
         end
+      end
+
+      # Extracts thinking data from response
+      #
+      # Handles different response structures from various providers.
+      # The thinking object typically has text, signature, and tokens.
+      #
+      # @param response [RubyLLM::Message] The LLM response
+      # @return [Hash] Thinking data (empty if none present)
+      def safe_extract_thinking_data(response)
+        thinking = safe_response_value(response, :thinking)
+        return {} unless thinking
+
+        {
+          thinking_text: thinking.respond_to?(:text) ? thinking.text : thinking[:text],
+          thinking_signature: thinking.respond_to?(:signature) ? thinking.signature : thinking[:signature],
+          thinking_tokens: thinking.respond_to?(:tokens) ? thinking.tokens : thinking[:tokens]
+        }.compact
       end
 
       # Extracts routing/retry tracking data from attempt tracker

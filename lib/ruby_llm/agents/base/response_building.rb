@@ -18,6 +18,7 @@ module RubyLLM
           input_tokens = result_response_value(response, :input_tokens)
           output_tokens = result_response_value(response, :output_tokens)
           response_model_id = result_response_value(response, :model_id)
+          thinking_data = result_thinking_data(response)
 
           Result.new(
             content: content,
@@ -38,7 +39,8 @@ module RubyLLM
             output_cost: result_output_cost(output_tokens, response_model_id),
             total_cost: result_total_cost(input_tokens, output_tokens, response_model_id),
             tool_calls: @accumulated_tool_calls,
-            tool_calls_count: @accumulated_tool_calls.size
+            tool_calls_count: @accumulated_tool_calls.size,
+            **thinking_data
           )
         end
 
@@ -79,6 +81,24 @@ module RubyLLM
           when "tool_calls", "tool_use" then "tool_calls"
           else "other"
           end
+        end
+
+        # Extracts thinking data from response
+        #
+        # Handles different response structures from various providers.
+        # The thinking object typically has text, signature, and tokens.
+        #
+        # @param response [Object] The response object
+        # @return [Hash] Thinking data (empty if none present)
+        def result_thinking_data(response)
+          thinking = result_response_value(response, :thinking)
+          return {} unless thinking
+
+          {
+            thinking_text: thinking.respond_to?(:text) ? thinking.text : thinking[:text],
+            thinking_signature: thinking.respond_to?(:signature) ? thinking.signature : thinking[:signature],
+            thinking_tokens: thinking.respond_to?(:tokens) ? thinking.tokens : thinking[:tokens]
+          }.compact
         end
       end
     end

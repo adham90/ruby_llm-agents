@@ -93,6 +93,15 @@ module RubyLLM
       #   @return [Integer] Number of tool calls made
       attr_reader :tool_calls, :tool_calls_count
 
+      # @!group Thinking
+      # @!attribute [r] thinking_text
+      #   @return [String, nil] The reasoning/thinking content from the model
+      # @!attribute [r] thinking_signature
+      #   @return [String, nil] Signature for multi-turn thinking continuity (Claude)
+      # @!attribute [r] thinking_tokens
+      #   @return [Integer, nil] Number of tokens used for thinking
+      attr_reader :thinking_text, :thinking_signature, :thinking_tokens
+
       # Creates a new Result instance
       #
       # @param content [Hash, String] The processed response content
@@ -137,6 +146,11 @@ module RubyLLM
         # Tool calls
         @tool_calls = options[:tool_calls] || []
         @tool_calls_count = options[:tool_calls_count] || 0
+
+        # Thinking
+        @thinking_text = options[:thinking_text]
+        @thinking_signature = options[:thinking_signature]
+        @thinking_tokens = options[:thinking_tokens]
       end
 
       # Returns total tokens (input + output)
@@ -188,6 +202,13 @@ module RubyLLM
         tool_calls_count.to_i > 0
       end
 
+      # Returns whether thinking data is present in the result
+      #
+      # @return [Boolean] true if thinking_text is present
+      def has_thinking?
+        thinking_text.present?
+      end
+
       # Converts the result to a hash
       #
       # @return [Hash] All result data as a hash
@@ -216,7 +237,10 @@ module RubyLLM
           attempts_count: attempts_count,
           attempts: attempts,
           tool_calls: tool_calls,
-          tool_calls_count: tool_calls_count
+          tool_calls_count: tool_calls_count,
+          thinking_text: thinking_text,
+          thinking_signature: thinking_signature,
+          thinking_tokens: thinking_tokens
         }
       end
 
