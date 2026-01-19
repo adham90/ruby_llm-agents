@@ -27,6 +27,7 @@ Add a declarative DSL that allows Rails models to declare themselves as LLM tena
 
 **Options use Rails-y naming:**
 - `key:` - Method for tenant ID (not `tenant_id_method:`)
+- `name:` - Method for display name (defaults to `:to_s`)
 - `budget:` - Auto-create budget (not `auto_create_budget:`)
 - `limits:` - Default limits hash (not `default_limits:`)
 - `enforcement:` - Budget enforcement mode
@@ -74,7 +75,13 @@ class Organization < ApplicationRecord
   # Full configuration
   llm_tenant(
     key: :slug,
-    limits: { daily_cost: 100, monthly_cost: 1000, daily_tokens: 1_000_000 },
+    name: :company_name,
+    limits: {
+      daily_cost: 100,
+      monthly_cost: 1000,
+      daily_tokens: 1_000_000,
+      daily_requests: 500
+    },
     enforcement: :hard
   )
 end
@@ -178,7 +185,9 @@ module RubyLLM
             daily_cost: limits[:daily_cost],
             monthly_cost: limits[:monthly_cost],
             daily_tokens: limits[:daily_tokens],
-            monthly_tokens: limits[:monthly_tokens]
+            monthly_tokens: limits[:monthly_tokens],
+            daily_requests: limits[:daily_requests],
+            monthly_requests: limits[:monthly_requests]
           }.compact
         end
       end
@@ -200,20 +209,27 @@ end
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `key` | Symbol | `:id` | Method to call for tenant_id string |
+| `name` | Symbol | `:to_s` | Method for budget display name |
 | `budget` | Boolean | `false` | Auto-create TenantBudget on model creation |
 | `limits` | Hash | `nil` | Default budget limits (implies `budget: true`) |
 | `enforcement` | Symbol | `:soft` | Budget enforcement: `:none`, `:soft`, `:hard` |
-| `name_method` | Symbol | `:to_s` | Method for budget display name |
 | `inherit_global` | Boolean | `true` | Inherit from global config when limit not set |
 
 #### 1.3 Limits Hash Structure
 
 ```ruby
 limits: {
-  daily_cost: 100.0,         # daily_limit column (USD)
-  monthly_cost: 1000.0,      # monthly_limit column (USD)
-  daily_tokens: 1_000_000,   # daily_token_limit column
-  monthly_tokens: 10_000_000 # monthly_token_limit column
+  # Cost limits (USD)
+  daily_cost: 100.0,           # daily_limit column
+  monthly_cost: 1000.0,        # monthly_limit column
+
+  # Token limits
+  daily_tokens: 1_000_000,     # daily_token_limit column
+  monthly_tokens: 10_000_000,  # monthly_token_limit column
+
+  # Request limits (execution count)
+  daily_requests: 500,         # daily_request_limit column
+  monthly_requests: 10_000     # monthly_request_limit column
 }
 ```
 
@@ -284,17 +300,22 @@ ChatAgent.call("Hello", tenant: "string")  # Raises ArgumentError
 
 ### Phase 3: TenantBudget Model Updates
 
-#### 3.1 Add Polymorphic Association
+#### 3.1 Add Polymorphic Association and Request Limits
 
-**Migration:** `add_tenant_record_to_tenant_budgets.rb`
+**Migration:** `add_tenant_record_and_request_limits_to_tenant_budgets.rb`
 
 ```ruby
-class AddTenantRecordToTenantBudgets < ActiveRecord::Migration[7.0]
+class AddTenantRecordAndRequestLimitsToTenantBudgets < ActiveRecord::Migration[7.0]
   def change
+    # Polymorphic association to tenant model
     add_reference :ruby_llm_agents_tenant_budgets, :tenant_record,
                   polymorphic: true,
                   index: true,
                   null: true
+
+    # Request/execution limits
+    add_column :ruby_llm_agents_tenant_budgets, :daily_request_limit, :integer
+    add_column :ruby_llm_agents_tenant_budgets, :monthly_request_limit, :integer
   end
 end
 ```
@@ -360,11 +381,19 @@ def llm_tokens_this_month
   llm_tokens(period: :this_month)
 end
 
-# Execution count
+# Execution/request count
 def llm_execution_count(period: nil)
   scope = llm_executions
   scope = apply_period_scope(scope, period) if period
   scope.count
+end
+
+def llm_requests_today
+  llm_execution_count(period: :today)
+end
+
+def llm_requests_this_month
+  llm_execution_count(period: :this_month)
 end
 
 # Summary
@@ -372,7 +401,7 @@ def llm_usage_summary(period: :this_month)
   {
     cost: llm_cost(period: period),
     tokens: llm_tokens(period: period),
-    executions: llm_execution_count(period: period),
+    requests: llm_execution_count(period: period),
     period: period
   }
 end
@@ -412,27 +441,33 @@ def llm_budget_status
   BudgetTracker.status(tenant_id: llm_tenant_id)
 end
 
-# Budget check
-def llm_within_budget?(type: :daily)
+# Budget check (cost, tokens, or requests)
+def llm_within_budget?(type: :daily_cost)
   status = llm_budget_status
   return true unless status[:enabled]
 
-  case type
-  when :daily
-    status.dig(:global_daily, :percentage_used).to_f < 100
-  when :monthly
-    status.dig(:global_monthly, :percentage_used).to_f < 100
-  else
-    true
-  end
+  key = budget_status_key(type)
+  status.dig(key, :percentage_used).to_f < 100
 end
 
 # Remaining budget
-def llm_remaining_budget(type: :daily)
+def llm_remaining_budget(type: :daily_cost)
   status = llm_budget_status
+  key = budget_status_key(type)
+  status.dig(key, :remaining)
+end
+
+private
+
+def budget_status_key(type)
   case type
-  when :daily then status.dig(:global_daily, :remaining)
-  when :monthly then status.dig(:global_monthly, :remaining)
+  when :daily_cost then :global_daily
+  when :monthly_cost then :global_monthly
+  when :daily_tokens then :global_daily_tokens
+  when :monthly_tokens then :global_monthly_tokens
+  when :daily_requests then :global_daily_requests
+  when :monthly_requests then :global_monthly_requests
+  else :global_daily
   end
 end
 
@@ -460,7 +495,7 @@ def create_default_llm_budget
 
   options = self.class.llm_tenant_options
   limits = options[:limits] || {}
-  name_method = options[:name_method] || :to_s
+  name_method = options[:name] || :to_s
 
   llm_budget.assign_attributes(
     tenant_id: llm_tenant_id,
@@ -469,6 +504,8 @@ def create_default_llm_budget
     monthly_limit: limits[:monthly_cost],
     daily_token_limit: limits[:daily_tokens],
     monthly_token_limit: limits[:monthly_tokens],
+    daily_request_limit: limits[:daily_requests],
+    monthly_request_limit: limits[:monthly_requests],
     enforcement: options[:enforcement]&.to_s || "soft",
     inherit_global_defaults: options.fetch(:inherit_global, true)
   )
@@ -613,19 +650,21 @@ end
 ```ruby
 llm_tenant(
   key: :id,                # Method for tenant_id string
+  name: :to_s,             # Method for budget display name
   budget: false,           # Auto-create budget on model creation
   limits: nil,             # Default limits (implies budget: true)
   enforcement: :soft,      # :none, :soft, or :hard
-  name_method: :to_s,      # Method for budget display name
   inherit_global: true     # Inherit from global config
 )
 
 # Limits hash
 limits: {
-  daily_cost: 100.0,       # Daily cost limit (USD)
-  monthly_cost: 1000.0,    # Monthly cost limit (USD)
-  daily_tokens: 1_000_000, # Daily token limit
-  monthly_tokens: 10_000_000
+  daily_cost: 100.0,         # Daily cost limit (USD)
+  monthly_cost: 1000.0,      # Monthly cost limit (USD)
+  daily_tokens: 1_000_000,   # Daily token limit
+  monthly_tokens: 10_000_000,
+  daily_requests: 500,       # Daily execution/request limit
+  monthly_requests: 10_000   # Monthly execution/request limit
 }
 ```
 
@@ -645,24 +684,27 @@ model.llm_tokens(period: :today)      # => 5000
 model.llm_tokens_today                # => 5000
 model.llm_tokens_this_month           # => 150000
 
-# Execution queries
+# Execution/request queries
 model.llm_executions                  # => ActiveRecord::Relation
 model.llm_execution_count(period:)    # => 42
+model.llm_requests_today              # => 15
+model.llm_requests_this_month         # => 342
 
 # Summary
-model.llm_usage_summary               # => { cost: 12.34, tokens: 5000, ... }
+model.llm_usage_summary               # => { cost: 12.34, tokens: 5000, requests: 42, ... }
 
 # Budget management
 model.llm_budget                      # => TenantBudget instance
 model.llm_configure_budget { |b| }    # Configure with block
 model.llm_budget_status               # => { enabled: true, ... }
 
-# Budget checks
-model.llm_within_budget?              # => true/false
-model.llm_within_budget?(type: :monthly)
-model.llm_remaining_budget            # => 45.67
-model.llm_remaining_budget(type: :monthly)
-model.llm_check_budget!               # Raises if over budget
+# Budget checks (supports :daily_cost, :monthly_cost, :daily_tokens, :monthly_tokens, :daily_requests, :monthly_requests)
+model.llm_within_budget?                        # => true/false (default: :daily_cost)
+model.llm_within_budget?(type: :monthly_cost)
+model.llm_within_budget?(type: :daily_requests)
+model.llm_remaining_budget                      # => 45.67
+model.llm_remaining_budget(type: :daily_requests) # => 85
+model.llm_check_budget!                         # Raises if over budget
 ```
 
 ### Agent Usage
