@@ -245,6 +245,35 @@ module RubyLLM
       #   Content exceeding this length will be truncated with "...".
       #   @return [Integer] Max length for message content (default: 500)
 
+      # @!attribute [rw] default_embedding_model
+      #   The default embedding model identifier for all embedders.
+      #   Can be overridden per-embedder using the `model` DSL method.
+      #   @return [String] Model identifier (default: "text-embedding-3-small")
+      #   @example
+      #     config.default_embedding_model = "text-embedding-3-large"
+
+      # @!attribute [rw] default_embedding_dimensions
+      #   The default vector dimensions for embeddings.
+      #   Set to nil to use the model's default dimensions.
+      #   Some models (like OpenAI text-embedding-3) support dimension reduction.
+      #   @return [Integer, nil] Dimensions or nil for model default (default: nil)
+      #   @example
+      #     config.default_embedding_dimensions = 512
+
+      # @!attribute [rw] default_embedding_batch_size
+      #   The default batch size for embedding operations.
+      #   When embedding multiple texts, they are split into batches of this size.
+      #   @return [Integer] Batch size (default: 100)
+      #   @example
+      #     config.default_embedding_batch_size = 50
+
+      # @!attribute [rw] track_embeddings
+      #   Whether to track embedding executions in the database.
+      #   When enabled, embedding operations are logged like agent executions.
+      #   @return [Boolean] Enable embedding tracking (default: true)
+      #   @example
+      #     config.track_embeddings = false
+
       # Attributes without validation (simple accessors)
       attr_accessor :default_model,
                     :async_logging,
@@ -263,7 +292,11 @@ module RubyLLM
                     :redaction,
                     :multi_tenancy_enabled,
                     :persist_messages_summary,
-                    :default_retryable_patterns
+                    :default_retryable_patterns,
+                    :default_embedding_model,
+                    :default_embedding_dimensions,
+                    :default_embedding_batch_size,
+                    :track_embeddings
 
       # Attributes with validation (readers only, custom setters below)
       attr_reader :default_temperature,
@@ -451,6 +484,12 @@ module RubyLLM
         # Messages summary defaults
         @persist_messages_summary = true
         @messages_summary_max_length = 500
+
+        # Embedding defaults
+        @default_embedding_model = "text-embedding-3-small"
+        @default_embedding_dimensions = nil
+        @default_embedding_batch_size = 100
+        @track_embeddings = true
       end
 
       # Returns the configured cache store, falling back to Rails.cache

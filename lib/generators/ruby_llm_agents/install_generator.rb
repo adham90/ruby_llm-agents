@@ -50,6 +50,14 @@ module RubyLlmAgents
       template "application_agent.rb.tt", "app/agents/application_agent.rb"
     end
 
+    def create_embedders_directory
+      empty_directory "app/embedders"
+    end
+
+    def create_application_embedder
+      template "application_embedder.rb.tt", "app/embedders/application_embedder.rb"
+    end
+
     def mount_dashboard_engine
       return unless options[:mount_dashboard]
 

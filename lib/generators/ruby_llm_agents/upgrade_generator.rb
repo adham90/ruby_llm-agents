@@ -133,6 +133,19 @@ module RubyLlmAgents
       )
     end
 
+    def create_add_execution_type_migration
+      # Check if columns already exist
+      if column_exists?(:ruby_llm_agents_executions, :execution_type)
+        say_status :skip, "execution_type column already exists", :yellow
+        return
+      end
+
+      migration_template(
+        "add_execution_type_migration.rb.tt",
+        File.join(db_migrate_path, "add_execution_type_to_ruby_llm_agents_executions.rb")
+      )
+    end
+
     def show_post_upgrade_message
       say ""
       say "RubyLLM::Agents upgrade migration created!", :green

@@ -1,0 +1,46 @@
+# frozen_string_literal: true
+
+# ApplicationEmbedder - Base class for all embedders in this application
+#
+# All embedders inherit from this class. Configure shared settings here
+# that apply to all embedders, or override them per-embedder as needed.
+#
+# Example:
+#   class DocumentEmbedder < ApplicationEmbedder
+#     dimensions 512  # Reduce dimensions for storage efficiency
+#
+#     def preprocess(text)
+#       text.strip.downcase
+#     end
+#   end
+#
+# Usage:
+#   DocumentEmbedder.call(text: "hello world")
+#   DocumentEmbedder.call(texts: ["hello", "world"])  # Batch
+#
+class ApplicationEmbedder < RubyLLM::Agents::Embedder
+  # ============================================
+  # Shared Model Configuration
+  # ============================================
+  # These settings are inherited by all embedders
+
+  # model "text-embedding-3-small"  # Default embedding model
+  # dimensions 1536                  # Vector dimensions (nil = model default)
+  # batch_size 100                   # Texts per API call for batch processing
+
+  # ============================================
+  # Shared Caching
+  # ============================================
+  # Same text always produces same embedding, so caching is very effective
+
+  # cache_for 1.week  # Cache embeddings for a week
+
+  # ============================================
+  # Shared Preprocessing
+  # ============================================
+  # Override in subclass for custom preprocessing
+
+  # def preprocess(text)
+  #   text.strip.gsub(/\s+/, ' ').truncate(8000)
+  # end
+end
