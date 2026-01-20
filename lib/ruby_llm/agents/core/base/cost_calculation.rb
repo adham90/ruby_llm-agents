@@ -92,8 +92,8 @@ module RubyLLM
           input_price = model_info.pricing.text_tokens&.input || 0
           output_price = model_info.pricing.text_tokens&.output || 0
 
-          total_cost = (input_tokens / 1_000_000.0 * input_price) +
-                       (output_tokens / 1_000_000.0 * output_price)
+          total_cost = ((input_tokens / 1_000_000.0 * input_price) +
+                        (output_tokens / 1_000_000.0 * output_price)).round(6)
 
           BudgetTracker.record_spend!(self.class.name, total_cost, tenant_id: tenant_id)
         rescue StandardError => e

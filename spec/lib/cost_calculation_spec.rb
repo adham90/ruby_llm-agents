@@ -323,5 +323,146 @@ RSpec.describe RubyLLM::Agents::Base::CostCalculation do
         expect { instance.record_attempt_cost(tracker) }.not_to raise_error
       end
     end
+
+    context "rounding consistency" do
+      let(:tracker) do
+        double("tracker", successful_attempt: {
+          model_id: "gpt-4o",
+          input_tokens: 123,
+          output_tokens: 456
+        })
+      end
+
+      before do
+        allow(instance).to receive(:resolve_model_info).and_return(model_info)
+      end
+
+      it "rounds total_cost to 6 decimal places for consistency with other methods" do
+        # Expected: (123/1M * 5) + (456/1M * 15) = 0.000615 + 0.00684 = 0.007455
+        expect(RubyLLM::Agents::BudgetTracker).to receive(:record_spend!)
+          .with(anything, 0.007455, tenant_id: nil)
+
+        instance.record_attempt_cost(tracker)
+      end
+    end
+  end
+
+  describe "floating point precision edge cases" do
+    before do
+      allow(instance).to receive(:result_model_info).and_return(model_info)
+    end
+
+    describe "very small token counts" do
+      it "handles 1 input token correctly" do
+        # 1 token at $5/M = $0.000005
+        result = instance.result_input_cost(1, "gpt-4o")
+        expect(result).to eq(0.000005)
+      end
+
+      it "handles 1 output token correctly" do
+        # 1 token at $15/M = $0.000015
+        result = instance.result_output_cost(1, "gpt-4o")
+        expect(result).to eq(0.000015)
+      end
+
+      it "calculates total cost for 1 token each correctly" do
+        # 1 input + 1 output = $0.000005 + $0.000015 = $0.00002
+        result = instance.result_total_cost(1, 1, "gpt-4o")
+        expect(result).to eq(0.00002)
+      end
+    end
+
+    describe "accumulation of small costs" do
+      it "maintains precision when accumulating many small values" do
+        # Simulate accumulating 1000 calls of 1 token each
+        total = 0.0
+        1000.times do
+          cost = instance.result_input_cost(1, "gpt-4o")
+          total += cost
+        end
+
+        # 1000 * 0.000005 = 0.005
+        # Due to floating point, might be slightly off, but should round correctly
+        expect(total.round(6)).to eq(0.005)
+      end
+    end
+
+    describe "fractional pricing scenarios" do
+      let(:fractional_text_tokens) { double("text_tokens", input: 2.5, output: 7.5) }
+      let(:fractional_pricing) { double("pricing", text_tokens: fractional_text_tokens) }
+      let(:fractional_model_info) { double("model_info", pricing: fractional_pricing) }
+
+      before do
+        allow(instance).to receive(:result_model_info).and_return(fractional_model_info)
+      end
+
+      it "handles fractional pricing correctly" do
+        # 1000 tokens at $2.5/M = $0.0025
+        result = instance.result_input_cost(1000, "fractional-model")
+        expect(result).to eq(0.0025)
+      end
+
+      it "handles fractional output pricing correctly" do
+        # 1000 tokens at $7.5/M = $0.0075
+        result = instance.result_output_cost(1000, "fractional-model")
+        expect(result).to eq(0.0075)
+      end
+    end
+
+    describe "boundary values" do
+      it "handles exactly 1 million tokens" do
+        # 1M tokens at $5/M = $5.00
+        result = instance.result_input_cost(1_000_000, "gpt-4o")
+        expect(result).to eq(5.0)
+      end
+
+      it "handles token counts just under 1 million" do
+        # 999,999 tokens at $5/M = $4.999995
+        result = instance.result_input_cost(999_999, "gpt-4o")
+        expect(result).to eq(4.999995)
+      end
+
+      it "handles token counts just over 1 million" do
+        # 1,000,001 tokens at $5/M = $5.000005
+        result = instance.result_input_cost(1_000_001, "gpt-4o")
+        expect(result).to eq(5.000005)
+      end
+    end
+
+    describe "very large token counts" do
+      it "handles 100 million tokens" do
+        # 100M tokens at $5/M = $500.00
+        result = instance.result_input_cost(100_000_000, "gpt-4o")
+        expect(result).to eq(500.0)
+      end
+
+      it "maintains precision for large counts with fractional results" do
+        # 123,456,789 tokens at $5/M = $617.283945
+        result = instance.result_input_cost(123_456_789, "gpt-4o")
+        expect(result).to eq(617.283945)
+      end
+    end
+
+    describe "repeating decimal scenarios" do
+      let(:repeating_text_tokens) { double("text_tokens", input: 3.0, output: 9.0) }
+      let(:repeating_pricing) { double("pricing", text_tokens: repeating_text_tokens) }
+      let(:repeating_model_info) { double("model_info", pricing: repeating_pricing) }
+
+      before do
+        allow(instance).to receive(:result_model_info).and_return(repeating_model_info)
+      end
+
+      it "rounds repeating decimals correctly" do
+        # 333 tokens at $3/M = $0.000999 (exactly)
+        result = instance.result_input_cost(333, "repeating-model")
+        expect(result).to eq(0.000999)
+      end
+
+      it "handles values that would produce repeating decimals" do
+        # 111 tokens at $3/M = 0.000333
+        result = instance.result_input_cost(111, "repeating-model")
+        expect(result).to eq(0.000333)
+      end
+    end
   end
 end
