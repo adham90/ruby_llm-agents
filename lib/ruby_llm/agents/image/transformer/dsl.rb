@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../concerns/image_operation_dsl"
-require_relative "../image_generator/content_policy"
+require_relative "../generator/content_policy"
 
 module RubyLLM
   module Agents

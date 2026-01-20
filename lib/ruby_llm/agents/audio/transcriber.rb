@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "transcription_result"
+require_relative "../results/transcription_result"
 require_relative "transcriber/dsl"
 require_relative "transcriber/execution"
 

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "image_pipeline/dsl"
-require_relative "image_pipeline/execution"
+require_relative "pipeline/dsl"
+require_relative "pipeline/execution"
 
 module RubyLLM
   module Agents

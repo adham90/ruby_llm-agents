@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../cache_helper"
+require_relative "../../infrastructure/cache_helper"
 
 module RubyLLM
   module Agents

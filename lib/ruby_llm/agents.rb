@@ -3,53 +3,83 @@
 require "csv"
 require "ruby_llm"
 
-require_relative "agents/version"
-require_relative "agents/configuration"
-require_relative "agents/deprecations"
-require_relative "agents/reliability"
-require_relative "agents/reliability/retry_strategy"
-require_relative "agents/reliability/fallback_routing"
-require_relative "agents/reliability/breaker_manager"
-require_relative "agents/reliability/execution_constraints"
-require_relative "agents/reliability/executor"
-require_relative "agents/redactor"
-require_relative "agents/circuit_breaker"
-require_relative "agents/budget_tracker"
-require_relative "agents/alert_manager"
-require_relative "agents/attempt_tracker"
-require_relative "agents/errors"
-require_relative "agents/result"
-require_relative "agents/embedding_result"
-require_relative "agents/moderation_result"
-require_relative "agents/transcription_result"
-require_relative "agents/speech_result"
-require_relative "agents/image_generation_result"
-require_relative "agents/image_variation_result"
-require_relative "agents/image_edit_result"
-require_relative "agents/image_transform_result"
-require_relative "agents/image_upscale_result"
-require_relative "agents/image_analysis_result"
-require_relative "agents/background_removal_result"
-require_relative "agents/image_pipeline_result"
-require_relative "agents/concerns/image_operation_dsl"
-require_relative "agents/concerns/image_operation_execution"
-require_relative "agents/embedder"
-require_relative "agents/moderator"
-require_relative "agents/transcriber"
-require_relative "agents/speaker"
-require_relative "agents/image_generator"
-require_relative "agents/image_variator"
-require_relative "agents/image_editor"
-require_relative "agents/image_transformer"
-require_relative "agents/image_upscaler"
-require_relative "agents/image_analyzer"
-require_relative "agents/background_remover"
-require_relative "agents/image_pipeline"
-require_relative "agents/llm_tenant"
-require_relative "agents/async"
+# Core
+require_relative "agents/core/version"
+require_relative "agents/core/configuration"
+require_relative "agents/core/deprecations"
+require_relative "agents/core/errors"
+require_relative "agents/core/resolved_config"
+require_relative "agents/core/llm_tenant"
+
+# Infrastructure - Reliability
+require_relative "agents/infrastructure/reliability"
+require_relative "agents/infrastructure/reliability/retry_strategy"
+require_relative "agents/infrastructure/reliability/fallback_routing"
+require_relative "agents/infrastructure/reliability/breaker_manager"
+require_relative "agents/infrastructure/reliability/execution_constraints"
+require_relative "agents/infrastructure/reliability/executor"
+
+# Infrastructure - Budget & Utilities
+require_relative "agents/infrastructure/redactor"
+require_relative "agents/infrastructure/circuit_breaker"
+require_relative "agents/infrastructure/budget_tracker"
+require_relative "agents/infrastructure/alert_manager"
+require_relative "agents/infrastructure/attempt_tracker"
+require_relative "agents/infrastructure/cache_helper"
+require_relative "agents/infrastructure/budget/budget_query"
+require_relative "agents/infrastructure/budget/config_resolver"
+require_relative "agents/infrastructure/budget/forecaster"
+require_relative "agents/infrastructure/budget/spend_recorder"
+
+# Results
+require_relative "agents/results/base"
+require_relative "agents/results/embedding_result"
+require_relative "agents/results/moderation_result"
+require_relative "agents/results/transcription_result"
+require_relative "agents/results/speech_result"
+require_relative "agents/results/image_generation_result"
+require_relative "agents/results/image_variation_result"
+require_relative "agents/results/image_edit_result"
+require_relative "agents/results/image_transform_result"
+require_relative "agents/results/image_upscale_result"
+require_relative "agents/results/image_analysis_result"
+require_relative "agents/results/background_removal_result"
+require_relative "agents/results/image_pipeline_result"
+
+# Image concerns (shared DSL/execution for image operations)
+require_relative "agents/image/concerns/image_operation_dsl"
+require_relative "agents/image/concerns/image_operation_execution"
+
+# Text agents
+require_relative "agents/text/embedder"
+require_relative "agents/text/moderator"
+
+# Audio agents
+require_relative "agents/audio/transcriber"
+require_relative "agents/audio/speaker"
+
+# Image agents
+require_relative "agents/image/generator"
+require_relative "agents/image/variator"
+require_relative "agents/image/editor"
+require_relative "agents/image/transformer"
+require_relative "agents/image/upscaler"
+require_relative "agents/image/analyzer"
+require_relative "agents/image/background_remover"
+require_relative "agents/image/pipeline"
+
+# Workflow
+require_relative "agents/workflow/async"
+require_relative "agents/workflow/orchestrator"
 require_relative "agents/workflow/async_executor"
-require_relative "agents/inflections" if defined?(Rails)
-require_relative "agents/engine" if defined?(Rails::Engine)
+
+# Rails integration
+if defined?(Rails)
+  require_relative "agents/core/inflections"
+  require_relative "agents/core/instrumentation"
+  require_relative "agents/infrastructure/execution_logger_job"
+end
+require_relative "agents/rails/engine" if defined?(Rails::Engine)
 
 module RubyLLM
   # Agent framework for building LLM-powered agents with observability

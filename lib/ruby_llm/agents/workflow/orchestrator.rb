@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require_relative "workflow/result"
-require_relative "workflow/instrumentation"
-require_relative "workflow/thread_pool"
-require_relative "workflow/pipeline"
-require_relative "workflow/parallel"
-require_relative "workflow/router"
+require_relative "result"
+require_relative "instrumentation"
+require_relative "thread_pool"
+require_relative "pipeline"
+require_relative "parallel"
+require_relative "router"
 
 module RubyLLM
   module Agents

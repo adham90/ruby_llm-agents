@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "image_analyzer/dsl"
-require_relative "image_analyzer/execution"
+require_relative "analyzer/dsl"
+require_relative "analyzer/execution"
 
 module RubyLLM
   module Agents

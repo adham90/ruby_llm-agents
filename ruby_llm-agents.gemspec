@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "lib/ruby_llm/agents/version"
+require_relative "lib/ruby_llm/agents/core/version"
 
 Gem::Specification.new do |spec|
   spec.name = "ruby_llm-agents"

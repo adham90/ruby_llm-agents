@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "image_upscaler/dsl"
-require_relative "image_upscaler/execution"
+require_relative "upscaler/dsl"
+require_relative "upscaler/execution"
 
 module RubyLLM
   module Agents

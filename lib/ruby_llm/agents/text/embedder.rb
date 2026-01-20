@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "embedding_result"
+require_relative "../results/embedding_result"
 require_relative "embedder/dsl"
 require_relative "embedder/execution"
 

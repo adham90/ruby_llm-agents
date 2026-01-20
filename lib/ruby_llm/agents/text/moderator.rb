@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "moderation_result"
+require_relative "../results/moderation_result"
 
 module RubyLLM
   module Agents

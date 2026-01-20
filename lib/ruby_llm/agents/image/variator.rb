@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "image_variator/dsl"
-require_relative "image_variator/execution"
+require_relative "variator/dsl"
+require_relative "variator/execution"
 
 module RubyLLM
   module Agents

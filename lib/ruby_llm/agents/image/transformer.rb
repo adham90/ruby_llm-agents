@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "image_transformer/dsl"
-require_relative "image_transformer/execution"
+require_relative "transformer/dsl"
+require_relative "transformer/execution"
 
 module RubyLLM
   module Agents

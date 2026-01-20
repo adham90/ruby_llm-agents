@@ -14,10 +14,10 @@ Mime::Type.register "text/vnd.turbo-stream.html", :turbo_stream unless Mime::Typ
 
 # Manually load gem classes that are loaded via config.to_prepare in the engine
 # This is needed because RSpec loads spec files before to_prepare callbacks run
-require "ruby_llm/agents/execution_logger_job"
-require "ruby_llm/agents/instrumentation"
-require "ruby_llm/agents/resolved_config"
-require "ruby_llm/agents/base"
+require "ruby_llm/agents/infrastructure/execution_logger_job"
+require "ruby_llm/agents/core/instrumentation"
+require "ruby_llm/agents/core/resolved_config"
+require "ruby_llm/agents/core/base"
 
 # Force loading of autoloaded constants that specs reference
 # This must happen after Rails.application.initialize! and before specs load

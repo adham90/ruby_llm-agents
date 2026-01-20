@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require_relative "image_generator/dsl"
-require_relative "image_generator/execution"
-require_relative "image_generator/pricing"
-require_relative "image_generator/content_policy"
-require_relative "image_generator/templates"
-require_relative "image_generator/active_storage_support"
+require_relative "generator/dsl"
+require_relative "generator/execution"
+require_relative "generator/pricing"
+require_relative "generator/content_policy"
+require_relative "generator/templates"
+require_relative "generator/active_storage_support"
 
 module RubyLLM
   module Agents

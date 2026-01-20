@@ -32,11 +32,11 @@ module RubyLLM
       #
       # @api private
       config.to_prepare do
-        require_relative "execution_logger_job"
-        require_relative "instrumentation"
-        require_relative "resolved_config"
-        require_relative "base"
-        require_relative "workflow"
+        require_relative "../infrastructure/execution_logger_job"
+        require_relative "../core/instrumentation"
+        require_relative "../core/resolved_config"
+        require_relative "../core/base"
+        require_relative "../workflow/orchestrator"
 
         # Resolve the parent controller class from configuration
         # Default is ActionController::Base, but can be set to inherit from app controllers

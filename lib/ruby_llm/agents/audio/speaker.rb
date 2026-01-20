@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "speech_result"
+require_relative "../results/speech_result"
 require_relative "speaker/dsl"
 require_relative "speaker/execution"
 

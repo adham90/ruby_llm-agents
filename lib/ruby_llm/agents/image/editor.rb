@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "image_editor/dsl"
-require_relative "image_editor/execution"
+require_relative "editor/dsl"
+require_relative "editor/execution"
 
 module RubyLLM
   module Agents
