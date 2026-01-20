@@ -1,4 +1,4 @@
-<%= link_to ruby_llm_agents.agent_path(ERB::Util.url_encode(agent[:name])), class: "block bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow" do %>
+<%= link_to ruby_llm_agents.agent_path(ERB::Util.url_encode(agent[:name]), tab: local_assigns[:current_tab], subtab: local_assigns[:current_subtab]), class: "block bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow" do %>
   <div class="p-4 sm:p-5">
     <!-- Row 1: Agent name + badge + model/timestamp -->
     <div class="flex items-center justify-between gap-2">

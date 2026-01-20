@@ -1,6 +1,6 @@
 <%= render "ruby_llm/agents/shared/breadcrumbs", items: [
   { label: "Dashboard", path: ruby_llm_agents.root_path },
-  { label: "Agents", path: ruby_llm_agents.agents_path },
+  { label: "Agents", path: ruby_llm_agents.agents_path(tab: params[:tab], subtab: params[:subtab]) },
   { label: @agent_type.gsub(/Agent$/, '') }
 ] %>
 
