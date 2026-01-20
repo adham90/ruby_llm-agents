@@ -36,7 +36,8 @@ module RubyLLM
           embedder: @agents.select { |a| a[:agent_type] == "embedder" },
           moderator: @agents.select { |a| a[:agent_type] == "moderator" },
           speaker: @agents.select { |a| a[:agent_type] == "speaker" },
-          transcriber: @agents.select { |a| a[:agent_type] == "transcriber" }
+          transcriber: @agents.select { |a| a[:agent_type] == "transcriber" },
+          image_generator: @agents.select { |a| a[:agent_type] == "image_generator" }
         }
 
         # Group workflows by type for sub-tabs
@@ -53,7 +54,7 @@ module RubyLLM
         Rails.logger.error("[RubyLLM::Agents] Error loading agents: #{e.message}")
         @agents = []
         @workflows = []
-        @agents_by_type = { agent: [], embedder: [], moderator: [], speaker: [], transcriber: [] }
+        @agents_by_type = { agent: [], embedder: [], moderator: [], speaker: [], transcriber: [], image_generator: [] }
         @workflows_by_type = { pipeline: [], parallel: [], router: [] }
         @agent_count = 0
         @workflow_count = 0
@@ -241,6 +242,8 @@ module RubyLLM
           load_speaker_config
         when "transcriber"
           load_transcriber_config
+        when "image_generator"
+          load_image_generator_config
         else
           load_base_agent_config
         end
@@ -313,6 +316,25 @@ module RubyLLM
           cache_enabled: safe_config_call(:cache_enabled?) || false,
           cache_ttl: safe_config_call(:cache_ttl),
           fallback_models: safe_config_call(:fallback_models)
+        )
+      end
+
+      # Loads configuration specific to ImageGenerators
+      #
+      # @return [void]
+      def load_image_generator_config
+        @config.merge!(
+          size: safe_config_call(:size),
+          quality: safe_config_call(:quality),
+          style: safe_config_call(:style),
+          content_policy: safe_config_call(:content_policy),
+          template: safe_config_call(:template_string),
+          negative_prompt: safe_config_call(:negative_prompt),
+          seed: safe_config_call(:seed),
+          guidance_scale: safe_config_call(:guidance_scale),
+          steps: safe_config_call(:steps),
+          cache_enabled: safe_config_call(:cache_enabled?) || false,
+          cache_ttl: safe_config_call(:cache_ttl)
         )
       end
 

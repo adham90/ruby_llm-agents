@@ -81,6 +81,13 @@
           Audio (<%= audio_count %>)
         </button>
       <% end %>
+      <% if @agents_by_type[:image_generator].size > 0 %>
+        <button type="button" @click="activeSubTab = 'image_generator'; updateUrl()"
+                :class="activeSubTab === 'image_generator' ? 'bg-teal-600 text-white' : 'bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 hover:bg-teal-200 dark:hover:bg-teal-800'"
+                class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
+          Image Generators (<%= @agents_by_type[:image_generator].size %>)
+        </button>
+      <% end %>
     </div>
   </div>
 

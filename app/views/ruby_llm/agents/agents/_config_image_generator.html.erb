@@ -1,0 +1,152 @@
+<%# Configuration partial for ImageGenerator types %>
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+  <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+    Configuration
+  </h3>
+
+  <!-- Image Generation Configuration -->
+  <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+    Image Generation Settings
+  </p>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Model</p>
+      <p class="font-medium text-gray-900 dark:text-gray-100">
+        <%= config[:model] %>
+      </p>
+    </div>
+
+    <div>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Size</p>
+      <p class="font-medium text-gray-900 dark:text-gray-100">
+        <% if config[:size] %>
+          <%= config[:size] %>
+        <% else %>
+          <span class="text-gray-400 dark:text-gray-500">Default</span>
+        <% end %>
+      </p>
+    </div>
+
+    <div>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Quality</p>
+      <p class="font-medium text-gray-900 dark:text-gray-100">
+        <% if config[:quality] %>
+          <span class="<%= config[:quality] == 'hd' ? 'text-green-600 dark:text-green-400' : '' %>">
+            <%= config[:quality].to_s.upcase %>
+          </span>
+        <% else %>
+          <span class="text-gray-400 dark:text-gray-500">Standard</span>
+        <% end %>
+      </p>
+    </div>
+
+    <div>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Style</p>
+      <p class="font-medium text-gray-900 dark:text-gray-100">
+        <% if config[:style] %>
+          <%= config[:style].to_s.titleize %>
+        <% else %>
+          <span class="text-gray-400 dark:text-gray-500">Default</span>
+        <% end %>
+      </p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Content Policy</p>
+      <p class="font-medium text-gray-900 dark:text-gray-100">
+        <% policy = config[:content_policy] || :standard %>
+        <% policy_colors = {
+          none: 'text-gray-400 dark:text-gray-500',
+          standard: 'text-blue-600 dark:text-blue-400',
+          moderate: 'text-yellow-600 dark:text-yellow-400',
+          strict: 'text-green-600 dark:text-green-400'
+        } %>
+        <span class="<%= policy_colors[policy.to_sym] || 'text-gray-600' %>">
+          <%= policy.to_s.titleize %>
+        </span>
+      </p>
+    </div>
+
+    <div>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Cache</p>
+      <p class="font-medium text-gray-900 dark:text-gray-100">
+        <% if config[:cache_enabled] %>
+          Enabled (<%= config[:cache_ttl].inspect %>)
+        <% else %>
+          <span class="text-gray-400 dark:text-gray-500">Disabled</span>
+        <% end %>
+      </p>
+    </div>
+
+    <% if config[:seed] %>
+      <div>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Seed</p>
+        <p class="font-medium text-gray-900 dark:text-gray-100">
+          <%= config[:seed] %>
+        </p>
+      </div>
+    <% end %>
+
+    <% if config[:guidance_scale] %>
+      <div>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Guidance Scale</p>
+        <p class="font-medium text-gray-900 dark:text-gray-100">
+          <%= config[:guidance_scale] %>
+        </p>
+      </div>
+    <% end %>
+  </div>
+
+  <% if config[:steps] %>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Inference Steps</p>
+        <p class="font-medium text-gray-900 dark:text-gray-100">
+          <%= config[:steps] %>
+        </p>
+      </div>
+    </div>
+  <% end %>
+
+  <% if config[:template].present? %>
+    <div class="mb-6">
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Prompt Template</p>
+      <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+        <code class="text-sm text-gray-700 dark:text-gray-300">
+          <%= config[:template] %>
+        </code>
+      </div>
+    </div>
+  <% end %>
+
+  <% if config[:negative_prompt].present? %>
+    <div class="mb-6">
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Negative Prompt</p>
+      <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+        <code class="text-sm text-gray-700 dark:text-gray-300">
+          <%= config[:negative_prompt] %>
+        </code>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Info Section -->
+  <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
+    <div class="flex items-start gap-3 p-3 rounded-lg bg-teal-50 dark:bg-teal-900/20">
+      <div class="flex-shrink-0 mt-0.5">
+        <svg class="w-5 h-5 text-teal-500" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Image Generator</p>
+        <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+          Generates images from text prompts using AI models. Supports various sizes, quality levels, and style presets.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
