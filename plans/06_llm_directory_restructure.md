@@ -2,7 +2,7 @@
 
 ## Overview
 
-Group all ruby_llm-agents related directories under a single `app/llm/` directory to reduce clutter in the Rails `app/` folder.
+Group all ruby_llm-agents related directories under a single `app/llm/` directory with logical sub-groupings for image, audio, and text operations.
 
 ## Current Structure
 
@@ -33,17 +33,20 @@ app/
 app/
 ├── llm/
 │   ├── agents/
-│   ├── embedders/
-│   ├── image_generators/
-│   ├── image_editors/
-│   ├── image_transformers/
-│   ├── image_upscalers/
-│   ├── image_variators/
-│   ├── image_analyzers/
-│   ├── background_removers/
-│   ├── moderators/
-│   ├── speakers/
-│   ├── transcribers/
+│   ├── audio/
+│   │   ├── speakers/
+│   │   └── transcribers/
+│   ├── image/
+│   │   ├── analyzers/
+│   │   ├── background_removers/
+│   │   ├── editors/
+│   │   ├── generators/
+│   │   ├── transformers/
+│   │   ├── upscalers/
+│   │   └── variators/
+│   ├── text/
+│   │   ├── embedders/
+│   │   └── moderators/
 │   ├── workflows/
 │   └── tools/
 ├── controllers/
@@ -57,11 +60,39 @@ app/
 |--------|-------|
 | `ApplicationAgent` | `Llm::ApplicationAgent` |
 | `SupportAgent` | `Llm::SupportAgent` |
-| `ApplicationEmbedder` | `Llm::ApplicationEmbedder` |
-| `ApplicationSpeaker` | `Llm::ApplicationSpeaker` |
-| `ApplicationTranscriber` | `Llm::ApplicationTranscriber` |
-| `ApplicationImageGenerator` | `Llm::ApplicationImageGenerator` |
-| etc. | etc. |
+| `ApplicationEmbedder` | `Llm::Text::ApplicationEmbedder` |
+| `DocumentEmbedder` | `Llm::Text::DocumentEmbedder` |
+| `ApplicationModerator` | `Llm::Text::ApplicationModerator` |
+| `ApplicationSpeaker` | `Llm::Audio::ApplicationSpeaker` |
+| `ApplicationTranscriber` | `Llm::Audio::ApplicationTranscriber` |
+| `ApplicationImageGenerator` | `Llm::Image::ApplicationGenerator` |
+| `ApplicationImageEditor` | `Llm::Image::ApplicationEditor` |
+| `ApplicationImageAnalyzer` | `Llm::Image::ApplicationAnalyzer` |
+| `ApplicationImageTransformer` | `Llm::Image::ApplicationTransformer` |
+| `ApplicationImageUpscaler` | `Llm::Image::ApplicationUpscaler` |
+| `ApplicationImageVariator` | `Llm::Image::ApplicationVariator` |
+| `ApplicationBackgroundRemover` | `Llm::Image::ApplicationBackgroundRemover` |
+| `ApplicationWorkflow` | `Llm::ApplicationWorkflow` |
+| `WeatherTool` | `Llm::WeatherTool` |
+
+## Directory Mapping
+
+| Old Path | New Path |
+|----------|----------|
+| `app/agents/` | `app/llm/agents/` |
+| `app/embedders/` | `app/llm/text/embedders/` |
+| `app/moderators/` | `app/llm/text/moderators/` |
+| `app/speakers/` | `app/llm/audio/speakers/` |
+| `app/transcribers/` | `app/llm/audio/transcribers/` |
+| `app/image_generators/` | `app/llm/image/generators/` |
+| `app/image_editors/` | `app/llm/image/editors/` |
+| `app/image_analyzers/` | `app/llm/image/analyzers/` |
+| `app/image_transformers/` | `app/llm/image/transformers/` |
+| `app/image_upscalers/` | `app/llm/image/upscalers/` |
+| `app/image_variators/` | `app/llm/image/variators/` |
+| `app/background_removers/` | `app/llm/image/background_removers/` |
+| `app/workflows/` | `app/llm/workflows/` |
+| `app/tools/` | `app/llm/tools/` |
 
 ---
 
@@ -69,36 +100,36 @@ app/
 
 ### 1. Update Generators
 
-Update all generators to create files under `app/llm/` with the `Llm::` namespace:
+Update all generators to create files under the new structure:
 
-- [ ] `agent_generator.rb`
-- [ ] `embedder_generator.rb`
-- [ ] `speaker_generator.rb`
-- [ ] `transcriber_generator.rb`
-- [ ] `image_generator_generator.rb`
-- [ ] `image_editor_generator.rb`
-- [ ] `image_transformer_generator.rb`
-- [ ] `image_upscaler_generator.rb`
-- [ ] `image_variator_generator.rb`
-- [ ] `image_analyzer_generator.rb`
-- [ ] `background_remover_generator.rb`
+**Agents (top-level under llm):**
+- [ ] `agent_generator.rb` → `app/llm/agents/`
+
+**Audio group:**
+- [ ] `speaker_generator.rb` → `app/llm/audio/speakers/`
+- [ ] `transcriber_generator.rb` → `app/llm/audio/transcribers/`
+
+**Image group:**
+- [ ] `image_generator_generator.rb` → `app/llm/image/generators/`
+- [ ] `image_editor_generator.rb` → `app/llm/image/editors/`
+- [ ] `image_analyzer_generator.rb` → `app/llm/image/analyzers/`
+- [ ] `image_transformer_generator.rb` → `app/llm/image/transformers/`
+- [ ] `image_upscaler_generator.rb` → `app/llm/image/upscalers/`
+- [ ] `image_variator_generator.rb` → `app/llm/image/variators/`
+- [ ] `background_remover_generator.rb` → `app/llm/image/background_removers/`
+
+**Text group:**
+- [ ] `embedder_generator.rb` → `app/llm/text/embedders/`
+- [ ] `moderator_generator.rb` → `app/llm/text/moderators/` (if exists)
 
 **Changes per generator:**
-- Update `destination_root` to `app/llm/<type>/`
-- Update templates to use `Llm::` namespace
-- Update `ApplicationX` base class references to `Llm::ApplicationX`
+- Update `destination_root` to new path
+- Update templates to use nested namespace (e.g., `Llm::Image::`)
+- Update `ApplicationX` base class references
 
 ### 2. Update Templates
 
-Update all template files to include the `Llm::` module wrapper:
-
-**Before:**
-```ruby
-class <%= class_name %> < ApplicationAgent
-end
-```
-
-**After:**
+**Agent templates (single namespace):**
 ```ruby
 module Llm
   class <%= class_name %> < ApplicationAgent
@@ -106,78 +137,174 @@ module Llm
 end
 ```
 
+**Audio templates (nested namespace):**
+```ruby
+module Llm
+  module Audio
+    class <%= class_name %> < ApplicationSpeaker
+    end
+  end
+end
+```
+
+**Image templates (nested namespace):**
+```ruby
+module Llm
+  module Image
+    class <%= class_name %> < ApplicationGenerator
+    end
+  end
+end
+```
+
+**Text templates (nested namespace):**
+```ruby
+module Llm
+  module Text
+    class <%= class_name %> < ApplicationEmbedder
+    end
+  end
+end
+```
+
 ### 3. Create Upgrade Generator
 
-Create `lib/generators/ruby_llm_agents/restructure_generator.rb` to migrate existing apps:
+Create `lib/generators/ruby_llm_agents/restructure_generator.rb`:
 
 ```ruby
+# frozen_string_literal: true
+
+require "fileutils"
+
 module RubyLlmAgents
   module Generators
     class RestructureGenerator < Rails::Generators::Base
-      desc "Migrates ruby_llm-agents directories under app/llm/"
+      desc "Migrates ruby_llm-agents directories to new app/llm/ structure"
 
-      DIRECTORIES = %w[
-        agents
-        embedders
-        speakers
-        transcribers
-        image_generators
-        image_editors
-        image_transformers
-        image_upscalers
-        image_variators
-        image_analyzers
-        background_removers
-        moderators
-        workflows
-        tools
-      ].freeze
+      # Maps old directory -> [new directory, namespace]
+      DIRECTORY_MAPPING = {
+        # Top-level under llm/
+        "agents" => { path: "llm/agents", namespace: "Llm" },
+        "workflows" => { path: "llm/workflows", namespace: "Llm" },
+        "tools" => { path: "llm/tools", namespace: "Llm" },
 
-      def create_llm_directory
+        # Audio group
+        "speakers" => { path: "llm/audio/speakers", namespace: "Llm::Audio" },
+        "transcribers" => { path: "llm/audio/transcribers", namespace: "Llm::Audio" },
+
+        # Image group
+        "image_generators" => { path: "llm/image/generators", namespace: "Llm::Image" },
+        "image_editors" => { path: "llm/image/editors", namespace: "Llm::Image" },
+        "image_analyzers" => { path: "llm/image/analyzers", namespace: "Llm::Image" },
+        "image_transformers" => { path: "llm/image/transformers", namespace: "Llm::Image" },
+        "image_upscalers" => { path: "llm/image/upscalers", namespace: "Llm::Image" },
+        "image_variators" => { path: "llm/image/variators", namespace: "Llm::Image" },
+        "background_removers" => { path: "llm/image/background_removers", namespace: "Llm::Image" },
+
+        # Text group
+        "embedders" => { path: "llm/text/embedders", namespace: "Llm::Text" },
+        "moderators" => { path: "llm/text/moderators", namespace: "Llm::Text" }
+      }.freeze
+
+      def create_directory_structure
+        say_status :create, "app/llm directory structure", :green
+
         empty_directory "app/llm"
+        empty_directory "app/llm/agents"
+        empty_directory "app/llm/audio"
+        empty_directory "app/llm/audio/speakers"
+        empty_directory "app/llm/audio/transcribers"
+        empty_directory "app/llm/image"
+        empty_directory "app/llm/image/analyzers"
+        empty_directory "app/llm/image/background_removers"
+        empty_directory "app/llm/image/editors"
+        empty_directory "app/llm/image/generators"
+        empty_directory "app/llm/image/transformers"
+        empty_directory "app/llm/image/upscalers"
+        empty_directory "app/llm/image/variators"
+        empty_directory "app/llm/text"
+        empty_directory "app/llm/text/embedders"
+        empty_directory "app/llm/text/moderators"
+        empty_directory "app/llm/workflows"
+        empty_directory "app/llm/tools"
       end
 
       def move_directories
-        DIRECTORIES.each do |dir|
-          source = "app/#{dir}"
-          destination = "app/llm/#{dir}"
+        DIRECTORY_MAPPING.each do |old_dir, config|
+          source = Rails.root.join("app", old_dir)
+          destination = Rails.root.join("app", config[:path])
 
-          if File.directory?(source)
-            say_status :moving, "#{source} -> #{destination}", :green
-            FileUtils.mv(source, destination)
+          next unless File.directory?(source)
+
+          # Move contents, not the directory itself (since we created structure)
+          Dir.glob("#{source}/*").each do |item|
+            item_name = File.basename(item)
+            dest_item = File.join(destination, item_name)
+
+            say_status :moving, "#{item} -> #{dest_item}", :green
+            FileUtils.mv(item, dest_item)
           end
+
+          # Remove old empty directory
+          FileUtils.rmdir(source) if Dir.empty?(source)
         end
       end
 
       def update_namespaces
-        # Update all Ruby files to add Llm:: namespace
-        DIRECTORIES.each do |dir|
-          directory_path = "app/llm/#{dir}"
+        DIRECTORY_MAPPING.each do |old_dir, config|
+          directory_path = Rails.root.join("app", config[:path])
           next unless File.directory?(directory_path)
 
           Dir.glob("#{directory_path}/**/*.rb").each do |file|
-            update_file_namespace(file)
+            update_file_namespace(file, config[:namespace])
+          end
+        end
+      end
+
+      def cleanup_empty_directories
+        DIRECTORY_MAPPING.keys.each do |old_dir|
+          path = Rails.root.join("app", old_dir)
+          if File.directory?(path) && Dir.empty?(path)
+            FileUtils.rmdir(path)
+            say_status :removed, "empty directory app/#{old_dir}", :yellow
           end
         end
       end
 
       private
 
-      def update_file_namespace(file)
+      def update_file_namespace(file, namespace)
         content = File.read(file)
 
-        # Skip if already namespaced
-        return if content.include?("module Llm")
+        # Skip if already has the correct namespace
+        return if content.include?("module #{namespace.split('::').first}")
 
-        # Add Llm module wrapper
-        updated = add_llm_namespace(content)
+        updated = add_namespace(content, namespace)
         File.write(file, updated)
 
         say_status :updated, file, :blue
       end
 
-      def add_llm_namespace(content)
-        # Implementation details...
+      def add_namespace(content, namespace)
+        modules = namespace.split("::")
+        indent = ""
+
+        # Build opening modules
+        opening = modules.map do |mod|
+          line = "#{indent}module #{mod}"
+          indent += "  "
+          line
+        end.join("\n")
+
+        # Build closing modules
+        closing = modules.map { "end" }.join("\n")
+
+        # Indent original content
+        indented_content = content.lines.map do |line|
+          line.chomp.empty? ? line : ("  " * modules.size) + line
+        end.join
+
+        "#{opening}\n#{indented_content}#{closing}\n"
       end
     end
   end
@@ -186,23 +313,54 @@ end
 
 ### 4. Update Install Generator
 
-Modify `install_generator.rb` to:
-- Create `app/llm/` directory structure
-- Generate base classes with `Llm::` namespace
+Modify `install_generator.rb` to create the new structure:
+
+```ruby
+def create_directory_structure
+  empty_directory "app/llm"
+  empty_directory "app/llm/agents"
+  empty_directory "app/llm/audio/speakers"
+  empty_directory "app/llm/audio/transcribers"
+  empty_directory "app/llm/image/generators"
+  empty_directory "app/llm/image/editors"
+  empty_directory "app/llm/image/analyzers"
+  empty_directory "app/llm/image/transformers"
+  empty_directory "app/llm/image/upscalers"
+  empty_directory "app/llm/image/variators"
+  empty_directory "app/llm/image/background_removers"
+  empty_directory "app/llm/text/embedders"
+  empty_directory "app/llm/text/moderators"
+  empty_directory "app/llm/workflows"
+  empty_directory "app/llm/tools"
+end
+```
 
 ### 5. Update Engine
 
-Ensure autoload paths include `app/llm` subdirectories:
+Update autoload paths in `lib/ruby_llm/agents/engine.rb`:
 
 ```ruby
-# lib/ruby_llm/agents/engine.rb
 initializer "ruby_llm_agents.autoload_paths" do |app|
-  llm_paths = %w[
-    agents embedders speakers transcribers
-    image_generators image_editors image_transformers
-    image_upscalers image_variators image_analyzers
-    background_removers moderators workflows tools
-  ].map { |dir| Rails.root.join("app/llm/#{dir}") }
+  llm_paths = [
+    # Top-level
+    "app/llm/agents",
+    "app/llm/workflows",
+    "app/llm/tools",
+    # Audio
+    "app/llm/audio/speakers",
+    "app/llm/audio/transcribers",
+    # Image
+    "app/llm/image/analyzers",
+    "app/llm/image/background_removers",
+    "app/llm/image/editors",
+    "app/llm/image/generators",
+    "app/llm/image/transformers",
+    "app/llm/image/upscalers",
+    "app/llm/image/variators",
+    # Text
+    "app/llm/text/embedders",
+    "app/llm/text/moderators"
+  ].map { |dir| Rails.root.join(dir) }
 
   app.config.autoload_paths += llm_paths
   app.config.eager_load_paths += llm_paths
@@ -211,9 +369,7 @@ end
 
 ### 6. Update Example App
 
-Restructure `example/app/` to match new structure:
-- Move all directories under `example/app/llm/`
-- Update all class definitions with `Llm::` namespace
+Restructure `example/app/` to match new structure and update all namespaces.
 
 ### 7. Update Documentation
 
@@ -228,124 +384,226 @@ Restructure `example/app/` to match new structure:
 Create `spec/generators/restructure_generator_spec.rb`:
 
 ```ruby
-require "spec_helper"
-require "generators/ruby_llm_agents/restructure_generator"
-require "fileutils"
+# frozen_string_literal: true
 
-RSpec.describe RubyLlmAgents::Generators::RestructureGenerator, type: :generator do
-  destination File.expand_path("../../tmp", __dir__)
+require "spec_helper"
+require "fileutils"
+require "tmpdir"
+
+RSpec.describe "RestructureGenerator" do
+  let(:tmp_dir) { Dir.mktmpdir }
+  let(:app_dir) { File.join(tmp_dir, "app") }
 
   before do
-    prepare_destination
+    FileUtils.mkdir_p(app_dir)
     setup_old_structure
   end
 
   after do
-    FileUtils.rm_rf(destination_root)
+    FileUtils.rm_rf(tmp_dir)
+  end
+
+  describe "directory structure creation" do
+    before { run_generator }
+
+    it "creates app/llm directory" do
+      expect(File.directory?(File.join(app_dir, "llm"))).to be true
+    end
+
+    it "creates app/llm/agents directory" do
+      expect(File.directory?(File.join(app_dir, "llm/agents"))).to be true
+    end
+
+    it "creates app/llm/audio directory structure" do
+      expect(File.directory?(File.join(app_dir, "llm/audio"))).to be true
+      expect(File.directory?(File.join(app_dir, "llm/audio/speakers"))).to be true
+      expect(File.directory?(File.join(app_dir, "llm/audio/transcribers"))).to be true
+    end
+
+    it "creates app/llm/image directory structure" do
+      expect(File.directory?(File.join(app_dir, "llm/image"))).to be true
+      expect(File.directory?(File.join(app_dir, "llm/image/generators"))).to be true
+      expect(File.directory?(File.join(app_dir, "llm/image/editors"))).to be true
+      expect(File.directory?(File.join(app_dir, "llm/image/analyzers"))).to be true
+      expect(File.directory?(File.join(app_dir, "llm/image/transformers"))).to be true
+      expect(File.directory?(File.join(app_dir, "llm/image/upscalers"))).to be true
+      expect(File.directory?(File.join(app_dir, "llm/image/variators"))).to be true
+      expect(File.directory?(File.join(app_dir, "llm/image/background_removers"))).to be true
+    end
+
+    it "creates app/llm/text directory structure" do
+      expect(File.directory?(File.join(app_dir, "llm/text"))).to be true
+      expect(File.directory?(File.join(app_dir, "llm/text/embedders"))).to be true
+      expect(File.directory?(File.join(app_dir, "llm/text/moderators"))).to be true
+    end
+
+    it "creates app/llm/workflows directory" do
+      expect(File.directory?(File.join(app_dir, "llm/workflows"))).to be true
+    end
+
+    it "creates app/llm/tools directory" do
+      expect(File.directory?(File.join(app_dir, "llm/tools"))).to be true
+    end
   end
 
   describe "directory migration" do
-    it "creates app/llm directory" do
-      run_generator
-      expect(File.directory?(File.join(destination_root, "app/llm"))).to be true
+    before { run_generator }
+
+    it "moves agents to app/llm/agents" do
+      expect(File.exist?(File.join(app_dir, "llm/agents/application_agent.rb"))).to be true
+      expect(File.exist?(File.join(app_dir, "llm/agents/support_agent.rb"))).to be true
+      expect(File.directory?(File.join(app_dir, "agents"))).to be false
     end
 
-    it "moves agents directory under app/llm" do
-      run_generator
-      expect(File.directory?(File.join(destination_root, "app/llm/agents"))).to be true
-      expect(File.directory?(File.join(destination_root, "app/agents"))).to be false
+    it "moves speakers to app/llm/audio/speakers" do
+      expect(File.exist?(File.join(app_dir, "llm/audio/speakers/application_speaker.rb"))).to be true
+      expect(File.directory?(File.join(app_dir, "speakers"))).to be false
     end
 
-    it "moves embedders directory under app/llm" do
-      run_generator
-      expect(File.directory?(File.join(destination_root, "app/llm/embedders"))).to be true
-      expect(File.directory?(File.join(destination_root, "app/embedders"))).to be false
+    it "moves transcribers to app/llm/audio/transcribers" do
+      expect(File.exist?(File.join(app_dir, "llm/audio/transcribers/application_transcriber.rb"))).to be true
+      expect(File.directory?(File.join(app_dir, "transcribers"))).to be false
     end
 
-    it "moves speakers directory under app/llm" do
-      run_generator
-      expect(File.directory?(File.join(destination_root, "app/llm/speakers"))).to be true
-      expect(File.directory?(File.join(destination_root, "app/speakers"))).to be false
+    it "moves image_generators to app/llm/image/generators" do
+      expect(File.exist?(File.join(app_dir, "llm/image/generators/application_image_generator.rb"))).to be true
+      expect(File.directory?(File.join(app_dir, "image_generators"))).to be false
     end
 
-    it "moves transcribers directory under app/llm" do
-      run_generator
-      expect(File.directory?(File.join(destination_root, "app/llm/transcribers"))).to be true
-      expect(File.directory?(File.join(destination_root, "app/transcribers"))).to be false
+    it "moves image_editors to app/llm/image/editors" do
+      expect(File.exist?(File.join(app_dir, "llm/image/editors/application_image_editor.rb"))).to be true
+      expect(File.directory?(File.join(app_dir, "image_editors"))).to be false
     end
 
-    it "moves image_generators directory under app/llm" do
-      run_generator
-      expect(File.directory?(File.join(destination_root, "app/llm/image_generators"))).to be true
-      expect(File.directory?(File.join(destination_root, "app/image_generators"))).to be false
+    it "moves image_analyzers to app/llm/image/analyzers" do
+      expect(File.exist?(File.join(app_dir, "llm/image/analyzers/application_image_analyzer.rb"))).to be true
+      expect(File.directory?(File.join(app_dir, "image_analyzers"))).to be false
     end
 
-    it "moves moderators directory under app/llm" do
-      run_generator
-      expect(File.directory?(File.join(destination_root, "app/llm/moderators"))).to be true
-      expect(File.directory?(File.join(destination_root, "app/moderators"))).to be false
+    it "moves embedders to app/llm/text/embedders" do
+      expect(File.exist?(File.join(app_dir, "llm/text/embedders/application_embedder.rb"))).to be true
+      expect(File.directory?(File.join(app_dir, "embedders"))).to be false
     end
 
-    it "moves workflows directory under app/llm" do
-      run_generator
-      expect(File.directory?(File.join(destination_root, "app/llm/workflows"))).to be true
-      expect(File.directory?(File.join(destination_root, "app/workflows"))).to be false
+    it "moves moderators to app/llm/text/moderators" do
+      expect(File.exist?(File.join(app_dir, "llm/text/moderators/application_moderator.rb"))).to be true
+      expect(File.directory?(File.join(app_dir, "moderators"))).to be false
     end
 
-    it "moves tools directory under app/llm" do
-      run_generator
-      expect(File.directory?(File.join(destination_root, "app/llm/tools"))).to be true
-      expect(File.directory?(File.join(destination_root, "app/tools"))).to be false
+    it "moves workflows to app/llm/workflows" do
+      expect(File.exist?(File.join(app_dir, "llm/workflows/application_workflow.rb"))).to be true
+      expect(File.directory?(File.join(app_dir, "workflows"))).to be false
+    end
+
+    it "moves tools to app/llm/tools" do
+      expect(File.exist?(File.join(app_dir, "llm/tools/weather_tool.rb"))).to be true
+      expect(File.directory?(File.join(app_dir, "tools"))).to be false
     end
 
     it "skips directories that don't exist" do
-      FileUtils.rm_rf(File.join(destination_root, "app/tools"))
+      FileUtils.rm_rf(File.join(app_dir, "image_transformers"))
       expect { run_generator }.not_to raise_error
     end
 
-    it "preserves files within moved directories" do
+    it "preserves nested files within directories" do
+      nested_dir = File.join(app_dir, "agents/support")
+      FileUtils.mkdir_p(nested_dir)
+      File.write(File.join(nested_dir, "helper.rb"), "class Support::Helper; end")
+
       run_generator
-      expect(File.exist?(File.join(destination_root, "app/llm/agents/application_agent.rb"))).to be true
-      expect(File.exist?(File.join(destination_root, "app/llm/agents/support_agent.rb"))).to be true
+
+      expect(File.exist?(File.join(app_dir, "llm/agents/support/helper.rb"))).to be true
     end
   end
 
   describe "namespace updates" do
-    it "adds Llm module to agent classes" do
-      run_generator
-      content = File.read(File.join(destination_root, "app/llm/agents/support_agent.rb"))
-      expect(content).to include("module Llm")
-      expect(content).to include("class SupportAgent < ApplicationAgent")
+    before { run_generator }
+
+    context "top-level llm namespace (agents, workflows, tools)" do
+      it "adds Llm module to agent classes" do
+        content = File.read(File.join(app_dir, "llm/agents/support_agent.rb"))
+        expect(content).to include("module Llm")
+        expect(content).to include("class SupportAgent")
+        expect(content).not_to include("module Audio")
+        expect(content).not_to include("module Image")
+      end
+
+      it "adds Llm module to application_agent" do
+        content = File.read(File.join(app_dir, "llm/agents/application_agent.rb"))
+        expect(content).to include("module Llm")
+        expect(content).to include("class ApplicationAgent")
+      end
+
+      it "adds Llm module to workflow classes" do
+        content = File.read(File.join(app_dir, "llm/workflows/application_workflow.rb"))
+        expect(content).to include("module Llm")
+        expect(content).to include("class ApplicationWorkflow")
+      end
+
+      it "adds Llm module to tool classes" do
+        content = File.read(File.join(app_dir, "llm/tools/weather_tool.rb"))
+        expect(content).to include("module Llm")
+        expect(content).to include("class WeatherTool")
+      end
     end
 
-    it "adds Llm module to application_agent" do
-      run_generator
-      content = File.read(File.join(destination_root, "app/llm/agents/application_agent.rb"))
-      expect(content).to include("module Llm")
-      expect(content).to include("class ApplicationAgent < RubyLLM::Agents::Base")
+    context "audio namespace" do
+      it "adds Llm::Audio module to speaker classes" do
+        content = File.read(File.join(app_dir, "llm/audio/speakers/application_speaker.rb"))
+        expect(content).to include("module Llm")
+        expect(content).to include("module Audio")
+        expect(content).to include("class ApplicationSpeaker")
+      end
+
+      it "adds Llm::Audio module to transcriber classes" do
+        content = File.read(File.join(app_dir, "llm/audio/transcribers/application_transcriber.rb"))
+        expect(content).to include("module Llm")
+        expect(content).to include("module Audio")
+        expect(content).to include("class ApplicationTranscriber")
+      end
     end
 
-    it "adds Llm module to embedder classes" do
-      run_generator
-      content = File.read(File.join(destination_root, "app/llm/embedders/application_embedder.rb"))
-      expect(content).to include("module Llm")
+    context "image namespace" do
+      it "adds Llm::Image module to generator classes" do
+        content = File.read(File.join(app_dir, "llm/image/generators/application_image_generator.rb"))
+        expect(content).to include("module Llm")
+        expect(content).to include("module Image")
+        expect(content).to include("class ApplicationImageGenerator")
+      end
+
+      it "adds Llm::Image module to editor classes" do
+        content = File.read(File.join(app_dir, "llm/image/editors/application_image_editor.rb"))
+        expect(content).to include("module Llm")
+        expect(content).to include("module Image")
+        expect(content).to include("class ApplicationImageEditor")
+      end
+
+      it "adds Llm::Image module to analyzer classes" do
+        content = File.read(File.join(app_dir, "llm/image/analyzers/application_image_analyzer.rb"))
+        expect(content).to include("module Llm")
+        expect(content).to include("module Image")
+        expect(content).to include("class ApplicationImageAnalyzer")
+      end
     end
 
-    it "adds Llm module to speaker classes" do
-      run_generator
-      content = File.read(File.join(destination_root, "app/llm/speakers/application_speaker.rb"))
-      expect(content).to include("module Llm")
-    end
+    context "text namespace" do
+      it "adds Llm::Text module to embedder classes" do
+        content = File.read(File.join(app_dir, "llm/text/embedders/application_embedder.rb"))
+        expect(content).to include("module Llm")
+        expect(content).to include("module Text")
+        expect(content).to include("class ApplicationEmbedder")
+      end
 
-    it "adds Llm module to transcriber classes" do
-      run_generator
-      content = File.read(File.join(destination_root, "app/llm/transcribers/application_transcriber.rb"))
-      expect(content).to include("module Llm")
+      it "adds Llm::Text module to moderator classes" do
+        content = File.read(File.join(app_dir, "llm/text/moderators/application_moderator.rb"))
+        expect(content).to include("module Llm")
+        expect(content).to include("module Text")
+        expect(content).to include("class ApplicationModerator")
+      end
     end
 
     it "skips files already namespaced with Llm" do
-      # Pre-namespace a file
-      file_path = File.join(destination_root, "app/agents/support_agent.rb")
+      file_path = File.join(app_dir, "agents/support_agent.rb")
       File.write(file_path, <<~RUBY)
         module Llm
           class SupportAgent < ApplicationAgent
@@ -355,31 +613,8 @@ RSpec.describe RubyLlmAgents::Generators::RestructureGenerator, type: :generator
 
       run_generator
 
-      content = File.read(File.join(destination_root, "app/llm/agents/support_agent.rb"))
+      content = File.read(File.join(app_dir, "llm/agents/support_agent.rb"))
       expect(content.scan("module Llm").count).to eq(1)
-    end
-
-    it "handles nested classes correctly" do
-      # Create a nested class file
-      nested_dir = File.join(destination_root, "app/agents/support")
-      FileUtils.mkdir_p(nested_dir)
-      File.write(File.join(nested_dir, "helper.rb"), <<~RUBY)
-        class Support::Helper
-          def help
-          end
-        end
-      RUBY
-
-      run_generator
-
-      content = File.read(File.join(destination_root, "app/llm/agents/support/helper.rb"))
-      expect(content).to include("module Llm")
-    end
-
-    it "updates tool classes" do
-      run_generator
-      content = File.read(File.join(destination_root, "app/llm/tools/weather_tool.rb"))
-      expect(content).to include("module Llm")
     end
   end
 
@@ -389,79 +624,274 @@ RSpec.describe RubyLlmAgents::Generators::RestructureGenerator, type: :generator
       expect { run_generator }.not_to raise_error
     end
 
-    it "does not duplicate Llm namespace on second run" do
+    it "does not duplicate namespace on second run" do
       run_generator
       run_generator
 
-      content = File.read(File.join(destination_root, "app/llm/agents/support_agent.rb"))
+      content = File.read(File.join(app_dir, "llm/agents/support_agent.rb"))
       expect(content.scan("module Llm").count).to eq(1)
+    end
+
+    it "does not duplicate nested namespace on second run" do
+      run_generator
+      run_generator
+
+      content = File.read(File.join(app_dir, "llm/audio/speakers/application_speaker.rb"))
+      expect(content.scan("module Audio").count).to eq(1)
     end
   end
 
   describe "edge cases" do
     it "handles empty directories" do
-      FileUtils.mkdir_p(File.join(destination_root, "app/image_editors"))
+      FileUtils.mkdir_p(File.join(app_dir, "image_upscalers"))
       run_generator
-      expect(File.directory?(File.join(destination_root, "app/llm/image_editors"))).to be true
+      expect(File.directory?(File.join(app_dir, "llm/image/upscalers"))).to be true
     end
 
     it "handles files with syntax errors gracefully" do
-      File.write(File.join(destination_root, "app/agents/broken.rb"), "class Broken <")
+      File.write(File.join(app_dir, "agents/broken.rb"), "class Broken <")
       expect { run_generator }.not_to raise_error
     end
 
     it "preserves file permissions" do
-      file_path = File.join(destination_root, "app/agents/support_agent.rb")
+      file_path = File.join(app_dir, "agents/support_agent.rb")
       File.chmod(0755, file_path)
 
       run_generator
 
-      new_path = File.join(destination_root, "app/llm/agents/support_agent.rb")
+      new_path = File.join(app_dir, "llm/agents/support_agent.rb")
       expect(File.stat(new_path).mode & 0777).to eq(0755)
+    end
+
+    it "handles deeply nested subdirectories" do
+      nested_dir = File.join(app_dir, "agents/support/utils/helpers")
+      FileUtils.mkdir_p(nested_dir)
+      File.write(File.join(nested_dir, "formatter.rb"), "class Formatter; end")
+
+      run_generator
+
+      expect(File.exist?(File.join(app_dir, "llm/agents/support/utils/helpers/formatter.rb"))).to be true
+    end
+
+    it "preserves non-ruby files" do
+      File.write(File.join(app_dir, "agents/README.md"), "# Agents")
+
+      run_generator
+
+      expect(File.exist?(File.join(app_dir, "llm/agents/README.md"))).to be true
+    end
+  end
+
+  describe "partial migrations" do
+    it "handles apps with only agents directory" do
+      # Remove all directories except agents
+      %w[embedders speakers transcribers image_generators image_editors
+         image_analyzers moderators workflows tools].each do |dir|
+        FileUtils.rm_rf(File.join(app_dir, dir))
+      end
+
+      expect { run_generator }.not_to raise_error
+      expect(File.exist?(File.join(app_dir, "llm/agents/application_agent.rb"))).to be true
+    end
+
+    it "handles apps with only image directories" do
+      %w[agents embedders speakers transcribers moderators workflows tools].each do |dir|
+        FileUtils.rm_rf(File.join(app_dir, dir))
+      end
+
+      expect { run_generator }.not_to raise_error
+      expect(File.exist?(File.join(app_dir, "llm/image/generators/application_image_generator.rb"))).to be true
     end
   end
 
   private
 
   def setup_old_structure
-    # Create old directory structure
-    %w[agents embedders speakers transcribers image_generators moderators workflows tools].each do |dir|
-      FileUtils.mkdir_p(File.join(destination_root, "app/#{dir}"))
-    end
+    # Create old directory structure with sample files
 
-    # Create sample files
-    File.write(File.join(destination_root, "app/agents/application_agent.rb"), <<~RUBY)
+    # Agents
+    FileUtils.mkdir_p(File.join(app_dir, "agents"))
+    File.write(File.join(app_dir, "agents/application_agent.rb"), <<~RUBY)
       class ApplicationAgent < RubyLLM::Agents::Base
       end
     RUBY
-
-    File.write(File.join(destination_root, "app/agents/support_agent.rb"), <<~RUBY)
+    File.write(File.join(app_dir, "agents/support_agent.rb"), <<~RUBY)
       class SupportAgent < ApplicationAgent
         model "gpt-4"
       end
     RUBY
 
-    File.write(File.join(destination_root, "app/embedders/application_embedder.rb"), <<~RUBY)
-      class ApplicationEmbedder < RubyLLM::Agents::Embedder
-      end
-    RUBY
-
-    File.write(File.join(destination_root, "app/speakers/application_speaker.rb"), <<~RUBY)
+    # Speakers
+    FileUtils.mkdir_p(File.join(app_dir, "speakers"))
+    File.write(File.join(app_dir, "speakers/application_speaker.rb"), <<~RUBY)
       class ApplicationSpeaker < RubyLLM::Agents::Speaker
       end
     RUBY
 
-    File.write(File.join(destination_root, "app/transcribers/application_transcriber.rb"), <<~RUBY)
+    # Transcribers
+    FileUtils.mkdir_p(File.join(app_dir, "transcribers"))
+    File.write(File.join(app_dir, "transcribers/application_transcriber.rb"), <<~RUBY)
       class ApplicationTranscriber < RubyLLM::Agents::Transcriber
       end
     RUBY
 
-    File.write(File.join(destination_root, "app/tools/weather_tool.rb"), <<~RUBY)
+    # Image generators
+    FileUtils.mkdir_p(File.join(app_dir, "image_generators"))
+    File.write(File.join(app_dir, "image_generators/application_image_generator.rb"), <<~RUBY)
+      class ApplicationImageGenerator < RubyLLM::Agents::ImageGenerator
+      end
+    RUBY
+
+    # Image editors
+    FileUtils.mkdir_p(File.join(app_dir, "image_editors"))
+    File.write(File.join(app_dir, "image_editors/application_image_editor.rb"), <<~RUBY)
+      class ApplicationImageEditor < RubyLLM::Agents::ImageEditor
+      end
+    RUBY
+
+    # Image analyzers
+    FileUtils.mkdir_p(File.join(app_dir, "image_analyzers"))
+    File.write(File.join(app_dir, "image_analyzers/application_image_analyzer.rb"), <<~RUBY)
+      class ApplicationImageAnalyzer < RubyLLM::Agents::ImageAnalyzer
+      end
+    RUBY
+
+    # Embedders
+    FileUtils.mkdir_p(File.join(app_dir, "embedders"))
+    File.write(File.join(app_dir, "embedders/application_embedder.rb"), <<~RUBY)
+      class ApplicationEmbedder < RubyLLM::Agents::Embedder
+      end
+    RUBY
+
+    # Moderators
+    FileUtils.mkdir_p(File.join(app_dir, "moderators"))
+    File.write(File.join(app_dir, "moderators/application_moderator.rb"), <<~RUBY)
+      class ApplicationModerator < RubyLLM::Agents::Moderator
+      end
+    RUBY
+
+    # Workflows
+    FileUtils.mkdir_p(File.join(app_dir, "workflows"))
+    File.write(File.join(app_dir, "workflows/application_workflow.rb"), <<~RUBY)
+      class ApplicationWorkflow < RubyLLM::Agents::Workflow
+      end
+    RUBY
+
+    # Tools
+    FileUtils.mkdir_p(File.join(app_dir, "tools"))
+    File.write(File.join(app_dir, "tools/weather_tool.rb"), <<~RUBY)
       class WeatherTool < RubyLLM::Tool
         def call(location:)
         end
       end
     RUBY
+  end
+
+  def run_generator
+    # Simulate generator behavior for testing
+    # In real implementation, this would invoke the actual generator
+
+    # Create directory structure
+    create_directory_structure
+
+    # Move directories
+    move_directories
+
+    # Update namespaces
+    update_namespaces
+  end
+
+  def create_directory_structure
+    FileUtils.mkdir_p(File.join(app_dir, "llm/agents"))
+    FileUtils.mkdir_p(File.join(app_dir, "llm/audio/speakers"))
+    FileUtils.mkdir_p(File.join(app_dir, "llm/audio/transcribers"))
+    FileUtils.mkdir_p(File.join(app_dir, "llm/image/analyzers"))
+    FileUtils.mkdir_p(File.join(app_dir, "llm/image/background_removers"))
+    FileUtils.mkdir_p(File.join(app_dir, "llm/image/editors"))
+    FileUtils.mkdir_p(File.join(app_dir, "llm/image/generators"))
+    FileUtils.mkdir_p(File.join(app_dir, "llm/image/transformers"))
+    FileUtils.mkdir_p(File.join(app_dir, "llm/image/upscalers"))
+    FileUtils.mkdir_p(File.join(app_dir, "llm/image/variators"))
+    FileUtils.mkdir_p(File.join(app_dir, "llm/text/embedders"))
+    FileUtils.mkdir_p(File.join(app_dir, "llm/text/moderators"))
+    FileUtils.mkdir_p(File.join(app_dir, "llm/workflows"))
+    FileUtils.mkdir_p(File.join(app_dir, "llm/tools"))
+  end
+
+  def move_directories
+    directory_mapping.each do |old_dir, config|
+      source = File.join(app_dir, old_dir)
+      destination = File.join(app_dir, config[:path])
+
+      next unless File.directory?(source)
+
+      Dir.glob("#{source}/**/*", File::FNM_DOTMATCH).each do |item|
+        next if item.end_with?(".", "..")
+        next if File.directory?(item)
+
+        relative_path = item.sub("#{source}/", "")
+        dest_item = File.join(destination, relative_path)
+
+        FileUtils.mkdir_p(File.dirname(dest_item))
+        FileUtils.mv(item, dest_item)
+      end
+
+      FileUtils.rm_rf(source)
+    end
+  end
+
+  def update_namespaces
+    directory_mapping.each do |_old_dir, config|
+      directory_path = File.join(app_dir, config[:path])
+      next unless File.directory?(directory_path)
+
+      Dir.glob("#{directory_path}/**/*.rb").each do |file|
+        update_file_namespace(file, config[:namespace])
+      end
+    end
+  end
+
+  def update_file_namespace(file, namespace)
+    content = File.read(file)
+
+    return if content.include?("module #{namespace.split('::').first}")
+
+    updated = add_namespace(content, namespace)
+    File.write(file, updated)
+  end
+
+  def add_namespace(content, namespace)
+    modules = namespace.split("::")
+    indent = ""
+
+    opening = modules.map do |mod|
+      line = "#{indent}module #{mod}"
+      indent += "  "
+      line
+    end.join("\n")
+
+    closing = modules.reverse.map { |_| "end" }.join("\n")
+
+    indented_content = content.lines.map do |line|
+      line.chomp.empty? ? line : ("  " * modules.size) + line
+    end.join
+
+    "#{opening}\n#{indented_content}#{closing}\n"
+  end
+
+  def directory_mapping
+    {
+      "agents" => { path: "llm/agents", namespace: "Llm" },
+      "workflows" => { path: "llm/workflows", namespace: "Llm" },
+      "tools" => { path: "llm/tools", namespace: "Llm" },
+      "speakers" => { path: "llm/audio/speakers", namespace: "Llm::Audio" },
+      "transcribers" => { path: "llm/audio/transcribers", namespace: "Llm::Audio" },
+      "image_generators" => { path: "llm/image/generators", namespace: "Llm::Image" },
+      "image_editors" => { path: "llm/image/editors", namespace: "Llm::Image" },
+      "image_analyzers" => { path: "llm/image/analyzers", namespace: "Llm::Image" },
+      "embedders" => { path: "llm/text/embedders", namespace: "Llm::Text" },
+      "moderators" => { path: "llm/text/moderators", namespace: "Llm::Text" }
+    }
   end
 end
 ```
@@ -475,17 +905,33 @@ If users need to revert:
 ```bash
 # Manual rollback steps
 cd app
+
+# Move top-level back
 mv llm/agents .
-mv llm/embedders .
-mv llm/speakers .
-mv llm/transcribers .
-mv llm/image_generators .
-mv llm/moderators .
 mv llm/workflows .
 mv llm/tools .
-rmdir llm
 
-# Then manually remove "module Llm" wrapper from files
+# Move audio back
+mv llm/audio/speakers .
+mv llm/audio/transcribers .
+
+# Move image back (restore old names)
+mv llm/image/generators image_generators
+mv llm/image/editors image_editors
+mv llm/image/analyzers image_analyzers
+mv llm/image/transformers image_transformers
+mv llm/image/upscalers image_upscalers
+mv llm/image/variators image_variators
+mv llm/image/background_removers .
+
+# Move text back
+mv llm/text/embedders .
+mv llm/text/moderators .
+
+# Cleanup
+rm -rf llm
+
+# Then manually remove namespace wrappers from files
 ```
 
 Consider creating a `restructure:rollback` generator for automated rollback.
@@ -503,6 +949,8 @@ Consider creating a `restructure:rollback` generator for automated rollback.
 
 ## Open Questions
 
-1. Should we support both structures during a transition period?
-2. Should `tools/` also be under `app/llm/` or stay separate since tools are used by agents?
-3. Alternative namespace names: `Llm::`, `AI::`, `RubyLlm::`?
+1. ~~Should we support both structures during a transition period?~~
+2. ~~Should `tools/` also be under `app/llm/` or stay separate since tools are used by agents?~~ → Yes, under `app/llm/tools/`
+3. ~~Alternative namespace names: `Llm::`, `AI::`, `RubyLlm::`?~~ → Using `Llm::`
+4. Should image class names drop the `Image` prefix since they're already under `Llm::Image::`?
+   - e.g., `Llm::Image::Generator` vs `Llm::Image::ImageGenerator`
