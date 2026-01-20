@@ -35,6 +35,7 @@ This index provides targeted documentation for AI assistants. Read only the wiki
 | **Embeddings** | [wiki/Embeddings.md](wiki/Embeddings.md) | Vector embeddings, batch processing, semantic search |
 | **Moderation** | [wiki/Moderation.md](wiki/Moderation.md) | Content safety filtering and standalone moderator |
 | **Audio** | [wiki/Audio.md](wiki/Audio.md) | Transcription (speech-to-text) and TTS (text-to-speech) |
+| **Image Generation** | [wiki/Image-Generation.md](wiki/Image-Generation.md) | Text-to-image, templates, pricing |
 | **Attachments** | [wiki/Attachments.md](wiki/Attachments.md) | Vision and multimodal support |
 
 ### Reliability
@@ -55,6 +56,12 @@ This index provides targeted documentation for AI assistants. Read only the wiki
 | **Pipeline Workflows** | [wiki/Pipeline-Workflows.md](wiki/Pipeline-Workflows.md) | Sequential execution |
 | **Parallel Workflows** | [wiki/Parallel-Workflows.md](wiki/Parallel-Workflows.md) | Concurrent execution |
 | **Router Workflows** | [wiki/Router-Workflows.md](wiki/Router-Workflows.md) | Conditional dispatch |
+
+### Concurrency
+
+| Topic | Wiki Page | Description |
+|-------|-----------|-------------|
+| **Async/Fiber** | [wiki/Async-Fiber.md](wiki/Async-Fiber.md) | Fiber-based concurrent execution, batch processing, rate limiting |
 
 ### Governance
 
@@ -112,8 +119,10 @@ result.total_cost   # => 0.00025
 | Add structured output | [wiki/Prompts-and-Schemas.md](wiki/Prompts-and-Schemas.md) |
 | Add reliability | [wiki/Reliability.md](wiki/Reliability.md) |
 | Build a workflow | [wiki/Workflows.md](wiki/Workflows.md) |
+| Concurrent execution | [wiki/Async-Fiber.md](wiki/Async-Fiber.md) |
 | Work with embeddings | [wiki/Embeddings.md](wiki/Embeddings.md) |
 | Transcription/TTS | [wiki/Audio.md](wiki/Audio.md) |
+| Generate images | [wiki/Image-Generation.md](wiki/Image-Generation.md) |
 | Content moderation | [wiki/Moderation.md](wiki/Moderation.md) |
 | Multi-tenant setup | [wiki/Multi-Tenancy.md](wiki/Multi-Tenancy.md) |
 | Configuration | [wiki/Configuration.md](wiki/Configuration.md) |
@@ -132,6 +141,9 @@ app/
 │   └── document_embedder.rb      # Your embedders
 ├── moderators/
 │   └── content_moderator.rb      # Standalone moderators
+├── image_generators/
+│   ├── application_image_generator.rb
+│   └── logo_generator.rb         # Your image generators
 ├── transcribers/
 │   ├── application_transcriber.rb
 │   └── meeting_transcriber.rb

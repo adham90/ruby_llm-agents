@@ -31,6 +31,7 @@ Build intelligent AI agents in Ruby with a clean DSL, automatic execution tracki
 | **Budget Controls** | Daily/monthly limits with hard and soft enforcement | [Budgets](https://github.com/adham90/ruby_llm-agents/wiki/Budget-Controls) |
 | **Multi-Tenancy** | Per-tenant API keys, budgets, circuit breakers, and execution isolation | [Multi-Tenancy](https://github.com/adham90/ruby_llm-agents/wiki/Multi-Tenancy) |
 | **Workflows** | Pipelines, parallel execution, conditional routers | [Workflows](https://github.com/adham90/ruby_llm-agents/wiki/Workflows) |
+| **Async/Fiber** | Concurrent execution with Ruby fibers for high-throughput workloads | [Async](https://github.com/adham90/ruby_llm-agents/wiki/Async-Fiber) |
 | **Dashboard** | Real-time Turbo-powered monitoring UI | [Dashboard](https://github.com/adham90/ruby_llm-agents/wiki/Dashboard) |
 | **Streaming** | Real-time response streaming with TTFT tracking | [Streaming](https://github.com/adham90/ruby_llm-agents/wiki/Streaming) |
 | **Conversation History** | Multi-turn conversations with message history | [Conversation History](https://github.com/adham90/ruby_llm-agents/wiki/Conversation-History) |
@@ -38,6 +39,7 @@ Build intelligent AI agents in Ruby with a clean DSL, automatic execution tracki
 | **PII Redaction** | Automatic sensitive data protection | [Security](https://github.com/adham90/ruby_llm-agents/wiki/PII-Redaction) |
 | **Content Moderation** | Input/output safety checks with OpenAI moderation API | [Moderation](https://github.com/adham90/ruby_llm-agents/wiki/Moderation) |
 | **Embeddings** | Vector embeddings with batching, caching, and preprocessing | [Embeddings](https://github.com/adham90/ruby_llm-agents/wiki/Embeddings) |
+| **Image Generation** | Text-to-image with templates, content policy, and cost tracking | [Images](https://github.com/adham90/ruby_llm-agents/wiki/Image-Generation) |
 | **Alerts** | Slack, webhook, and custom notifications | [Alerts](https://github.com/adham90/ruby_llm-agents/wiki/Alerts) |
 
 ## Quick Start
@@ -169,6 +171,50 @@ Features:
 
 See [Embeddings](https://github.com/adham90/ruby_llm-agents/wiki/Embeddings) for more patterns.
 
+### Image Generation
+
+Generate images from text prompts with templates, content policy, and cost tracking:
+
+```bash
+rails generate ruby_llm_agents:image_generator Logo
+```
+
+```ruby
+# app/image_generators/logo_generator.rb
+class LogoGenerator < ApplicationImageGenerator
+  model "gpt-image-1"
+  size "1024x1024"
+  quality "hd"
+  style "vivid"
+  content_policy :strict
+
+  template "Minimalist logo design for {prompt}, " \
+           "clean lines, professional, vector style"
+end
+```
+
+```ruby
+# Generate a single image
+result = LogoGenerator.call(prompt: "a tech startup called Nexus AI")
+result.url          # => "https://..."
+result.total_cost   # => 0.08
+result.save("logo.png")
+
+# Generate multiple variations
+result = LogoGenerator.call(prompt: "app icon", count: 4)
+result.urls         # => ["https://...", ...]
+result.save_all("./icons")
+```
+
+Features:
+- **Prompt templates** - Consistent styling with preset templates (product, portrait, logo, etc.)
+- **Content policy** - Validate prompts with configurable safety levels
+- **Cost tracking** - Dynamic pricing from LiteLLM with execution logging
+- **ActiveStorage** - Attach generated images directly to Rails models
+- **Caching** - Cache results for repeated prompts
+
+See [Image Generation](https://github.com/adham90/ruby_llm-agents/wiki/Image-Generation) for more patterns.
+
 ## Documentation
 
 > **Note:** Wiki content lives in the [`wiki/`](wiki/) folder. To sync changes to the [GitHub Wiki](https://github.com/adham90/ruby_llm-agents/wiki), run `./scripts/sync-wiki.sh`.
@@ -181,10 +227,12 @@ See [Embeddings](https://github.com/adham90/ruby_llm-agents/wiki/Embeddings) for
 | [Workflows](https://github.com/adham90/ruby_llm-agents/wiki/Workflows) | Pipelines, parallel execution, routers |
 | [Budget Controls](https://github.com/adham90/ruby_llm-agents/wiki/Budget-Controls) | Spending limits, alerts, enforcement |
 | [Multi-Tenancy](https://github.com/adham90/ruby_llm-agents/wiki/Multi-Tenancy) | Per-tenant budgets, isolation, configuration |
+| [Async/Fiber](https://github.com/adham90/ruby_llm-agents/wiki/Async-Fiber) | Concurrent execution with Ruby fibers |
 | [Testing Agents](https://github.com/adham90/ruby_llm-agents/wiki/Testing-Agents) | RSpec patterns, mocking, dry_run mode |
 | [Error Handling](https://github.com/adham90/ruby_llm-agents/wiki/Error-Handling) | Error types, recovery patterns |
 | [Moderation](https://github.com/adham90/ruby_llm-agents/wiki/Moderation) | Content moderation for input/output safety |
 | [Embeddings](https://github.com/adham90/ruby_llm-agents/wiki/Embeddings) | Vector embeddings, batching, caching, preprocessing |
+| [Image Generation](https://github.com/adham90/ruby_llm-agents/wiki/Image-Generation) | Text-to-image, templates, content policy, cost tracking |
 | [Dashboard](https://github.com/adham90/ruby_llm-agents/wiki/Dashboard) | Setup, authentication, analytics |
 | [Production](https://github.com/adham90/ruby_llm-agents/wiki/Production-Deployment) | Deployment best practices, background jobs |
 | [API Reference](https://github.com/adham90/ruby_llm-agents/wiki/API-Reference) | Complete class documentation |
@@ -286,6 +334,43 @@ end
 result = SupportRouter.call(message: user_input)
 result.routed_to  # :support, :sales, or :default
 ```
+
+## Async/Fiber Concurrency
+
+Run multiple agents concurrently with minimal resources using Ruby's Fiber scheduler:
+
+```ruby
+# Add async gem to Gemfile
+gem 'async'
+```
+
+```ruby
+require 'async'
+
+# Run agents concurrently - non-blocking I/O
+Async do
+  results = RubyLLM::Agents::Async.batch([
+    [SentimentAgent, { input: "I love this!" }],
+    [SummaryAgent, { input: "Long text..." }],
+    [CategoryAgent, { input: "Product review" }]
+  ], max_concurrent: 10)
+end
+
+# Process large collections efficiently
+Async do
+  results = RubyLLM::Agents::Async.each(texts, max_concurrent: 20) do |text|
+    AnalyzerAgent.call(input: text)
+  end
+end
+```
+
+Benefits:
+- **100x less memory** - Fibers use ~10KB vs ~1MB per thread
+- **Shared connections** - Single database connection for all fibers
+- **Auto-detection** - Parallel workflows automatically use fibers in async context
+- **Non-blocking retries** - Backoff delays don't block other operations
+
+See [Async/Fiber](https://github.com/adham90/ruby_llm-agents/wiki/Async-Fiber) for more patterns.
 
 ## Cost & Budget Controls
 

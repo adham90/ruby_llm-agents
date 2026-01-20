@@ -200,6 +200,25 @@ config.redaction = {
 
 See [PII Redaction](PII-Redaction) for details.
 
+### Async/Fiber Concurrency
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `async_max_concurrency` | `10` | Maximum concurrent operations for batch processing |
+
+```ruby
+# Configure concurrent operation limit
+config.async_max_concurrency = 20
+```
+
+To use async features, add the async gem to your Gemfile:
+
+```ruby
+gem 'async', '~> 2.0'
+```
+
+See [Async/Fiber](Async-Fiber) for details.
+
 ## Environment-Specific Configuration
 
 ```ruby
@@ -280,6 +299,7 @@ end
 | `anomaly_cost_threshold` | Float | `5.00` | Cost anomaly threshold (USD) |
 | `anomaly_duration_threshold` | Integer | `10_000` | Duration anomaly threshold (ms) |
 | `job_retry_attempts` | Integer | `3` | Background job retries |
+| `async_max_concurrency` | Integer | `10` | Max concurrent operations for async batch |
 
 ## Resetting Configuration
 
@@ -301,4 +321,5 @@ end
 - [Alerts](Alerts) - Notification setup
 - [PII Redaction](PII-Redaction) - Data protection
 - [Multi-Tenancy](Multi-Tenancy) - Tenant isolation
+- [Async/Fiber](Async-Fiber) - Concurrent execution
 - [Dashboard](Dashboard) - Monitoring UI
