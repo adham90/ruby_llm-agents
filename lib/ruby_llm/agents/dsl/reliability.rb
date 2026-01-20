@@ -50,6 +50,7 @@ module RubyLLM
 
           @retries_config = builder.retries_config if builder.retries_config
           @fallback_models = builder.fallback_models_list if builder.fallback_models_list.any?
+          @fallback_providers = builder.fallback_providers_list if builder.fallback_providers_list.any?
           @total_timeout = builder.total_timeout_value if builder.total_timeout_value
           @circuit_breaker_config = builder.circuit_breaker_config if builder.circuit_breaker_config
           @retryable_patterns = builder.retryable_patterns_list if builder.retryable_patterns_list
@@ -66,6 +67,7 @@ module RubyLLM
           {
             retries: retries_config,
             fallback_models: fallback_models,
+            fallback_providers: fallback_providers,
             total_timeout: total_timeout,
             circuit_breaker: circuit_breaker_config,
             retryable_patterns: retryable_patterns
@@ -78,6 +80,7 @@ module RubyLLM
         def reliability_configured?
           (retries_config && retries_config[:max]&.positive?) ||
             fallback_models.any? ||
+            fallback_providers.any? ||
             circuit_breaker_config.present?
         end
 
@@ -119,6 +122,31 @@ module RubyLLM
         def fallback_models(*models)
           @fallback_models = models.flatten if models.any?
           @fallback_models || inherited_fallback_models || []
+        end
+
+        # Sets or returns fallback providers to try when primary provider fails
+        #
+        # Used primarily by audio agents (Speaker, Transcriber) that may need
+        # to fall back to a different provider entirely.
+        #
+        # @param provider [Symbol] The provider to fall back to
+        # @param options [Hash] Provider-specific options (e.g., voice:, model:)
+        # @return [Array<Hash>] The current fallback providers
+        # @example
+        #   fallback_provider :openai, voice: "nova"
+        def fallback_provider(provider = nil, **options)
+          if provider
+            @fallback_providers ||= []
+            @fallback_providers << { provider: provider, **options }
+          end
+          @fallback_providers || inherited_fallback_providers || []
+        end
+
+        # Returns the fallback providers list
+        #
+        # @return [Array<Hash>] The fallback providers
+        def fallback_providers
+          @fallback_providers || inherited_fallback_providers || []
         end
 
         # Sets or returns the total timeout for all retry/fallback attempts
@@ -184,6 +212,12 @@ module RubyLLM
           superclass.fallback_models
         end
 
+        def inherited_fallback_providers
+          return nil unless superclass.respond_to?(:fallback_providers)
+
+          superclass.fallback_providers
+        end
+
         def inherited_total_timeout
           return nil unless superclass.respond_to?(:total_timeout)
 
@@ -215,7 +249,7 @@ module RubyLLM
         # Inner builder class for block-style configuration
         class ReliabilityBuilder
           attr_reader :retries_config, :fallback_models_list, :total_timeout_value,
-                      :circuit_breaker_config, :retryable_patterns_list
+                      :circuit_breaker_config, :retryable_patterns_list, :fallback_providers_list
 
           def initialize
             @retries_config = nil
@@ -223,6 +257,7 @@ module RubyLLM
             @total_timeout_value = nil
             @circuit_breaker_config = nil
             @retryable_patterns_list = nil
+            @fallback_providers_list = []
           end
 
           def retries(max: 0, backoff: :exponential, base: 0.4, max_delay: 3.0, on: [])
@@ -237,6 +272,17 @@ module RubyLLM
 
           def fallback_models(*models)
             @fallback_models_list = models.flatten
+          end
+
+          # Configures a fallback provider with optional settings
+          #
+          # @param provider [Symbol] The provider to fall back to (e.g., :openai, :elevenlabs)
+          # @param options [Hash] Provider-specific options (e.g., voice:, model:)
+          # @example
+          #   fallback_provider :openai, voice: "nova"
+          #   fallback_provider :elevenlabs, voice: "Rachel", model: "eleven_multilingual_v2"
+          def fallback_provider(provider, **options)
+            @fallback_providers_list << { provider: provider, **options }
           end
 
           def total_timeout(seconds)
