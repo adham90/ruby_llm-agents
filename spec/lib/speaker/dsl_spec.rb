@@ -135,11 +135,11 @@ RSpec.describe RubyLLM::Agents::Speaker::DSL do
         speaker_boost true
       end
 
-      settings = base_speaker.voice_settings_config
+      settings = base_speaker.voice_settings_config.to_h
       expect(settings[:stability]).to eq(0.5)
       expect(settings[:similarity_boost]).to eq(0.75)
       expect(settings[:style]).to eq(0.5)
-      expect(settings[:speaker_boost]).to be true
+      expect(settings[:use_speaker_boost]).to be true
     end
   end
 
@@ -150,7 +150,7 @@ RSpec.describe RubyLLM::Agents::Speaker::DSL do
         pronounce "PostgreSQL", "post-gres-Q-L"
       end
 
-      lexicon = base_speaker.lexicon_config
+      lexicon = base_speaker.lexicon_config.to_h
       expect(lexicon["RubyLLM"]).to eq("ruby L L M")
       expect(lexicon["PostgreSQL"]).to eq("post-gres-Q-L")
     end
@@ -211,22 +211,24 @@ RSpec.describe RubyLLM::Agents::Speaker::DSL do
   describe ".reliability" do
     it "configures reliability settings" do
       base_speaker.reliability do
-        retry_on_failure max_attempts: 3
+        retries max: 5, backoff: :linear
       end
 
-      config = base_speaker.reliability_config
-      expect(config[:max_attempts]).to eq(3)
+      config = base_speaker.reliability_config.to_h
+      expect(config[:max_retries]).to eq(5)
+      expect(config[:backoff]).to eq(:linear)
     end
   end
 
-  describe ".fallback_models" do
-    it "sets fallback models" do
-      base_speaker.fallback_models "tts-1-hd", "tts-1"
-      expect(base_speaker.fallback_models).to eq(["tts-1-hd", "tts-1"])
-    end
+  describe ".reliability with fallback_provider" do
+    it "sets fallback provider" do
+      base_speaker.reliability do
+        fallback_provider :google, voice: "en-US-Standard-A"
+      end
 
-    it "returns empty array when not set" do
-      expect(base_speaker.fallback_models).to eq([])
+      config = base_speaker.reliability_config.to_h
+      expect(config[:fallback_provider][:provider]).to eq(:google)
+      expect(config[:fallback_provider][:voice]).to eq("en-US-Standard-A")
     end
   end
 

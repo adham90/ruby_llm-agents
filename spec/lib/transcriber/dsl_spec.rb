@@ -66,7 +66,7 @@ RSpec.describe RubyLLM::Agents::Transcriber::DSL do
     end
 
     it "returns default when not set" do
-      expect(base_transcriber.include_timestamps).to eq(:none)
+      expect(base_transcriber.include_timestamps).to eq(:segment)
     end
 
     it "inherits from parent class" do
@@ -131,26 +131,27 @@ RSpec.describe RubyLLM::Agents::Transcriber::DSL do
   describe ".chunking" do
     it "configures chunking settings" do
       base_transcriber.chunking do
-        max_size "25MB"
-        overlap 5.seconds
-        strategy :silent_split
+        self.enabled = true
+        self.max_duration = 300
+        self.overlap = 5
       end
 
-      config = base_transcriber.chunking_config
-      expect(config[:max_size]).to eq("25MB")
-      expect(config[:overlap]).to eq(5.seconds)
-      expect(config[:strategy]).to eq(:silent_split)
+      config = base_transcriber.chunking_config.to_h
+      expect(config[:enabled]).to be true
+      expect(config[:max_duration]).to eq(300)
+      expect(config[:overlap]).to eq(5)
     end
   end
 
   describe ".reliability" do
     it "configures reliability settings" do
       base_transcriber.reliability do
-        retry_on_failure max_attempts: 3
+        retries max: 5, backoff: :linear
       end
 
-      config = base_transcriber.reliability_config
-      expect(config[:max_attempts]).to eq(3)
+      config = base_transcriber.reliability_config.to_h
+      expect(config[:max_retries]).to eq(5)
+      expect(config[:backoff]).to eq(:linear)
     end
   end
 

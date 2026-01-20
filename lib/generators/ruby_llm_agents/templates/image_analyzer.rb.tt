@@ -1,0 +1,41 @@
+# frozen_string_literal: true
+
+<% module_namespacing do -%>
+# <%= class_name %> Image Analyzer
+#
+# Analyzes images to extract captions, descriptions, tags, and other metadata.
+#
+# @example Basic usage
+#   result = <%= class_name %>Analyzer.call(image: "path/to/image.jpg")
+#   result.caption      # => "Brief description"
+#   result.tags         # => ["tag1", "tag2"]
+#   result.description  # => "Detailed description..."
+#
+# @example With runtime overrides
+#   result = <%= class_name %>Analyzer.call(
+#     image: "photo.jpg",
+#     analysis_type: :all,
+#     extract_colors: true
+#   )
+#   result.colors  # => [{hex: "#FF0000", name: "red", percentage: 30}]
+#
+class <%= class_name %>Analyzer < ApplicationImageAnalyzer
+  model "<%= options[:model] %>"
+  analysis_type :<%= options[:analysis_type] %>
+<% if options[:extract_colors] -%>
+  extract_colors true
+<% end -%>
+<% if options[:detect_objects] -%>
+  detect_objects true
+<% end -%>
+<% if options[:extract_text] -%>
+  extract_text true
+<% end -%>
+  max_tags <%= options[:max_tags] %>
+<% if options[:cache].present? -%>
+  cache_for <%= options[:cache] %>
+<% end -%>
+
+  description "Analyzes <%= class_name.underscore.humanize.downcase %> images"
+end
+<% end -%>

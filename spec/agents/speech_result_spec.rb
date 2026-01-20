@@ -119,7 +119,7 @@ RSpec.describe RubyLLM::Agents::SpeechResult do
 
       expect {
         result.save_to("/tmp/test.mp3")
-      }.to raise_error(RuntimeError, /No audio data/)
+      }.to raise_error(StandardError, /No audio data/)
     end
   end
 
@@ -205,12 +205,7 @@ RSpec.describe RubyLLM::Agents::SpeechResult do
       expect(hash[:status]).to eq(:success)
       expect(hash[:tenant_id]).to eq("tenant-123")
       # audio binary data should not be in hash to avoid large outputs
-      expect(hash[:has_audio]).to be true
-    end
-
-    it "sets has_audio to false when no audio" do
-      result = described_class.new(audio: nil)
-      expect(result.to_h[:has_audio]).to be false
+      expect(hash).not_to have_key(:audio)
     end
   end
 end

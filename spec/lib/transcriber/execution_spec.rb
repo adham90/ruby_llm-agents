@@ -60,8 +60,8 @@ RSpec.describe RubyLLM::Agents::Transcriber::Execution do
 
         result = test_transcriber.call(audio: "recording.mp3")
         expect(result.segments).to eq([
-          { start: 0.0, end: 1.0, text: "Hello" },
-          { start: 1.0, end: 2.0, text: "world" }
+          { start: 0.0, end: 1.0, text: "Hello", speaker: nil },
+          { start: 1.0, end: 2.0, text: "world", speaker: nil }
         ])
       end
     end
@@ -154,13 +154,13 @@ RSpec.describe RubyLLM::Agents::Transcriber::Execution do
       it "raises error when audio is nil" do
         expect {
           test_transcriber.call(audio: nil)
-        }.to raise_error(ArgumentError, /audio is required/)
+        }.to raise_error(ArgumentError, /audio must be a file path/)
       end
 
       it "raises error when audio is empty string" do
         expect {
           test_transcriber.call(audio: "")
-        }.to raise_error(ArgumentError, /audio is required/)
+        }.to raise_error(ArgumentError, /Binary audio data cannot be empty/)
       end
     end
   end

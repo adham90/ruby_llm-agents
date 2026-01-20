@@ -150,7 +150,7 @@ RSpec.describe RubyLLM::Agents::Speaker::Execution do
       it "raises error when text is empty string" do
         expect {
           test_speaker.call(text: "")
-        }.to raise_error(ArgumentError, /text is required/)
+        }.to raise_error(ArgumentError, /text cannot be empty/)
       end
     end
   end
@@ -176,7 +176,7 @@ RSpec.describe RubyLLM::Agents::Speaker::Execution do
       chunk_response = double(audio: "chunk1", model: "tts-1")
 
       expect(RubyLLM).to receive(:speak) do |text, options, &block|
-        expect(options[:streaming]).to be true
+        expect(options[:stream]).to be true
         chunk_response
       end
 

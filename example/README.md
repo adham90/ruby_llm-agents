@@ -35,6 +35,18 @@ app/
     content_analyzer.rb     # Parallel execution workflow
     support_router.rb       # Conditional routing workflow
 
+  image_analyzers/  # Example image analyzer implementations
+    application_image_analyzer.rb   # Base analyzer with DSL reference
+    product_analyzer.rb             # E-commerce product analysis
+    content_analyzer.rb             # Content moderation analysis
+    scene_analyzer.rb               # Scene understanding
+
+  background_removers/  # Example background remover implementations
+    application_background_remover.rb   # Base remover with DSL reference
+    product_background_remover.rb       # E-commerce product cutouts
+    portrait_background_remover.rb      # Portrait extraction
+    simple_background_remover.rb        # Fast simple removal
+
 config/
   initializers/
     ruby_llm_agents.rb      # Gem configuration
@@ -48,6 +60,12 @@ bin/rails generate ruby_llm_agents:agent MyAgent query:required limit:10
 
 # Generate an agent with options
 bin/rails generate ruby_llm_agents:agent SearchIntent query:required --model=gpt-4o --temperature=0.7 --cache=1.hour
+
+# Generate an image analyzer
+bin/rails generate ruby_llm_agents:image_analyzer ProductAnalyzer --model=gpt-4o
+
+# Generate a background remover
+bin/rails generate ruby_llm_agents:background_remover ProductRemover --model=segment-anything
 
 # Run the upgrade generator (adds new columns to existing installations)
 bin/rails generate ruby_llm_agents:upgrade
@@ -91,6 +109,56 @@ result = SupportRouter.call(message: "I was charged twice")
 result.routed_to         # :billing, :technical, or :default
 result.classification    # Classification details
 result.content           # Response from routed agent
+```
+
+### Image Analyzers (Vision AI)
+
+```ruby
+# Analyze product images for e-commerce
+result = ProductAnalyzer.call(image: "product.jpg")
+result.caption       # "Blue leather handbag with gold hardware"
+result.description   # Detailed product description
+result.tags          # ["handbag", "leather", "blue", "luxury"]
+result.colors        # [{ name: "navy blue", hex: "#1a237e", percentage: 45.2 }]
+
+# Content moderation analysis
+result = ContentAnalyzer.call(image: "user_upload.jpg")
+result.safe?         # true if no moderation issues
+result.caption       # Brief content description
+result.tags          # Content tags for filtering
+
+# Scene understanding
+result = SceneAnalyzer.call(image: "vacation_photo.jpg")
+result.caption       # "Beach scene at sunset"
+result.description   # Location, time of day, mood, etc.
+```
+
+### Background Removers (Image Processing)
+
+```ruby
+# Remove background from product photos
+result = ProductBackgroundRemover.call(image: "product.jpg")
+result.url           # URL to transparent PNG
+result.has_alpha?    # true
+result.save("product_transparent.png")
+
+# Portrait extraction with fine detail
+result = PortraitBackgroundRemover.call(image: "headshot.jpg")
+result.save("portrait_transparent.png")
+if result.mask?
+  result.save_mask("portrait_mask.png")
+end
+
+# Fast simple removal with caching
+result = SimpleBackgroundRemover.call(image: "logo.png")
+result.to_blob       # Binary PNG data
+
+# Attach to ActiveStorage
+product.transparent_image.attach(
+  io: StringIO.new(result.to_blob),
+  filename: "transparent.png",
+  content_type: "image/png"
+)
 ```
 
 ## Relationship to Parent Gem

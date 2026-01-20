@@ -402,7 +402,12 @@ module RubyLLM
                     :default_transformer_model,
                     :default_upscaler_model,
                     :default_variation_strength,
-                    :default_transform_strength
+                    :default_transform_strength,
+                    :default_analyzer_model,
+                    :default_analysis_type,
+                    :default_analyzer_max_tags,
+                    :default_background_remover_model,
+                    :default_background_output_format
 
       # Attributes with validation (readers only, custom setters below)
       attr_reader :default_temperature,
@@ -661,6 +666,13 @@ module RubyLLM
         @default_upscaler_model = "real-esrgan"  # Real-ESRGAN for upscaling
         @default_variation_strength = 0.5  # How different variations should be
         @default_transform_strength = 0.75  # How much to transform
+
+        # Phase 3: Image Analysis and Background Removal defaults
+        @default_analyzer_model = "gpt-4o"  # Vision model for analysis
+        @default_analysis_type = :detailed  # Default analysis type
+        @default_analyzer_max_tags = 10  # Max tags to extract
+        @default_background_remover_model = "rembg"  # Default remover model
+        @default_background_output_format = :png  # Output format for transparency
       end
 
       # Returns the configured cache store, falling back to Rails.cache

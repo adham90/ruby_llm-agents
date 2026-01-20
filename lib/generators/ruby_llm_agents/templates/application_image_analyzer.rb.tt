@@ -1,0 +1,22 @@
+# frozen_string_literal: true
+
+# Base class for all image analyzers in the application
+#
+# Inherits from RubyLLM::Agents::ImageAnalyzer and provides a common
+# foundation for custom image analysis classes.
+#
+# @example Creating a custom analyzer
+#   class ProductAnalyzer < ApplicationImageAnalyzer
+#     model "gpt-4o"
+#     analysis_type :detailed
+#     extract_colors true
+#     detect_objects true
+#   end
+#
+class ApplicationImageAnalyzer < RubyLLM::Agents::ImageAnalyzer
+  # Default configuration (can be overridden in subclasses)
+  # model "gpt-4o"
+  # analysis_type :detailed
+  # extract_colors false
+  # detect_objects false
+end

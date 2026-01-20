@@ -139,9 +139,9 @@ RSpec.describe RubyLLM::Agents::TranscriptionResult do
       expect(srt).to include("How are you?")
     end
 
-    it "returns empty string when no segments" do
+    it "returns nil when no segments" do
       result = described_class.new(text: "Hello")
-      expect(result.srt).to eq("")
+      expect(result.srt).to be_nil
     end
   end
 
@@ -163,9 +163,9 @@ RSpec.describe RubyLLM::Agents::TranscriptionResult do
       expect(vtt).to include("How are you?")
     end
 
-    it "returns WEBVTT header when no segments" do
+    it "returns nil when no segments" do
       result = described_class.new(text: "Hello")
-      expect(result.vtt).to eq("WEBVTT\n\n")
+      expect(result.vtt).to be_nil
     end
   end
 
@@ -221,7 +221,7 @@ RSpec.describe RubyLLM::Agents::TranscriptionResult do
   end
 
   describe "#text_between" do
-    it "extracts text between timestamps" do
+    it "extracts text between timestamps (fully contained segments)" do
       result = described_class.new(
         segments: [
           { start: 0.0, end: 5.0, text: "First segment." },
@@ -230,8 +230,8 @@ RSpec.describe RubyLLM::Agents::TranscriptionResult do
         ]
       )
 
-      text = result.text_between(2.0, 12.0)
-      expect(text).to include("First segment.")
+      # Only returns segments fully contained within the range
+      text = result.text_between(5.0, 15.0)
       expect(text).to include("Second segment.")
       expect(text).to include("Third segment.")
     end

@@ -1,3 +1,18 @@
+# Image Operations
+
+Generate, analyze, edit, and transform images with templates, content policy, and cost tracking.
+
+This guide covers all image-related capabilities:
+- **Image Generation** - Create images from text prompts
+- **Image Analysis** - Extract captions, tags, objects, and colors from images
+- **Background Removal** - Extract subjects from images
+- **Image Variations** - Create variations of existing images
+- **Image Editing** - Modify images with text instructions
+- **Image Transformation** - Apply style transfers and transformations
+- **Image Upscaling** - Enhance image resolution
+
+---
+
 # Image Generation
 
 Generate images from text prompts with templates, content policy, and cost tracking.
@@ -578,5 +593,453 @@ def generate_avatar
   else
     redirect_to profile_path, alert: result.error_message
   end
+end
+```
+
+---
+
+# Image Analysis
+
+Extract captions, tags, objects, colors, and text from images using vision models.
+
+## Overview
+
+The `ImageAnalyzer` base class provides a DSL for creating image analyzers with:
+- Caption generation and detailed descriptions
+- Tag extraction for image categorization
+- Object detection with confidence levels
+- Color extraction with percentages
+- OCR text extraction
+- Built-in execution tracking and cost monitoring
+- Multi-tenancy support
+- Caching for repeated analyses
+
+## Quick Start
+
+### Generate an ImageAnalyzer
+
+```bash
+rails generate ruby_llm_agents:image_analyzer Product
+```
+
+This creates `app/image_analyzers/product_analyzer.rb`:
+
+```ruby
+class ProductAnalyzer < ApplicationImageAnalyzer
+  model "gpt-4o"
+  analysis_type :detailed
+end
+```
+
+### Basic Usage
+
+```ruby
+# Analyze an image
+result = ProductAnalyzer.call(image: "product.jpg")
+result.caption        # "A red sneaker on white background"
+result.description    # Detailed description
+result.tags           # ["sneaker", "red", "footwear", "product"]
+result.success?       # true
+
+# Analyze from URL
+result = ProductAnalyzer.call(image: "https://example.com/image.jpg")
+
+# With specific analysis types
+result = ProductAnalyzer.call(image: "photo.jpg", analysis_type: :all)
+result.objects        # [{ name: "shoe", confidence: "high" }]
+result.colors         # [{ hex: "#FF0000", percentage: 30 }]
+```
+
+## Configuration DSL
+
+### Model Selection
+
+```ruby
+class ProductAnalyzer < ApplicationImageAnalyzer
+  model "gpt-4o"          # OpenAI GPT-4 Vision
+  # or
+  model "claude-3-opus"   # Anthropic Claude Vision
+  # or
+  model "gemini-pro"      # Google Gemini Vision
+end
+```
+
+### Analysis Types
+
+```ruby
+class DetailedAnalyzer < ApplicationImageAnalyzer
+  model "gpt-4o"
+  analysis_type :detailed    # Caption + detailed description
+end
+
+class TaggingAnalyzer < ApplicationImageAnalyzer
+  model "gpt-4o"
+  analysis_type :tags        # Tags only
+  max_tags 20                # Maximum number of tags
+end
+
+class FullAnalyzer < ApplicationImageAnalyzer
+  model "gpt-4o"
+  analysis_type :all         # Everything: caption, description, tags, objects, colors
+  extract_colors true        # Extract dominant colors
+  detect_objects true        # Detect objects with locations
+  extract_text true          # OCR text extraction
+end
+```
+
+Available analysis types:
+- `:caption` - Short caption only
+- `:detailed` - Caption + description (default)
+- `:tags` - Tags/keywords only
+- `:objects` - Object detection with confidence
+- `:colors` - Color palette extraction
+- `:all` - All analysis types
+
+### Custom Prompts
+
+```ruby
+class EcommerceAnalyzer < ApplicationImageAnalyzer
+  model "gpt-4o"
+  custom_prompt "Describe this product for an e-commerce listing. " \
+                "Include material, color, style, and key features."
+end
+```
+
+### Caching
+
+```ruby
+class CachedAnalyzer < ApplicationImageAnalyzer
+  model "gpt-4o"
+  cache_for 7.days       # Cache results for repeated images
+end
+```
+
+## ImageAnalysisResult
+
+The result object provides access to analysis data:
+
+```ruby
+result = MyAnalyzer.call(image: "photo.jpg")
+
+# Content
+result.caption           # Short caption
+result.description       # Detailed description
+result.tags              # Array of tags
+result.tag_symbols       # Tags as symbols [:sunset, :mountains]
+result.objects           # Detected objects with confidence
+result.colors            # Extracted colors
+result.text              # OCR extracted text
+
+# Queries
+result.caption?          # true if caption present
+result.tags?             # true if tags present
+result.objects?          # true if objects detected
+result.colors?           # true if colors extracted
+result.has_tag?("car")   # Check for specific tag
+result.has_object?("person")  # Check for object
+
+# Colors
+result.dominant_color    # { hex: "#FF0000", percentage: 30 }
+
+# Objects with filtering
+result.high_confidence_objects
+result.objects_with_confidence("high")
+
+# Status
+result.success?          # true if analysis succeeded
+result.error?            # true if failed
+
+# Metadata
+result.model_id          # Model used
+result.analysis_type     # Type of analysis
+result.duration_ms       # Processing time
+result.total_cost        # Cost in USD
+```
+
+## Examples
+
+### Product Catalog Analyzer
+
+```ruby
+class ProductCatalogAnalyzer < ApplicationImageAnalyzer
+  model "gpt-4o"
+  analysis_type :all
+  extract_colors true
+  detect_objects true
+  max_tags 15
+
+  custom_prompt "Analyze this product image for e-commerce. " \
+                "Identify the product type, brand if visible, " \
+                "colors, materials, and key features."
+end
+
+result = ProductCatalogAnalyzer.call(image: "product.jpg")
+
+# Use for categorization
+category = determine_category(result.tags)
+
+# Extract primary color for filtering
+primary_color = result.dominant_color[:name]
+
+# Build search keywords
+keywords = result.tags.join(", ")
+```
+
+### Content Moderation Analyzer
+
+```ruby
+class ContentModerationAnalyzer < ApplicationImageAnalyzer
+  model "gpt-4o"
+  analysis_type :detailed
+  detect_objects true
+
+  custom_prompt "Analyze this image for content moderation. " \
+                "Identify any inappropriate content, violence, " \
+                "nudity, or concerning elements. Be specific."
+end
+
+result = ContentModerationAnalyzer.call(image: uploaded_file)
+
+if result.has_object?("weapon") || result.has_tag?("violence")
+  flag_for_review(result)
+end
+```
+
+---
+
+# Background Removal
+
+Extract subjects from images by removing backgrounds.
+
+## Overview
+
+The `BackgroundRemover` base class provides a DSL for creating background removers with:
+- Subject extraction with alpha transparency
+- Optional alpha matting for fine edges
+- Edge refinement for clean cutouts
+- Mask output for compositing
+- Built-in execution tracking and cost monitoring
+- Multi-tenancy support
+- Caching for repeated operations
+
+## Quick Start
+
+### Generate a BackgroundRemover
+
+```bash
+rails generate ruby_llm_agents:background_remover Photo
+```
+
+This creates `app/background_removers/photo_background_remover.rb`:
+
+```ruby
+class PhotoBackgroundRemover < ApplicationBackgroundRemover
+  model "rembg"
+  output_format :png
+end
+```
+
+### Basic Usage
+
+```ruby
+# Remove background
+result = PhotoBackgroundRemover.call(image: "photo.jpg")
+result.url              # URL of foreground image
+result.has_alpha?       # true (PNG with transparency)
+result.success?         # true
+
+# Save the result
+result.save("foreground.png")
+
+# Get mask if available
+if result.mask?
+  result.save_mask("mask.png")
+end
+```
+
+## Configuration DSL
+
+### Model Selection
+
+```ruby
+class ProductRemover < ApplicationBackgroundRemover
+  model "rembg"              # Fast, good for general use
+  # or
+  model "segment-anything"   # Better quality, slower
+end
+```
+
+### Output Format
+
+```ruby
+class TransparentRemover < ApplicationBackgroundRemover
+  model "rembg"
+  output_format :png        # PNG with alpha (default)
+end
+
+class WebOptimizedRemover < ApplicationBackgroundRemover
+  model "rembg"
+  output_format :webp       # WebP with alpha
+end
+```
+
+### Edge Refinement
+
+```ruby
+class HighQualityRemover < ApplicationBackgroundRemover
+  model "segment-anything"
+  output_format :png
+  refine_edges true          # Smooth edge transitions
+  alpha_matting true         # Fine edge detection
+  foreground_threshold 0.6   # Foreground sensitivity (0.0-1.0)
+  background_threshold 0.4   # Background sensitivity (0.0-1.0)
+  erode_size 2               # Edge erosion for cleaner cuts
+end
+```
+
+### Mask Output
+
+```ruby
+class MaskRemover < ApplicationBackgroundRemover
+  model "rembg"
+  return_mask true           # Also return the mask image
+end
+
+result = MaskRemover.call(image: "photo.jpg")
+result.mask?                 # true
+result.mask_url              # URL of mask image
+result.save_mask("mask.png") # Save mask separately
+```
+
+### Caching
+
+```ruby
+class CachedRemover < ApplicationBackgroundRemover
+  model "rembg"
+  cache_for 30.days          # Cache results
+end
+```
+
+## BackgroundRemovalResult
+
+The result object provides access to extracted images:
+
+```ruby
+result = MyRemover.call(image: "photo.jpg")
+
+# Foreground (subject)
+result.foreground        # Foreground image object
+result.url               # Foreground URL
+result.data              # Base64 data (if available)
+result.base64?           # true if base64 encoded
+
+# Mask (optional)
+result.mask?             # true if mask available
+result.mask              # Mask image object
+result.mask_url          # Mask URL
+result.mask_data         # Mask base64 data
+
+# Properties
+result.has_alpha?        # true for PNG/WebP with transparency
+result.output_format     # :png or :webp
+
+# File operations
+result.save("foreground.png")
+result.save_mask("mask.png")
+result.to_blob           # Binary foreground data
+result.mask_blob         # Binary mask data
+
+# Status
+result.success?          # true if removal succeeded
+result.error?            # true if failed
+
+# Metadata
+result.model_id          # Model used
+result.alpha_matting     # Whether alpha matting was used
+result.refine_edges      # Whether edge refinement was used
+result.duration_ms       # Processing time
+result.total_cost        # Cost in USD
+```
+
+## Examples
+
+### Product Photo Background Remover
+
+```ruby
+class ProductPhotoRemover < ApplicationBackgroundRemover
+  model "segment-anything"
+  output_format :png
+  refine_edges true
+  alpha_matting true
+  foreground_threshold 0.55
+
+  description "Removes backgrounds from product photos"
+end
+
+# In a controller
+def remove_background
+  result = ProductPhotoRemover.call(image: params[:image])
+
+  if result.success?
+    # Attach to product using ActiveStorage
+    @product.processed_image.attach(
+      io: StringIO.new(result.to_blob),
+      filename: "product_transparent.png",
+      content_type: "image/png"
+    )
+    render json: { url: result.url }
+  else
+    render json: { error: result.error_message }, status: :unprocessable_entity
+  end
+end
+```
+
+### Portrait Background Remover with Compositing
+
+```ruby
+class PortraitRemover < ApplicationBackgroundRemover
+  model "segment-anything"
+  output_format :png
+  alpha_matting true
+  refine_edges true
+  return_mask true
+
+  description "Extracts portraits for compositing"
+end
+
+# Get subject and mask for compositing
+result = PortraitRemover.call(image: "portrait.jpg")
+
+if result.success?
+  # Save foreground with transparency
+  result.save("subject.png")
+
+  # Save mask for further editing
+  result.save_mask("subject_mask.png") if result.mask?
+
+  # Use with image editing software or composite in Ruby
+  composite_with_background(result.to_blob, "new_background.jpg")
+end
+```
+
+---
+
+## Global Configuration (Image Operations)
+
+```ruby
+RubyLLM::Agents.configure do |config|
+  # Image Generation
+  config.default_image_model = "gpt-image-1"
+  config.default_image_size = "1024x1024"
+  config.track_image_generation = true
+
+  # Image Analysis
+  config.default_analyzer_model = "gpt-4o"
+  config.default_analysis_type = :detailed
+  config.default_analyzer_max_tags = 10
+
+  # Background Removal
+  config.default_background_remover_model = "rembg"
+  config.default_background_output_format = :png
 end
 ```
