@@ -43,6 +43,154 @@ RSpec.describe RubyLLM::Agents::Engine do
     end
   end
 
+  describe ".namespace_for_path" do
+    let(:config) { RubyLLM::Agents.configuration }
+
+    context "with default namespace (Llm)" do
+      before do
+        allow(config).to receive(:root_namespace).and_return("Llm")
+      end
+
+      it "returns Llm module for agents path" do
+        result = described_class.namespace_for_path("app/llm/agents", config)
+        expect(result).to eq(Llm)
+      end
+
+      it "returns Llm module for tools path" do
+        result = described_class.namespace_for_path("app/llm/tools", config)
+        expect(result).to eq(Llm)
+      end
+
+      it "returns Llm module for workflows path" do
+        result = described_class.namespace_for_path("app/llm/workflows", config)
+        expect(result).to eq(Llm)
+      end
+
+      it "returns Llm::Audio module for audio speakers path" do
+        result = described_class.namespace_for_path("app/llm/audio/speakers", config)
+        expect(result.name).to eq("Llm::Audio")
+      end
+
+      it "returns Llm::Audio module for audio transcribers path" do
+        result = described_class.namespace_for_path("app/llm/audio/transcribers", config)
+        expect(result.name).to eq("Llm::Audio")
+      end
+
+      it "returns Llm::Image module for image generators path" do
+        result = described_class.namespace_for_path("app/llm/image/generators", config)
+        expect(result.name).to eq("Llm::Image")
+      end
+
+      it "returns Llm::Image module for image analyzers path" do
+        result = described_class.namespace_for_path("app/llm/image/analyzers", config)
+        expect(result.name).to eq("Llm::Image")
+      end
+
+      it "returns Llm::Text module for text embedders path" do
+        result = described_class.namespace_for_path("app/llm/text/embedders", config)
+        expect(result.name).to eq("Llm::Text")
+      end
+
+      it "returns Llm::Text module for text moderators path" do
+        result = described_class.namespace_for_path("app/llm/text/moderators", config)
+        expect(result.name).to eq("Llm::Text")
+      end
+    end
+
+    context "with no namespace (nil)" do
+      before do
+        allow(config).to receive(:root_namespace).and_return(nil)
+      end
+
+      it "returns nil for agents path" do
+        result = described_class.namespace_for_path("app/llm/agents", config)
+        expect(result).to be_nil
+      end
+
+      it "returns nil for tools path" do
+        result = described_class.namespace_for_path("app/llm/tools", config)
+        expect(result).to be_nil
+      end
+
+      it "returns nil for workflows path" do
+        result = described_class.namespace_for_path("app/llm/workflows", config)
+        expect(result).to be_nil
+      end
+
+      it "returns Audio module for audio speakers path" do
+        result = described_class.namespace_for_path("app/llm/audio/speakers", config)
+        expect(result).to be_a(Module)
+        expect(result.name).to eq("Audio")
+      end
+
+      it "returns Image module for image generators path" do
+        result = described_class.namespace_for_path("app/llm/image/generators", config)
+        expect(result).to be_a(Module)
+        expect(result.name).to eq("Image")
+      end
+
+      it "returns Text module for text embedders path" do
+        result = described_class.namespace_for_path("app/llm/text/embedders", config)
+        expect(result).to be_a(Module)
+        expect(result.name).to eq("Text")
+      end
+    end
+
+    context "with empty string namespace" do
+      before do
+        allow(config).to receive(:root_namespace).and_return("")
+      end
+
+      it "returns nil for agents path" do
+        result = described_class.namespace_for_path("app/llm/agents", config)
+        expect(result).to be_nil
+      end
+
+      it "returns Audio module for audio path" do
+        result = described_class.namespace_for_path("app/llm/audio/speakers", config)
+        expect(result).to be_a(Module)
+        expect(result.name).to eq("Audio")
+      end
+    end
+
+    context "with custom namespace (AI)" do
+      before do
+        allow(config).to receive(:root_namespace).and_return("AI")
+      end
+
+      it "returns AI module for agents path" do
+        # Ensure the AI module exists for the test
+        Object.const_set(:AI, Module.new) unless Object.const_defined?(:AI)
+        result = described_class.namespace_for_path("app/llm/agents", config)
+        expect(result).to eq(AI)
+      end
+
+      it "returns AI::Image module for image generators path" do
+        # Ensure the AI::Image module exists for the test
+        Object.const_set(:AI, Module.new) unless Object.const_defined?(:AI)
+        AI.const_set(:Image, Module.new) unless AI.const_defined?(:Image)
+        result = described_class.namespace_for_path("app/llm/image/generators", config)
+        expect(result.name).to eq("AI::Image")
+      end
+    end
+
+    context "with invalid paths" do
+      before do
+        allow(config).to receive(:root_namespace).and_return("Llm")
+      end
+
+      it "returns nil for paths with fewer than 3 parts" do
+        result = described_class.namespace_for_path("app/llm", config)
+        expect(result).to be_nil
+      end
+
+      it "returns nil for paths with only 2 parts" do
+        result = described_class.namespace_for_path("app", config)
+        expect(result).to be_nil
+      end
+    end
+  end
+
   describe "ApplicationController" do
     # The ApplicationController is dynamically created by the engine
     let(:controller_class) { RubyLLM::Agents::ApplicationController }

@@ -191,7 +191,7 @@ module RubyLLM
             full_path = app.root.join(relative_path)
             if full_path.exist?
               # Configure namespace for the path
-              namespace = namespace_for_path(relative_path, config)
+              namespace = self.class.namespace_for_path(relative_path, config)
               if namespace
                 Rails.autoloaders.main.push_dir(full_path.to_s, namespace: namespace)
               else
@@ -215,20 +215,32 @@ module RubyLLM
       # @return [Module, nil] Namespace module or nil for top-level
       # @api private
       def self.namespace_for_path(path, config)
-        return nil if config.root_namespace.blank?
-
         # Parse the path to determine namespace
         parts = path.split("/")
         return nil unless parts.length >= 3
 
         category = parts[2] # e.g., "agents", "audio", "image", "text"
 
-        namespace_name = case category
-        when "audio", "image", "text"
-          "#{config.root_namespace}::#{category.camelize}"
+        # Determine the namespace name based on category and root_namespace setting
+        namespace_name = if config.root_namespace.blank?
+          # No root namespace - use category namespace only for audio/image/text
+          case category
+          when "audio", "image", "text"
+            category.camelize # "Audio", "Image", "Text"
+          else
+            nil # Top-level for agents, workflows, tools
+          end
         else
-          config.root_namespace
+          # With root namespace - prefix category with root namespace
+          case category
+          when "audio", "image", "text"
+            "#{config.root_namespace}::#{category.camelize}"
+          else
+            config.root_namespace
+          end
         end
+
+        return nil if namespace_name.nil?
 
         # Return the constant, creating intermediate modules if needed
         namespace_name.constantize
