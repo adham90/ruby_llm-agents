@@ -236,6 +236,51 @@ class MyAgent < ApplicationAgent
 end
 ```
 
+## Complete Configuration Reference
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `default_model` | String | `"gemini-2.0-flash"` | Default LLM model |
+| `default_temperature` | Float | `0.0` | Default temperature (0.0-2.0) |
+| `default_timeout` | Integer | `60` | Request timeout in seconds |
+| `default_streaming` | Boolean | `false` | Enable streaming by default |
+| `default_tools` | Array | `[]` | Default tools for all agents |
+| `default_thinking` | Hash | `nil` | Default thinking config (e.g., `{effort: :medium}`) |
+| `default_retries` | Hash | `{max: 0}` | Default retry configuration |
+| `default_fallback_models` | Array | `[]` | Default fallback models |
+| `default_total_timeout` | Integer | `nil` | Default total timeout |
+| `default_embedding_model` | String | `"text-embedding-3-small"` | Default embedding model |
+| `default_embedding_dimensions` | Integer | `nil` | Default embedding dimensions |
+| `default_embedding_batch_size` | Integer | `100` | Default batch size for embeddings |
+| `track_embeddings` | Boolean | `true` | Track embedding executions |
+| `default_moderation_model` | String | `"omni-moderation-latest"` | Default moderation model |
+| `default_moderation_threshold` | Float | `nil` | Default moderation threshold (0.0-1.0) |
+| `default_moderation_action` | Symbol | `:block` | Default action: `:block`, `:raise`, `:warn`, `:log` |
+| `track_moderation` | Boolean | `true` | Track moderation to executions table |
+| `default_transcription_model` | String | `"whisper-1"` | Default transcription model |
+| `track_transcriptions` | Boolean | `true` | Track transcription executions |
+| `default_tts_provider` | Symbol | `:openai` | Default TTS provider |
+| `default_tts_model` | String | `"tts-1"` | Default TTS model |
+| `default_tts_voice` | String | `"nova"` | Default TTS voice |
+| `track_speech` | Boolean | `true` | Track TTS executions |
+| `async_logging` | Boolean | `true` | Log executions via background job |
+| `retention_period` | Duration | `30.days` | Execution record retention |
+| `cache_store` | Cache | `Rails.cache` | Custom cache store |
+| `budgets` | Hash | `nil` | Budget configuration |
+| `alerts` | Hash | `nil` | Alert configuration |
+| `redaction` | Hash | `nil` | PII redaction configuration |
+| `persist_prompts` | Boolean | `true` | Store prompts in executions |
+| `persist_responses` | Boolean | `true` | Store responses in executions |
+| `multi_tenancy_enabled` | Boolean | `false` | Enable multi-tenancy |
+| `tenant_resolver` | Proc | `-> { nil }` | Returns current tenant ID |
+| `dashboard_parent_controller` | String | `"ApplicationController"` | Dashboard controller parent |
+| `dashboard_auth` | Proc | `->(_) { true }` | Custom auth lambda |
+| `dashboard_per_page` | Integer | `25` | Dashboard records per page |
+| `dashboard_recent_executions` | Integer | `10` | Dashboard recent executions |
+| `anomaly_cost_threshold` | Float | `5.00` | Cost anomaly threshold (USD) |
+| `anomaly_duration_threshold` | Integer | `10_000` | Duration anomaly threshold (ms) |
+| `job_retry_attempts` | Integer | `3` | Background job retries |
+
 ## Resetting Configuration
 
 For testing:
@@ -249,3 +294,11 @@ RubyLLM::Agents.configure do |config|
   config.async_logging = false
 end
 ```
+
+## Related Pages
+
+- [Budget Controls](Budget-Controls) - Cost limits
+- [Alerts](Alerts) - Notification setup
+- [PII Redaction](PII-Redaction) - Data protection
+- [Multi-Tenancy](Multi-Tenancy) - Tenant isolation
+- [Dashboard](Dashboard) - Monitoring UI

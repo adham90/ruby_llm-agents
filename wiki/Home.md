@@ -9,6 +9,7 @@ Welcome to the official documentation for **RubyLLM::Agents**, a production-read
 - **[Installation](Installation)** - Detailed installation steps
 - **[Configuration](Configuration)** - Configure the initializer
 - **[First Agent](First-Agent)** - Build your first AI agent
+- **[Generators](Generators)** - Scaffold agents, embedders, and more
 
 ### Core Concepts
 - **[Agent DSL](Agent-DSL)** - Declarative agent configuration
@@ -56,11 +57,13 @@ Welcome to the official documentation for **RubyLLM::Agents**, a production-read
 
 ### Operations
 - **[Dashboard](Dashboard)** - Monitoring UI guide
-- **[Production Deployment](Production-Deployment)** - Best practices
+- **[Database Queries](Database-Queries)** - Execution model queries and analytics
+- **[Production Deployment](Production-Deployment)** - Deployment guide
 - **[Background Jobs](Background-Jobs)** - Async logging
 - **[Troubleshooting](Troubleshooting)** - Common issues
 
 ### Reference
+- **[Best Practices](Best-Practices)** - Production guidelines
 - **[API Reference](API-Reference)** - Class documentation
 - **[Examples](Examples)** - Real-world use cases
 - **[FAQ](FAQ)** - Common questions
