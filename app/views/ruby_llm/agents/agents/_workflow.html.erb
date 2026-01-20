@@ -15,7 +15,7 @@
 %>
 
 <div x-data="{ expanded: false }" class="block bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 <%= colors[:border] %>">
-  <%= link_to ruby_llm_agents.workflow_path(ERB::Util.url_encode(workflow[:name]), tab: local_assigns[:current_tab], subtab: local_assigns[:current_subtab]), class: "block p-4 sm:p-5" do %>
+  <%= link_to ruby_llm_agents.workflow_path(ERB::Util.url_encode(workflow[:name]), tab: local_assigns[:current_tab], subtab: local_assigns[:current_subtab]), class: "block p-4 sm:p-5 relative z-10", data: { turbo: false }, style: "pointer-events: auto;" do %>
     <!-- Header Row -->
     <div class="flex items-center justify-between gap-2">
       <div class="flex items-center gap-2 min-w-0">

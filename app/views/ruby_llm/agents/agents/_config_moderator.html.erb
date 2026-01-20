@@ -1,0 +1,63 @@
+<%# Configuration partial for Moderator types %>
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+  <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+    Configuration
+  </h3>
+
+  <!-- Moderation Configuration -->
+  <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+    Moderation Settings
+  </p>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Model</p>
+      <p class="font-medium text-gray-900 dark:text-gray-100">
+        <%= config[:model] %>
+      </p>
+    </div>
+
+    <div>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Threshold</p>
+      <p class="font-medium text-gray-900 dark:text-gray-100">
+        <% if config[:threshold] %>
+          <%= config[:threshold] %>
+        <% else %>
+          <span class="text-gray-400 dark:text-gray-500">Default</span>
+        <% end %>
+      </p>
+    </div>
+
+    <div class="col-span-2">
+      <p class="text-sm text-gray-500 dark:text-gray-400">Categories</p>
+      <p class="font-medium text-gray-900 dark:text-gray-100">
+        <% if config[:categories].present? %>
+          <% config[:categories].each do |category| %>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-300 mr-1 mb-1">
+              <%= category %>
+            </span>
+          <% end %>
+        <% else %>
+          <span class="text-gray-400 dark:text-gray-500">All categories</span>
+        <% end %>
+      </p>
+    </div>
+  </div>
+
+  <!-- Info Section -->
+  <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
+    <div class="flex items-start gap-3 p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20">
+      <div class="flex-shrink-0 mt-0.5">
+        <svg class="w-5 h-5 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-7a1 1 0 10-2 0v3a1 1 0 102 0V7z" clip-rule="evenodd"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Moderator</p>
+        <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+          Checks content for policy violations including hate speech, violence, and other harmful content categories.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

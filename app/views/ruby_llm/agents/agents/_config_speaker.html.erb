@@ -1,0 +1,108 @@
+<%# Configuration partial for Speaker types %>
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+  <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+    Configuration
+  </h3>
+
+  <!-- TTS Configuration -->
+  <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+    Text-to-Speech Settings
+  </p>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Model</p>
+      <p class="font-medium text-gray-900 dark:text-gray-100">
+        <%= config[:model] %>
+      </p>
+    </div>
+
+    <div>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Provider</p>
+      <p class="font-medium text-gray-900 dark:text-gray-100">
+        <% if config[:provider] %>
+          <%= config[:provider].to_s.titleize %>
+        <% else %>
+          <span class="text-gray-400 dark:text-gray-500">Default</span>
+        <% end %>
+      </p>
+    </div>
+
+    <div>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Voice</p>
+      <p class="font-medium text-gray-900 dark:text-gray-100">
+        <% if config[:voice] %>
+          <%= config[:voice] %>
+        <% else %>
+          <span class="text-gray-400 dark:text-gray-500">Default</span>
+        <% end %>
+      </p>
+    </div>
+
+    <div>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Speed</p>
+      <p class="font-medium text-gray-900 dark:text-gray-100">
+        <%= config[:speed] || 1.0 %>x
+      </p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Output Format</p>
+      <p class="font-medium text-gray-900 dark:text-gray-100">
+        <%= config[:output_format] || :mp3 %>
+      </p>
+    </div>
+
+    <div>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Streaming</p>
+      <p class="font-medium text-gray-900 dark:text-gray-100">
+        <% if config[:streaming] %>
+          <span class="text-green-600 dark:text-green-400">Enabled</span>
+        <% else %>
+          <span class="text-gray-400 dark:text-gray-500">Disabled</span>
+        <% end %>
+      </p>
+    </div>
+
+    <div>
+      <p class="text-sm text-gray-500 dark:text-gray-400">SSML</p>
+      <p class="font-medium text-gray-900 dark:text-gray-100">
+        <% if config[:ssml_enabled] %>
+          <span class="text-green-600 dark:text-green-400">Enabled</span>
+        <% else %>
+          <span class="text-gray-400 dark:text-gray-500">Disabled</span>
+        <% end %>
+      </p>
+    </div>
+
+    <div>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Cache</p>
+      <p class="font-medium text-gray-900 dark:text-gray-100">
+        <% if config[:cache_enabled] %>
+          Enabled (<%= config[:cache_ttl].inspect %>)
+        <% else %>
+          <span class="text-gray-400 dark:text-gray-500">Disabled</span>
+        <% end %>
+      </p>
+    </div>
+  </div>
+
+  <!-- Info Section -->
+  <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
+    <div class="flex items-start gap-3 p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20">
+      <div class="flex-shrink-0 mt-0.5">
+        <svg class="w-5 h-5 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clip-rule="evenodd"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Speaker</p>
+        <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+          Converts text to natural-sounding speech audio. Supports multiple voices, speeds, and output formats.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

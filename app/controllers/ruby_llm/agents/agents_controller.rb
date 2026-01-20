@@ -79,7 +79,8 @@ module RubyLLM
 
         if @agent_class
           load_agent_config
-          load_circuit_breaker_status
+          # Only load circuit breaker status for base agents
+          load_circuit_breaker_status if @agent_type_kind == "agent"
         end
       rescue StandardError => e
         Rails.logger.error("[RubyLLM::Agents] Error loading agent #{@agent_type}: #{e.message}")
@@ -217,26 +218,113 @@ module RubyLLM
       #
       # Extracts DSL-configured values from the agent class for display.
       # Only called if the agent class still exists.
+      # Detects agent type and loads appropriate config.
       #
       # @return [void]
       def load_agent_config
-        @config = {
-          # Basic configuration
-          model: @agent_class.model,
-          temperature: @agent_class.temperature,
-          version: @agent_class.version,
-          description: @agent_class.respond_to?(:description) ? @agent_class.description : nil,
-          timeout: @agent_class.timeout,
-          cache_enabled: @agent_class.cache_enabled?,
-          cache_ttl: @agent_class.cache_ttl,
-          params: @agent_class.params,
+        @agent_type_kind = AgentRegistry.send(:detect_agent_type, @agent_class)
 
-          # Reliability configuration
-          retries: @agent_class.retries,
-          fallback_models: @agent_class.fallback_models,
-          total_timeout: @agent_class.total_timeout,
-          circuit_breaker: @agent_class.circuit_breaker_config
+        # Common config for all types
+        @config = {
+          model: safe_config_call(:model),
+          version: safe_config_call(:version) || "N/A",
+          description: safe_config_call(:description)
         }
+
+        # Type-specific config
+        case @agent_type_kind
+        when "embedder"
+          load_embedder_config
+        when "moderator"
+          load_moderator_config
+        when "speaker"
+          load_speaker_config
+        when "transcriber"
+          load_transcriber_config
+        else
+          load_base_agent_config
+        end
+      end
+
+      # Loads configuration specific to Base agents
+      #
+      # @return [void]
+      def load_base_agent_config
+        @config.merge!(
+          temperature: safe_config_call(:temperature),
+          timeout: safe_config_call(:timeout),
+          cache_enabled: safe_config_call(:cache_enabled?) || false,
+          cache_ttl: safe_config_call(:cache_ttl),
+          params: safe_config_call(:params) || {},
+          retries: safe_config_call(:retries),
+          fallback_models: safe_config_call(:fallback_models),
+          total_timeout: safe_config_call(:total_timeout),
+          circuit_breaker: safe_config_call(:circuit_breaker_config)
+        )
+      end
+
+      # Loads configuration specific to Embedders
+      #
+      # @return [void]
+      def load_embedder_config
+        @config.merge!(
+          dimensions: safe_config_call(:dimensions),
+          batch_size: safe_config_call(:batch_size),
+          cache_enabled: safe_config_call(:cache_enabled?) || false,
+          cache_ttl: safe_config_call(:cache_ttl)
+        )
+      end
+
+      # Loads configuration specific to Moderators
+      #
+      # @return [void]
+      def load_moderator_config
+        @config.merge!(
+          threshold: safe_config_call(:threshold),
+          categories: safe_config_call(:categories)
+        )
+      end
+
+      # Loads configuration specific to Speakers
+      #
+      # @return [void]
+      def load_speaker_config
+        @config.merge!(
+          provider: safe_config_call(:provider),
+          voice: safe_config_call(:voice),
+          voice_id: safe_config_call(:voice_id),
+          speed: safe_config_call(:speed),
+          output_format: safe_config_call(:output_format),
+          streaming: safe_config_call(:streaming?),
+          ssml_enabled: safe_config_call(:ssml_enabled?),
+          cache_enabled: safe_config_call(:cache_enabled?) || false,
+          cache_ttl: safe_config_call(:cache_ttl)
+        )
+      end
+
+      # Loads configuration specific to Transcribers
+      #
+      # @return [void]
+      def load_transcriber_config
+        @config.merge!(
+          language: safe_config_call(:language),
+          output_format: safe_config_call(:output_format),
+          include_timestamps: safe_config_call(:include_timestamps),
+          cache_enabled: safe_config_call(:cache_enabled?) || false,
+          cache_ttl: safe_config_call(:cache_ttl),
+          fallback_models: safe_config_call(:fallback_models)
+        )
+      end
+
+      # Safely calls a method on the agent class, returning nil on error
+      #
+      # @param method [Symbol] The method to call
+      # @return [Object, nil] The result or nil if error
+      def safe_config_call(method)
+        return nil unless @agent_class&.respond_to?(method)
+        @agent_class.public_send(method)
+      rescue StandardError
+        nil
       end
 
       # Loads circuit breaker status for the agent's models
