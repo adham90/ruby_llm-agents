@@ -91,7 +91,7 @@ module RubyLLM
                       max_delay: retries_config[:max_delay] || 3.0,
                       attempt: attempt_index
                     )
-                    sleep(delay)
+                    async_aware_sleep(delay)
                   else
                     break # Move to next model (non-retryable or no retries left)
                   end
@@ -122,6 +122,23 @@ module RubyLLM
           return nil unless config
 
           CircuitBreaker.from_config(self.class.name, model_id, config, tenant_id: tenant_id)
+        end
+
+        # Sleeps without blocking other fibers when in async context
+        #
+        # Automatically uses async sleep when in async context,
+        # falls back to regular sleep otherwise.
+        #
+        # @param seconds [Numeric] Duration to sleep
+        # @return [void]
+        def async_aware_sleep(seconds)
+          config = RubyLLM::Agents.configuration
+
+          if config.async_context?
+            ::Async::Task.current.sleep(seconds)
+          else
+            sleep(seconds)
+          end
         end
       end
     end

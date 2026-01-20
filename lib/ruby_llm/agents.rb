@@ -30,6 +30,8 @@ require_relative "agents/transcriber"
 require_relative "agents/speaker"
 require_relative "agents/image_generator"
 require_relative "agents/llm_tenant"
+require_relative "agents/async"
+require_relative "agents/workflow/async_executor"
 require_relative "agents/inflections" if defined?(Rails)
 require_relative "agents/engine" if defined?(Rails::Engine)
 

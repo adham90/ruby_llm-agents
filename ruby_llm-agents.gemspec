@@ -31,5 +31,8 @@ Gem::Specification.new do |spec|
   spec.add_dependency "ruby_llm", ">= 1.0"
   spec.add_dependency "csv"  # Required for Ruby 3.4+ (no longer bundled)
 
+  # Optional dependencies (not required, but enhance functionality)
+  # For async/fiber support: gem 'async', '~> 2.0'
+
   # Development dependencies are in Gemfile
 end

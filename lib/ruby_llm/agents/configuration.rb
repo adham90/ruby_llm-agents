@@ -345,9 +345,17 @@ module RubyLLM
       #   @example
       #     config.track_speech = false
 
+      # @!attribute [rw] async_max_concurrency
+      #   Maximum number of concurrent async operations when using batch processing.
+      #   Controls the semaphore limit for Async::Semaphore.
+      #   @return [Integer] Max concurrent operations (default: 10)
+      #   @example
+      #     config.async_max_concurrency = 20
+
       # Attributes without validation (simple accessors)
       attr_accessor :default_model,
                     :async_logging,
+                    :async_max_concurrency,
                     :retention_period,
                     :dashboard_parent_controller,
                     :basic_auth_username,
@@ -555,6 +563,7 @@ module RubyLLM
         @default_timeout = 60
         @cache_store = nil
         @async_logging = true
+        @async_max_concurrency = 10
         @retention_period = 30.days
         @anomaly_cost_threshold = 5.00
         @anomaly_duration_threshold = 10_000
@@ -732,6 +741,24 @@ module RubyLLM
         return nil unless multi_tenancy_enabled?
 
         tenant_resolver&.call
+      end
+
+      # Returns whether the async gem is available
+      #
+      # @return [Boolean] true if async gem is loaded
+      def async_available?
+        defined?(::Async) && defined?(::Async::Semaphore)
+      end
+
+      # Returns whether we're currently inside an async context
+      #
+      # @return [Boolean] true if running in a fiber with async scheduler
+      def async_context?
+        return false unless async_available?
+
+        defined?(::Async::Task) && ::Async::Task.current?
+      rescue StandardError
+        false
       end
 
       private

@@ -152,7 +152,9 @@ module RubyLLM
 
           # Determine pool size based on concurrency setting
           pool_size = self.class.concurrency || self.class.branches.size
-          pool = ThreadPool.new(size: pool_size)
+
+          # Use async executor when in async context, otherwise use thread pool
+          pool = create_executor(pool_size)
 
           # Submit all branches to the pool
           self.class.branches.each do |name, config|
@@ -273,6 +275,23 @@ module RubyLLM
             completed_at: Time.current,
             duration_ms: (((Time.current - @workflow_started_at) * 1000).round if @workflow_started_at)
           )
+        end
+
+        # Creates the appropriate executor based on context
+        #
+        # Uses AsyncExecutor when in async context for fiber-based concurrency,
+        # otherwise falls back to ThreadPool for traditional thread-based execution.
+        #
+        # @param size [Integer] Number of concurrent workers/fibers
+        # @return [ThreadPool, AsyncExecutor] The executor instance
+        def create_executor(size)
+          config = RubyLLM::Agents.configuration
+
+          if config.async_context?
+            AsyncExecutor.new(max_concurrent: size)
+          else
+            ThreadPool.new(size: size)
+          end
         end
       end
     end
