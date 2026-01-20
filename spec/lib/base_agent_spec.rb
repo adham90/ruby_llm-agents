@@ -12,6 +12,7 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
     allow(config).to receive(:default_temperature).and_return(0.7)
     allow(config).to receive(:default_streaming).and_return(false)
     allow(config).to receive(:budgets_enabled?).and_return(false)
+    allow(config).to receive(:default_thinking).and_return(nil)
   end
 
   describe "DSL integration" do

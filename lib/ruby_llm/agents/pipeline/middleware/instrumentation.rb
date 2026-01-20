@@ -98,19 +98,24 @@ module RubyLLM
           def build_execution_data(context, status)
             data = {
               agent_type: context.agent_class&.name,
-              execution_type: context.agent_type&.to_s,
+              agent_version: config(:version, "1.0"),
               model_id: context.model,
-              status: status,
+              status: determine_status(context, status),
               duration_ms: context.duration_ms,
               started_at: context.started_at,
               completed_at: context.completed_at,
               tenant_id: context.tenant_id,
-              cached: context.cached?,
+              cache_hit: context.cached?,
               input_tokens: context.input_tokens || 0,
               output_tokens: context.output_tokens || 0,
               total_cost: context.total_cost || 0,
-              attempts_made: context.attempts_made
+              attempts_count: context.attempts_made
             }
+
+            # Add cache key for cache hit executions
+            if context.cached? && context[:cache_key]
+              data[:response_cache_key] = context[:cache_key]
+            end
 
             # Add error details if present
             if context.error
@@ -121,8 +126,51 @@ module RubyLLM
             # Add custom metadata
             data[:metadata] = context.metadata if context.metadata.any?
 
+            # Add sanitized parameters
+            data[:parameters] = sanitize_parameters(context)
+
             data
           end
+
+          # Determines the status based on context and error type
+          #
+          # @param context [Context] The execution context
+          # @param base_status [String] The base status ("success" or "error")
+          # @return [String] The determined status
+          def determine_status(context, base_status)
+            return base_status if base_status == "success"
+
+            # Check for timeout errors
+            if context.error.is_a?(Timeout::Error)
+              "timeout"
+            else
+              base_status
+            end
+          end
+
+          # Sanitizes parameters for storage, redacting sensitive values
+          #
+          # @param context [Context] The execution context
+          # @return [Hash] Sanitized parameters
+          def sanitize_parameters(context)
+            return {} unless context.agent_instance.respond_to?(:options, true)
+
+            params = context.agent_instance.send(:options) rescue {}
+            params = params.dup
+            params.transform_keys!(&:to_s)
+
+            SENSITIVE_KEYS.each do |key|
+              params[key] = "[REDACTED]" if params.key?(key)
+            end
+
+            params
+          end
+
+          # Sensitive parameter keys that should be redacted
+          SENSITIVE_KEYS = %w[
+            password token api_key secret credential auth key
+            access_token refresh_token private_key secret_key
+          ].freeze
 
           # Truncates error message to prevent database issues
           #
@@ -161,9 +209,9 @@ module RubyLLM
             when :embedding
               cfg.track_embeddings
             when :moderation
-              cfg.track_moderations
+              cfg.track_moderation
             when :image
-              cfg.track_image_generations
+              cfg.track_image_generation
             when :audio
               cfg.track_audio
             else

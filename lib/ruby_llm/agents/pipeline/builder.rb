@@ -119,9 +119,12 @@ module RubyLLM
           # The order is:
           # 1. Tenant (always - resolves tenant context)
           # 2. Budget (if enabled - checks budget before execution)
-          # 3. Cache (if enabled - returns cached results)
-          # 4. Instrumentation (always - tracks execution)
+          # 3. Instrumentation (always - tracks execution, including cache hits)
+          # 4. Cache (if enabled - returns cached results)
           # 5. Reliability (if enabled - retries and fallbacks)
+          #
+          # Note: Instrumentation must come BEFORE Cache so it can track cache hits.
+          # When Cache returns early on a hit, Instrumentation still sees it.
           #
           # @param agent_class [Class] The agent class
           # @return [Builder] A configured builder
@@ -133,11 +136,11 @@ module RubyLLM
               # Budget checking (if enabled globally)
               builder.use(Middleware::Budget) if budgets_enabled?
 
+              # Instrumentation (always - for tracking, must be before Cache)
+              builder.use(Middleware::Instrumentation)
+
               # Caching (if enabled on the agent)
               builder.use(Middleware::Cache) if cache_enabled?(agent_class)
-
-              # Instrumentation (always - for tracking)
-              builder.use(Middleware::Instrumentation)
 
               # Reliability (if agent has retries or fallbacks configured)
               builder.use(Middleware::Reliability) if reliability_enabled?(agent_class)

@@ -171,14 +171,22 @@ module RubyLLM
             @thinking_config[:effort] = effort if effort
             @thinking_config[:budget] = budget if budget
           end
-          @thinking_config || (superclass.respond_to?(:thinking_config) ? superclass.thinking_config : nil)
+          thinking_config
         end
 
         # Returns the thinking configuration
         #
+        # Falls back to global configuration default if not set at class level.
+        #
         # @return [Hash, nil] The thinking configuration
         def thinking_config
-          @thinking_config || (superclass.respond_to?(:thinking_config) ? superclass.thinking_config : nil)
+          return @thinking_config if @thinking_config
+          return superclass.thinking_config if superclass.respond_to?(:thinking_config) && superclass.thinking_config
+
+          # Fall back to global configuration default
+          RubyLLM::Agents.configuration.default_thinking
+        rescue StandardError
+          nil
         end
 
         # @!endgroup
@@ -303,6 +311,23 @@ module RubyLLM
         )
       end
 
+      # Resolves thinking configuration
+      #
+      # Public for testing and introspection.
+      #
+      # @return [Hash, nil] Thinking configuration
+      def resolved_thinking
+        # Check for :none effort which means disabled
+        if @options.key?(:thinking)
+          thinking_option = @options[:thinking]
+          return nil if thinking_option == false
+          return nil if thinking_option.is_a?(Hash) && thinking_option[:effort] == :none
+          return thinking_option if thinking_option.is_a?(Hash)
+        end
+
+        self.class.thinking_config
+      end
+
       protected
 
       # Returns the options hash
@@ -379,19 +404,6 @@ module RubyLLM
         return @options[:messages] if @options[:messages]&.any?
 
         messages
-      end
-
-      # Resolves thinking configuration
-      #
-      # @return [Hash, nil] Thinking configuration
-      def resolved_thinking
-        if @options.key?(:thinking)
-          thinking_option = @options[:thinking]
-          return nil if thinking_option == false
-          return thinking_option if thinking_option.is_a?(Hash)
-        end
-
-        self.class.thinking_config
       end
 
       # Returns whether streaming is enabled
@@ -607,6 +619,46 @@ module RubyLLM
           streaming: streaming_enabled?,
           attempts_count: context.attempts_made || 1
         )
+      end
+
+      # Extracts thinking data from a response for inclusion in Result
+      #
+      # @param response [Object] The response object
+      # @return [Hash] Hash with thinking_text, thinking_signature, thinking_tokens
+      def result_thinking_data(response)
+        return {} unless response.respond_to?(:thinking) && response.thinking
+
+        thinking = response.thinking
+
+        data = {}
+        data[:thinking_text] = extract_thinking_value(thinking, :text)
+        data[:thinking_signature] = extract_thinking_value(thinking, :signature)
+        data[:thinking_tokens] = extract_thinking_value(thinking, :tokens)
+
+        data.compact
+      end
+
+      # Safely extracts thinking data without raising errors
+      #
+      # @param response [Object] The response object
+      # @return [Hash] Hash with thinking data or empty hash
+      def safe_extract_thinking_data(response)
+        result_thinking_data(response)
+      rescue StandardError
+        {}
+      end
+
+      # Extracts a value from thinking object (supports both hash and object access)
+      #
+      # @param thinking [Hash, Object] The thinking object
+      # @param key [Symbol] The key to extract
+      # @return [Object, nil] The value or nil
+      def extract_thinking_value(thinking, key)
+        if thinking.respond_to?(key)
+          thinking.send(key)
+        elsif thinking.respond_to?(:[])
+          thinking[key]
+        end
       end
 
       # Applies conversation history to the client

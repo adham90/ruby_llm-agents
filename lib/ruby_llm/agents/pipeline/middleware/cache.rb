@@ -40,12 +40,16 @@ module RubyLLM
 
             cache_key = generate_cache_key(context)
 
-            # Try to read from cache
-            if (cached = cache_read(cache_key))
-              context.output = cached
-              context.cached = true
-              debug("Cache hit for #{cache_key}")
-              return context
+            # Skip cache read if skip_cache is true
+            unless context.skip_cache
+              # Try to read from cache
+              if (cached = cache_read(cache_key))
+                context.output = cached
+                context.cached = true
+                context[:cache_key] = cache_key
+                debug("Cache hit for #{cache_key}")
+                return context
+              end
             end
 
             # Execute the chain

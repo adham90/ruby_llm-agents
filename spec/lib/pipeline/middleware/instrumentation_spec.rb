@@ -35,8 +35,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     allow(RubyLLM::Agents).to receive(:configuration).and_return(config)
     allow(config).to receive(:track_embeddings).and_return(true)
     allow(config).to receive(:track_executions).and_return(true)
-    allow(config).to receive(:track_moderations).and_return(true)
-    allow(config).to receive(:track_image_generations).and_return(true)
+    allow(config).to receive(:track_moderation).and_return(true)
+    allow(config).to receive(:track_image_generation).and_return(true)
     allow(config).to receive(:track_audio).and_return(true)
     allow(config).to receive(:async_logging).and_return(false)
   end
@@ -113,7 +113,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         expect(RubyLLM::Agents::Execution).to receive(:create!).with(
           hash_including(
             agent_type: "TestAgent",
-            execution_type: "embedding",
             model_id: "test-model",
             status: "success"
           )
@@ -223,7 +222,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         allow(app).to receive(:call) { |ctx| ctx.output = "cached_result"; ctx }
 
         expect(RubyLLM::Agents::Execution).to receive(:create!).with(
-          hash_including(cached: true)
+          hash_including(cache_hit: true)
         )
 
         middleware.call(context)
@@ -255,8 +254,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       allow(config).to receive(:async_logging).and_return(false)
       allow(config).to receive(:track_embeddings).and_return(true)
       allow(config).to receive(:track_executions).and_return(true)
-      allow(config).to receive(:track_moderations).and_return(true)
-      allow(config).to receive(:track_image_generations).and_return(true)
+      allow(config).to receive(:track_moderation).and_return(true)
+      allow(config).to receive(:track_image_generation).and_return(true)
       allow(config).to receive(:track_audio).and_return(true)
     end
 
@@ -276,7 +275,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       middleware.call(context)
     end
 
-    it "checks track_moderations for moderation agents" do
+    it "checks track_moderation for moderation agents" do
       agent_class = Class.new do
         def self.name; "ModAgent"; end
         def self.agent_type; :moderation; end
@@ -286,13 +285,13 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       middleware = described_class.new(app, agent_class)
       context = RubyLLM::Agents::Pipeline::Context.new(input: "test", agent_class: agent_class)
 
-      expect(config).to receive(:track_moderations).and_return(false)
+      expect(config).to receive(:track_moderation).and_return(false)
       allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
 
       middleware.call(context)
     end
 
-    it "checks track_image_generations for image agents" do
+    it "checks track_image_generation for image agents" do
       agent_class = Class.new do
         def self.name; "ImageAgent"; end
         def self.agent_type; :image; end
@@ -302,7 +301,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       middleware = described_class.new(app, agent_class)
       context = RubyLLM::Agents::Pipeline::Context.new(input: "test", agent_class: agent_class)
 
-      expect(config).to receive(:track_image_generations).and_return(false)
+      expect(config).to receive(:track_image_generation).and_return(false)
       allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
 
       middleware.call(context)

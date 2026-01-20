@@ -15,9 +15,9 @@ RSpec.describe RubyLLM::Agents::Transcriber do
     allow(config).to receive(:budgets_enabled?).and_return(false)
     allow(config).to receive(:track_audio).and_return(false)
     allow(config).to receive(:track_embeddings).and_return(false)
-    allow(config).to receive(:track_conversations).and_return(false)
-    allow(config).to receive(:track_images).and_return(false)
-    allow(config).to receive(:track_moderations).and_return(false)
+    allow(config).to receive(:track_executions).and_return(false)
+    allow(config).to receive(:track_image_generation).and_return(false)
+    allow(config).to receive(:track_moderation).and_return(false)
   end
 
   # Mock RubyLLM.transcribe response

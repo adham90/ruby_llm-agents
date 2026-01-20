@@ -400,6 +400,9 @@ module RubyLLM
                     :default_tts_model,
                     :default_tts_voice,
                     :track_speech,
+                    :track_executions,
+                    :track_audio,
+                    :track_cache_hits,
                     :default_image_model,
                     :default_image_size,
                     :default_image_quality,
@@ -655,6 +658,11 @@ module RubyLLM
         @default_tts_model = "tts-1"
         @default_tts_voice = "nova"
         @track_speech = true
+
+        # Execution/conversation agent tracking
+        @track_executions = true
+        @track_audio = true
+        @track_cache_hits = true
 
         # Image Generation defaults
         @default_image_model = "gpt-image-1"

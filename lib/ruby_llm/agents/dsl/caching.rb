@@ -48,6 +48,8 @@ module RubyLLM
 
         # Returns whether caching is enabled for this agent
         #
+        # Caching IS inherited from parent classes following Ruby patterns.
+        #
         # @return [Boolean] true if caching is enabled
         def cache_enabled?
           return @cache_enabled if defined?(@cache_enabled)

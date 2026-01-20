@@ -315,20 +315,20 @@ RSpec.describe RubyLLM::Agents::Base do
       end
     end
 
-    describe "#ask_options" do
-      it "returns empty hash when no attachments" do
+    describe "#execution_options (attachments)" do
+      it "returns nil for attachments when none provided" do
         agent = agent_class.new(query: "test")
-        expect(agent.send(:ask_options)).to eq({})
+        expect(agent.send(:execution_options)[:attachments]).to be_nil
       end
 
-      it "includes :with when attachment provided" do
+      it "includes :attachments when provided via :with" do
         agent = agent_class.new(query: "test", with: "image.png")
-        expect(agent.send(:ask_options)).to eq({with: "image.png"})
+        expect(agent.send(:execution_options)[:attachments]).to eq("image.png")
       end
 
       it "supports array of attachments" do
         agent = agent_class.new(query: "test", with: ["a.png", "b.png"])
-        expect(agent.send(:ask_options)).to eq({with: ["a.png", "b.png"]})
+        expect(agent.send(:execution_options)[:attachments]).to eq(["a.png", "b.png"])
       end
     end
 
@@ -410,44 +410,52 @@ RSpec.describe RubyLLM::Agents::Base do
         input_tokens: 100,
         output_tokens: 50,
         model_id: "gpt-4",
-        tool_calls: nil
+        tool_calls: nil,
+        usage: { input_tokens: 100, output_tokens: 50 },
+        finish_reason: "stop"
       )
     end
 
-    let(:mock_client) do
-      client = double("RubyLLM::Chat")
-      allow(client).to receive(:ask).and_return(mock_response)
-      allow(client).to receive(:messages).and_return([])
-      client
+    let(:mock_chat) do
+      chat = double("RubyLLM::Chat")
+      allow(chat).to receive(:with_model).and_return(chat)
+      allow(chat).to receive(:with_temperature).and_return(chat)
+      allow(chat).to receive(:with_instructions).and_return(chat)
+      allow(chat).to receive(:with_schema).and_return(chat)
+      allow(chat).to receive(:with_tools).and_return(chat)
+      allow(chat).to receive(:with_thinking).and_return(chat)
+      allow(chat).to receive(:add_message).and_return(chat)
+      allow(chat).to receive(:ask).and_return(mock_response)
+      allow(chat).to receive(:messages).and_return([])
+      chat
     end
 
     before do
       RubyLLM::Agents.reset_configuration!
       allow(RubyLLM::Agents.configuration).to receive(:cache_store).and_return(cache_store)
       allow(RubyLLM::Agents.configuration).to receive(:async_logging).and_return(false)
+      allow(RubyLLM::Agents.configuration).to receive(:track_executions).and_return(true)
+      allow(RubyLLM::Agents.configuration).to receive(:track_cache_hits).and_return(true)
+      allow(RubyLLM).to receive(:chat).and_return(mock_chat)
       cache_store.clear
     end
 
     describe "when caching is enabled" do
       it "does not call the AI client on cache hit" do
         agent1 = cached_agent_class.new(query: "test query")
-        allow(agent1).to receive(:client).and_return(mock_client)
         agent1.call
 
         agent2 = cached_agent_class.new(query: "test query")
-        allow(agent2).to receive(:client).and_return(mock_client)
         agent2.call
 
-        expect(mock_client).to have_received(:ask).exactly(1).time
+        expect(mock_chat).to have_received(:ask).exactly(1).time
       end
 
       it "returns the cached Result on subsequent calls" do
         agent1 = cached_agent_class.new(query: "test query")
-        allow(agent1).to receive(:client).and_return(mock_client)
         first_result = agent1.call
 
         agent2 = cached_agent_class.new(query: "test query")
-        allow(agent2).to receive(:client).and_return(mock_client)
         second_result = agent2.call
 
         expect(second_result.content).to eq(first_result.content)
@@ -455,11 +463,9 @@ RSpec.describe RubyLLM::Agents::Base do
 
       it "returns a Result object from cache" do
         agent1 = cached_agent_class.new(query: "test query")
-        allow(agent1).to receive(:client).and_return(mock_client)
         agent1.call
 
         agent2 = cached_agent_class.new(query: "test query")
-        allow(agent2).to receive(:client).and_return(mock_client)
         result = agent2.call
 
         expect(result).to be_a(RubyLLM::Agents::Result)
@@ -469,42 +475,36 @@ RSpec.describe RubyLLM::Agents::Base do
     describe "when skip_cache: true is passed" do
       it "calls the AI client even if response is cached" do
         agent1 = cached_agent_class.new(query: "test query")
-        allow(agent1).to receive(:client).and_return(mock_client)
         agent1.call
 
         agent2 = cached_agent_class.new(query: "test query", skip_cache: true)
-        allow(agent2).to receive(:client).and_return(mock_client)
         agent2.call
 
-        expect(mock_client).to have_received(:ask).exactly(2).times
+        expect(mock_chat).to have_received(:ask).exactly(2).times
       end
     end
 
     describe "when parameters differ" do
       it "calls the AI client for different inputs (cache miss)" do
         agent1 = cached_agent_class.new(query: "first query")
-        allow(agent1).to receive(:client).and_return(mock_client)
         agent1.call
 
         agent2 = cached_agent_class.new(query: "second query")
-        allow(agent2).to receive(:client).and_return(mock_client)
         agent2.call
 
-        expect(mock_client).to have_received(:ask).exactly(2).times
+        expect(mock_chat).to have_received(:ask).exactly(2).times
       end
     end
 
     describe "when caching is disabled" do
       it "calls the AI client on every call" do
         agent1 = uncached_agent_class.new(query: "test query")
-        allow(agent1).to receive(:client).and_return(mock_client)
         agent1.call
 
         agent2 = uncached_agent_class.new(query: "test query")
-        allow(agent2).to receive(:client).and_return(mock_client)
         agent2.call
 
-        expect(mock_client).to have_received(:ask).exactly(2).times
+        expect(mock_chat).to have_received(:ask).exactly(2).times
       end
     end
 
@@ -512,12 +512,10 @@ RSpec.describe RubyLLM::Agents::Base do
       it "creates an execution record with cache_hit: true on cache hit" do
         # First call - populate cache
         agent1 = cached_agent_class.new(query: "test query")
-        allow(agent1).to receive(:client).and_return(mock_client)
         agent1.call
 
         # Second call - should be a cache hit
         agent2 = cached_agent_class.new(query: "test query")
-        allow(agent2).to receive(:client).and_return(mock_client)
 
         expect {
           agent2.call
@@ -527,12 +525,10 @@ RSpec.describe RubyLLM::Agents::Base do
       it "records 0 tokens and 0 cost for cache hits" do
         # First call - populate cache
         agent1 = cached_agent_class.new(query: "test query")
-        allow(agent1).to receive(:client).and_return(mock_client)
         agent1.call
 
         # Second call - cache hit
         agent2 = cached_agent_class.new(query: "test query")
-        allow(agent2).to receive(:client).and_return(mock_client)
         agent2.call
 
         cache_hit_execution = RubyLLM::Agents::Execution.where(cache_hit: true).last
@@ -545,12 +541,10 @@ RSpec.describe RubyLLM::Agents::Base do
       it "records the cache key in response_cache_key" do
         # First call - populate cache
         agent1 = cached_agent_class.new(query: "test query")
-        allow(agent1).to receive(:client).and_return(mock_client)
         agent1.call
 
         # Second call - cache hit
         agent2 = cached_agent_class.new(query: "test query")
-        allow(agent2).to receive(:client).and_return(mock_client)
         agent2.call
 
         cache_hit_execution = RubyLLM::Agents::Execution.where(cache_hit: true).last
@@ -560,7 +554,6 @@ RSpec.describe RubyLLM::Agents::Base do
 
       it "does not create cache_hit execution for first call (cache miss)" do
         agent = cached_agent_class.new(query: "unique query for this test")
-        allow(agent).to receive(:client).and_return(mock_client)
 
         expect {
           agent.call
@@ -641,69 +634,65 @@ RSpec.describe RubyLLM::Agents::Base do
         expect(agent.send(:resolved_messages)).to eq(option_messages)
       end
 
-      it "prioritizes override_messages (from with_messages) over options" do
+      it "prioritizes options messages over template method" do
         option_messages = [{ role: :user, content: "Option message" }]
-        override_messages = [{ role: :user, content: "Override message" }]
+        template_messages = [{ role: :user, content: "Template message" }]
 
-        agent = agent_class.new(query: "test", messages: option_messages)
-        agent.with_messages(override_messages)
+        custom_class = Class.new(agent_class) do
+          define_method(:messages) { template_messages }
+        end
 
-        expect(agent.send(:resolved_messages)).to eq(override_messages)
-      end
-    end
+        agent = custom_class.new(query: "test", messages: option_messages)
 
-    describe "#with_messages" do
-      it "returns self for chaining" do
-        agent = agent_class.new(query: "test")
-        result = agent.with_messages([{ role: :user, content: "Hello" }])
-        expect(result).to be(agent)
-      end
-
-      it "sets override messages" do
-        messages = [{ role: :user, content: "Hello" }]
-        agent = agent_class.new(query: "test")
-        agent.with_messages(messages)
-
-        expect(agent.send(:resolved_messages)).to eq(messages)
-      end
-
-      it "rebuilds the client with new messages" do
-        agent = agent_class.new(query: "test")
-        original_client = agent.client
-
-        agent.with_messages([{ role: :user, content: "Hello" }])
-
-        expect(agent.client).not_to be(original_client)
+        expect(agent.send(:resolved_messages)).to eq(option_messages)
       end
     end
 
     describe "#apply_messages" do
-      it "applies messages to the client" do
+      let(:mock_chat) do
+        chat = double("RubyLLM::Chat")
+        allow(chat).to receive(:with_model).and_return(chat)
+        allow(chat).to receive(:with_temperature).and_return(chat)
+        allow(chat).to receive(:with_instructions).and_return(chat)
+        allow(chat).to receive(:with_schema).and_return(chat)
+        allow(chat).to receive(:with_tools).and_return(chat)
+        allow(chat).to receive(:with_thinking).and_return(chat)
+        allow(chat).to receive(:add_message).and_return(chat)
+        allow(chat).to receive(:messages).and_return([])
+        chat
+      end
+
+      before do
+        allow(RubyLLM).to receive(:chat).and_return(mock_chat)
+      end
+
+      it "applies messages via add_message calls" do
         messages = [
           { role: :user, content: "First message" },
           { role: :assistant, content: "Second message" }
         ]
 
         agent = agent_class.new(query: "test", messages: messages)
+        agent.send(:build_client)
 
-        expect(agent.client.messages).to eq([
-          { role: :user, content: "First message" },
-          { role: :assistant, content: "Second message" }
-        ])
+        expect(mock_chat).to have_received(:add_message).with(role: :user, content: "First message")
+        expect(mock_chat).to have_received(:add_message).with(role: :assistant, content: "Second message")
       end
 
       it "uses symbol roles" do
         messages = [{ role: :user, content: "Hello" }]
         agent = agent_class.new(query: "test", messages: messages)
+        agent.send(:build_client)
 
-        expect(agent.client.messages.first[:role]).to eq(:user)
+        expect(mock_chat).to have_received(:add_message).with(role: :user, content: "Hello")
       end
 
       it "converts string roles to symbols" do
         messages = [{ role: "assistant", content: "Hello" }]
         agent = agent_class.new(query: "test", messages: messages)
+        agent.send(:build_client)
 
-        expect(agent.client.messages.first[:role]).to eq(:assistant)
+        expect(mock_chat).to have_received(:add_message).with(role: :assistant, content: "Hello")
       end
     end
 
@@ -715,35 +704,53 @@ RSpec.describe RubyLLM::Agents::Base do
           input_tokens: 100,
           output_tokens: 50,
           model_id: "gpt-4",
-          tool_calls: nil
+          tool_calls: nil,
+          usage: { input_tokens: 100, output_tokens: 50 },
+          finish_reason: "stop"
         )
+      end
+
+      let(:mock_chat) do
+        chat = double("RubyLLM::Chat")
+        allow(chat).to receive(:with_model).and_return(chat)
+        allow(chat).to receive(:with_temperature).and_return(chat)
+        allow(chat).to receive(:with_instructions).and_return(chat)
+        allow(chat).to receive(:with_schema).and_return(chat)
+        allow(chat).to receive(:with_tools).and_return(chat)
+        allow(chat).to receive(:with_thinking).and_return(chat)
+        allow(chat).to receive(:add_message).and_return(chat)
+        allow(chat).to receive(:ask).and_return(mock_response)
+        allow(chat).to receive(:messages).and_return([])
+        chat
       end
 
       before do
         RubyLLM::Agents.reset_configuration!
         allow(RubyLLM::Agents.configuration).to receive(:async_logging).and_return(false)
+        allow(RubyLLM).to receive(:chat).and_return(mock_chat)
       end
 
       it "passes messages to the client when called via class method" do
         messages = [{ role: :user, content: "Remember my name is Alice" }]
 
-        # We can verify by checking the client after construction
         agent = agent_class.new(query: "What is my name?", messages: messages)
+        agent.send(:build_client)
 
-        expect(agent.client.messages).to eq([
-          { role: :user, content: "Remember my name is Alice" }
-        ])
+        expect(mock_chat).to have_received(:add_message).with(role: :user, content: "Remember my name is Alice")
       end
 
-      it "works with chainable with_messages call" do
-        agent = agent_class.new(query: "Continue our conversation")
-        agent.with_messages([
-          { role: :user, content: "Tell me a joke" },
-          { role: :assistant, content: "Why did the chicken cross the road?" }
-        ])
+      it "works with messages passed to constructor" do
+        agent = agent_class.new(
+          query: "Continue our conversation",
+          messages: [
+            { role: :user, content: "Tell me a joke" },
+            { role: :assistant, content: "Why did the chicken cross the road?" }
+          ]
+        )
+        agent.send(:build_client)
 
-        expect(agent.client.messages.length).to eq(2)
-        expect(agent.client.messages.first[:content]).to eq("Tell me a joke")
+        expect(mock_chat).to have_received(:add_message).with(role: :user, content: "Tell me a joke")
+        expect(mock_chat).to have_received(:add_message).with(role: :assistant, content: "Why did the chicken cross the road?")
       end
 
       it "works with template method in subclass" do
@@ -757,9 +764,10 @@ RSpec.describe RubyLLM::Agents::Base do
         end
 
         agent = chat_agent_class.new(query: "What about 3+3?")
+        agent.send(:build_client)
 
-        expect(agent.client.messages.length).to eq(2)
-        expect(agent.client.messages.last[:content]).to eq("4")
+        expect(mock_chat).to have_received(:add_message).with(role: :user, content: "What is 2+2?")
+        expect(mock_chat).to have_received(:add_message).with(role: :assistant, content: "4")
       end
     end
 

@@ -159,16 +159,16 @@ RSpec.describe "DSL Inheritance" do
   end
 
   describe "caching inheritance" do
-    it "caching is not inherited by default" do
+    it "caching is inherited from parent by default" do
       parent = Class.new(RubyLLM::Agents::Base) do
         cache_for 1.hour
       end
 
       child = Class.new(parent)
 
-      # cache_enabled? is class-specific, not inherited
+      # cache_enabled? is inherited from parent class
       expect(parent.cache_enabled?).to be true
-      expect(child.cache_enabled?).to be false
+      expect(child.cache_enabled?).to be true
     end
 
     it "child can enable its own caching" do
