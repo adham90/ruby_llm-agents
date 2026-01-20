@@ -1,0 +1,31 @@
+# frozen_string_literal: true
+
+# Base class for all image generators in the application
+#
+# Inherits from RubyLLM::Agents::ImageGenerator and provides a common
+# foundation for custom image generation classes.
+#
+# @example Creating a custom generator
+#   class LogoGenerator < ApplicationImageGenerator
+#     model "gpt-image-1"
+#     size "1024x1024"
+#     quality "hd"
+#     style "vivid"
+#     content_policy :strict
+#
+#     template "Professional logo design for {prompt}, minimalist, vector style"
+#   end
+#
+class ApplicationImageGenerator < RubyLLM::Agents::ImageGenerator
+  # Include ActiveStorage support if available
+  if defined?(ActiveStorage)
+    include RubyLLM::Agents::ImageGenerator::ActiveStorageSupport
+  end
+
+  # Default configuration (can be overridden in subclasses)
+  # model "gpt-image-1"
+  # size "1024x1024"
+  # quality "standard"
+  # style "vivid"
+  # content_policy :standard
+end

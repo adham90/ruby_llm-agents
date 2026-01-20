@@ -377,7 +377,18 @@ module RubyLLM
                     :default_tts_provider,
                     :default_tts_model,
                     :default_tts_voice,
-                    :track_speech
+                    :track_speech,
+                    :default_image_model,
+                    :default_image_size,
+                    :default_image_quality,
+                    :default_image_style,
+                    :max_image_prompt_length,
+                    :track_image_generation,
+                    :image_model_aliases,
+                    :litellm_pricing_url,
+                    :litellm_pricing_cache_ttl,
+                    :default_image_cost,
+                    :image_model_pricing
 
       # Attributes with validation (readers only, custom setters below)
       attr_reader :default_temperature,
@@ -608,6 +619,25 @@ module RubyLLM
         @default_tts_model = "tts-1"
         @default_tts_voice = "nova"
         @track_speech = true
+
+        # Image Generation defaults
+        @default_image_model = "gpt-image-1"
+        @default_image_size = "1024x1024"
+        @default_image_quality = "standard"
+        @default_image_style = "vivid"
+        @max_image_prompt_length = 4000
+        @track_image_generation = true
+        @image_model_aliases = {
+          fast: "flux-schnell",
+          quality: "gpt-image-1",
+          cheap: "sdxl"
+        }
+
+        # Image Pricing defaults
+        @litellm_pricing_url = nil  # Use default from Pricing module
+        @litellm_pricing_cache_ttl = nil  # Use default (24 hours)
+        @default_image_cost = 0.04  # Fallback cost per image
+        @image_model_pricing = {}  # User-defined pricing overrides
       end
 
       # Returns the configured cache store, falling back to Rails.cache

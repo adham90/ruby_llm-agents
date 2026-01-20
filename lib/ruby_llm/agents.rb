@@ -23,10 +23,12 @@ require_relative "agents/embedding_result"
 require_relative "agents/moderation_result"
 require_relative "agents/transcription_result"
 require_relative "agents/speech_result"
+require_relative "agents/image_generation_result"
 require_relative "agents/embedder"
 require_relative "agents/moderator"
 require_relative "agents/transcriber"
 require_relative "agents/speaker"
+require_relative "agents/image_generator"
 require_relative "agents/llm_tenant"
 require_relative "agents/inflections" if defined?(Rails)
 require_relative "agents/engine" if defined?(Rails::Engine)

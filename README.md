@@ -37,6 +37,7 @@ Build intelligent AI agents in Ruby with a clean DSL, automatic execution tracki
 | **Attachments** | Images, PDFs, and multimodal support | [Attachments](https://github.com/adham90/ruby_llm-agents/wiki/Attachments) |
 | **PII Redaction** | Automatic sensitive data protection | [Security](https://github.com/adham90/ruby_llm-agents/wiki/PII-Redaction) |
 | **Content Moderation** | Input/output safety checks with OpenAI moderation API | [Moderation](https://github.com/adham90/ruby_llm-agents/wiki/Moderation) |
+| **Embeddings** | Vector embeddings with batching, caching, and preprocessing | [Embeddings](https://github.com/adham90/ruby_llm-agents/wiki/Embeddings) |
 | **Alerts** | Slack, webhook, and custom notifications | [Alerts](https://github.com/adham90/ruby_llm-agents/wiki/Alerts) |
 
 ## Quick Start
@@ -118,6 +119,56 @@ result = ChatAgent.call(
 
 See [Conversation History](https://github.com/adham90/ruby_llm-agents/wiki/Conversation-History) for more patterns.
 
+### Embeddings
+
+Generate vector embeddings for semantic search, RAG, and similarity matching:
+
+```bash
+rails generate ruby_llm_agents:embedder Document
+```
+
+```ruby
+# app/embedders/document_embedder.rb
+class DocumentEmbedder < ApplicationEmbedder
+  model "text-embedding-3-small"
+  dimensions 512
+  batch_size 100
+  cache_for 1.week
+
+  # Optional: preprocess text before embedding
+  def preprocess(text)
+    text.strip.downcase.gsub(/\s+/, ' ')
+  end
+end
+```
+
+```ruby
+# Single text embedding
+result = DocumentEmbedder.call(text: "Hello world")
+result.vector       # => [0.123, -0.456, ...]
+result.dimensions   # => 512
+result.total_tokens # => 2
+
+# Batch embedding
+result = DocumentEmbedder.call(texts: ["Hello", "World", "Ruby"])
+result.vectors      # => [[...], [...], [...]]
+result.count        # => 3
+
+# With progress callback for large batches
+DocumentEmbedder.call(texts: large_array) do |batch_result, index|
+  puts "Processed batch #{index + 1}"
+end
+```
+
+Features:
+- **Configurable dimensions** - Reduce dimensions for efficient storage
+- **Batch processing** - Embed multiple texts in optimized API calls
+- **Caching** - Cache embeddings to reduce API costs
+- **Preprocessing** - Clean and normalize text before embedding
+- **Execution tracking** - All embeddings logged with tokens and costs
+
+See [Embeddings](https://github.com/adham90/ruby_llm-agents/wiki/Embeddings) for more patterns.
+
 ## Documentation
 
 > **Note:** Wiki content lives in the [`wiki/`](wiki/) folder. To sync changes to the [GitHub Wiki](https://github.com/adham90/ruby_llm-agents/wiki), run `./scripts/sync-wiki.sh`.
@@ -133,6 +184,7 @@ See [Conversation History](https://github.com/adham90/ruby_llm-agents/wiki/Conve
 | [Testing Agents](https://github.com/adham90/ruby_llm-agents/wiki/Testing-Agents) | RSpec patterns, mocking, dry_run mode |
 | [Error Handling](https://github.com/adham90/ruby_llm-agents/wiki/Error-Handling) | Error types, recovery patterns |
 | [Moderation](https://github.com/adham90/ruby_llm-agents/wiki/Moderation) | Content moderation for input/output safety |
+| [Embeddings](https://github.com/adham90/ruby_llm-agents/wiki/Embeddings) | Vector embeddings, batching, caching, preprocessing |
 | [Dashboard](https://github.com/adham90/ruby_llm-agents/wiki/Dashboard) | Setup, authentication, analytics |
 | [Production](https://github.com/adham90/ruby_llm-agents/wiki/Production-Deployment) | Deployment best practices, background jobs |
 | [API Reference](https://github.com/adham90/ruby_llm-agents/wiki/API-Reference) | Complete class documentation |

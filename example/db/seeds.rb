@@ -552,6 +552,334 @@ end
 puts "  Created 5 high-token executions"
 
 # =============================================================================
+# EMBEDDER EXECUTIONS
+# =============================================================================
+puts "\n" + "=" * 60
+puts "Creating Embedder Executions..."
+puts "=" * 60
+
+# Helper for embedder executions
+def create_embedder_execution(attrs = {})
+  defaults = {
+    agent_version: "1.0",
+    model_id: "text-embedding-3-small",
+    model_provider: "openai",
+    status: "success",
+    started_at: Time.current - rand(1..60).minutes,
+    input_tokens: rand(50..500),
+    output_tokens: 0, # Embeddings don't have output tokens
+    streaming: false,
+    temperature: nil # Embeddings don't use temperature
+  }
+
+  merged = defaults.merge(attrs)
+  merged[:completed_at] ||= merged[:started_at] + rand(100..500) / 1000.0 if merged[:status] != "running"
+  merged[:duration_ms] ||= ((merged[:completed_at] - merged[:started_at]) * 1000).to_i if merged[:completed_at]
+  merged[:total_tokens] = merged[:input_tokens] || 0
+
+  # Embedding costs are much lower than chat models
+  input_price = case merged[:model_id]
+                when /text-embedding-3-small/ then 0.02
+                when /text-embedding-3-large/ then 0.13
+                when /text-embedding-ada/ then 0.10
+                else 0.05
+                end
+
+  merged[:input_cost] = ((merged[:input_tokens] || 0) / 1_000_000.0 * input_price).round(8)
+  merged[:output_cost] = 0
+  merged[:total_cost] = merged[:input_cost]
+
+  RubyLLM::Agents::Execution.create!(merged)
+end
+
+# DocumentEmbedder - Single document embedding
+10.times do |i|
+  create_embedder_execution(
+    tenant_id: acme.llm_tenant_id,
+    agent_type: "DocumentEmbedder",
+    model_id: "text-embedding-3-small",
+    input_tokens: rand(100..800),
+    parameters: { text: "Document content #{i + 1}..." },
+    response: { vector_dimensions: 512, vector_preview: "[0.123, -0.456, ...]" },
+    metadata: {
+      dimensions: 512,
+      text_length: rand(500..5000),
+      preprocessing: false
+    },
+    created_at: Time.current - (i * 15).minutes
+  )
+end
+puts "  Created 10 DocumentEmbedder executions"
+
+# SearchEmbedder - Search query embeddings (smaller texts)
+15.times do |i|
+  create_embedder_execution(
+    tenant_id: acme.llm_tenant_id,
+    agent_type: "SearchEmbedder",
+    model_id: "text-embedding-3-large",
+    input_tokens: rand(10..100),
+    parameters: { text: "search query #{i + 1}" },
+    response: { vector_dimensions: 3072, vector_preview: "[0.234, -0.567, ...]" },
+    metadata: {
+      dimensions: 3072,
+      text_length: rand(10..200),
+      cache_hit: [true, false, false].sample
+    },
+    created_at: Time.current - (i * 8).minutes
+  )
+end
+puts "  Created 15 SearchEmbedder executions"
+
+# BatchEmbedder - Batch embedding operations
+5.times do |i|
+  batch_size = rand(20..100)
+  create_embedder_execution(
+    tenant_id: enterprise.llm_tenant_id,
+    agent_type: "BatchEmbedder",
+    model_id: "text-embedding-3-small",
+    input_tokens: rand(2000..10000),
+    parameters: { texts_count: batch_size },
+    response: { vectors_count: batch_size, vector_dimensions: 1024 },
+    metadata: {
+      dimensions: 1024,
+      batch_size: batch_size,
+      texts_processed: batch_size,
+      batches_used: (batch_size / 100.0).ceil
+    },
+    created_at: Time.current - (i * 30).minutes
+  )
+end
+puts "  Created 5 BatchEmbedder executions"
+
+# CleanTextEmbedder - With preprocessing
+8.times do |i|
+  create_embedder_execution(
+    tenant_id: startup.llm_tenant_id,
+    agent_type: "CleanTextEmbedder",
+    model_id: "text-embedding-3-small",
+    input_tokens: rand(80..400),
+    parameters: { text: "Raw text with   extra   spaces #{i + 1}" },
+    response: { vector_dimensions: 512, vector_preview: "[0.345, -0.678, ...]" },
+    metadata: {
+      dimensions: 512,
+      original_length: rand(600..3000),
+      cleaned_length: rand(400..2000),
+      preprocessing_applied: ["strip", "lowercase", "normalize_whitespace"]
+    },
+    created_at: Time.current - (i * 12).minutes
+  )
+end
+puts "  Created 8 CleanTextEmbedder executions"
+
+# CodeEmbedder - Code embedding
+6.times do |i|
+  languages = %w[ruby python javascript typescript go rust]
+  create_embedder_execution(
+    tenant_id: enterprise.llm_tenant_id,
+    agent_type: "CodeEmbedder",
+    model_id: "text-embedding-3-large",
+    input_tokens: rand(200..2000),
+    parameters: { code: "def example_#{i}; end", language: languages.sample },
+    response: { vector_dimensions: 1536, vector_preview: "[0.456, -0.789, ...]" },
+    metadata: {
+      dimensions: 1536,
+      code_language: languages.sample,
+      lines_of_code: rand(10..500),
+      preprocessing_applied: ["remove_comments", "normalize_indentation"]
+    },
+    created_at: Time.current - (i * 25).minutes
+  )
+end
+puts "  Created 6 CodeEmbedder executions"
+
+# Embedder with cache hit
+3.times do |i|
+  create_embedder_execution(
+    tenant_id: acme.llm_tenant_id,
+    agent_type: "DocumentEmbedder",
+    model_id: "text-embedding-3-small",
+    input_tokens: 0, # No tokens used for cache hit
+    cache_hit: true,
+    response_cache_key: "embedder:doc:#{SecureRandom.hex(8)}",
+    cached_at: Time.current - rand(1..24).hours,
+    duration_ms: rand(1..5),
+    parameters: { text: "Cached document content #{i + 1}" },
+    response: { vector_dimensions: 512, from_cache: true },
+    metadata: { cache_hit: true, original_cached_at: Time.current - rand(1..7).days },
+    created_at: Time.current - (i * 45).minutes
+  )
+end
+puts "  Created 3 cached embedder executions"
+
+# Embedder error (invalid input)
+create_embedder_execution(
+  tenant_id: demo.llm_tenant_id,
+  agent_type: "DocumentEmbedder",
+  status: "error",
+  error_class: "ArgumentError",
+  error_message: "Text cannot be empty",
+  parameters: { text: "" },
+  response: nil,
+  created_at: Time.current - 2.hours
+)
+puts "  Created 1 embedder error execution"
+
+# =============================================================================
+# MODERATOR EXECUTIONS
+# =============================================================================
+puts "\n" + "=" * 60
+puts "Creating Standalone Moderator Executions..."
+puts "=" * 60
+
+# Helper for moderator executions
+def create_moderator_execution(attrs = {})
+  defaults = {
+    agent_version: "1.0",
+    model_id: "omni-moderation-latest",
+    model_provider: "openai",
+    status: "success",
+    started_at: Time.current - rand(1..60).minutes,
+    input_tokens: rand(10..200),
+    output_tokens: 0, # Moderation doesn't have output tokens
+    streaming: false,
+    temperature: nil # Moderation doesn't use temperature
+  }
+
+  merged = defaults.merge(attrs)
+  merged[:completed_at] ||= merged[:started_at] + rand(50..200) / 1000.0 if merged[:status] != "running"
+  merged[:duration_ms] ||= ((merged[:completed_at] - merged[:started_at]) * 1000).to_i if merged[:completed_at]
+  merged[:total_tokens] = merged[:input_tokens] || 0
+
+  # Moderation API has very low cost
+  merged[:input_cost] = ((merged[:input_tokens] || 0) / 1_000_000.0 * 0.01).round(8)
+  merged[:output_cost] = 0
+  merged[:total_cost] = merged[:input_cost]
+
+  RubyLLM::Agents::Execution.create!(merged)
+end
+
+# ContentModerator - General content moderation (mostly passing)
+12.times do |i|
+  flagged = i == 5 # One flagged example
+  max_score = flagged ? rand(0.72..0.95) : rand(0.01..0.35)
+  create_moderator_execution(
+    tenant_id: acme.llm_tenant_id,
+    agent_type: "ContentModerator",
+    parameters: { text: "User generated content #{i + 1}" },
+    response: { flagged: flagged, max_score: max_score.round(3) },
+    metadata: {
+      threshold: 0.7,
+      categories_checked: [:hate, :violence, :harassment, :sexual],
+      flagged: flagged,
+      category_scores: {
+        hate: rand(0.001..0.1).round(4),
+        violence: rand(0.001..0.15).round(4),
+        harassment: flagged ? max_score.round(4) : rand(0.001..0.2).round(4),
+        sexual: rand(0.001..0.05).round(4)
+      },
+      max_score: max_score.round(4),
+      flagged_categories: flagged ? ["harassment"] : []
+    },
+    created_at: Time.current - (i * 10).minutes
+  )
+end
+puts "  Created 12 ContentModerator executions (1 flagged)"
+
+# ChildSafeModerator - Stricter threshold for child safety
+8.times do |i|
+  flagged = [false, false, false, true, false, false, false, false][i]
+  max_score = flagged ? rand(0.35..0.65) : rand(0.001..0.25)
+  create_moderator_execution(
+    tenant_id: enterprise.llm_tenant_id,
+    agent_type: "ChildSafeModerator",
+    parameters: { text: "Content for children's platform #{i + 1}" },
+    response: { flagged: flagged, max_score: max_score.round(3) },
+    metadata: {
+      threshold: 0.3, # Lower threshold for child safety
+      categories_checked: [:sexual, :violence, :self_harm, :hate, :harassment],
+      flagged: flagged,
+      category_scores: {
+        sexual: rand(0.001..0.05).round(4),
+        violence: flagged ? max_score.round(4) : rand(0.001..0.1).round(4),
+        self_harm: rand(0.001..0.02).round(4),
+        hate: rand(0.001..0.08).round(4),
+        harassment: rand(0.001..0.1).round(4)
+      },
+      max_score: max_score.round(4),
+      flagged_categories: flagged ? ["violence"] : []
+    },
+    created_at: Time.current - (i * 18).minutes
+  )
+end
+puts "  Created 8 ChildSafeModerator executions (1 flagged)"
+
+# ForumModerator - Forum-specific moderation (hate/harassment only)
+10.times do |i|
+  flagged = i % 4 == 0 # Every 4th is flagged
+  max_score = flagged ? rand(0.82..0.98) : rand(0.01..0.5)
+  flagged_cat = ["hate", "harassment"].sample
+  create_moderator_execution(
+    tenant_id: startup.llm_tenant_id,
+    agent_type: "ForumModerator",
+    parameters: { text: "Forum post content #{i + 1}" },
+    response: { flagged: flagged, max_score: max_score.round(3) },
+    metadata: {
+      threshold: 0.8, # Higher threshold for forums
+      categories_checked: [:hate, :harassment],
+      flagged: flagged,
+      category_scores: {
+        hate: flagged && flagged_cat == "hate" ? max_score.round(4) : rand(0.01..0.3).round(4),
+        harassment: flagged && flagged_cat == "harassment" ? max_score.round(4) : rand(0.01..0.35).round(4)
+      },
+      max_score: max_score.round(4),
+      flagged_categories: flagged ? [flagged_cat] : [],
+      action_taken: flagged ? "blocked" : "allowed"
+    },
+    created_at: Time.current - (i * 12).minutes
+  )
+end
+puts "  Created 10 ForumModerator executions (3 flagged)"
+
+# Moderation with multiple flagged categories
+create_moderator_execution(
+  tenant_id: acme.llm_tenant_id,
+  agent_type: "ContentModerator",
+  parameters: { text: "[Severely problematic content simulation]" },
+  response: { flagged: true, max_score: 0.95 },
+  metadata: {
+    threshold: 0.7,
+    categories_checked: [:hate, :violence, :harassment, :sexual],
+    flagged: true,
+    category_scores: {
+      hate: 0.92,
+      violence: 0.88,
+      harassment: 0.95,
+      sexual: 0.15
+    },
+    max_score: 0.95,
+    flagged_categories: ["hate", "violence", "harassment"],
+    severity: "high",
+    action_taken: "blocked_and_reported"
+  },
+  created_at: Time.current - 3.hours
+)
+puts "  Created 1 multi-category flagged moderation"
+
+# Moderation error
+create_moderator_execution(
+  tenant_id: demo.llm_tenant_id,
+  agent_type: "ContentModerator",
+  status: "error",
+  error_class: "RubyLLM::APIError",
+  error_message: "Moderation API temporarily unavailable",
+  parameters: { text: "Content to moderate" },
+  response: nil,
+  metadata: { retry_attempted: true, retries: 3 },
+  created_at: Time.current - 4.hours
+)
+puts "  Created 1 moderator error execution"
+
+# =============================================================================
 # EMBEDDER DEMONSTRATIONS
 # =============================================================================
 puts "\n" + "=" * 60
@@ -662,6 +990,20 @@ puts "\nModeration Agent Executions:"
 moderation_agents.each do |agent|
   count = RubyLLM::Agents::Execution.where(agent_type: agent).count
   puts "  #{agent}: #{count}" if count > 0
+end
+
+puts "\nEmbedder Executions:"
+%w[DocumentEmbedder SearchEmbedder BatchEmbedder CleanTextEmbedder CodeEmbedder].each do |embedder|
+  count = RubyLLM::Agents::Execution.where(agent_type: embedder).count
+  klass = Object.const_get(embedder)
+  puts "  #{embedder}: #{count} executions (model=#{klass.model}, dims=#{klass.dimensions || 'default'})" if count > 0
+end
+
+puts "\nStandalone Moderator Executions:"
+%w[ContentModerator ChildSafeModerator ForumModerator].each do |moderator|
+  count = RubyLLM::Agents::Execution.where(agent_type: moderator).count
+  klass = Object.const_get(moderator)
+  puts "  #{moderator}: #{count} executions (threshold=#{klass.threshold})" if count > 0
 end
 
 puts "\nEmbedders Available:"
