@@ -1,0 +1,20 @@
+# frozen_string_literal: true
+
+# Base class for all image variators in the application
+#
+# Inherits from RubyLLM::Agents::ImageVariator and provides a common
+# foundation for custom image variation classes.
+#
+# @example Creating a custom variator
+#   class LogoVariator < ApplicationImageVariator
+#     model "gpt-image-1"
+#     size "1024x1024"
+#     variation_strength 0.3
+#   end
+#
+class ApplicationImageVariator < RubyLLM::Agents::ImageVariator
+  # Default configuration (can be overridden in subclasses)
+  # model "gpt-image-1"
+  # size "1024x1024"
+  # variation_strength 0.5
+end

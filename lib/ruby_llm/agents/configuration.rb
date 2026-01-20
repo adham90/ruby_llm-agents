@@ -396,7 +396,13 @@ module RubyLLM
                     :litellm_pricing_url,
                     :litellm_pricing_cache_ttl,
                     :default_image_cost,
-                    :image_model_pricing
+                    :image_model_pricing,
+                    :default_variator_model,
+                    :default_editor_model,
+                    :default_transformer_model,
+                    :default_upscaler_model,
+                    :default_variation_strength,
+                    :default_transform_strength
 
       # Attributes with validation (readers only, custom setters below)
       attr_reader :default_temperature,
@@ -647,6 +653,14 @@ module RubyLLM
         @litellm_pricing_cache_ttl = nil  # Use default (24 hours)
         @default_image_cost = 0.04  # Fallback cost per image
         @image_model_pricing = {}  # User-defined pricing overrides
+
+        # Phase 2: Image Variation, Editing, Transformation, Upscaling defaults
+        @default_variator_model = nil  # Falls back to default_image_model
+        @default_editor_model = nil  # Falls back to default_image_model
+        @default_transformer_model = "sdxl"  # SDXL is good for transformations
+        @default_upscaler_model = "real-esrgan"  # Real-ESRGAN for upscaling
+        @default_variation_strength = 0.5  # How different variations should be
+        @default_transform_strength = 0.75  # How much to transform
       end
 
       # Returns the configured cache store, falling back to Rails.cache

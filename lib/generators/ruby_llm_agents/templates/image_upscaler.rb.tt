@@ -1,0 +1,21 @@
+# frozen_string_literal: true
+
+class <%= class_name %>Upscaler < ApplicationImageUpscaler
+  # Model configuration
+  model "<%= options[:model] %>"
+  scale <%= options[:scale] %>
+<% if options[:face_enhance] -%>
+  face_enhance true
+<% end -%>
+<% if options[:cache] -%>
+
+  # Caching
+  cache_for <%= options[:cache] %>
+<% end -%>
+
+  # Optional: Denoise strength (0.0-1.0)
+  # denoise_strength 0.5
+
+  # Optional: Description
+  # description "Upscales <%= class_name.downcase %> images"
+end

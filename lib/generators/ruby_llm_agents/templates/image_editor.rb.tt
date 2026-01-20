@@ -1,0 +1,18 @@
+# frozen_string_literal: true
+
+class <%= class_name %>Editor < ApplicationImageEditor
+  # Model configuration
+  model "<%= options[:model] %>"
+  size "<%= options[:size] %>"
+<% if options[:content_policy] != "standard" -%>
+  content_policy :<%= options[:content_policy] %>
+<% end -%>
+<% if options[:cache] -%>
+
+  # Caching
+  cache_for <%= options[:cache] %>
+<% end -%>
+
+  # Optional: Description
+  # description "Edits <%= class_name.downcase %> images"
+end
