@@ -47,6 +47,12 @@ app/
     portrait_background_remover.rb      # Portrait extraction
     simple_background_remover.rb        # Fast simple removal
 
+  image_pipelines/  # Example image pipeline implementations
+    application_image_pipeline.rb   # Base pipeline with DSL reference
+    product_image_pipeline.rb       # E-commerce product workflow
+    content_moderation_pipeline.rb  # Content safety analysis
+    marketing_asset_pipeline.rb     # Marketing image generation
+
 config/
   initializers/
     ruby_llm_agents.rb      # Gem configuration
@@ -66,6 +72,9 @@ bin/rails generate ruby_llm_agents:image_analyzer ProductAnalyzer --model=gpt-4o
 
 # Generate a background remover
 bin/rails generate ruby_llm_agents:background_remover ProductRemover --model=segment-anything
+
+# Generate an image pipeline
+bin/rails generate ruby_llm_agents:image_pipeline ProductWorkflow --steps generate,upscale,analyze
 
 # Run the upgrade generator (adds new columns to existing installations)
 bin/rails generate ruby_llm_agents:upgrade
@@ -159,6 +168,45 @@ product.transparent_image.attach(
   filename: "transparent.png",
   content_type: "image/png"
 )
+```
+
+### Image Pipelines (Multi-Step Workflows)
+
+```ruby
+# Complete product image workflow
+result = ProductImagePipeline.call(
+  prompt: "Professional photo of wireless headphones",
+  high_quality: true,
+  transparent: true
+)
+result.success?         # true if all steps succeeded
+result.final_image      # Final processed image URL
+result.total_cost       # Combined cost of all steps
+result.step_count       # Number of steps executed
+
+# Access individual step results
+result.step(:generate)  # ImageGenerationResult
+result.step(:upscale)   # ImageUpscaleResult (if high_quality: true)
+result.step(:analyze)   # ImageAnalysisResult
+result.analysis         # Shortcut to analyzer result
+
+# Content moderation pipeline
+result = ContentModerationPipeline.call(image: uploaded_file.path)
+if result.analysis.safe?
+  save_to_storage(result.final_image)
+else
+  queue_for_moderation(result)
+end
+
+# Marketing asset pipeline with caching
+result = MarketingAssetPipeline.call(
+  prompt: "Modern tech startup team collaboration",
+  tenant: current_organization  # Track costs per organization
+)
+result.save("marketing_hero.png")
+
+# Save all intermediate images
+result.save_all("./output", prefix: "product")
 ```
 
 ## Relationship to Parent Gem

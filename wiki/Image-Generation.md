@@ -6,6 +6,7 @@ This guide covers all image-related capabilities:
 - **Image Generation** - Create images from text prompts
 - **Image Analysis** - Extract captions, tags, objects, and colors from images
 - **Background Removal** - Extract subjects from images
+- **Image Pipelines** - Chain multiple operations into automated workflows
 - **Image Variations** - Create variations of existing images
 - **Image Editing** - Modify images with text instructions
 - **Image Transformation** - Apply style transfers and transformations
@@ -1020,6 +1021,965 @@ if result.success?
   # Use with image editing software or composite in Ruby
   composite_with_background(result.to_blob, "new_background.jpg")
 end
+```
+
+---
+
+# Image Variations
+
+Generate variations of existing images while maintaining composition and style.
+
+## Overview
+
+The `ImageVariator` base class provides a DSL for creating image variators with:
+- Variation generation from source images
+- Controllable variation strength
+- Multiple variation generation in a single call
+- Built-in execution tracking and cost monitoring
+- Multi-tenancy support
+- Caching for repeated operations
+
+## Quick Start
+
+### Generate an ImageVariator
+
+```bash
+rails generate ruby_llm_agents:image_variator Logo
+```
+
+This creates `app/image_variators/logo_variator.rb`:
+
+```ruby
+class LogoVariator < ApplicationImageVariator
+  model "gpt-image-1"
+  size "1024x1024"
+  variation_strength 0.5
+end
+```
+
+### Basic Usage
+
+```ruby
+# Generate variations
+result = LogoVariator.call(image: "logo.png", count: 4)
+result.urls           # ["https://...", "https://...", ...]
+result.count          # 4
+result.success?       # true
+
+# Save all variations
+result.save_all("./logo_variations")
+```
+
+## Configuration DSL
+
+### Model and Size
+
+```ruby
+class ProductVariator < ApplicationImageVariator
+  model "gpt-image-1"
+  size "1024x1024"
+end
+```
+
+### Variation Strength
+
+Control how different variations should be from the original:
+
+```ruby
+class SubtleVariator < ApplicationImageVariator
+  model "gpt-image-1"
+  variation_strength 0.2  # Subtle changes
+end
+
+class BoldVariator < ApplicationImageVariator
+  model "gpt-image-1"
+  variation_strength 0.8  # More dramatic changes
+end
+```
+
+### Caching
+
+```ruby
+class CachedVariator < ApplicationImageVariator
+  model "gpt-image-1"
+  cache_for 1.day
+end
+```
+
+## ImageVariationResult
+
+```ruby
+result = MyVariator.call(image: "source.png", count: 4)
+
+# Images
+result.images          # All variation image objects
+result.urls            # All variation URLs
+result.count           # Number of variations
+
+# Status
+result.success?        # true if generation succeeded
+result.single?         # true if single variation
+result.batch?          # true if multiple variations
+
+# File operations
+result.save("variation.png")    # Save first variation
+result.save_all("./variations") # Save all variations
+
+# Metadata
+result.model_id        # Model used
+result.total_cost      # Cost in USD
+result.duration_ms     # Processing time
+```
+
+---
+
+# Image Editing
+
+Edit specific regions of images using masks (inpainting/outpainting).
+
+## Overview
+
+The `ImageEditor` base class provides a DSL for creating image editors with:
+- Mask-based region editing (inpainting)
+- Prompt-guided content generation
+- Multiple edit generation
+- Built-in execution tracking and cost monitoring
+- Content policy enforcement
+- Multi-tenancy support
+
+## Quick Start
+
+### Generate an ImageEditor
+
+```bash
+rails generate ruby_llm_agents:image_editor Product
+```
+
+This creates `app/image_editors/product_editor.rb`:
+
+```ruby
+class ProductEditor < ApplicationImageEditor
+  model "gpt-image-1"
+  size "1024x1024"
+end
+```
+
+### Basic Usage
+
+```ruby
+# Edit an image region
+result = ProductEditor.call(
+  image: "product.png",
+  mask: "mask.png",       # White areas will be edited
+  prompt: "Replace background with beach scene"
+)
+result.url            # Edited image URL
+result.success?       # true
+
+# Generate multiple edit options
+result = ProductEditor.call(
+  image: "product.png",
+  mask: "mask.png",
+  prompt: "Add sunset sky",
+  count: 3
+)
+result.urls           # ["https://...", ...]
+```
+
+## Configuration DSL
+
+### Model and Size
+
+```ruby
+class BackgroundEditor < ApplicationImageEditor
+  model "gpt-image-1"
+  size "1024x1024"
+end
+```
+
+### Content Policy
+
+```ruby
+class SafeEditor < ApplicationImageEditor
+  model "gpt-image-1"
+  content_policy :strict  # Validate edit prompts
+end
+```
+
+### Caching
+
+```ruby
+class CachedEditor < ApplicationImageEditor
+  model "gpt-image-1"
+  cache_for 1.hour
+end
+```
+
+## Mask Format
+
+Masks should be:
+- Same dimensions as the source image
+- PNG format with alpha channel
+- White (255) areas indicate regions to edit
+- Black (0) areas indicate regions to preserve
+
+## ImageEditResult
+
+```ruby
+result = MyEditor.call(image: "photo.png", mask: "mask.png", prompt: "...")
+
+# Images
+result.image           # Edited image object
+result.images          # All edited images (if count > 1)
+result.url             # First edited image URL
+result.urls            # All edited image URLs
+
+# Status
+result.success?        # true if edit succeeded
+result.error?          # true if failed
+
+# File operations
+result.save("edited.png")
+result.save_all("./edits")
+
+# Metadata
+result.model_id        # Model used
+result.total_cost      # Cost in USD
+result.duration_ms     # Processing time
+```
+
+---
+
+# Image Transformation
+
+Apply style transfers and image-to-image transformations.
+
+## Overview
+
+The `ImageTransformer` base class provides a DSL for creating transformers with:
+- Style transfer from images
+- Prompt-guided transformations
+- Controllable transformation strength
+- Composition preservation
+- Built-in execution tracking and cost monitoring
+- Multi-tenancy support
+
+## Quick Start
+
+### Generate an ImageTransformer
+
+```bash
+rails generate ruby_llm_agents:image_transformer Anime
+```
+
+This creates `app/image_transformers/anime_transformer.rb`:
+
+```ruby
+class AnimeTransformer < ApplicationImageTransformer
+  model "sdxl"
+  strength 0.75
+end
+```
+
+### Basic Usage
+
+```ruby
+# Transform an image
+result = AnimeTransformer.call(
+  image: "photo.jpg",
+  prompt: "anime style portrait"
+)
+result.url            # Transformed image URL
+result.success?       # true
+
+# Override strength at runtime
+result = AnimeTransformer.call(
+  image: "photo.jpg",
+  prompt: "anime style portrait",
+  strength: 0.9       # More dramatic transformation
+)
+```
+
+## Configuration DSL
+
+### Model and Size
+
+```ruby
+class WatercolorTransformer < ApplicationImageTransformer
+  model "sdxl"
+  size "1024x1024"
+end
+```
+
+### Transformation Strength
+
+Control how much the image changes:
+
+```ruby
+class SubtleTransformer < ApplicationImageTransformer
+  model "sdxl"
+  strength 0.3        # Subtle style transfer
+  preserve_composition true
+end
+
+class DramaticTransformer < ApplicationImageTransformer
+  model "sdxl"
+  strength 0.9        # Dramatic transformation
+end
+```
+
+### Prompt Templates
+
+```ruby
+class OilPaintingTransformer < ApplicationImageTransformer
+  model "sdxl"
+  strength 0.8
+  template "oil painting, classical style, museum quality, {prompt}"
+end
+```
+
+### Advanced Options
+
+```ruby
+class PreciseTransformer < ApplicationImageTransformer
+  model "sdxl"
+  strength 0.75
+  negative_prompt "blurry, low quality, distorted"
+  guidance_scale 7.5  # CFG scale (1.0-20.0)
+  steps 50            # Inference steps
+end
+```
+
+### Caching
+
+```ruby
+class CachedTransformer < ApplicationImageTransformer
+  model "sdxl"
+  cache_for 1.day
+end
+```
+
+## ImageTransformResult
+
+```ruby
+result = MyTransformer.call(image: "photo.jpg", prompt: "watercolor")
+
+# Images
+result.image           # Transformed image object
+result.images          # All transformed images (if count > 1)
+result.url             # First transformed image URL
+result.urls            # All transformed image URLs
+
+# Status
+result.success?        # true if transformation succeeded
+result.error?          # true if failed
+
+# File operations
+result.save("transformed.png")
+result.save_all("./transforms")
+
+# Metadata
+result.model_id        # Model used
+result.strength        # Transformation strength used
+result.total_cost      # Cost in USD
+result.duration_ms     # Processing time
+```
+
+## Examples
+
+### Photo to Painting
+
+```ruby
+class ArtTransformer < ApplicationImageTransformer
+  model "sdxl"
+  strength 0.85
+  template "masterpiece painting, {prompt}, detailed brushwork"
+  negative_prompt "photo, realistic, modern"
+end
+
+result = ArtTransformer.call(
+  image: "landscape.jpg",
+  prompt: "impressionist landscape at sunset"
+)
+```
+
+---
+
+# Image Upscaling
+
+Enhance image resolution using AI upscaling models.
+
+## Overview
+
+The `ImageUpscaler` base class provides a DSL for creating upscalers with:
+- Resolution enhancement (2x, 4x, 8x)
+- Optional face enhancement
+- Noise reduction
+- Built-in execution tracking and cost monitoring
+- Multi-tenancy support
+- Caching for repeated operations
+
+## Quick Start
+
+### Generate an ImageUpscaler
+
+```bash
+rails generate ruby_llm_agents:image_upscaler Photo
+```
+
+This creates `app/image_upscalers/photo_upscaler.rb`:
+
+```ruby
+class PhotoUpscaler < ApplicationImageUpscaler
+  model "real-esrgan"
+  scale 4
+end
+```
+
+### Basic Usage
+
+```ruby
+# Upscale an image
+result = PhotoUpscaler.call(image: "low_res.jpg")
+result.url            # High resolution image URL
+result.output_size    # "4096x4096" (if input was 1024x1024)
+result.success?       # true
+
+# Save the result
+result.save("high_res.png")
+```
+
+## Configuration DSL
+
+### Model Selection
+
+```ruby
+class PhotoUpscaler < ApplicationImageUpscaler
+  model "real-esrgan"     # General purpose, good quality
+  # or
+  model "swinir"          # Better for natural images
+end
+```
+
+### Scale Factor
+
+```ruby
+class SmallUpscaler < ApplicationImageUpscaler
+  model "real-esrgan"
+  scale 2                 # 2x upscale
+end
+
+class LargeUpscaler < ApplicationImageUpscaler
+  model "real-esrgan"
+  scale 8                 # 8x upscale (maximum)
+end
+```
+
+### Face Enhancement
+
+```ruby
+class PortraitUpscaler < ApplicationImageUpscaler
+  model "real-esrgan"
+  scale 4
+  face_enhance true       # Improve facial details
+end
+```
+
+### Noise Reduction
+
+```ruby
+class DenoisingUpscaler < ApplicationImageUpscaler
+  model "real-esrgan"
+  scale 4
+  denoise_strength 0.5    # Reduce noise (0.0-1.0)
+end
+```
+
+### Caching
+
+```ruby
+class CachedUpscaler < ApplicationImageUpscaler
+  model "real-esrgan"
+  cache_for 7.days
+end
+```
+
+## ImageUpscaleResult
+
+```ruby
+result = MyUpscaler.call(image: "photo.jpg")
+
+# Image
+result.image           # Upscaled image object
+result.url             # Upscaled image URL
+result.data            # Base64 data (if available)
+
+# Dimensions
+result.input_size      # Original size "1024x1024"
+result.output_size     # Upscaled size "4096x4096"
+result.scale_factor    # 4
+
+# Status
+result.success?        # true if upscaling succeeded
+result.error?          # true if failed
+
+# File operations
+result.save("upscaled.png")
+result.to_blob         # Binary image data
+
+# Metadata
+result.model_id        # Model used
+result.face_enhance    # Whether face enhancement was used
+result.total_cost      # Cost in USD
+result.duration_ms     # Processing time
+```
+
+## Examples
+
+### Product Photo Upscaler
+
+```ruby
+class ProductUpscaler < ApplicationImageUpscaler
+  model "real-esrgan"
+  scale 4
+
+  description "Upscales product photos for e-commerce"
+end
+
+# In a controller
+def upscale_image
+  result = ProductUpscaler.call(image: params[:image])
+
+  if result.success?
+    @product.high_res_image.attach(
+      io: StringIO.new(result.to_blob),
+      filename: "product_hd.png",
+      content_type: "image/png"
+    )
+    redirect_to @product, notice: "Image upscaled!"
+  else
+    redirect_to @product, alert: result.error_message
+  end
+end
+```
+
+### Portrait Upscaler with Face Enhancement
+
+```ruby
+class PortraitUpscaler < ApplicationImageUpscaler
+  model "real-esrgan"
+  scale 4
+  face_enhance true
+  denoise_strength 0.3
+
+  description "Upscales portraits with face enhancement"
+end
+
+result = PortraitUpscaler.call(image: "headshot.jpg")
+result.save("headshot_hd.png")
+```
+
+---
+
+# Image Pipelines
+
+Chain multiple image operations into automated workflows.
+
+## Overview
+
+The `ImagePipeline` base class provides a DSL for creating multi-step image workflows with:
+- Sequential execution of image operations
+- Conditional step execution
+- Aggregated cost tracking
+- Unified result access
+- Before/after callbacks
+- Caching for deterministic pipelines
+- Multi-tenancy support
+
+## Quick Start
+
+### Generate an ImagePipeline
+
+```bash
+rails generate ruby_llm_agents:image_pipeline Product --steps generate,upscale,analyze
+```
+
+This creates `app/image_pipelines/product_pipeline.rb`:
+
+```ruby
+class ProductPipeline < ApplicationImagePipeline
+  step :generate, generator: ProductGenerator
+  step :upscale, upscaler: ProductUpscaler
+  step :analyze, analyzer: ProductAnalyzer
+
+  description "Product image processing pipeline"
+  version "1.0"
+end
+```
+
+### Basic Usage
+
+```ruby
+# Run the pipeline
+result = ProductPipeline.call(prompt: "Professional laptop photo")
+result.success?        # true if all steps succeeded
+result.final_image     # Final processed image URL
+result.total_cost      # Combined cost of all steps
+
+# Access individual steps
+result.step(:generate)  # ImageGenerationResult
+result.step(:upscale)   # ImageUpscaleResult
+result.analysis         # Shortcut to analyzer result
+
+# Save the final image
+result.save("output.png")
+```
+
+## Configuration DSL
+
+### Defining Steps
+
+```ruby
+class MyPipeline < ApplicationImagePipeline
+  # Generation step (text-to-image)
+  step :generate, generator: ProductGenerator
+
+  # Upscaling step
+  step :upscale, upscaler: PhotoUpscaler, scale: 2
+
+  # Transformation step (img2img)
+  step :transform, transformer: StyleTransformer, strength: 0.7
+
+  # Editing step (inpainting)
+  step :edit, editor: PhotoEditor
+
+  # Variation step
+  step :vary, variator: ProductVariator
+
+  # Analysis step (non-image output)
+  step :analyze, analyzer: ContentAnalyzer
+
+  # Background removal step
+  step :remove_bg, remover: BackgroundRemover
+end
+```
+
+### Step Types
+
+| Type | Option Key | Input | Output |
+|------|------------|-------|--------|
+| Generator | `:generator` | Prompt | Image |
+| Upscaler | `:upscaler` | Image | Image |
+| Transformer | `:transformer` | Image + Prompt | Image |
+| Editor | `:editor` | Image + Mask + Prompt | Image |
+| Variator | `:variator` | Image | Image |
+| Analyzer | `:analyzer` | Image | Analysis |
+| Remover | `:remover` | Image | Image |
+
+### Conditional Steps
+
+Execute steps based on context:
+
+```ruby
+class SmartPipeline < ApplicationImagePipeline
+  step :generate, generator: ProductGenerator
+
+  # Only upscale if high_quality option is passed
+  step :upscale, upscaler: PhotoUpscaler, if: ->(ctx) { ctx[:high_quality] }
+
+  # Skip background removal if keep_background is true
+  step :remove_bg, remover: BackgroundRemover, unless: ->(ctx) { ctx[:keep_background] }
+
+  step :analyze, analyzer: ProductAnalyzer
+end
+
+# Usage with conditions
+result = SmartPipeline.call(
+  prompt: "Product photo",
+  high_quality: true,      # Triggers upscale step
+  keep_background: false   # Triggers remove_bg step
+)
+```
+
+### Step Options
+
+Pass options to individual steps:
+
+```ruby
+class CustomPipeline < ApplicationImagePipeline
+  step :generate, generator: ProductGenerator, size: "1792x1024"
+  step :upscale, upscaler: PhotoUpscaler, scale: 4
+  step :transform, transformer: StyleTransformer, strength: 0.8
+end
+```
+
+### Callbacks
+
+Run code before or after the pipeline:
+
+```ruby
+class CallbackPipeline < ApplicationImagePipeline
+  step :generate, generator: ProductGenerator
+  step :upscale, upscaler: PhotoUpscaler
+
+  # Before callbacks
+  before_pipeline :validate_inputs
+  before_pipeline { |ctx| ctx[:started_at] = Time.current }
+
+  # After callbacks
+  after_pipeline :log_completion
+  after_pipeline { |result| notify_webhook(result) }
+
+  private
+
+  def validate_inputs
+    raise ArgumentError, "Prompt required" unless context[:prompt]
+  end
+
+  def log_completion(result)
+    Rails.logger.info("Pipeline #{self.class.name}: #{result.success?}")
+  end
+
+  def notify_webhook(result)
+    WebhookService.notify(result.to_h)
+  end
+end
+```
+
+### Error Handling
+
+```ruby
+class ResilientPipeline < ApplicationImagePipeline
+  step :generate, generator: ProductGenerator
+  step :upscale, upscaler: PhotoUpscaler
+  step :analyze, analyzer: ProductAnalyzer
+
+  # Stop pipeline on first error (default)
+  stop_on_error true
+
+  # Or continue despite errors
+  # stop_on_error false
+end
+
+result = ResilientPipeline.call(prompt: "Test")
+
+if result.partial?
+  # Some steps succeeded, some failed
+  puts "Completed #{result.successful_step_count}/#{result.step_count} steps"
+end
+```
+
+### Caching
+
+```ruby
+class CachedPipeline < ApplicationImagePipeline
+  step :generate, generator: ProductGenerator
+  step :upscale, upscaler: PhotoUpscaler
+
+  cache_for 1.hour
+
+  # Version bump invalidates cache
+  version "2.0"
+end
+```
+
+### Metadata
+
+```ruby
+class DocumentedPipeline < ApplicationImagePipeline
+  step :generate, generator: ProductGenerator
+
+  description "Generates professional product images"
+  version "1.0"
+end
+```
+
+## ImagePipelineResult
+
+The result object provides access to all step results:
+
+```ruby
+result = MyPipeline.call(prompt: "Test")
+
+# Status
+result.success?              # true if all steps succeeded
+result.error?                # true if any step failed
+result.partial?              # true if some succeeded, some failed
+result.completed?            # true if pipeline finished
+
+# Steps
+result.steps                 # Array of all step results
+result.step(:generate)       # Get specific step result
+result[:upscale]             # Alias for step()
+result.step_names            # [:generate, :upscale, ...]
+result.step_count            # Total step count
+result.successful_step_count # Steps that succeeded
+result.failed_step_count     # Steps that failed
+
+# Images
+result.final_image           # URL/data of last image-producing step
+result.url                   # Final image URL
+result.data                  # Final image base64 data
+result.to_blob               # Final image binary data
+
+# Shortcut accessors
+result.generation            # Generator step result
+result.upscale               # Upscaler step result
+result.transform             # Transformer step result
+result.analysis              # Analyzer step result
+result.background_removal    # Remover step result
+
+# Cost and timing
+result.total_cost            # Combined cost of all steps
+result.duration_ms           # Total pipeline duration
+result.primary_model_id      # Model from first step
+
+# File operations
+result.save("output.png")           # Save final image
+result.save_all("./dir", prefix: "step")  # Save all intermediate images
+
+# Serialization
+result.to_h                  # Hash representation
+result.to_cache              # Cacheable format
+```
+
+## Examples
+
+### E-commerce Product Pipeline
+
+```ruby
+class EcommercePipeline < ApplicationImagePipeline
+  # Generate professional product photo
+  step :generate, generator: ProductPhotoGenerator
+
+  # Upscale for high resolution
+  step :upscale, upscaler: PhotoUpscaler, scale: 2
+
+  # Remove background for transparent cutout
+  step :remove_bg, remover: ProductBackgroundRemover
+
+  # Analyze for auto-tagging
+  step :analyze, analyzer: ProductAnalyzer
+
+  description "Complete e-commerce product image workflow"
+  version "1.0"
+end
+
+result = EcommercePipeline.call(
+  prompt: "Professional photo of wireless headphones",
+  tenant: current_store
+)
+
+if result.success?
+  product.hero_image.attach(
+    io: StringIO.new(result.to_blob),
+    filename: "product.png",
+    content_type: "image/png"
+  )
+
+  product.update!(
+    tags: result.analysis.tags,
+    description: result.analysis.description
+  )
+end
+```
+
+### Content Moderation Pipeline
+
+```ruby
+class ModerationPipeline < ApplicationImagePipeline
+  # Analyze uploaded content
+  step :analyze, analyzer: ContentModerationAnalyzer
+
+  description "Content safety analysis"
+  version "1.0"
+
+  after_pipeline :log_moderation_result
+
+  private
+
+  def log_moderation_result(result)
+    if result.analysis&.success?
+      Rails.logger.info(
+        "[Moderation] safe=#{result.analysis.safe?}, " \
+        "tags=#{result.analysis.tags.join(', ')}"
+      )
+    end
+  end
+end
+
+result = ModerationPipeline.call(image: uploaded_file.path)
+
+if result.analysis&.safe?
+  save_to_storage(uploaded_file)
+else
+  queue_for_review(uploaded_file, result.analysis)
+end
+```
+
+### Marketing Asset Pipeline
+
+```ruby
+class MarketingPipeline < ApplicationImagePipeline
+  step :generate, generator: MarketingImageGenerator, size: "1792x1024"
+  step :upscale, upscaler: PhotoUpscaler, scale: 2
+
+  cache_for 1.day
+  description "High-quality marketing asset generation"
+  version "1.0"
+
+  before_pipeline :validate_prompt
+
+  private
+
+  def validate_prompt
+    prompt = context[:prompt]
+    raise ArgumentError, "Prompt required" if prompt.blank?
+    raise ArgumentError, "Prompt too short" if prompt.length < 10
+  end
+end
+
+# Generate hero images for campaigns
+result = MarketingPipeline.call(
+  prompt: "Modern tech startup team collaborating in bright office",
+  tenant: current_organization
+)
+
+campaign.hero_image.attach(
+  io: StringIO.new(result.to_blob),
+  filename: "hero.png"
+)
+```
+
+### Conditional Quality Pipeline
+
+```ruby
+class QualityPipeline < ApplicationImagePipeline
+  step :generate, generator: ProductGenerator
+
+  # Premium tier gets upscaling
+  step :upscale, upscaler: PhotoUpscaler, scale: 4,
+       if: ->(ctx) { ctx[:tier] == :premium }
+
+  # Enterprise tier gets background removal
+  step :remove_bg, remover: BackgroundRemover,
+       if: ->(ctx) { ctx[:tier] == :enterprise }
+
+  # Everyone gets analysis
+  step :analyze, analyzer: ProductAnalyzer
+end
+
+# Basic tier - just generate + analyze
+result = QualityPipeline.call(prompt: "Product", tier: :basic)
+result.step_count  # 2
+
+# Premium tier - generate + upscale + analyze
+result = QualityPipeline.call(prompt: "Product", tier: :premium)
+result.step_count  # 3
+
+# Enterprise tier - all steps
+result = QualityPipeline.call(prompt: "Product", tier: :enterprise)
+result.step_count  # 4
 ```
 
 ---

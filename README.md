@@ -45,7 +45,7 @@ Build intelligent AI agents in Ruby with a clean DSL, automatic execution tracki
 | **PII Redaction** | Automatic sensitive data protection | [Security](https://github.com/adham90/ruby_llm-agents/wiki/PII-Redaction) |
 | **Content Moderation** | Input/output safety checks with OpenAI moderation API | [Moderation](https://github.com/adham90/ruby_llm-agents/wiki/Moderation) |
 | **Embeddings** | Vector embeddings with batching, caching, and preprocessing | [Embeddings](https://github.com/adham90/ruby_llm-agents/wiki/Embeddings) |
-| **Image Generation** | Text-to-image with templates, content policy, and cost tracking | [Images](https://github.com/adham90/ruby_llm-agents/wiki/Image-Generation) |
+| **Image Operations** | Generation, analysis, editing, pipelines with cost tracking | [Images](https://github.com/adham90/ruby_llm-agents/wiki/Image-Generation) |
 | **Alerts** | Slack, webhook, and custom notifications | [Alerts](https://github.com/adham90/ruby_llm-agents/wiki/Alerts) |
 
 ## Quick Start
@@ -177,49 +177,53 @@ Features:
 
 See [Embeddings](https://github.com/adham90/ruby_llm-agents/wiki/Embeddings) for more patterns.
 
-### Image Generation
+### Image Operations
 
-Generate images from text prompts with templates, content policy, and cost tracking:
+Comprehensive image capabilities with generation, analysis, editing, and pipelines:
 
 ```bash
+# Generate image generators, analyzers, pipelines, and more
 rails generate ruby_llm_agents:image_generator Logo
+rails generate ruby_llm_agents:image_analyzer Product
+rails generate ruby_llm_agents:background_remover Photo
+rails generate ruby_llm_agents:image_pipeline Ecommerce --steps generate,upscale,analyze
 ```
 
 ```ruby
-# app/image_generators/logo_generator.rb
-class LogoGenerator < ApplicationImageGenerator
-  model "gpt-image-1"
-  size "1024x1024"
-  quality "hd"
-  style "vivid"
-  content_policy :strict
-
-  template "Minimalist logo design for {prompt}, " \
-           "clean lines, professional, vector style"
-end
-```
-
-```ruby
-# Generate a single image
-result = LogoGenerator.call(prompt: "a tech startup called Nexus AI")
+# Image Generation - create images from prompts
+result = LogoGenerator.call(prompt: "tech startup logo")
 result.url          # => "https://..."
-result.total_cost   # => 0.08
 result.save("logo.png")
 
-# Generate multiple variations
-result = LogoGenerator.call(prompt: "app icon", count: 4)
-result.urls         # => ["https://...", ...]
-result.save_all("./icons")
+# Image Analysis - extract captions, tags, objects, colors
+result = ProductAnalyzer.call(image: "product.jpg")
+result.caption      # => "Red sneaker on white background"
+result.tags         # => ["sneaker", "red", "footwear"]
+result.colors       # => [{ hex: "#FF0000", percentage: 30 }]
+
+# Background Removal - extract subjects with transparency
+result = PhotoRemover.call(image: "portrait.jpg")
+result.save("portrait_transparent.png")
+
+# Image Pipelines - chain multiple operations
+result = EcommercePipeline.call(
+  prompt: "professional laptop photo",
+  high_quality: true
+)
+result.final_image   # => Final processed image
+result.total_cost    # => Combined cost of all steps
+result.step(:analyze).tags  # => Access individual step results
 ```
 
 Features:
-- **Prompt templates** - Consistent styling with preset templates (product, portrait, logo, etc.)
+- **8 image operation classes** - Generator, Analyzer, Editor, Transformer, Upscaler, Variator, BackgroundRemover, Pipeline
+- **Prompt templates** - Consistent styling with preset templates
 - **Content policy** - Validate prompts with configurable safety levels
-- **Cost tracking** - Dynamic pricing from LiteLLM with execution logging
-- **ActiveStorage** - Attach generated images directly to Rails models
-- **Caching** - Cache results for repeated prompts
+- **Cost tracking** - Dynamic pricing with execution logging
+- **Image Pipelines** - Chain operations into automated workflows
+- **ActiveStorage** - Attach images directly to Rails models
 
-See [Image Generation](https://github.com/adham90/ruby_llm-agents/wiki/Image-Generation) for more patterns.
+See [Image Operations](https://github.com/adham90/ruby_llm-agents/wiki/Image-Generation) for full documentation.
 
 ## Documentation
 

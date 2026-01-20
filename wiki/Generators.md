@@ -162,6 +162,233 @@ rails generate ruby_llm_agents:speaker narrator --cache 7.days
 - `app/speakers/application_speaker.rb` (if not exists)
 - `app/speakers/[name]_speaker.rb`
 
+## Image Operations Generators
+
+RubyLLM::Agents provides a suite of generators for image operations.
+
+### Image Generator Generator
+
+Create image generation classes:
+
+```bash
+# Basic generator
+rails generate ruby_llm_agents:image_generator logo
+
+# With options
+rails generate ruby_llm_agents:image_generator product --model gpt-image-1 --size 1024x1024
+rails generate ruby_llm_agents:image_generator avatar --quality hd --style vivid
+rails generate ruby_llm_agents:image_generator banner --cache 1.day
+```
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--model` | Image generation model | `gpt-image-1` |
+| `--size` | Image size | `1024x1024` |
+| `--quality` | Quality level (standard, hd) | `standard` |
+| `--style` | Style (vivid, natural) | `vivid` |
+| `--content_policy` | Content policy level | `standard` |
+| `--cache` | Cache duration | None |
+
+**Creates:**
+- `app/image_generators/application_image_generator.rb` (if not exists)
+- `app/image_generators/[name]_generator.rb`
+
+### Image Variator Generator
+
+Create image variation classes:
+
+```bash
+# Basic variator
+rails generate ruby_llm_agents:image_variator logo
+
+# With options
+rails generate ruby_llm_agents:image_variator product --model gpt-image-1 --size 1024x1024
+rails generate ruby_llm_agents:image_variator avatar --variation_strength 0.3
+```
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--model` | Image model | `gpt-image-1` |
+| `--size` | Output image size | `1024x1024` |
+| `--variation_strength` | Variation strength (0.0-1.0) | `0.5` |
+| `--cache` | Cache duration | None |
+
+**Creates:**
+- `app/image_variators/application_image_variator.rb` (if not exists)
+- `app/image_variators/[name]_variator.rb`
+
+### Image Editor Generator
+
+Create image editing classes (inpainting/outpainting):
+
+```bash
+# Basic editor
+rails generate ruby_llm_agents:image_editor product
+
+# With options
+rails generate ruby_llm_agents:image_editor background --model gpt-image-1 --size 1024x1024
+rails generate ruby_llm_agents:image_editor photo --content_policy strict
+```
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--model` | Image model | `gpt-image-1` |
+| `--size` | Output image size | `1024x1024` |
+| `--content_policy` | Content policy level | `standard` |
+| `--cache` | Cache duration | None |
+
+**Creates:**
+- `app/image_editors/application_image_editor.rb` (if not exists)
+- `app/image_editors/[name]_editor.rb`
+
+### Image Transformer Generator
+
+Create style transfer/image transformation classes:
+
+```bash
+# Basic transformer
+rails generate ruby_llm_agents:image_transformer anime
+
+# With options
+rails generate ruby_llm_agents:image_transformer watercolor --model sdxl --strength 0.8
+rails generate ruby_llm_agents:image_transformer oil --template "oil painting, {prompt}"
+```
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--model` | Image model | `sdxl` |
+| `--size` | Output image size | `1024x1024` |
+| `--strength` | Transformation strength (0.0-1.0) | `0.75` |
+| `--template` | Prompt template | None |
+| `--content_policy` | Content policy level | `standard` |
+| `--cache` | Cache duration | None |
+
+**Creates:**
+- `app/image_transformers/application_image_transformer.rb` (if not exists)
+- `app/image_transformers/[name]_transformer.rb`
+
+### Image Upscaler Generator
+
+Create image upscaling classes:
+
+```bash
+# Basic upscaler
+rails generate ruby_llm_agents:image_upscaler photo
+
+# With options
+rails generate ruby_llm_agents:image_upscaler portrait --model real-esrgan --scale 4
+rails generate ruby_llm_agents:image_upscaler face --face_enhance
+```
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--model` | Upscaling model | `real-esrgan` |
+| `--scale` | Upscale factor (2, 4, 8) | `4` |
+| `--face_enhance` | Enable face enhancement | `false` |
+| `--cache` | Cache duration | None |
+
+**Creates:**
+- `app/image_upscalers/application_image_upscaler.rb` (if not exists)
+- `app/image_upscalers/[name]_upscaler.rb`
+
+### Image Analyzer Generator
+
+Create image analysis classes (vision AI):
+
+```bash
+# Basic analyzer
+rails generate ruby_llm_agents:image_analyzer product
+
+# With options
+rails generate ruby_llm_agents:image_analyzer content --model gpt-4o --analysis_type detailed
+rails generate ruby_llm_agents:image_analyzer photo --extract_colors --detect_objects
+rails generate ruby_llm_agents:image_analyzer document --extract_text
+```
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--model` | Vision model | `gpt-4o` |
+| `--analysis_type` | Analysis type | `detailed` |
+| `--extract_colors` | Enable color extraction | `false` |
+| `--detect_objects` | Enable object detection | `false` |
+| `--extract_text` | Enable OCR | `false` |
+| `--max_tags` | Maximum tags to return | `10` |
+| `--cache` | Cache duration | None |
+
+**Analysis types:** `caption`, `detailed`, `tags`, `objects`, `colors`, `all`
+
+**Creates:**
+- `app/image_analyzers/application_image_analyzer.rb` (if not exists)
+- `app/image_analyzers/[name]_analyzer.rb`
+
+### Background Remover Generator
+
+Create background removal classes:
+
+```bash
+# Basic remover
+rails generate ruby_llm_agents:background_remover product
+
+# With options
+rails generate ruby_llm_agents:background_remover portrait --model segment-anything --alpha_matting
+rails generate ruby_llm_agents:background_remover photo --refine_edges --return_mask
+```
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--model` | Segmentation model | `rembg` |
+| `--output_format` | Output format (png, webp) | `png` |
+| `--refine_edges` | Enable edge refinement | `false` |
+| `--alpha_matting` | Enable alpha matting | `false` |
+| `--return_mask` | Also return segmentation mask | `false` |
+| `--cache` | Cache duration | None |
+
+**Creates:**
+- `app/background_removers/application_background_remover.rb` (if not exists)
+- `app/background_removers/[name]_background_remover.rb`
+
+### Image Pipeline Generator
+
+Create multi-step image processing pipelines:
+
+```bash
+# Basic pipeline
+rails generate ruby_llm_agents:image_pipeline product
+
+# With steps
+rails generate ruby_llm_agents:image_pipeline ecommerce --steps generate,upscale,remove_background
+rails generate ruby_llm_agents:image_pipeline content --steps generate,analyze
+rails generate ruby_llm_agents:image_pipeline full --steps generate,upscale,transform,analyze
+```
+
+**Options:**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--steps` | Pipeline steps (comma-separated) | `generate,upscale` |
+| `--stop_on_error` | Stop on first error | `true` |
+| `--cache` | Cache duration | None |
+
+**Available steps:** `generate`, `upscale`, `transform`, `analyze`, `remove_background`
+
+**Creates:**
+- `app/image_pipelines/application_image_pipeline.rb` (if not exists)
+- `app/image_pipelines/[name]_pipeline.rb`
+
 ## Upgrade Generator
 
 Add new migrations when upgrading RubyLLM::Agents:
@@ -193,19 +420,43 @@ After using generators, your app will have:
 ```
 app/
 ├── agents/
-│   ├── application_agent.rb      # Base class
-│   ├── search_agent.rb           # Your agents
+│   ├── application_agent.rb              # Base class
+│   ├── search_agent.rb                   # Your agents
 │   └── chat/
-│       └── support_agent.rb      # Nested agents
+│       └── support_agent.rb              # Nested agents
 ├── embedders/
-│   ├── application_embedder.rb   # Base class
-│   └── document_embedder.rb      # Your embedders
+│   ├── application_embedder.rb           # Base class
+│   └── document_embedder.rb              # Your embedders
 ├── transcribers/
-│   ├── application_transcriber.rb # Base class
-│   └── meeting_transcriber.rb    # Your transcribers
-└── speakers/
-    ├── application_speaker.rb    # Base class
-    └── narrator_speaker.rb       # Your speakers
+│   ├── application_transcriber.rb        # Base class
+│   └── meeting_transcriber.rb            # Your transcribers
+├── speakers/
+│   ├── application_speaker.rb            # Base class
+│   └── narrator_speaker.rb               # Your speakers
+├── image_generators/
+│   ├── application_image_generator.rb    # Base class
+│   └── logo_generator.rb                 # Your generators
+├── image_variators/
+│   ├── application_image_variator.rb     # Base class
+│   └── logo_variator.rb                  # Your variators
+├── image_editors/
+│   ├── application_image_editor.rb       # Base class
+│   └── product_editor.rb                 # Your editors
+├── image_transformers/
+│   ├── application_image_transformer.rb  # Base class
+│   └── anime_transformer.rb              # Your transformers
+├── image_upscalers/
+│   ├── application_image_upscaler.rb     # Base class
+│   └── photo_upscaler.rb                 # Your upscalers
+├── image_analyzers/
+│   ├── application_image_analyzer.rb     # Base class
+│   └── product_analyzer.rb               # Your analyzers
+├── background_removers/
+│   ├── application_background_remover.rb # Base class
+│   └── product_background_remover.rb     # Your removers
+└── image_pipelines/
+    ├── application_image_pipeline.rb     # Base class
+    └── product_pipeline.rb               # Your pipelines
 ```
 
 ## Tips
@@ -244,3 +495,4 @@ rails generate ruby_llm_agents:agent search --pretend
 - [Agent DSL](Agent-DSL) - Agent configuration
 - [Embeddings](Embeddings) - Vector embeddings
 - [Audio](Audio) - Transcription and TTS
+- [Image Operations](Image-Generation) - Image generation, analysis, and processing
