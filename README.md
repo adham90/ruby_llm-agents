@@ -1,7 +1,7 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./logo_dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="./logo_light.svg">
-  <img alt="RubyLLM::Agents" src="./logo_light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="./logo_dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="./logo_light.png">
+  <img alt="RubyLLM::Agents" src="./logo_light.png">
 </picture>
 
 # RubyLLM::Agents
