@@ -31,7 +31,7 @@ app/
 
 ```
 app/
-├── llm/
+├── llm/                    # Customizable root directory (default: "llm")
 │   ├── agents/
 │   ├── audio/
 │   │   ├── speakers/
@@ -53,6 +53,113 @@ app/
 ├── models/
 └── ...
 ```
+
+---
+
+## Customizable Root Directory
+
+Users can customize the root directory name (default: `llm`) to match their preferences.
+
+### Configuration
+
+Add to `config/initializers/ruby_llm_agents.rb`:
+
+```ruby
+RubyLLM::Agents.configure do |config|
+  # Customize the root directory and namespace (default: "llm" / "Llm")
+  config.root_directory = "ai"      # Creates app/ai/ instead of app/llm/
+  config.root_namespace = "AI"      # Uses AI:: instead of Llm::
+end
+```
+
+### Examples
+
+| `root_directory` | `root_namespace` | Directory | Namespace |
+|------------------|------------------|-----------|-----------|
+| `"llm"` (default) | `"Llm"` (default) | `app/llm/agents/` | `Llm::SupportAgent` |
+| `"ai"` | `"AI"` | `app/ai/agents/` | `AI::SupportAgent` |
+| `"ruby_llm"` | `"RubyLlm"` | `app/ruby_llm/agents/` | `RubyLlm::SupportAgent` |
+| `"ml"` | `"ML"` | `app/ml/agents/` | `ML::SupportAgent` |
+
+### Generator Usage
+
+```bash
+# Use default (llm)
+rails generate ruby_llm_agents:install
+
+# Specify custom root directory
+rails generate ruby_llm_agents:install --root=ai
+
+# Restructure with custom root
+rails generate ruby_llm_agents:restructure --root=ai
+```
+
+### Implementation Details
+
+**Configuration class addition:**
+
+```ruby
+# lib/ruby_llm/agents/configuration.rb
+module RubyLLM
+  module Agents
+    class Configuration
+      # ... existing config ...
+
+      # Root directory under app/ (default: "llm")
+      attr_accessor :root_directory
+
+      # Root namespace for classes (default: "Llm")
+      attr_accessor :root_namespace
+
+      def initialize
+        # ... existing defaults ...
+        @root_directory = "llm"
+        @root_namespace = "Llm"
+      end
+
+      # Helper to get the full namespace for a category
+      def namespace_for(category = nil)
+        case category
+        when :audio then "#{root_namespace}::Audio"
+        when :image then "#{root_namespace}::Image"
+        when :text then "#{root_namespace}::Text"
+        else root_namespace
+        end
+      end
+
+      # Helper to get the full path for a category
+      def path_for(category, type)
+        case category
+        when :audio then "app/#{root_directory}/audio/#{type}"
+        when :image then "app/#{root_directory}/image/#{type}"
+        when :text then "app/#{root_directory}/text/#{type}"
+        else "app/#{root_directory}/#{type}"
+        end
+      end
+    end
+  end
+end
+```
+
+**Generator option:**
+
+```ruby
+# In each generator
+class_option :root,
+  type: :string,
+  default: nil,
+  desc: "Root directory name (default: uses config or 'llm')"
+
+def root_directory
+  options[:root] || RubyLLM::Agents.configuration.root_directory
+end
+
+def root_namespace
+  options[:root]&.camelize || RubyLLM::Agents.configuration.root_namespace
+end
+```
+
+---
 
 ## Namespace Changes
 
@@ -704,6 +811,129 @@ RSpec.describe "RestructureGenerator" do
     end
   end
 
+  describe "custom root directory" do
+    context "with --root=ai option" do
+      it "creates app/ai directory instead of app/llm" do
+        run_generator(root: "ai")
+        expect(File.directory?(File.join(app_dir, "ai"))).to be true
+        expect(File.directory?(File.join(app_dir, "llm"))).to be false
+      end
+
+      it "creates full directory structure under app/ai" do
+        run_generator(root: "ai")
+        expect(File.directory?(File.join(app_dir, "ai/agents"))).to be true
+        expect(File.directory?(File.join(app_dir, "ai/audio/speakers"))).to be true
+        expect(File.directory?(File.join(app_dir, "ai/audio/transcribers"))).to be true
+        expect(File.directory?(File.join(app_dir, "ai/image/generators"))).to be true
+        expect(File.directory?(File.join(app_dir, "ai/text/embedders"))).to be true
+        expect(File.directory?(File.join(app_dir, "ai/workflows"))).to be true
+        expect(File.directory?(File.join(app_dir, "ai/tools"))).to be true
+      end
+
+      it "moves files to app/ai" do
+        run_generator(root: "ai")
+        expect(File.exist?(File.join(app_dir, "ai/agents/application_agent.rb"))).to be true
+        expect(File.exist?(File.join(app_dir, "ai/agents/support_agent.rb"))).to be true
+      end
+
+      it "uses AI namespace instead of Llm" do
+        run_generator(root: "ai")
+        content = File.read(File.join(app_dir, "ai/agents/support_agent.rb"))
+        expect(content).to include("module AI")
+        expect(content).not_to include("module Llm")
+      end
+
+      it "uses AI::Audio namespace for speakers" do
+        run_generator(root: "ai")
+        content = File.read(File.join(app_dir, "ai/audio/speakers/application_speaker.rb"))
+        expect(content).to include("module AI")
+        expect(content).to include("module Audio")
+      end
+
+      it "uses AI::Image namespace for image generators" do
+        run_generator(root: "ai")
+        content = File.read(File.join(app_dir, "ai/image/generators/application_image_generator.rb"))
+        expect(content).to include("module AI")
+        expect(content).to include("module Image")
+      end
+
+      it "uses AI::Text namespace for embedders" do
+        run_generator(root: "ai")
+        content = File.read(File.join(app_dir, "ai/text/embedders/application_embedder.rb"))
+        expect(content).to include("module AI")
+        expect(content).to include("module Text")
+      end
+    end
+
+    context "with --root=ruby_llm option" do
+      it "creates app/ruby_llm directory" do
+        run_generator(root: "ruby_llm")
+        expect(File.directory?(File.join(app_dir, "ruby_llm"))).to be true
+      end
+
+      it "uses RubyLlm namespace" do
+        run_generator(root: "ruby_llm")
+        content = File.read(File.join(app_dir, "ruby_llm/agents/support_agent.rb"))
+        expect(content).to include("module RubyLlm")
+      end
+    end
+
+    context "with --root=ml option" do
+      it "creates app/ml directory" do
+        run_generator(root: "ml")
+        expect(File.directory?(File.join(app_dir, "ml"))).to be true
+      end
+
+      it "uses ML namespace (uppercase)" do
+        run_generator(root: "ml")
+        content = File.read(File.join(app_dir, "ml/agents/support_agent.rb"))
+        expect(content).to include("module ML")
+      end
+    end
+
+    context "custom namespace override" do
+      it "allows separate namespace from directory name" do
+        run_generator(root: "ai", namespace: "ArtificialIntelligence")
+        content = File.read(File.join(app_dir, "ai/agents/support_agent.rb"))
+        expect(content).to include("module ArtificialIntelligence")
+      end
+    end
+
+    context "idempotency with custom root" do
+      it "can be run multiple times with same custom root" do
+        run_generator(root: "ai")
+        expect { run_generator(root: "ai") }.not_to raise_error
+      end
+
+      it "does not duplicate custom namespace on second run" do
+        run_generator(root: "ai")
+        run_generator(root: "ai")
+
+        content = File.read(File.join(app_dir, "ai/agents/support_agent.rb"))
+        expect(content.scan("module AI").count).to eq(1)
+      end
+    end
+
+    context "validation" do
+      it "rejects invalid directory names with spaces" do
+        expect { run_generator(root: "my llm") }.to raise_error(ArgumentError, /invalid root directory name/i)
+      end
+
+      it "rejects invalid directory names with special characters" do
+        expect { run_generator(root: "llm@ai") }.to raise_error(ArgumentError, /invalid root directory name/i)
+      end
+
+      it "accepts underscores in directory names" do
+        expect { run_generator(root: "ruby_llm") }.not_to raise_error
+      end
+
+      it "accepts hyphens in directory names" do
+        run_generator(root: "ruby-llm")
+        expect(File.directory?(File.join(app_dir, "ruby-llm"))).to be true
+      end
+    end
+  end
+
   private
 
   def setup_old_structure
@@ -787,9 +1017,15 @@ RSpec.describe "RestructureGenerator" do
     RUBY
   end
 
-  def run_generator
+  def run_generator(root: "llm", namespace: nil)
     # Simulate generator behavior for testing
     # In real implementation, this would invoke the actual generator
+
+    # Validate root directory name
+    validate_root_directory!(root)
+
+    @root_dir = root
+    @root_namespace = namespace || camelize(root)
 
     # Create directory structure
     create_directory_structure
@@ -801,21 +1037,38 @@ RSpec.describe "RestructureGenerator" do
     update_namespaces
   end
 
+  def validate_root_directory!(root)
+    unless root.match?(/\A[a-z][a-z0-9_-]*\z/i)
+      raise ArgumentError, "Invalid root directory name: #{root}"
+    end
+  end
+
+  def camelize(str)
+    # Handle special cases for common abbreviations
+    return "AI" if str.downcase == "ai"
+    return "ML" if str.downcase == "ml"
+    return "LLM" if str.downcase == "llm"
+
+    # Standard camelization
+    str.split(/[-_]/).map(&:capitalize).join
+  end
+
   def create_directory_structure
-    FileUtils.mkdir_p(File.join(app_dir, "llm/agents"))
-    FileUtils.mkdir_p(File.join(app_dir, "llm/audio/speakers"))
-    FileUtils.mkdir_p(File.join(app_dir, "llm/audio/transcribers"))
-    FileUtils.mkdir_p(File.join(app_dir, "llm/image/analyzers"))
-    FileUtils.mkdir_p(File.join(app_dir, "llm/image/background_removers"))
-    FileUtils.mkdir_p(File.join(app_dir, "llm/image/editors"))
-    FileUtils.mkdir_p(File.join(app_dir, "llm/image/generators"))
-    FileUtils.mkdir_p(File.join(app_dir, "llm/image/transformers"))
-    FileUtils.mkdir_p(File.join(app_dir, "llm/image/upscalers"))
-    FileUtils.mkdir_p(File.join(app_dir, "llm/image/variators"))
-    FileUtils.mkdir_p(File.join(app_dir, "llm/text/embedders"))
-    FileUtils.mkdir_p(File.join(app_dir, "llm/text/moderators"))
-    FileUtils.mkdir_p(File.join(app_dir, "llm/workflows"))
-    FileUtils.mkdir_p(File.join(app_dir, "llm/tools"))
+    root = @root_dir
+    FileUtils.mkdir_p(File.join(app_dir, "#{root}/agents"))
+    FileUtils.mkdir_p(File.join(app_dir, "#{root}/audio/speakers"))
+    FileUtils.mkdir_p(File.join(app_dir, "#{root}/audio/transcribers"))
+    FileUtils.mkdir_p(File.join(app_dir, "#{root}/image/analyzers"))
+    FileUtils.mkdir_p(File.join(app_dir, "#{root}/image/background_removers"))
+    FileUtils.mkdir_p(File.join(app_dir, "#{root}/image/editors"))
+    FileUtils.mkdir_p(File.join(app_dir, "#{root}/image/generators"))
+    FileUtils.mkdir_p(File.join(app_dir, "#{root}/image/transformers"))
+    FileUtils.mkdir_p(File.join(app_dir, "#{root}/image/upscalers"))
+    FileUtils.mkdir_p(File.join(app_dir, "#{root}/image/variators"))
+    FileUtils.mkdir_p(File.join(app_dir, "#{root}/text/embedders"))
+    FileUtils.mkdir_p(File.join(app_dir, "#{root}/text/moderators"))
+    FileUtils.mkdir_p(File.join(app_dir, "#{root}/workflows"))
+    FileUtils.mkdir_p(File.join(app_dir, "#{root}/tools"))
   end
 
   def move_directories
@@ -880,17 +1133,20 @@ RSpec.describe "RestructureGenerator" do
   end
 
   def directory_mapping
+    root = @root_dir || "llm"
+    ns = @root_namespace || "Llm"
+
     {
-      "agents" => { path: "llm/agents", namespace: "Llm" },
-      "workflows" => { path: "llm/workflows", namespace: "Llm" },
-      "tools" => { path: "llm/tools", namespace: "Llm" },
-      "speakers" => { path: "llm/audio/speakers", namespace: "Llm::Audio" },
-      "transcribers" => { path: "llm/audio/transcribers", namespace: "Llm::Audio" },
-      "image_generators" => { path: "llm/image/generators", namespace: "Llm::Image" },
-      "image_editors" => { path: "llm/image/editors", namespace: "Llm::Image" },
-      "image_analyzers" => { path: "llm/image/analyzers", namespace: "Llm::Image" },
-      "embedders" => { path: "llm/text/embedders", namespace: "Llm::Text" },
-      "moderators" => { path: "llm/text/moderators", namespace: "Llm::Text" }
+      "agents" => { path: "#{root}/agents", namespace: ns },
+      "workflows" => { path: "#{root}/workflows", namespace: ns },
+      "tools" => { path: "#{root}/tools", namespace: ns },
+      "speakers" => { path: "#{root}/audio/speakers", namespace: "#{ns}::Audio" },
+      "transcribers" => { path: "#{root}/audio/transcribers", namespace: "#{ns}::Audio" },
+      "image_generators" => { path: "#{root}/image/generators", namespace: "#{ns}::Image" },
+      "image_editors" => { path: "#{root}/image/editors", namespace: "#{ns}::Image" },
+      "image_analyzers" => { path: "#{root}/image/analyzers", namespace: "#{ns}::Image" },
+      "embedders" => { path: "#{root}/text/embedders", namespace: "#{ns}::Text" },
+      "moderators" => { path: "#{root}/text/moderators", namespace: "#{ns}::Text" }
     }
   end
 end
@@ -951,6 +1207,6 @@ Consider creating a `restructure:rollback` generator for automated rollback.
 
 1. ~~Should we support both structures during a transition period?~~
 2. ~~Should `tools/` also be under `app/llm/` or stay separate since tools are used by agents?~~ → Yes, under `app/llm/tools/`
-3. ~~Alternative namespace names: `Llm::`, `AI::`, `RubyLlm::`?~~ → Using `Llm::`
+3. ~~Alternative namespace names: `Llm::`, `AI::`, `RubyLlm::`?~~ → Configurable via `--root` option (default: `llm`/`Llm`)
 4. Should image class names drop the `Image` prefix since they're already under `Llm::Image::`?
    - e.g., `Llm::Image::Generator` vs `Llm::Image::ImageGenerator`
