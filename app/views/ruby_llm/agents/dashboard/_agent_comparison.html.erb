@@ -1,26 +1,60 @@
 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 h-full" x-data="{ activeTab: 'agents' }">
   <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
       <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Performance</h3>
-      <!-- Tab Buttons -->
-      <div class="flex space-x-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
-        <button type="button" @click="activeTab = 'agents'"
-                :class="activeTab === 'agents' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'hover:bg-gray-50 dark:hover:bg-gray-600'"
-                class="px-3 py-1 text-xs font-medium rounded-md transition-colors text-gray-700 dark:text-gray-200">
-          Agents
-        </button>
-        <button type="button" @click="activeTab = 'workflows'"
-                :class="activeTab === 'workflows' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'hover:bg-gray-50 dark:hover:bg-gray-600'"
-                class="px-3 py-1 text-xs font-medium rounded-md transition-colors text-gray-700 dark:text-gray-200">
-          Workflows
-        </button>
+      <!-- Scrollable Tab Buttons -->
+      <div class="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div class="flex space-x-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5 min-w-max">
+          <button type="button" @click="activeTab = 'agents'"
+                  :class="activeTab === 'agents' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'hover:bg-gray-50 dark:hover:bg-gray-600'"
+                  class="px-2 py-1 text-xs font-medium rounded-md transition-colors text-gray-700 dark:text-gray-200 whitespace-nowrap">
+            <span class="hidden sm:inline">Agents</span>
+            <span class="sm:hidden">🤖</span>
+          </button>
+          <button type="button" @click="activeTab = 'embedders'"
+                  :class="activeTab === 'embedders' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'hover:bg-gray-50 dark:hover:bg-gray-600'"
+                  class="px-2 py-1 text-xs font-medium rounded-md transition-colors text-gray-700 dark:text-gray-200 whitespace-nowrap">
+            <span class="hidden sm:inline">Embedders</span>
+            <span class="sm:hidden">📊</span>
+          </button>
+          <button type="button" @click="activeTab = 'transcribers'"
+                  :class="activeTab === 'transcribers' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'hover:bg-gray-50 dark:hover:bg-gray-600'"
+                  class="px-2 py-1 text-xs font-medium rounded-md transition-colors text-gray-700 dark:text-gray-200 whitespace-nowrap">
+            <span class="hidden sm:inline">Transcribers</span>
+            <span class="sm:hidden">🎤</span>
+          </button>
+          <button type="button" @click="activeTab = 'speakers'"
+                  :class="activeTab === 'speakers' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'hover:bg-gray-50 dark:hover:bg-gray-600'"
+                  class="px-2 py-1 text-xs font-medium rounded-md transition-colors text-gray-700 dark:text-gray-200 whitespace-nowrap">
+            <span class="hidden sm:inline">Speakers</span>
+            <span class="sm:hidden">🔊</span>
+          </button>
+          <button type="button" @click="activeTab = 'image_generators'"
+                  :class="activeTab === 'image_generators' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'hover:bg-gray-50 dark:hover:bg-gray-600'"
+                  class="px-2 py-1 text-xs font-medium rounded-md transition-colors text-gray-700 dark:text-gray-200 whitespace-nowrap">
+            <span class="hidden sm:inline">Image Gen</span>
+            <span class="sm:hidden">🎨</span>
+          </button>
+          <button type="button" @click="activeTab = 'moderators'"
+                  :class="activeTab === 'moderators' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'hover:bg-gray-50 dark:hover:bg-gray-600'"
+                  class="px-2 py-1 text-xs font-medium rounded-md transition-colors text-gray-700 dark:text-gray-200 whitespace-nowrap">
+            <span class="hidden sm:inline">Moderators</span>
+            <span class="sm:hidden">🛡️</span>
+          </button>
+          <button type="button" @click="activeTab = 'workflows'"
+                  :class="activeTab === 'workflows' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'hover:bg-gray-50 dark:hover:bg-gray-600'"
+                  class="px-2 py-1 text-xs font-medium rounded-md transition-colors text-gray-700 dark:text-gray-200 whitespace-nowrap">
+            <span class="hidden sm:inline">Workflows</span>
+            <span class="sm:hidden">⚙️</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- Agents Tab -->
   <div x-show="activeTab === 'agents'">
-    <% if agent_stats&.any? %>
+    <% if @agent_stats&.any? %>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
@@ -32,7 +66,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-            <% agent_stats.first(5).each do |agent| %>
+            <% @agent_stats.first(5).each do |agent| %>
               <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                 <td class="px-4 py-2">
                   <span class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate block max-w-[120px]" title="<%= agent[:agent_type] %>">
@@ -58,6 +92,226 @@
     <% else %>
       <div class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
         <p class="text-sm">No agent data yet</p>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Embedders Tab -->
+  <div x-show="activeTab === 'embedders'" x-cloak>
+    <% if @embedder_stats&.any? %>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th class="px-4 py-2">Embedder</th>
+              <th class="px-4 py-2 text-right">Runs</th>
+              <th class="px-4 py-2 text-right">Cost</th>
+              <th class="px-4 py-2 text-right">Success</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+            <% @embedder_stats.first(5).each do |embedder| %>
+              <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <td class="px-4 py-2">
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate block max-w-[120px]" title="<%= embedder[:agent_type] %>">
+                    <%= embedder[:agent_type].to_s.demodulize %>
+                  </span>
+                </td>
+                <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
+                  <%= number_with_delimiter(embedder[:executions]) %>
+                </td>
+                <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
+                  $<%= number_with_precision(embedder[:total_cost], precision: 2) %>
+                </td>
+                <td class="px-4 py-2 text-right">
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium <%= embedder[:success_rate] >= 95 ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : embedder[:success_rate] >= 80 ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300' : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300' %>">
+                    <%= embedder[:success_rate].round %>%
+                  </span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+        <p class="text-sm">No embedder data yet</p>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Transcribers Tab -->
+  <div x-show="activeTab === 'transcribers'" x-cloak>
+    <% if @transcriber_stats&.any? %>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th class="px-4 py-2">Transcriber</th>
+              <th class="px-4 py-2 text-right">Runs</th>
+              <th class="px-4 py-2 text-right">Cost</th>
+              <th class="px-4 py-2 text-right">Success</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+            <% @transcriber_stats.first(5).each do |transcriber| %>
+              <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <td class="px-4 py-2">
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate block max-w-[120px]" title="<%= transcriber[:agent_type] %>">
+                    <%= transcriber[:agent_type].to_s.demodulize %>
+                  </span>
+                </td>
+                <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
+                  <%= number_with_delimiter(transcriber[:executions]) %>
+                </td>
+                <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
+                  $<%= number_with_precision(transcriber[:total_cost], precision: 2) %>
+                </td>
+                <td class="px-4 py-2 text-right">
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium <%= transcriber[:success_rate] >= 95 ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : transcriber[:success_rate] >= 80 ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300' : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300' %>">
+                    <%= transcriber[:success_rate].round %>%
+                  </span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+        <p class="text-sm">No transcriber data yet</p>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Speakers Tab -->
+  <div x-show="activeTab === 'speakers'" x-cloak>
+    <% if @speaker_stats&.any? %>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th class="px-4 py-2">Speaker</th>
+              <th class="px-4 py-2 text-right">Runs</th>
+              <th class="px-4 py-2 text-right">Cost</th>
+              <th class="px-4 py-2 text-right">Success</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+            <% @speaker_stats.first(5).each do |speaker| %>
+              <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <td class="px-4 py-2">
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate block max-w-[120px]" title="<%= speaker[:agent_type] %>">
+                    <%= speaker[:agent_type].to_s.demodulize %>
+                  </span>
+                </td>
+                <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
+                  <%= number_with_delimiter(speaker[:executions]) %>
+                </td>
+                <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
+                  $<%= number_with_precision(speaker[:total_cost], precision: 2) %>
+                </td>
+                <td class="px-4 py-2 text-right">
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium <%= speaker[:success_rate] >= 95 ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : speaker[:success_rate] >= 80 ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300' : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300' %>">
+                    <%= speaker[:success_rate].round %>%
+                  </span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+        <p class="text-sm">No speaker data yet</p>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Image Generators Tab -->
+  <div x-show="activeTab === 'image_generators'" x-cloak>
+    <% if @image_generator_stats&.any? %>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th class="px-4 py-2">Image Generator</th>
+              <th class="px-4 py-2 text-right">Runs</th>
+              <th class="px-4 py-2 text-right">Cost</th>
+              <th class="px-4 py-2 text-right">Success</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+            <% @image_generator_stats.first(5).each do |generator| %>
+              <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <td class="px-4 py-2">
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate block max-w-[120px]" title="<%= generator[:agent_type] %>">
+                    <%= generator[:agent_type].to_s.demodulize %>
+                  </span>
+                </td>
+                <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
+                  <%= number_with_delimiter(generator[:executions]) %>
+                </td>
+                <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
+                  $<%= number_with_precision(generator[:total_cost], precision: 2) %>
+                </td>
+                <td class="px-4 py-2 text-right">
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium <%= generator[:success_rate] >= 95 ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : generator[:success_rate] >= 80 ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300' : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300' %>">
+                    <%= generator[:success_rate].round %>%
+                  </span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+        <p class="text-sm">No image generator data yet</p>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Moderators Tab -->
+  <div x-show="activeTab === 'moderators'" x-cloak>
+    <% if @moderator_stats&.any? %>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <th class="px-4 py-2">Moderator</th>
+              <th class="px-4 py-2 text-right">Runs</th>
+              <th class="px-4 py-2 text-right">Cost</th>
+              <th class="px-4 py-2 text-right">Success</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+            <% @moderator_stats.first(5).each do |moderator| %>
+              <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <td class="px-4 py-2">
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate block max-w-[120px]" title="<%= moderator[:agent_type] %>">
+                    <%= moderator[:agent_type].to_s.demodulize %>
+                  </span>
+                </td>
+                <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
+                  <%= number_with_delimiter(moderator[:executions]) %>
+                </td>
+                <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
+                  $<%= number_with_precision(moderator[:total_cost], precision: 2) %>
+                </td>
+                <td class="px-4 py-2 text-right">
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium <%= moderator[:success_rate] >= 95 ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : moderator[:success_rate] >= 80 ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300' : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300' %>">
+                    <%= moderator[:success_rate].round %>%
+                  </span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+        <p class="text-sm">No moderator data yet</p>
       </div>
     <% end %>
   </div>

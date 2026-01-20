@@ -592,6 +592,143 @@ def create_embedder_execution(attrs = {})
   RubyLLM::Agents::Execution.create!(merged)
 end
 
+# Helper for speaker executions (TTS)
+def create_speaker_execution(attrs = {})
+  defaults = {
+    agent_version: "1.0",
+    model_id: "tts-1",
+    model_provider: "openai",
+    status: "success",
+    started_at: Time.current - rand(1..60).minutes,
+    input_tokens: 0, # TTS doesn't use input tokens
+    output_tokens: 0, # TTS doesn't use output tokens
+    streaming: false,
+    temperature: nil # TTS doesn't use temperature
+  }
+
+  merged = defaults.merge(attrs)
+  merged[:completed_at] ||= merged[:started_at] + rand(500..3000) / 1000.0 if merged[:status] != "running"
+  merged[:duration_ms] ||= ((merged[:completed_at] - merged[:started_at]) * 1000).to_i if merged[:completed_at]
+  merged[:total_tokens] = 0
+
+  # TTS costs are based on character count
+  # Pricing: tts-1 = $15/1M chars, tts-1-hd = $30/1M chars
+  char_count = merged.dig(:metadata, :character_count) || rand(100..2000)
+  price_per_char = merged[:model_id].include?("hd") ? 0.00003 : 0.000015
+
+  merged[:input_cost] = (char_count * price_per_char).round(6)
+  merged[:output_cost] = 0
+  merged[:total_cost] = merged[:input_cost]
+
+  RubyLLM::Agents::Execution.create!(merged)
+end
+
+# Helper for transcriber executions (STT)
+def create_transcriber_execution(attrs = {})
+  defaults = {
+    agent_version: "1.0",
+    model_id: "whisper-1",
+    model_provider: "openai",
+    status: "success",
+    started_at: Time.current - rand(1..60).minutes,
+    input_tokens: 0, # Transcription doesn't use standard tokens
+    output_tokens: 0,
+    streaming: false,
+    temperature: nil
+  }
+
+  merged = defaults.merge(attrs)
+  merged[:completed_at] ||= merged[:started_at] + rand(2000..10000) / 1000.0 if merged[:status] != "running"
+  merged[:duration_ms] ||= ((merged[:completed_at] - merged[:started_at]) * 1000).to_i if merged[:completed_at]
+  merged[:total_tokens] = 0
+
+  # Transcription costs are based on audio duration
+  # Pricing: whisper-1 = $0.006/min, gpt-4o-transcribe = $0.006/min
+  audio_duration = merged.dig(:metadata, :audio_duration_seconds) || rand(60..1800)
+  minutes = audio_duration / 60.0
+  price_per_minute = 0.006
+
+  merged[:input_cost] = (minutes * price_per_minute).round(6)
+  merged[:output_cost] = 0
+  merged[:total_cost] = merged[:input_cost]
+
+  RubyLLM::Agents::Execution.create!(merged)
+end
+
+# Helper for image generator executions
+def create_image_generator_execution(attrs = {})
+  defaults = {
+    agent_version: "1.0",
+    model_id: "gpt-image-1",
+    model_provider: "openai",
+    status: "success",
+    started_at: Time.current - rand(1..60).minutes,
+    input_tokens: 0,
+    output_tokens: 0,
+    streaming: false,
+    temperature: nil
+  }
+
+  merged = defaults.merge(attrs)
+  merged[:completed_at] ||= merged[:started_at] + rand(5000..15000) / 1000.0 if merged[:status] != "running"
+  merged[:duration_ms] ||= ((merged[:completed_at] - merged[:started_at]) * 1000).to_i if merged[:completed_at]
+  merged[:total_tokens] = 0
+
+  # Image generation costs based on size and quality
+  # DALL-E 3: 1024x1024 standard=$0.040, HD=$0.080
+  #           1792x1024 standard=$0.080, HD=$0.120
+  size = merged.dig(:metadata, :size) || "1024x1024"
+  quality = merged.dig(:metadata, :quality) || "standard"
+
+  price = case [size, quality]
+          when ["1024x1024", "standard"] then 0.040
+          when ["1024x1024", "hd"] then 0.080
+          when ["1792x1024", "standard"], ["1024x1792", "standard"] then 0.080
+          when ["1792x1024", "hd"], ["1024x1792", "hd"] then 0.120
+          else 0.040
+          end
+
+  merged[:input_cost] = price.round(6)
+  merged[:output_cost] = 0
+  merged[:total_cost] = merged[:input_cost]
+
+  RubyLLM::Agents::Execution.create!(merged)
+end
+
+# Helper for workflow executions
+def create_workflow_execution(attrs = {})
+  defaults = {
+    agent_version: "1.0",
+    model_id: "gpt-4o-mini",
+    model_provider: "openai",
+    temperature: 0.7,
+    status: "success",
+    started_at: Time.current - rand(1..60).minutes,
+    input_tokens: rand(500..3000),
+    output_tokens: rand(200..1500),
+    streaming: false
+  }
+
+  merged = defaults.merge(attrs)
+  merged[:completed_at] ||= merged[:started_at] + rand(2000..8000) / 1000.0 if merged[:status] != "running"
+  merged[:duration_ms] ||= ((merged[:completed_at] - merged[:started_at]) * 1000).to_i if merged[:completed_at]
+  merged[:total_tokens] = (merged[:input_tokens] || 0) + (merged[:output_tokens] || 0)
+
+  # Calculate costs
+  input_price = case merged[:model_id]
+                when /gpt-4o-mini/ then 0.15
+                when /gpt-4o/ then 5.0
+                else 1.0
+                end
+  output_price = input_price * 4
+
+  merged[:input_cost] = ((merged[:input_tokens] || 0) / 1_000_000.0 * input_price).round(6)
+  merged[:output_cost] = ((merged[:output_tokens] || 0) / 1_000_000.0 * output_price).round(6)
+  merged[:total_cost] = merged[:input_cost] + merged[:output_cost]
+
+  RubyLLM::Agents::Execution.create!(merged)
+end
+
 # DocumentEmbedder - Single document embedding
 10.times do |i|
   create_embedder_execution(
@@ -880,6 +1017,565 @@ create_moderator_execution(
 puts "  Created 1 moderator error execution"
 
 # =============================================================================
+# SPEAKER EXECUTIONS (Text-to-Speech)
+# =============================================================================
+puts "\n" + "=" * 60
+puts "Creating Speaker Executions..."
+puts "=" * 60
+
+# ArticleNarrator - Acme Corp articles
+8.times do |i|
+  create_speaker_execution(
+    tenant_id: acme.llm_tenant_id,
+    agent_type: "ArticleNarrator",
+    model_id: "tts-1-hd",
+    parameters: { text: "Article content about technology trends #{i + 1}..." },
+    response: { audio_url: "https://storage.example.com/audio/article_#{i + 1}.mp3" },
+    metadata: {
+      voice: "nova",
+      character_count: rand(2000..8000),
+      audio_duration_seconds: rand(120..480),
+      output_format: "mp3"
+    },
+    created_at: Time.current - (i * 20).minutes
+  )
+end
+puts "  Created 8 ArticleNarrator executions"
+
+# PodcastSpeaker - Enterprise long-form content
+6.times do |i|
+  create_speaker_execution(
+    tenant_id: enterprise.llm_tenant_id,
+    agent_type: "PodcastSpeaker",
+    model_id: "tts-1",
+    streaming: true,
+    parameters: { text: "Podcast episode script #{i + 1}..." },
+    response: { audio_url: "https://storage.example.com/podcasts/episode_#{i + 1}.aac" },
+    metadata: {
+      voice: "onyx",
+      character_count: rand(15000..50000),
+      audio_duration_seconds: rand(900..3600),
+      output_format: "aac",
+      streaming: true
+    },
+    created_at: Time.current - (i * 45).minutes
+  )
+end
+puts "  Created 6 PodcastSpeaker executions"
+
+# NotificationSpeaker - Startup quick alerts
+10.times do |i|
+  create_speaker_execution(
+    tenant_id: startup.llm_tenant_id,
+    agent_type: "NotificationSpeaker",
+    model_id: "tts-1",
+    parameters: { text: "Alert: Your task has been completed!" },
+    response: { audio_url: "https://storage.example.com/notifications/alert_#{i + 1}.mp3" },
+    metadata: {
+      voice: "alloy",
+      character_count: rand(20..100),
+      audio_duration_seconds: rand(2..8),
+      output_format: "mp3"
+    },
+    created_at: Time.current - (i * 8).minutes
+  )
+end
+puts "  Created 10 NotificationSpeaker executions"
+
+# MultilangSpeaker - Enterprise multilingual content
+languages = %w[French Spanish German Japanese Portuguese]
+4.times do |i|
+  lang = languages[i % languages.length]
+  create_speaker_execution(
+    tenant_id: enterprise.llm_tenant_id,
+    agent_type: "MultilangSpeaker",
+    model_id: "eleven_multilingual_v2",
+    model_provider: "elevenlabs",
+    parameters: { text: "Multilingual content in #{lang}..." },
+    response: { audio_url: "https://storage.example.com/multilang/#{lang.downcase}_#{i + 1}.mp3" },
+    metadata: {
+      voice: "Rachel",
+      character_count: rand(1000..5000),
+      audio_duration_seconds: rand(60..300),
+      output_format: "mp3",
+      detected_language: lang.downcase[0..1]
+    },
+    created_at: Time.current - (i * 35).minutes
+  )
+end
+puts "  Created 4 MultilangSpeaker executions"
+
+# TechnicalNarrator - Acme technical docs
+4.times do |i|
+  create_speaker_execution(
+    tenant_id: acme.llm_tenant_id,
+    agent_type: "TechnicalNarrator",
+    model_id: "tts-1-hd",
+    parameters: { text: "Technical documentation about RubyLLM and PostgreSQL integration..." },
+    response: { audio_url: "https://storage.example.com/docs/tech_doc_#{i + 1}.mp3" },
+    metadata: {
+      voice: "fable",
+      character_count: rand(3000..10000),
+      audio_duration_seconds: rand(180..600),
+      output_format: "mp3",
+      lexicon_applied: true,
+      terms_corrected: ["RubyLLM", "PostgreSQL", "OAuth", "JWT"]
+    },
+    created_at: Time.current - (i * 25).minutes
+  )
+end
+puts "  Created 4 TechnicalNarrator executions"
+
+# Speaker cache hits - Acme
+2.times do |i|
+  create_speaker_execution(
+    tenant_id: acme.llm_tenant_id,
+    agent_type: "ArticleNarrator",
+    model_id: "tts-1-hd",
+    cache_hit: true,
+    response_cache_key: "speaker:article:#{SecureRandom.hex(8)}",
+    cached_at: Time.current - rand(1..24).hours,
+    duration_ms: rand(5..20),
+    parameters: { text: "Cached article content #{i + 1}" },
+    response: { audio_url: "https://storage.example.com/cached/article_#{i + 1}.mp3", from_cache: true },
+    metadata: { cache_hit: true, original_cached_at: Time.current - rand(1..7).days },
+    created_at: Time.current - (i * 50).minutes
+  )
+end
+puts "  Created 2 speaker cache hit executions"
+
+# Speaker error - Demo account
+create_speaker_execution(
+  tenant_id: demo.llm_tenant_id,
+  agent_type: "ArticleNarrator",
+  status: "error",
+  error_class: "ArgumentError",
+  error_message: "Text cannot be empty",
+  parameters: { text: "" },
+  response: nil,
+  metadata: { voice: "nova" },
+  created_at: Time.current - 3.hours
+)
+puts "  Created 1 speaker error execution"
+
+# =============================================================================
+# TRANSCRIBER EXECUTIONS (Speech-to-Text)
+# =============================================================================
+puts "\n" + "=" * 60
+puts "Creating Transcriber Executions..."
+puts "=" * 60
+
+# MeetingTranscriber - Acme meetings
+10.times do |i|
+  create_transcriber_execution(
+    tenant_id: acme.llm_tenant_id,
+    agent_type: "MeetingTranscriber",
+    model_id: "whisper-1",
+    parameters: { audio: "meeting_recording_#{i + 1}.mp3" },
+    response: { text: "Meeting transcript for standup #{i + 1}...", word_count: rand(500..3000) },
+    metadata: {
+      audio_duration_seconds: rand(600..3600),
+      language: "en",
+      output_format: "text",
+      word_count: rand(500..3000)
+    },
+    created_at: Time.current - (i * 15).minutes
+  )
+end
+puts "  Created 10 MeetingTranscriber executions"
+
+# SubtitleGenerator - Enterprise video subtitles
+8.times do |i|
+  create_transcriber_execution(
+    tenant_id: enterprise.llm_tenant_id,
+    agent_type: "SubtitleGenerator",
+    model_id: "whisper-1",
+    parameters: { audio: "training_video_#{i + 1}.mp4" },
+    response: { srt: "1\n00:00:00,000 --> 00:00:02,500\nWelcome...", segments_count: rand(50..200) },
+    metadata: {
+      audio_duration_seconds: rand(300..1800),
+      output_format: "srt",
+      segments_count: rand(50..200),
+      timestamps: "word"
+    },
+    created_at: Time.current - (i * 22).minutes
+  )
+end
+puts "  Created 8 SubtitleGenerator executions"
+
+# PodcastTranscriber - Enterprise podcasts
+6.times do |i|
+  create_transcriber_execution(
+    tenant_id: enterprise.llm_tenant_id,
+    agent_type: "PodcastTranscriber",
+    model_id: "gpt-4o-transcribe",
+    parameters: { audio: "podcast_episode_#{i + 1}.mp3" },
+    response: { text: "Full podcast transcript...", word_count: rand(5000..15000), segments: [] },
+    metadata: {
+      audio_duration_seconds: rand(1800..3600),
+      output_format: "verbose_json",
+      word_count: rand(5000..15000),
+      timestamps: "word"
+    },
+    created_at: Time.current - (i * 40).minutes
+  )
+end
+puts "  Created 6 PodcastTranscriber executions"
+
+# MultilingualTranscriber - Startup global calls
+languages = %w[es fr de ja pt]
+5.times do |i|
+  detected_lang = languages[i % languages.length]
+  create_transcriber_execution(
+    tenant_id: startup.llm_tenant_id,
+    agent_type: "MultilingualTranscriber",
+    model_id: "whisper-1",
+    parameters: { audio: "international_call_#{i + 1}.mp3" },
+    response: { text: "Transcribed content in detected language...", language: detected_lang },
+    metadata: {
+      audio_duration_seconds: rand(120..600),
+      detected_language: detected_lang,
+      language_confidence: rand(0.85..0.99).round(3),
+      output_format: "json"
+    },
+    created_at: Time.current - (i * 18).minutes
+  )
+end
+puts "  Created 5 MultilingualTranscriber executions"
+
+# TechnicalTranscriber - Acme tech talks
+5.times do |i|
+  create_transcriber_execution(
+    tenant_id: acme.llm_tenant_id,
+    agent_type: "TechnicalTranscriber",
+    model_id: "gpt-4o-transcribe",
+    parameters: { audio: "tech_talk_#{i + 1}.mp3" },
+    response: { text: "Technical discussion about RubyLLM integration...", word_count: rand(2000..8000) },
+    metadata: {
+      audio_duration_seconds: rand(600..2400),
+      language: "en",
+      output_format: "text",
+      postprocessing_applied: true,
+      terms_corrected: ["RubyLLM", "PostgreSQL", "OpenAI", "GraphQL"]
+    },
+    created_at: Time.current - (i * 30).minutes
+  )
+end
+puts "  Created 5 TechnicalTranscriber executions"
+
+# Transcriber cache hits - Acme
+3.times do |i|
+  create_transcriber_execution(
+    tenant_id: acme.llm_tenant_id,
+    agent_type: "MeetingTranscriber",
+    model_id: "whisper-1",
+    cache_hit: true,
+    response_cache_key: "transcriber:meeting:#{SecureRandom.hex(8)}",
+    cached_at: Time.current - rand(1..24).hours,
+    duration_ms: rand(10..50),
+    parameters: { audio: "cached_meeting_#{i + 1}.mp3" },
+    response: { text: "Cached transcript...", from_cache: true },
+    metadata: { cache_hit: true, original_cached_at: Time.current - rand(1..14).days },
+    created_at: Time.current - (i * 55).minutes
+  )
+end
+puts "  Created 3 transcriber cache hit executions"
+
+# Chunked large file - Enterprise
+2.times do |i|
+  create_transcriber_execution(
+    tenant_id: enterprise.llm_tenant_id,
+    agent_type: "PodcastTranscriber",
+    model_id: "gpt-4o-transcribe",
+    parameters: { audio: "long_recording_#{i + 1}.mp3" },
+    response: { text: "Very long transcription combining multiple chunks...", word_count: rand(20000..50000) },
+    metadata: {
+      audio_duration_seconds: rand(5400..10800), # 1.5-3 hours
+      chunked: true,
+      chunks_processed: rand(6..12),
+      parallel_processing: true,
+      output_format: "verbose_json"
+    },
+    created_at: Time.current - (i * 90).minutes
+  )
+end
+puts "  Created 2 chunked transcriber executions"
+
+# Transcriber error - Demo account
+create_transcriber_execution(
+  tenant_id: demo.llm_tenant_id,
+  agent_type: "MeetingTranscriber",
+  status: "error",
+  error_class: "RubyLLM::APIError",
+  error_message: "Audio file format not supported",
+  parameters: { audio: "invalid_file.txt" },
+  response: nil,
+  metadata: { error_type: "invalid_format" },
+  created_at: Time.current - 4.hours
+)
+puts "  Created 1 transcriber error execution"
+
+# =============================================================================
+# IMAGE GENERATOR EXECUTIONS
+# =============================================================================
+puts "\n" + "=" * 60
+puts "Creating Image Generator Executions..."
+puts "=" * 60
+
+# ProductImageGenerator - Acme e-commerce
+8.times do |i|
+  products = ["wireless headphones", "laptop stand", "mechanical keyboard", "USB hub", "webcam", "desk lamp", "monitor", "mouse"]
+  create_image_generator_execution(
+    tenant_id: acme.llm_tenant_id,
+    agent_type: "ProductImageGenerator",
+    model_id: "gpt-image-1",
+    parameters: { prompt: "Professional product photo of #{products[i]}" },
+    response: { url: "https://openai.com/generated/product_#{i + 1}.png", revised_prompt: "Studio product photography..." },
+    metadata: {
+      size: "1024x1024",
+      quality: "hd",
+      style: "natural",
+      content_policy: "strict"
+    },
+    created_at: Time.current - (i * 12).minutes
+  )
+end
+puts "  Created 8 ProductImageGenerator executions"
+
+# LogoGenerator - Enterprise branding
+5.times do |i|
+  companies = ["TechNova", "DataFlow", "CloudPeak", "InnovateLabs", "QuantumEdge"]
+  create_image_generator_execution(
+    tenant_id: enterprise.llm_tenant_id,
+    agent_type: "LogoGenerator",
+    model_id: "gpt-image-1",
+    parameters: { prompt: "Minimalist logo for tech company '#{companies[i]}'" },
+    response: { url: "https://openai.com/generated/logo_#{i + 1}.png", revised_prompt: "Professional logo design..." },
+    metadata: {
+      size: "1024x1024",
+      quality: "hd",
+      style: "vivid",
+      content_policy: "strict"
+    },
+    created_at: Time.current - (i * 28).minutes
+  )
+end
+puts "  Created 5 LogoGenerator executions"
+
+# ThumbnailGenerator - Startup video thumbnails
+6.times do |i|
+  topics = ["AI Revolution", "Web3 Explained", "Startup Tips", "Remote Work", "Productivity Hacks", "Tech News"]
+  create_image_generator_execution(
+    tenant_id: startup.llm_tenant_id,
+    agent_type: "ThumbnailGenerator",
+    model_id: "gpt-image-1",
+    parameters: { prompt: "YouTube thumbnail for video about #{topics[i]}" },
+    response: { url: "https://openai.com/generated/thumb_#{i + 1}.png", revised_prompt: "Eye-catching thumbnail..." },
+    metadata: {
+      size: "1792x1024",
+      quality: "standard",
+      style: "vivid",
+      content_policy: "standard"
+    },
+    created_at: Time.current - (i * 16).minutes
+  )
+end
+puts "  Created 6 ThumbnailGenerator executions"
+
+# AvatarGenerator - Startup user avatars
+8.times do |i|
+  styles = ["cartoon cat", "geometric pattern", "abstract art", "pixel art character", "watercolor portrait", "minimal icon", "cyberpunk character", "fantasy elf"]
+  create_image_generator_execution(
+    tenant_id: startup.llm_tenant_id,
+    agent_type: "AvatarGenerator",
+    model_id: "gpt-image-1",
+    parameters: { prompt: "Profile avatar: #{styles[i]}" },
+    response: { url: "https://openai.com/generated/avatar_#{i + 1}.png", revised_prompt: "Unique avatar design..." },
+    metadata: {
+      size: "1024x1024",
+      quality: "standard",
+      style: "vivid",
+      content_policy: "strict"
+    },
+    created_at: Time.current - (i * 10).minutes
+  )
+end
+puts "  Created 8 AvatarGenerator executions"
+
+# IllustrationGenerator - Enterprise blog illustrations
+4.times do |i|
+  topics = ["machine learning concept", "team collaboration", "cloud computing", "data security"]
+  create_image_generator_execution(
+    tenant_id: enterprise.llm_tenant_id,
+    agent_type: "IllustrationGenerator",
+    model_id: "gpt-image-1",
+    parameters: { prompt: "Editorial illustration for article about #{topics[i]}" },
+    response: { url: "https://openai.com/generated/illustration_#{i + 1}.png", revised_prompt: "Artistic editorial illustration..." },
+    metadata: {
+      size: "1024x1792",
+      quality: "hd",
+      style: "vivid",
+      content_policy: "standard"
+    },
+    created_at: Time.current - (i * 32).minutes
+  )
+end
+puts "  Created 4 IllustrationGenerator executions"
+
+# Image generator cache hits - Acme
+2.times do |i|
+  create_image_generator_execution(
+    tenant_id: acme.llm_tenant_id,
+    agent_type: "ProductImageGenerator",
+    model_id: "gpt-image-1",
+    cache_hit: true,
+    response_cache_key: "image:product:#{SecureRandom.hex(8)}",
+    cached_at: Time.current - rand(1..12).hours,
+    duration_ms: rand(10..30),
+    parameters: { prompt: "Cached product image request #{i + 1}" },
+    response: { url: "https://openai.com/cached/product_#{i + 1}.png", from_cache: true },
+    metadata: { cache_hit: true, size: "1024x1024", quality: "hd" },
+    created_at: Time.current - (i * 45).minutes
+  )
+end
+puts "  Created 2 image generator cache hit executions"
+
+# Content policy block - Demo account
+create_image_generator_execution(
+  tenant_id: demo.llm_tenant_id,
+  agent_type: "AvatarGenerator",
+  status: "error",
+  error_class: "RubyLLM::ContentPolicyError",
+  error_message: "Request blocked by content policy",
+  parameters: { prompt: "[content blocked by policy]" },
+  response: nil,
+  metadata: {
+    content_policy: "strict",
+    policy_violation: true,
+    flagged_categories: ["inappropriate_content"]
+  },
+  created_at: Time.current - 2.hours
+)
+puts "  Created 1 content policy block execution"
+
+# Image generator API error - Demo account
+create_image_generator_execution(
+  tenant_id: demo.llm_tenant_id,
+  agent_type: "LogoGenerator",
+  status: "error",
+  error_class: "RubyLLM::APIError",
+  error_message: "Rate limit exceeded for image generation",
+  parameters: { prompt: "Logo design request" },
+  response: nil,
+  metadata: { rate_limited: true, retry_after: 60 },
+  created_at: Time.current - 3.hours
+)
+puts "  Created 1 image generator error execution"
+
+# =============================================================================
+# WORKFLOW EXECUTIONS
+# =============================================================================
+puts "\n" + "=" * 60
+puts "Creating Workflow Executions..."
+puts "=" * 60
+
+# ContentAnalyzer (Parallel) - Acme content analysis
+5.times do |i|
+  create_workflow_execution(
+    tenant_id: acme.llm_tenant_id,
+    agent_type: "ContentAnalyzer",
+    model_id: "gpt-4o-mini",
+    parameters: { text: "Content to analyze for sentiment, keywords, and summary #{i + 1}..." },
+    response: {
+      aggregated: {
+        sentiment: "positive",
+        keywords: ["technology", "innovation", "growth"],
+        summary: "Key points summarized..."
+      }
+    },
+    metadata: {
+      workflow_type: "parallel",
+      branches: {
+        sentiment: { status: "success", duration_ms: rand(500..1500) },
+        keywords: { status: "success", duration_ms: rand(400..1200) },
+        summary: { status: "success", duration_ms: rand(600..1800) }
+      },
+      fail_fast: false,
+      total_branches: 3,
+      completed_branches: 3
+    },
+    created_at: Time.current - (i * 25).minutes
+  )
+end
+puts "  Created 5 ContentAnalyzer (parallel) executions"
+
+# ContentPipeline (Pipeline) - Enterprise content processing
+5.times do |i|
+  create_workflow_execution(
+    tenant_id: enterprise.llm_tenant_id,
+    agent_type: "ContentPipeline",
+    model_id: "gpt-4o",
+    parameters: { text: "Raw content to extract, classify, and format #{i + 1}..." },
+    response: {
+      final_output: {
+        extracted_data: { entities: ["Company A", "Product B"], dates: ["2024-01-15"] },
+        classification: "business_report",
+        formatted: "# Business Report\n\n..."
+      }
+    },
+    metadata: {
+      workflow_type: "pipeline",
+      steps: {
+        extract: { status: "success", duration_ms: rand(800..2000), agent: "ExtractorAgent" },
+        classify: { status: "success", duration_ms: rand(400..1000), agent: "ClassifierAgent" },
+        format: { status: "success", duration_ms: rand(600..1500), agent: "FormatterAgent" }
+      },
+      total_steps: 3,
+      completed_steps: 3,
+      timeout: 60
+    },
+    created_at: Time.current - (i * 35).minutes
+  )
+end
+puts "  Created 5 ContentPipeline (pipeline) executions"
+
+# SupportRouter (Router) - Startup customer support
+routes = [:billing, :technical, :default, :billing, :technical]
+5.times do |i|
+  chosen_route = routes[i]
+  agent = case chosen_route
+          when :billing then "BillingAgent"
+          when :technical then "TechnicalAgent"
+          else "GeneralAgent"
+          end
+  create_workflow_execution(
+    tenant_id: startup.llm_tenant_id,
+    agent_type: "SupportRouter",
+    model_id: "gpt-4o-mini",
+    temperature: 0.0,
+    parameters: { message: "Customer support message #{i + 1}..." },
+    response: {
+      routed_to: chosen_route,
+      classification: {
+        chosen_route: chosen_route,
+        confidence: rand(0.85..0.99).round(3),
+        reasoning: "Message contains #{chosen_route}-related keywords"
+      },
+      agent_response: "Response from #{agent}..."
+    },
+    metadata: {
+      workflow_type: "router",
+      available_routes: [:billing, :technical, :default],
+      chosen_route: chosen_route,
+      routed_agent: agent,
+      classification_model: "gpt-4o-mini"
+    },
+    created_at: Time.current - (i * 20).minutes
+  )
+end
+puts "  Created 5 SupportRouter (router) executions"
+
+# =============================================================================
 # EMBEDDER DEMONSTRATIONS
 # =============================================================================
 puts "\n" + "=" * 60
@@ -1006,6 +1702,33 @@ puts "\nStandalone Moderator Executions:"
   puts "  #{moderator}: #{count} executions (threshold=#{klass.threshold})" if count > 0
 end
 
+puts "\nSpeaker Executions:"
+%w[ArticleNarrator PodcastSpeaker NotificationSpeaker MultilangSpeaker TechnicalNarrator].each do |speaker|
+  count = RubyLLM::Agents::Execution.where(agent_type: speaker).count
+  klass = Object.const_get(speaker)
+  puts "  #{speaker}: #{count} executions (model=#{klass.model}, voice=#{klass.voice})" if count > 0
+end
+
+puts "\nTranscriber Executions:"
+%w[MeetingTranscriber SubtitleGenerator PodcastTranscriber MultilingualTranscriber TechnicalTranscriber].each do |transcriber|
+  count = RubyLLM::Agents::Execution.where(agent_type: transcriber).count
+  klass = Object.const_get(transcriber)
+  puts "  #{transcriber}: #{count} executions (model=#{klass.model})" if count > 0
+end
+
+puts "\nImage Generator Executions:"
+%w[ProductImageGenerator LogoGenerator ThumbnailGenerator AvatarGenerator IllustrationGenerator].each do |generator|
+  count = RubyLLM::Agents::Execution.where(agent_type: generator).count
+  klass = Object.const_get(generator)
+  puts "  #{generator}: #{count} executions (size=#{klass.size}, quality=#{klass.quality})" if count > 0
+end
+
+puts "\nWorkflow Executions:"
+%w[ContentAnalyzer ContentPipeline SupportRouter].each do |workflow|
+  count = RubyLLM::Agents::Execution.where(agent_type: workflow).count
+  puts "  #{workflow}: #{count} executions" if count > 0
+end
+
 puts "\nEmbedders Available:"
 %w[ApplicationEmbedder DocumentEmbedder SearchEmbedder BatchEmbedder CleanTextEmbedder CodeEmbedder].each do |embedder|
   klass = Object.const_get(embedder)
@@ -1016,6 +1739,30 @@ puts "\nStandalone Moderators Available:"
 %w[ContentModerator ChildSafeModerator ForumModerator].each do |moderator|
   klass = Object.const_get(moderator)
   puts "  #{moderator}: threshold=#{klass.threshold}, categories=#{klass.categories.length}"
+end
+
+puts "\nSpeakers Available:"
+%w[ApplicationSpeaker ArticleNarrator PodcastSpeaker NotificationSpeaker MultilangSpeaker TechnicalNarrator].each do |speaker|
+  klass = Object.const_get(speaker)
+  puts "  #{speaker}: model=#{klass.model}, voice=#{klass.voice}"
+end
+
+puts "\nTranscribers Available:"
+%w[ApplicationTranscriber MeetingTranscriber SubtitleGenerator PodcastTranscriber MultilingualTranscriber TechnicalTranscriber].each do |transcriber|
+  klass = Object.const_get(transcriber)
+  puts "  #{transcriber}: model=#{klass.model}, format=#{klass.output_format}"
+end
+
+puts "\nImage Generators Available:"
+%w[ApplicationImageGenerator ProductImageGenerator LogoGenerator ThumbnailGenerator AvatarGenerator IllustrationGenerator].each do |generator|
+  klass = Object.const_get(generator)
+  puts "  #{generator}: model=#{klass.model}, size=#{klass.size}, quality=#{klass.quality}"
+end
+
+puts "\nWorkflows Available:"
+%w[ContentAnalyzer ContentPipeline SupportRouter].each do |workflow|
+  klass = Object.const_get(workflow)
+  puts "  #{workflow}: #{klass.description}"
 end
 
 puts "\nTotal: #{Organization.count} organizations, #{RubyLLM::Agents::Execution.count} executions"

@@ -61,9 +61,9 @@ module RubyLLM
           max_concurrent ||= RubyLLM::Agents.configuration.async_max_concurrency
           semaphore = ::Async::Semaphore.new(max_concurrent)
 
-          ::Async do
+          Kernel.send(:Async) do
             agents_with_params.each_with_index.map do |(agent_class, params), index|
-              ::Async do
+              Kernel.send(:Async) do
                 result = semaphore.acquire do
                   agent_class.call(**(params || {}))
                 end
@@ -92,9 +92,9 @@ module RubyLLM
           max_concurrent ||= RubyLLM::Agents.configuration.async_max_concurrency
           semaphore = ::Async::Semaphore.new(max_concurrent)
 
-          ::Async do
+          Kernel.send(:Async) do
             items.map do |item|
-              ::Async do
+              Kernel.send(:Async) do
                 semaphore.acquire do
                   yield(item)
                 end
@@ -125,9 +125,9 @@ module RubyLLM
           results = {}
           mutex = Mutex.new
 
-          ::Async do |task|
+          Kernel.send(:Async) do |task|
             agents_with_params.each_with_index.map do |(agent_class, params), index|
-              ::Async do
+              Kernel.send(:Async) do
                 result = semaphore.acquire do
                   agent_class.call(**(params || {}))
                 end
@@ -155,7 +155,7 @@ module RubyLLM
         def call_async(agent_class, **params, &block)
           ensure_async_available!
 
-          ::Async do
+          Kernel.send(:Async) do
             agent_class.call(**params, &block)
           end
         end

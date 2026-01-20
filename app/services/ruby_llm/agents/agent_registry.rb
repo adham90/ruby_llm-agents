@@ -70,8 +70,9 @@ module RubyLLM
           moderators = RubyLLM::Agents::Moderator.descendants.map(&:name).compact
           speakers = RubyLLM::Agents::Speaker.descendants.map(&:name).compact
           transcribers = RubyLLM::Agents::Transcriber.descendants.map(&:name).compact
+          image_generators = RubyLLM::Agents::ImageGenerator.descendants.map(&:name).compact
 
-          (agents + workflows + embedders + moderators + speakers + transcribers).uniq
+          (agents + workflows + embedders + moderators + speakers + transcribers + image_generators).uniq
         rescue StandardError => e
           Rails.logger.error("[RubyLLM::Agents] Error loading agents from file system: #{e.message}")
           []
@@ -91,7 +92,7 @@ module RubyLLM
         #
         # @return [void]
         def eager_load_agents!
-          %w[agents workflows embedders moderators speakers transcribers].each do |dir|
+          %w[agents workflows embedders moderators speakers transcribers image_generators].each do |dir|
             path = Rails.root.join("app", dir)
             next unless path.exist?
 
@@ -224,7 +225,7 @@ module RubyLLM
         # Detects the agent type from class hierarchy
         #
         # @param agent_class [Class, nil] The agent class
-        # @return [String] "agent", "workflow", "embedder", "moderator", "speaker", or "transcriber"
+        # @return [String] "agent", "workflow", "embedder", "moderator", "speaker", "transcriber", or "image_generator"
         def detect_agent_type(agent_class)
           return "agent" unless agent_class
 
@@ -238,6 +239,8 @@ module RubyLLM
             "speaker"
           elsif ancestors.include?("RubyLLM::Agents::Transcriber")
             "transcriber"
+          elsif ancestors.include?("RubyLLM::Agents::ImageGenerator")
+            "image_generator"
           elsif ancestors.include?("RubyLLM::Agents::Workflow")
             "workflow"
           else

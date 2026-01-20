@@ -1,0 +1,93 @@
+<%
+  # Agent type badge with icon and color coding
+  # Usage: render "ruby_llm/agents/shared/agent_type_badge", agent_type: "agent"
+  # Options:
+  #   size: :xs, :sm (default), :md
+  #   show_label: true (default) or false for icon-only mode
+
+  agent_type = local_assigns[:agent_type]
+  size = local_assigns[:size] || :sm
+  show_label = local_assigns.fetch(:show_label, true)
+
+  config = case agent_type.to_s
+    when "agent"
+      {
+        icon: "robot",
+        label: "Agent",
+        bg: "bg-blue-100 dark:bg-blue-900/50",
+        text: "text-blue-700 dark:text-blue-300",
+        icon_char: "🤖"
+      }
+    when "embedder"
+      {
+        icon: "chart",
+        label: "Embedder",
+        bg: "bg-purple-100 dark:bg-purple-900/50",
+        text: "text-purple-700 dark:text-purple-300",
+        icon_char: "📊"
+      }
+    when "transcriber"
+      {
+        icon: "mic",
+        label: "Transcriber",
+        bg: "bg-green-100 dark:bg-green-900/50",
+        text: "text-green-700 dark:text-green-300",
+        icon_char: "🎤"
+      }
+    when "speaker"
+      {
+        icon: "speaker",
+        label: "Speaker",
+        bg: "bg-orange-100 dark:bg-orange-900/50",
+        text: "text-orange-700 dark:text-orange-300",
+        icon_char: "🔊"
+      }
+    when "image_generator"
+      {
+        icon: "palette",
+        label: "Image Gen",
+        bg: "bg-pink-100 dark:bg-pink-900/50",
+        text: "text-pink-700 dark:text-pink-300",
+        icon_char: "🎨"
+      }
+    when "moderator"
+      {
+        icon: "shield",
+        label: "Moderator",
+        bg: "bg-red-100 dark:bg-red-900/50",
+        text: "text-red-700 dark:text-red-300",
+        icon_char: "🛡️"
+      }
+    when "workflow"
+      {
+        icon: "gear",
+        label: "Workflow",
+        bg: "bg-indigo-100 dark:bg-indigo-900/50",
+        text: "text-indigo-700 dark:text-indigo-300",
+        icon_char: "⚙️"
+      }
+    else
+      {
+        icon: "question",
+        label: "Unknown",
+        bg: "bg-gray-100 dark:bg-gray-700",
+        text: "text-gray-700 dark:text-gray-300",
+        icon_char: "?"
+      }
+    end
+
+  size_classes = case size
+    when :xs
+      { badge: "px-1.5 py-0.5", icon: "text-[10px]", text: "text-[10px]" }
+    when :md
+      { badge: "px-2.5 py-1", icon: "text-sm", text: "text-sm" }
+    else # :sm
+      { badge: "px-2 py-0.5", icon: "text-xs", text: "text-xs" }
+    end
+%>
+<span class="inline-flex items-center gap-1 rounded-md font-medium <%= config[:bg] %> <%= config[:text] %> <%= size_classes[:badge] %>">
+  <span class="<%= size_classes[:icon] %>" aria-hidden="true"><%= config[:icon_char] %></span>
+  <% if show_label %>
+    <span class="<%= size_classes[:text] %>"><%= config[:label] %></span>
+  <% end %>
+</span>

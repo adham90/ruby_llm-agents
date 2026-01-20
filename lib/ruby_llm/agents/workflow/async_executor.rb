@@ -109,9 +109,9 @@ module RubyLLM
         #
         # @return [void]
         def execute_all
-          ::Async do
+          Kernel.send(:Async) do
             @tasks.map do |task|
-              ::Async do
+              Kernel.send(:Async) do
                 next if aborted?
 
                 @semaphore.acquire do
@@ -130,7 +130,7 @@ module RubyLLM
         def execute_with_timeout(timeout)
           completed = false
 
-          ::Async do |task|
+          Kernel.send(:Async) do |task|
             task.with_timeout(timeout) do
               execute_all
               completed = true

@@ -53,10 +53,19 @@ module RubyLLM
         end
       end
 
-      # Builds per-agent comparison statistics
+      # Builds per-agent comparison statistics for all agent types
+      #
+      # Creates separate instance variables for each agent type:
+      # - @agent_stats: Base agents
+      # - @embedder_stats: Embedders
+      # - @transcriber_stats: Transcribers
+      # - @speaker_stats: Speakers
+      # - @image_generator_stats: Image generators
+      # - @moderator_stats: Moderators
+      # - @workflow_stats: Workflows
       #
       # @param base_scope [ActiveRecord::Relation] Base scope to filter from
-      # @return [Array<Hash>] Array of all stats sorted by cost descending
+      # @return [Array<Hash>] Array of base agent stats (for backward compatibility)
       def build_agent_comparison(base_scope = Execution)
         scope = base_scope.last_n_days(@days)
         agent_types = scope.distinct.pluck(:agent_type)
@@ -67,26 +76,37 @@ module RubyLLM
           total_cost = agent_scope.sum(:total_cost) || 0
           successful = agent_scope.successful.count
 
-          # Detect if this is a workflow
+          # Detect agent type using AgentRegistry
           agent_class = AgentRegistry.find(agent_type)
-          is_workflow = agent_class&.ancestors&.any? { |a| a.name&.include?("Workflow") }
-          workflow_type = is_workflow ? detect_workflow_type(agent_class) : nil
+          detected_type = AgentRegistry.send(:detect_agent_type, agent_class)
+
+          # Get workflow type if applicable
+          workflow_type = detected_type == "workflow" ? detect_workflow_type(agent_class) : nil
 
           {
             agent_type: agent_type,
+            detected_type: detected_type,
             executions: count,
             total_cost: total_cost,
             avg_cost: count > 0 ? (total_cost / count).round(6) : 0,
             avg_duration_ms: agent_scope.average(:duration_ms)&.round || 0,
             success_rate: count > 0 ? (successful.to_f / count * 100).round(1) : 0,
-            is_workflow: is_workflow,
+            is_workflow: detected_type == "workflow",
             workflow_type: workflow_type
           }
         end.sort_by { |a| -(a[:total_cost] || 0) }
 
-        # Split into agents and workflows for tabbed display
-        @workflow_stats = all_stats.select { |a| a[:is_workflow] }
-        all_stats.reject { |a| a[:is_workflow] }
+        # Split stats by agent type for 7-tab display
+        @agent_stats = all_stats.select { |a| a[:detected_type] == "agent" }
+        @embedder_stats = all_stats.select { |a| a[:detected_type] == "embedder" }
+        @transcriber_stats = all_stats.select { |a| a[:detected_type] == "transcriber" }
+        @speaker_stats = all_stats.select { |a| a[:detected_type] == "speaker" }
+        @image_generator_stats = all_stats.select { |a| a[:detected_type] == "image_generator" }
+        @moderator_stats = all_stats.select { |a| a[:detected_type] == "moderator" }
+        @workflow_stats = all_stats.select { |a| a[:detected_type] == "workflow" }
+
+        # Return base agents for backward compatibility
+        @agent_stats
       end
 
       # Detects workflow type from class hierarchy
