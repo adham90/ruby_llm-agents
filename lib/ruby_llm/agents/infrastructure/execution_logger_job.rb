@@ -25,7 +25,9 @@ module RubyLLM
       # @param execution_data [Hash] Execution attributes from instrumentation
       # @return [void]
       def perform(execution_data)
-        execution = Execution.create!(execution_data)
+        # Filter to only known attributes to prevent schema mismatches
+        filtered_data = filter_known_attributes(execution_data)
+        execution = Execution.create!(filtered_data)
 
         # Calculate costs if token data is available
         if execution.input_tokens && execution.output_tokens
@@ -38,6 +40,20 @@ module RubyLLM
       end
 
       private
+
+      # Filters data to only include attributes that exist on the Execution model
+      #
+      # This provides a safety net against schema mismatches, such as when
+      # tenant_id is passed but the column doesn't exist in the database.
+      #
+      # @param data [Hash] The raw execution data
+      # @return [Hash] Filtered data with only known attributes
+      def filter_known_attributes(data)
+        return data unless defined?(Execution) && Execution.respond_to?(:column_names)
+
+        known_columns = Execution.column_names
+        data.select { |key, _| known_columns.include?(key.to_s) }
+      end
 
       # Checks if execution should be flagged as anomalous
       #

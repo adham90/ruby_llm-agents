@@ -95,6 +95,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     context "when tracking is enabled" do
       before do
         allow(config).to receive(:track_embeddings).and_return(true)
+        allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
         # Mock the Execution model
         stub_const("RubyLLM::Agents::Execution", Class.new)
       end
@@ -199,6 +200,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         allow(config).to receive(:track_embeddings).and_return(true)
         allow(config).to receive(:respond_to?).with(:track_cache_hits).and_return(true)
         allow(config).to receive(:track_cache_hits).and_return(false)
+        allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
         stub_const("RubyLLM::Agents::Execution", Class.new)
       end
 

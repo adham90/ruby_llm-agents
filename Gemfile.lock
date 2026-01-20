@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    ruby_llm-agents (0.5.0)
+    ruby_llm-agents (1.0.0.pre.beta.1)
       csv
       ostruct
       rails (>= 7.0)

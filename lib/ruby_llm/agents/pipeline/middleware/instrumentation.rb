@@ -104,13 +104,17 @@ module RubyLLM
               duration_ms: context.duration_ms,
               started_at: context.started_at,
               completed_at: context.completed_at,
-              tenant_id: context.tenant_id,
               cache_hit: context.cached?,
               input_tokens: context.input_tokens || 0,
               output_tokens: context.output_tokens || 0,
               total_cost: context.total_cost || 0,
               attempts_count: context.attempts_made
             }
+
+            # Add tenant_id only if multi-tenancy is enabled and tenant is set
+            if global_config.multi_tenancy_enabled? && context.tenant_id.present?
+              data[:tenant_id] = context.tenant_id
+            end
 
             # Add cache key for cache hit executions
             if context.cached? && context[:cache_key]

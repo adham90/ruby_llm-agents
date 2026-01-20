@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_19_100001) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_20_214933) do
   create_table "organizations", force: :cascade do |t|
     t.boolean "active", default: true
     t.string "anthropic_api_key"
@@ -88,6 +88,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_19_100001) do
     t.integer "duration_ms"
     t.string "error_class"
     t.text "error_message"
+    t.string "execution_type", default: "chat"
     t.json "fallback_chain", default: [], null: false
     t.string "fallback_reason"
     t.string "finish_reason"
@@ -137,6 +138,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_19_100001) do
     t.index ["chosen_model_id"], name: "index_ruby_llm_agents_executions_on_chosen_model_id"
     t.index ["created_at"], name: "index_ruby_llm_agents_executions_on_created_at"
     t.index ["duration_ms"], name: "index_ruby_llm_agents_executions_on_duration_ms"
+    t.index ["execution_type"], name: "index_ruby_llm_agents_executions_on_execution_type"
     t.index ["messages_count"], name: "index_ruby_llm_agents_executions_on_messages_count"
     t.index ["parent_execution_id"], name: "index_ruby_llm_agents_executions_on_parent_execution_id"
     t.index ["request_id"], name: "index_ruby_llm_agents_executions_on_request_id"
