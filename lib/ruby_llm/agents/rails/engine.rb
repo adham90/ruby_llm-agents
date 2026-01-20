@@ -170,16 +170,72 @@ module RubyLLM
         g.factory_bot dir: "spec/factories"
       end
 
-      # Adds the host app's app/agents directory to Rails autoload paths
+      # Adds the host app's LLM directories to Rails autoload paths
       #
-      # This allows agent classes defined in app/agents/ to be automatically
-      # loaded without explicit requires. Must run before set_autoload_paths.
+      # This allows agent classes and other LLM components defined in app/llm/
+      # to be automatically loaded without explicit requires.
+      #
+      # Supports two structures:
+      # 1. New grouped structure: app/llm/agents/, app/llm/tools/, etc.
+      # 2. Legacy flat structure: app/agents/ (for backwards compatibility)
       #
       # @api private
       initializer "ruby_llm_agents.autoload_agents", before: :set_autoload_paths do |app|
-        agents_path = app.root.join("app/agents")
-        if agents_path.exist?
-          Rails.autoloaders.main.push_dir(agents_path.to_s)
+        config = RubyLLM::Agents.configuration
+
+        # Check for new grouped structure (app/llm/*)
+        root_path = app.root.join("app", config.root_directory)
+        if root_path.exist?
+          # Add each configured path that exists
+          config.all_autoload_paths.each do |relative_path|
+            full_path = app.root.join(relative_path)
+            if full_path.exist?
+              # Configure namespace for the path
+              namespace = namespace_for_path(relative_path, config)
+              if namespace
+                Rails.autoloaders.main.push_dir(full_path.to_s, namespace: namespace)
+              else
+                Rails.autoloaders.main.push_dir(full_path.to_s)
+              end
+            end
+          end
+        else
+          # Fallback to legacy flat structure (app/agents/)
+          agents_path = app.root.join("app/agents")
+          if agents_path.exist?
+            Rails.autoloaders.main.push_dir(agents_path.to_s)
+          end
+        end
+      end
+
+      # Determines the namespace constant for a given path
+      #
+      # @param path [String] Relative path like "app/llm/agents"
+      # @param config [Configuration] Current configuration
+      # @return [Module, nil] Namespace module or nil for top-level
+      # @api private
+      def self.namespace_for_path(path, config)
+        return nil if config.root_namespace.blank?
+
+        # Parse the path to determine namespace
+        parts = path.split("/")
+        return nil unless parts.length >= 3
+
+        category = parts[2] # e.g., "agents", "audio", "image", "text"
+
+        namespace_name = case category
+        when "audio", "image", "text"
+          "#{config.root_namespace}::#{category.camelize}"
+        else
+          config.root_namespace
+        end
+
+        # Return the constant, creating intermediate modules if needed
+        namespace_name.constantize
+      rescue NameError
+        # Create the namespace module if it doesn't exist
+        namespace_name.split("::").inject(Object) do |mod, name|
+          mod.const_defined?(name, false) ? mod.const_get(name) : mod.const_set(name, Module.new)
         end
       end
     end

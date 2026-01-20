@@ -362,9 +362,12 @@ module RubyLLM
       # @!attribute [rw] root_namespace
       #   The root namespace for all LLM component classes.
       #   This should match the root_directory in camelized form.
-      #   @return [String] Namespace (default: "Llm")
-      #   @example
+      #   Set to nil or "" to use no namespace (classes at top-level).
+      #   @return [String, nil] Namespace (default: "Llm")
+      #   @example Custom namespace
       #     config.root_namespace = "AI"  # Uses AI:: instead of Llm::
+      #   @example No namespace (top-level classes)
+      #     config.root_namespace = nil   # Uses top-level classes (ApplicationAgent, etc.)
 
       # Attributes without validation (simple accessors)
       attr_accessor :default_model,
@@ -818,16 +821,29 @@ module RubyLLM
       # Returns the full namespace for a given category
       #
       # @param category [Symbol, nil] Category (:audio, :image, :text, or nil for root)
-      # @return [String] Full namespace string
-      # @example
+      # @return [String, nil] Full namespace string, or nil if no namespace configured
+      # @example With default namespace
       #   namespace_for(:image) #=> "Llm::Image"
       #   namespace_for(nil)    #=> "Llm"
+      # @example With no namespace (root_namespace = nil)
+      #   namespace_for(:image) #=> "Image"
+      #   namespace_for(nil)    #=> nil
       def namespace_for(category = nil)
-        case category
-        when :audio then "#{root_namespace}::Audio"
-        when :image then "#{root_namespace}::Image"
-        when :text then "#{root_namespace}::Text"
-        else root_namespace
+        # Handle no namespace configuration
+        if root_namespace.blank?
+          case category
+          when :audio then "Audio"
+          when :image then "Image"
+          when :text then "Text"
+          else nil
+          end
+        else
+          case category
+          when :audio then "#{root_namespace}::Audio"
+          when :image then "#{root_namespace}::Image"
+          when :text then "#{root_namespace}::Text"
+          else root_namespace
+          end
         end
       end
 
