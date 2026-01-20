@@ -1,0 +1,33 @@
+# frozen_string_literal: true
+
+# Example Parallel Workflow
+# Analyzes content from multiple perspectives concurrently
+#
+# Usage:
+#   result = Llm::ContentAnalyzer.call(text: "Your content here")
+#   result.branches[:sentiment].content  # Sentiment analysis
+#   result.branches[:keywords].content   # Keyword extraction
+#   result.branches[:summary].content    # Summary
+#   result.total_cost                    # Combined cost
+#
+module Llm
+  class ContentAnalyzer < RubyLLM::Agents::Workflow::Parallel
+    description "Analyzes content concurrently for sentiment, keywords, and summary"
+    version "1.0"
+    fail_fast false  # Continue even if a branch fails
+
+    branch :sentiment, agent: Llm::SentimentAgent
+    branch :keywords,  agent: Llm::KeywordAgent
+    branch :summary,   agent: Llm::SummaryAgent
+
+    # Custom aggregation of results
+    def aggregate(results)
+      {
+        sentiment: results[:sentiment]&.content,
+        keywords: results[:keywords]&.content,
+        summary: results[:summary]&.content,
+        analyzed_at: Time.current
+      }
+    end
+  end
+end
