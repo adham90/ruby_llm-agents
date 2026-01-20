@@ -1,135 +1,139 @@
 # frozen_string_literal: true
 
-# ApplicationImagePipeline - Base class for all image pipelines in this application
-#
-# All image pipelines inherit from this class. Configure shared settings here
-# that apply to all pipelines, or override them per-pipeline as needed.
-#
-# ============================================================================
-# IMAGE PIPELINE DSL REFERENCE
-# ============================================================================
-#
-# STEP DEFINITION:
-# ----------------
-#   step :name, generator: MyGenerator      # Text-to-image generation
-#   step :name, upscaler: MyUpscaler        # Resolution enhancement
-#   step :name, transformer: MyTransformer  # Style transfer / img2img
-#   step :name, editor: MyEditor            # Inpainting / editing
-#   step :name, variator: MyVariator        # Generate variations
-#   step :name, analyzer: MyAnalyzer        # Image analysis (non-image output)
-#   step :name, remover: MyRemover          # Background removal
-#
-# CONDITIONAL STEPS:
-# ------------------
-#   step :upscale, upscaler: MyUpscaler, if: ->(ctx) { ctx[:high_quality] }
-#   step :remove_bg, remover: MyRemover, unless: ->(ctx) { ctx[:keep_background] }
-#
-# STEP OPTIONS:
-# -------------
-#   step :upscale, upscaler: PhotoUpscaler, scale: 4
-#   step :transform, transformer: StyleTransformer, strength: 0.8
-#
-# CALLBACKS:
-# ----------
-#   before_pipeline :validate_inputs
-#   after_pipeline :add_watermark
-#   after_pipeline { |result| notify_completion(result) }
-#
-# ERROR HANDLING:
-# ---------------
-#   stop_on_error true         # Stop pipeline on first error (default)
-#   stop_on_error false        # Continue even if a step fails
-#
-# CACHING:
-# --------
-#   cache_for 1.hour           # Cache pipeline results
-#
-# METADATA:
-# ---------
-#   version "1.0"              # Version identifier (affects cache key)
-#   description "My pipeline"  # Human-readable description
-#
-# ============================================================================
-# USAGE EXAMPLES
-# ============================================================================
-#
-#   # Simple pipeline
-#   class ProductPipeline < ApplicationImagePipeline
-#     step :generate, generator: ProductGenerator
-#     step :upscale, upscaler: PhotoUpscaler, scale: 2
-#   end
-#
-#   result = ProductPipeline.call(prompt: "Laptop on desk")
-#   result.final_image    # => URL or data of processed image
-#   result.total_cost     # => Combined cost of all steps
-#
-#   # Pipeline with analysis
-#   class AnalysisPipeline < ApplicationImagePipeline
-#     step :generate, generator: ProductGenerator
-#     step :analyze, analyzer: ContentAnalyzer
-#   end
-#
-#   result = AnalysisPipeline.call(prompt: "Product photo")
-#   result.analysis       # => ImageAnalysisResult
-#
-#   # Conditional pipeline
-#   class SmartPipeline < ApplicationImagePipeline
-#     step :generate, generator: ProductGenerator
-#     step :upscale, upscaler: PhotoUpscaler, if: ->(ctx) { ctx[:hd] }
-#     step :remove_background, remover: BackgroundRemover, if: ->(ctx) { ctx[:transparent] }
-#   end
-#
-#   result = SmartPipeline.call(prompt: "...", hd: true, transparent: false)
-#
-# ============================================================================
-# RESULT ACCESS
-# ============================================================================
-#
-#   result.success?              # All steps succeeded
-#   result.partial?              # Some steps succeeded, some failed
-#   result.error?                # Pipeline failed
-#
-#   result.step(:generate)       # Access specific step result
-#   result.steps                 # Array of all step results
-#   result.step_count            # Total number of steps
-#
-#   result.final_image           # Final processed image (URL or data)
-#   result.url                   # Final image URL
-#   result.to_blob               # Final image binary data
-#   result.save("output.png")    # Save final image to file
-#
-#   result.total_cost            # Combined cost of all steps
-#   result.duration_ms           # Total pipeline duration
-#
-class ApplicationImagePipeline < RubyLLM::Agents::ImagePipeline
-  # ============================================
-  # Shared Pipeline Configuration
-  # ============================================
-  # These settings are inherited by all pipelines
+module <%= @root_namespace %>
+  module Image
+    # ApplicationImagePipeline - Base class for all image pipelines in this application
+    #
+    # All image pipelines inherit from this class. Configure shared settings here
+    # that apply to all pipelines, or override them per-pipeline as needed.
+    #
+    # ============================================================================
+    # IMAGE PIPELINE DSL REFERENCE
+    # ============================================================================
+    #
+    # STEP DEFINITION:
+    # ----------------
+    #   step :name, generator: MyGenerator      # Text-to-image generation
+    #   step :name, upscaler: MyUpscaler        # Resolution enhancement
+    #   step :name, transformer: MyTransformer  # Style transfer / img2img
+    #   step :name, editor: MyEditor            # Inpainting / editing
+    #   step :name, variator: MyVariator        # Generate variations
+    #   step :name, analyzer: MyAnalyzer        # Image analysis (non-image output)
+    #   step :name, remover: MyRemover          # Background removal
+    #
+    # CONDITIONAL STEPS:
+    # ------------------
+    #   step :upscale, upscaler: MyUpscaler, if: ->(ctx) { ctx[:high_quality] }
+    #   step :remove_bg, remover: MyRemover, unless: ->(ctx) { ctx[:keep_background] }
+    #
+    # STEP OPTIONS:
+    # -------------
+    #   step :upscale, upscaler: PhotoUpscaler, scale: 4
+    #   step :transform, transformer: StyleTransformer, strength: 0.8
+    #
+    # CALLBACKS:
+    # ----------
+    #   before_pipeline :validate_inputs
+    #   after_pipeline :add_watermark
+    #   after_pipeline { |result| notify_completion(result) }
+    #
+    # ERROR HANDLING:
+    # ---------------
+    #   stop_on_error true         # Stop pipeline on first error (default)
+    #   stop_on_error false        # Continue even if a step fails
+    #
+    # CACHING:
+    # --------
+    #   cache_for 1.hour           # Cache pipeline results
+    #
+    # METADATA:
+    # ---------
+    #   version "1.0"              # Version identifier (affects cache key)
+    #   description "My pipeline"  # Human-readable description
+    #
+    # ============================================================================
+    # USAGE EXAMPLES
+    # ============================================================================
+    #
+    #   # Simple pipeline
+    #   class ProductPipeline < ApplicationImagePipeline
+    #     step :generate, generator: ProductGenerator
+    #     step :upscale, upscaler: PhotoUpscaler, scale: 2
+    #   end
+    #
+    #   result = ProductPipeline.call(prompt: "Laptop on desk")
+    #   result.final_image    # => URL or data of processed image
+    #   result.total_cost     # => Combined cost of all steps
+    #
+    #   # Pipeline with analysis
+    #   class AnalysisPipeline < ApplicationImagePipeline
+    #     step :generate, generator: ProductGenerator
+    #     step :analyze, analyzer: ContentAnalyzer
+    #   end
+    #
+    #   result = AnalysisPipeline.call(prompt: "Product photo")
+    #   result.analysis       # => ImageAnalysisResult
+    #
+    #   # Conditional pipeline
+    #   class SmartPipeline < ApplicationImagePipeline
+    #     step :generate, generator: ProductGenerator
+    #     step :upscale, upscaler: PhotoUpscaler, if: ->(ctx) { ctx[:hd] }
+    #     step :remove_background, remover: BackgroundRemover, if: ->(ctx) { ctx[:transparent] }
+    #   end
+    #
+    #   result = SmartPipeline.call(prompt: "...", hd: true, transparent: false)
+    #
+    # ============================================================================
+    # RESULT ACCESS
+    # ============================================================================
+    #
+    #   result.success?              # All steps succeeded
+    #   result.partial?              # Some steps succeeded, some failed
+    #   result.error?                # Pipeline failed
+    #
+    #   result.step(:generate)       # Access specific step result
+    #   result.steps                 # Array of all step results
+    #   result.step_count            # Total number of steps
+    #
+    #   result.final_image           # Final processed image (URL or data)
+    #   result.url                   # Final image URL
+    #   result.to_blob               # Final image binary data
+    #   result.save("output.png")    # Save final image to file
+    #
+    #   result.total_cost            # Combined cost of all steps
+    #   result.duration_ms           # Total pipeline duration
+    #
+    class ApplicationImagePipeline < RubyLLM::Agents::ImagePipeline
+      # ============================================
+      # Shared Pipeline Configuration
+      # ============================================
+      # These settings are inherited by all pipelines
 
-  # stop_on_error true  # Stop on first step failure
+      # stop_on_error true  # Stop on first step failure
 
-  # ============================================
-  # Shared Caching
-  # ============================================
+      # ============================================
+      # Shared Caching
+      # ============================================
 
-  # cache_for 30.minutes  # Enable caching for all pipelines
+      # cache_for 30.minutes  # Enable caching for all pipelines
 
-  # ============================================
-  # Shared Callbacks
-  # ============================================
-  # Define methods here that can be used by all pipelines
+      # ============================================
+      # Shared Callbacks
+      # ============================================
+      # Define methods here that can be used by all pipelines
 
-  # before_pipeline :validate_tenant
-  # after_pipeline :log_completion
+      # before_pipeline :validate_tenant
+      # after_pipeline :log_completion
 
-  # private
+      # private
 
-  # def validate_tenant
-  #   raise ArgumentError, "Tenant required" unless context[:tenant]
-  # end
+      # def validate_tenant
+      #   raise ArgumentError, "Tenant required" unless context[:tenant]
+      # end
 
-  # def log_completion(result)
-  #   Rails.logger.info("Pipeline completed: #{result.success?}")
-  # end
+      # def log_completion(result)
+      #   Rails.logger.info("Pipeline completed: #{result.success?}")
+      # end
+    end
+  end
 end

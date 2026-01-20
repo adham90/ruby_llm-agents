@@ -9,9 +9,10 @@ module RubyLlmAgents
   #   rails generate ruby_llm_agents:image_pipeline Product
   #   rails generate ruby_llm_agents:image_pipeline Ecommerce --steps generate,upscale,remove_background
   #   rails generate ruby_llm_agents:image_pipeline Content --steps generate,analyze
+  #   rails generate ruby_llm_agents:image_pipeline Product --root=ai
   #
   # This will create:
-  #   - app/image_pipelines/product_pipeline.rb (or ecommerce_pipeline.rb, etc.)
+  #   - app/{root}/image/pipelines/product_pipeline.rb
   #
   class ImagePipelineGenerator < ::Rails::Generators::NamedBase
     source_root File.expand_path("templates", __dir__)
@@ -22,16 +23,20 @@ module RubyLlmAgents
                  desc: "Stop pipeline on first error"
     class_option :cache, type: :string, default: nil,
                  desc: "Cache TTL (e.g., '1.hour', '1.day')"
-
-    def create_application_image_pipeline
-      template "application_image_pipeline.rb.tt",
-               "app/image_pipelines/application_image_pipeline.rb",
-               skip: true
-    end
+    class_option :root,
+                 type: :string,
+                 default: nil,
+                 desc: "Root directory name (default: uses config or 'llm')"
+    class_option :namespace,
+                 type: :string,
+                 default: nil,
+                 desc: "Root namespace (default: camelized root or config)"
 
     def create_image_pipeline_file
+      @root_namespace = root_namespace
+      @image_namespace = "#{root_namespace}::Image"
       pipeline_path = name.underscore
-      template "image_pipeline.rb.tt", "app/image_pipelines/#{pipeline_path}_pipeline.rb"
+      template "image_pipeline.rb.tt", "app/#{root_directory}/image/pipelines/#{pipeline_path}_pipeline.rb"
     end
 
     def create_step_classes
@@ -42,13 +47,14 @@ module RubyLlmAgents
     end
 
     def show_usage
-      full_class_name = name.split("/").map(&:camelize).join("::")
+      pipeline_class_name = name.split("/").map(&:camelize).join("::")
+      full_class_name = "#{root_namespace}::Image::#{pipeline_class_name}Pipeline"
       say ""
-      say "Image pipeline #{full_class_name}Pipeline created!", :green
+      say "Image pipeline #{full_class_name} created!", :green
       say ""
       say "Usage:"
       say "  # Run the pipeline"
-      say "  result = #{full_class_name}Pipeline.call(prompt: 'Product photo')"
+      say "  result = #{full_class_name}.call(prompt: 'Product photo')"
       say "  result.final_image   # => The processed image"
       say "  result.total_cost    # => Combined cost of all steps"
       say "  result.step_count    # => Number of steps executed"
@@ -62,7 +68,7 @@ module RubyLlmAgents
       say "  result.save('output.png')"
       say ""
       say "  # With tenant tracking"
-      say "  result = #{full_class_name}Pipeline.call("
+      say "  result = #{full_class_name}.call("
       say "    prompt: 'Product photo',"
       say "    tenant: current_organization"
       say "  )"
@@ -71,6 +77,21 @@ module RubyLlmAgents
 
     private
 
+    def root_directory
+      @root_directory ||= options[:root] || RubyLLM::Agents.configuration.root_directory
+    end
+
+    def root_namespace
+      @root_namespace ||= options[:namespace] || camelize(root_directory)
+    end
+
+    def camelize(str)
+      return "AI" if str.downcase == "ai"
+      return "ML" if str.downcase == "ml"
+      return "LLM" if str.downcase == "llm"
+      str.split(/[-_]/).map(&:capitalize).join
+    end
+
     def parsed_steps
       options[:steps].to_s.split(",").map(&:strip).map(&:to_sym)
     end
@@ -78,15 +99,15 @@ module RubyLlmAgents
     def should_create_stub?(step)
       case step
       when :generate
-        !File.exist?("app/image_generators/#{name.underscore}_generator.rb")
+        !File.exist?("app/#{root_directory}/image/generators/#{name.underscore}_generator.rb")
       when :upscale
-        !File.exist?("app/image_upscalers/#{name.underscore}_upscaler.rb")
+        !File.exist?("app/#{root_directory}/image/upscalers/#{name.underscore}_upscaler.rb")
       when :transform
-        !File.exist?("app/image_transformers/#{name.underscore}_transformer.rb")
+        !File.exist?("app/#{root_directory}/image/transformers/#{name.underscore}_transformer.rb")
       when :analyze
-        !File.exist?("app/image_analyzers/#{name.underscore}_analyzer.rb")
+        !File.exist?("app/#{root_directory}/image/analyzers/#{name.underscore}_analyzer.rb")
       when :remove_background
-        !File.exist?("app/background_removers/#{name.underscore}_background_remover.rb")
+        !File.exist?("app/#{root_directory}/image/background_removers/#{name.underscore}_background_remover.rb")
       else
         false
       end
@@ -118,17 +139,17 @@ module RubyLlmAgents
         class_base = name.split("/").map(&:camelize).join("::")
         case step
         when :generate
-          { step: step, type: :generator, class_name: "#{class_base}Generator" }
+          { step: step, type: :generator, class_name: "#{@image_namespace}::#{class_base}Generator" }
         when :upscale
-          { step: step, type: :upscaler, class_name: "#{class_base}Upscaler" }
+          { step: step, type: :upscaler, class_name: "#{@image_namespace}::#{class_base}Upscaler" }
         when :transform
-          { step: step, type: :transformer, class_name: "#{class_base}Transformer" }
+          { step: step, type: :transformer, class_name: "#{@image_namespace}::#{class_base}Transformer" }
         when :analyze
-          { step: step, type: :analyzer, class_name: "#{class_base}Analyzer" }
+          { step: step, type: :analyzer, class_name: "#{@image_namespace}::#{class_base}Analyzer" }
         when :remove_background
-          { step: step, type: :remover, class_name: "#{class_base}BackgroundRemover" }
+          { step: step, type: :remover, class_name: "#{@image_namespace}::#{class_base}BackgroundRemover" }
         else
-          { step: step, type: step, class_name: "#{class_base}#{step.to_s.camelize}" }
+          { step: step, type: step, class_name: "#{@image_namespace}::#{class_base}#{step.to_s.camelize}" }
         end
       end
     end

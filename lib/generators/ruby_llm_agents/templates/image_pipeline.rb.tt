@@ -1,39 +1,50 @@
 # frozen_string_literal: true
 
-# <%= class_name %>Pipeline - <%= options[:description] || "Image processing pipeline" %>
-#
-# Chains multiple image operations into a single workflow.
-#
-# Usage:
-#   result = <%= class_name %>Pipeline.call(prompt: "Your prompt here")
-#   result.final_image   # => The processed image
-#   result.total_cost    # => Combined cost of all steps
-#
-class <%= class_name %>Pipeline < ApplicationImagePipeline
+module <%= @root_namespace %>
+  module Image
+<%- if class_name.include?("::") -%>
+<%- class_name.split("::")[0..-2].each_with_index do |mod, i| -%>
+<%= "  " * (i + 2) %>module <%= mod %>
+<%- end -%>
+<%= "  " * (class_name.split("::").length + 1) %>class <%= class_name.split("::").last %>Pipeline < ApplicationImagePipeline
+<%- else -%>
+    class <%= class_name %>Pipeline < ApplicationImagePipeline
+<%- end -%>
+      # Pipeline steps
 <%- parsed_steps.each do |step| -%>
 <%- case step -%>
 <%- when :generate -%>
-  step :<%= step %>, generator: <%= class_name %>Generator
+      step :<%= step %>, generator: <%= class_name %>Generator
 <%- when :upscale -%>
-  step :<%= step %>, upscaler: <%= class_name %>Upscaler
+      step :<%= step %>, upscaler: <%= class_name %>Upscaler
 <%- when :transform -%>
-  step :<%= step %>, transformer: <%= class_name %>Transformer
+      step :<%= step %>, transformer: <%= class_name %>Transformer
 <%- when :analyze -%>
-  step :<%= step %>, analyzer: <%= class_name %>Analyzer
+      step :<%= step %>, analyzer: <%= class_name %>Analyzer
 <%- when :remove_background -%>
-  step :<%= step %>, remover: <%= class_name %>BackgroundRemover
+      step :<%= step %>, remover: <%= class_name %>BackgroundRemover
 <%- else -%>
-  # step :<%= step %>, ...: <%= class_name %><%= step.to_s.camelize %>
+      # step :<%= step %>, ...: <%= class_name %><%= step.to_s.camelize %>
 <%- end -%>
 <%- end -%>
-
 <%- if options[:stop_on_error] == false -%>
-  stop_on_error false
-<%- end -%>
-<%- if options[:cache].present? -%>
-  cache_for <%= options[:cache] %>
-<%- end -%>
 
-  description "<%= class_name %> image processing pipeline"
-  version "1.0"
+      stop_on_error false
+<%- end -%>
+<% if options[:cache] -%>
+
+      # Caching
+      cache_for <%= options[:cache] %>
+<% end -%>
+
+      description "<%= class_name %> image processing pipeline"
+      version "1.0"
+<%- if class_name.include?("::") -%>
+<%- (class_name.split("::").length + 1).times do |i| -%>
+<%= "  " * (class_name.split("::").length + 1 - i) %>end
+<%- end -%>
+<%- else -%>
+    end
+<%- end -%>
+  end
 end

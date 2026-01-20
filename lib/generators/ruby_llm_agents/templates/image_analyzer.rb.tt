@@ -1,41 +1,45 @@
 # frozen_string_literal: true
 
-<% module_namespacing do -%>
-# <%= class_name %> Image Analyzer
-#
-# Analyzes images to extract captions, descriptions, tags, and other metadata.
-#
-# @example Basic usage
-#   result = <%= class_name %>Analyzer.call(image: "path/to/image.jpg")
-#   result.caption      # => "Brief description"
-#   result.tags         # => ["tag1", "tag2"]
-#   result.description  # => "Detailed description..."
-#
-# @example With runtime overrides
-#   result = <%= class_name %>Analyzer.call(
-#     image: "photo.jpg",
-#     analysis_type: :all,
-#     extract_colors: true
-#   )
-#   result.colors  # => [{hex: "#FF0000", name: "red", percentage: 30}]
-#
-class <%= class_name %>Analyzer < ApplicationImageAnalyzer
-  model "<%= options[:model] %>"
-  analysis_type :<%= options[:analysis_type] %>
+module <%= @root_namespace %>
+  module Image
+<%- if class_name.include?("::") -%>
+<%- class_name.split("::")[0..-2].each_with_index do |mod, i| -%>
+<%= "  " * (i + 2) %>module <%= mod %>
+<%- end -%>
+<%= "  " * (class_name.split("::").length + 1) %>class <%= class_name.split("::").last %>Analyzer < ApplicationImageAnalyzer
+<%- else -%>
+    class <%= class_name %>Analyzer < ApplicationImageAnalyzer
+<%- end -%>
+      # Model configuration
+      model "<%= options[:model] %>"
+      analysis_type :<%= options[:analysis_type] %>
 <% if options[:extract_colors] -%>
-  extract_colors true
+      extract_colors true
 <% end -%>
 <% if options[:detect_objects] -%>
-  detect_objects true
+      detect_objects true
 <% end -%>
 <% if options[:extract_text] -%>
-  extract_text true
+      extract_text true
 <% end -%>
-  max_tags <%= options[:max_tags] %>
-<% if options[:cache].present? -%>
-  cache_for <%= options[:cache] %>
+      max_tags <%= options[:max_tags] %>
+<% if options[:cache] -%>
+
+      # Caching
+      cache_for <%= options[:cache] %>
 <% end -%>
 
-  description "Analyzes <%= class_name.underscore.humanize.downcase %> images"
+      # Optional: Custom analysis prompt
+      # prompt "Analyze this image and describe..."
+
+      # Optional: Description
+      # description "Analyzes <%= class_name.downcase %> images"
+<%- if class_name.include?("::") -%>
+<%- (class_name.split("::").length + 1).times do |i| -%>
+<%= "  " * (class_name.split("::").length + 1 - i) %>end
+<%- end -%>
+<%- else -%>
+    end
+<%- end -%>
+  end
 end
-<% end -%>

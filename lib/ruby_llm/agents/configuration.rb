@@ -352,6 +352,20 @@ module RubyLLM
       #   @example
       #     config.async_max_concurrency = 20
 
+      # @!attribute [rw] root_directory
+      #   The root directory name under app/ for all LLM components.
+      #   This allows customization of the directory structure.
+      #   @return [String] Directory name (default: "llm")
+      #   @example
+      #     config.root_directory = "ai"  # Creates app/ai/ instead of app/llm/
+
+      # @!attribute [rw] root_namespace
+      #   The root namespace for all LLM component classes.
+      #   This should match the root_directory in camelized form.
+      #   @return [String] Namespace (default: "Llm")
+      #   @example
+      #     config.root_namespace = "AI"  # Uses AI:: instead of Llm::
+
       # Attributes without validation (simple accessors)
       attr_accessor :default_model,
                     :async_logging,
@@ -407,7 +421,9 @@ module RubyLLM
                     :default_analysis_type,
                     :default_analyzer_max_tags,
                     :default_background_remover_model,
-                    :default_background_output_format
+                    :default_background_output_format,
+                    :root_directory,
+                    :root_namespace
 
       # Attributes with validation (readers only, custom setters below)
       attr_reader :default_temperature,
@@ -673,6 +689,10 @@ module RubyLLM
         @default_analyzer_max_tags = 10  # Max tags to extract
         @default_background_remover_model = "rembg"  # Default remover model
         @default_background_output_format = :png  # Output format for transparency
+
+        # Directory structure defaults
+        @root_directory = "llm"  # Root directory under app/
+        @root_namespace = "Llm"  # Root namespace for classes
       end
 
       # Returns the configured cache store, falling back to Rails.cache
@@ -785,6 +805,65 @@ module RubyLLM
         defined?(::Async::Task) && ::Async::Task.current?
       rescue StandardError
         false
+      end
+
+      # Returns the full namespace for a given category
+      #
+      # @param category [Symbol, nil] Category (:audio, :image, :text, or nil for root)
+      # @return [String] Full namespace string
+      # @example
+      #   namespace_for(:image) #=> "Llm::Image"
+      #   namespace_for(nil)    #=> "Llm"
+      def namespace_for(category = nil)
+        case category
+        when :audio then "#{root_namespace}::Audio"
+        when :image then "#{root_namespace}::Image"
+        when :text then "#{root_namespace}::Text"
+        else root_namespace
+        end
+      end
+
+      # Returns the full path under app/ for a given category and type
+      #
+      # @param category [Symbol, nil] Category (:audio, :image, :text, or nil)
+      # @param type [String] Component type (e.g., "agents", "speakers", "generators")
+      # @return [String] Full path relative to Rails.root
+      # @example
+      #   path_for(:image, "generators") #=> "app/llm/image/generators"
+      #   path_for(nil, "agents")        #=> "app/llm/agents"
+      def path_for(category, type)
+        case category
+        when :audio then "app/#{root_directory}/audio/#{type}"
+        when :image then "app/#{root_directory}/image/#{type}"
+        when :text then "app/#{root_directory}/text/#{type}"
+        else "app/#{root_directory}/#{type}"
+        end
+      end
+
+      # Returns all autoload paths for LLM components
+      #
+      # @return [Array<String>] List of paths relative to Rails.root
+      def all_autoload_paths
+        [
+          # Top-level
+          path_for(nil, "agents"),
+          path_for(nil, "workflows"),
+          path_for(nil, "tools"),
+          # Audio
+          path_for(:audio, "speakers"),
+          path_for(:audio, "transcribers"),
+          # Image
+          path_for(:image, "analyzers"),
+          path_for(:image, "background_removers"),
+          path_for(:image, "editors"),
+          path_for(:image, "generators"),
+          path_for(:image, "transformers"),
+          path_for(:image, "upscalers"),
+          path_for(:image, "variators"),
+          # Text
+          path_for(:text, "embedders"),
+          path_for(:text, "moderators")
+        ]
       end
 
       private

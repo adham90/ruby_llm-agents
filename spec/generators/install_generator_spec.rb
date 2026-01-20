@@ -16,20 +16,20 @@ RSpec.describe RubyLlmAgents::InstallGenerator, type: :generator do
       expect(file_exists?("config/initializers/ruby_llm_agents.rb")).to be true
     end
 
-    it "creates the agents directory" do
-      expect(directory_exists?("app/agents")).to be true
+    it "creates the llm/agents directory" do
+      expect(directory_exists?("app/llm/agents")).to be true
     end
 
-    it "creates application_agent.rb" do
-      expect(file_exists?("app/agents/application_agent.rb")).to be true
+    it "creates application_agent.rb in llm/agents" do
+      expect(file_exists?("app/llm/agents/application_agent.rb")).to be true
     end
 
-    it "creates the embedders directory" do
-      expect(directory_exists?("app/embedders")).to be true
+    it "creates the llm/text/embedders directory" do
+      expect(directory_exists?("app/llm/text/embedders")).to be true
     end
 
-    it "creates application_embedder.rb" do
-      expect(file_exists?("app/embedders/application_embedder.rb")).to be true
+    it "creates application_embedder.rb in llm/text/embedders" do
+      expect(file_exists?("app/llm/text/embedders/application_embedder.rb")).to be true
     end
 
     it "mounts the dashboard engine in routes" do
@@ -63,14 +63,18 @@ RSpec.describe RubyLlmAgents::InstallGenerator, type: :generator do
     before { run_generator }
 
     it "inherits from RubyLLM::Agents::Base" do
-      content = file_content("app/agents/application_agent.rb")
+      content = file_content("app/llm/agents/application_agent.rb")
       expect(content).to include("class ApplicationAgent < RubyLLM::Agents::Base")
     end
 
-    it "includes usage examples" do
-      content = file_content("app/agents/application_agent.rb")
-      expect(content).to include("class MyAgent < ApplicationAgent")
-      expect(content).to include("MyAgent.call(query:")
+    it "uses LLM namespace" do
+      content = file_content("app/llm/agents/application_agent.rb")
+      expect(content).to include("module LLM")
+    end
+
+    it "includes usage examples with namespace" do
+      content = file_content("app/llm/agents/application_agent.rb")
+      expect(content).to include("LLM::MyAgent")
     end
   end
 
@@ -78,13 +82,56 @@ RSpec.describe RubyLlmAgents::InstallGenerator, type: :generator do
     before { run_generator }
 
     it "inherits from RubyLLM::Agents::Embedder" do
-      content = file_content("app/embedders/application_embedder.rb")
+      content = file_content("app/llm/text/embedders/application_embedder.rb")
       expect(content).to include("class ApplicationEmbedder < RubyLLM::Agents::Embedder")
     end
 
-    it "includes default model configuration" do
-      content = file_content("app/embedders/application_embedder.rb")
-      expect(content).to include('model "text-embedding-3-small"')
+    it "uses LLM::Text namespace" do
+      content = file_content("app/llm/text/embedders/application_embedder.rb")
+      expect(content).to include("module LLM")
+      expect(content).to include("module Text")
+    end
+
+    it "includes model configuration example" do
+      content = file_content("app/llm/text/embedders/application_embedder.rb")
+      expect(content).to include("text-embedding-3-small")
+    end
+  end
+
+  describe "--root=ai option" do
+    before { run_generator ["--root=ai"] }
+
+    it "creates ai/agents directory" do
+      expect(directory_exists?("app/ai/agents")).to be true
+    end
+
+    it "creates ai/text/embedders directory" do
+      expect(directory_exists?("app/ai/text/embedders")).to be true
+    end
+
+    it "uses AI namespace in application_agent.rb" do
+      content = file_content("app/ai/agents/application_agent.rb")
+      expect(content).to include("module AI")
+      expect(content).to include("AI::MyAgent")
+    end
+
+    it "uses AI::Text namespace in application_embedder.rb" do
+      content = file_content("app/ai/text/embedders/application_embedder.rb")
+      expect(content).to include("module AI")
+      expect(content).to include("module Text")
+    end
+  end
+
+  describe "--root=ruby_llm --namespace=RubyLLMApp option" do
+    before { run_generator ["--root=ruby_llm", "--namespace=RubyLLMApp"] }
+
+    it "creates ruby_llm/agents directory" do
+      expect(directory_exists?("app/ruby_llm/agents")).to be true
+    end
+
+    it "uses custom RubyLLMApp namespace" do
+      content = file_content("app/ruby_llm/agents/application_agent.rb")
+      expect(content).to include("module RubyLLMApp")
     end
   end
 
@@ -98,7 +145,7 @@ RSpec.describe RubyLlmAgents::InstallGenerator, type: :generator do
 
     it "still creates other files" do
       expect(file_exists?("config/initializers/ruby_llm_agents.rb")).to be true
-      expect(file_exists?("app/agents/application_agent.rb")).to be true
+      expect(file_exists?("app/llm/agents/application_agent.rb")).to be true
     end
   end
 
@@ -112,7 +159,7 @@ RSpec.describe RubyLlmAgents::InstallGenerator, type: :generator do
     it "still creates other files" do
       migration_files = Dir[file("db/migrate/*_create_ruby_llm_agents_executions.rb")]
       expect(migration_files).not_to be_empty
-      expect(file_exists?("app/agents/application_agent.rb")).to be true
+      expect(file_exists?("app/llm/agents/application_agent.rb")).to be true
     end
   end
 
@@ -126,14 +173,14 @@ RSpec.describe RubyLlmAgents::InstallGenerator, type: :generator do
 
     it "still creates other files" do
       expect(file_exists?("config/initializers/ruby_llm_agents.rb")).to be true
-      expect(file_exists?("app/agents/application_agent.rb")).to be true
+      expect(file_exists?("app/llm/agents/application_agent.rb")).to be true
     end
   end
 
   describe "combined options" do
     before { run_generator ["--skip-migration", "--skip-initializer", "--no-mount-dashboard"] }
 
-    it "skips all optional files but still creates agents and embedders directories" do
+    it "skips all optional files but still creates directory structure" do
       migration_files = Dir[file("db/migrate/*_create_ruby_llm_agents_executions.rb")]
       expect(migration_files).to be_empty
       expect(file_exists?("config/initializers/ruby_llm_agents.rb")).to be false
@@ -141,10 +188,10 @@ RSpec.describe RubyLlmAgents::InstallGenerator, type: :generator do
       routes_content = file_content("config/routes.rb")
       expect(routes_content).not_to include("RubyLLM::Agents::Engine")
 
-      expect(directory_exists?("app/agents")).to be true
-      expect(file_exists?("app/agents/application_agent.rb")).to be true
-      expect(directory_exists?("app/embedders")).to be true
-      expect(file_exists?("app/embedders/application_embedder.rb")).to be true
+      expect(directory_exists?("app/llm/agents")).to be true
+      expect(file_exists?("app/llm/agents/application_agent.rb")).to be true
+      expect(directory_exists?("app/llm/text/embedders")).to be true
+      expect(file_exists?("app/llm/text/embedders/application_embedder.rb")).to be true
     end
   end
 end

@@ -1,24 +1,41 @@
 # frozen_string_literal: true
 
-class <%= class_name %>Embedder < ApplicationEmbedder
-  # Model configuration
-  model "<%= options[:model] %>"
+module <%= @root_namespace %>
+  module Text
+<%- if class_name.include?("::") -%>
+<%- class_name.split("::")[0..-2].each_with_index do |mod, i| -%>
+<%= "  " * (i + 2) %>module <%= mod %>
+<%- end -%>
+<%= "  " * (class_name.split("::").length + 1) %>class <%= class_name.split("::").last %>Embedder < ApplicationEmbedder
+<%- else -%>
+    class <%= class_name %>Embedder < ApplicationEmbedder
+<%- end -%>
+      # Model configuration
+      model "<%= options[:model] %>"
 <% if options[:dimensions] -%>
-  dimensions <%= options[:dimensions] %>
+      dimensions <%= options[:dimensions] %>
 <% end -%>
 <% if options[:batch_size] != 100 -%>
-  batch_size <%= options[:batch_size] %>
+      batch_size <%= options[:batch_size] %>
 <% end -%>
 <% if options[:cache] -%>
 
-  # Caching
-  cache_for <%= options[:cache] %>
+      # Caching
+      cache_for <%= options[:cache] %>
 <% end -%>
 
-  # Optional: Custom preprocessing
-  # Override this method to normalize/clean text before embedding
-  #
-  # def preprocess(text)
-  #   text.strip.downcase.gsub(/\s+/, ' ')
-  # end
+      # Optional: Custom preprocessing
+      # Override this method to normalize/clean text before embedding
+      #
+      # def preprocess(text)
+      #   text.strip.downcase.gsub(/\s+/, ' ')
+      # end
+<%- if class_name.include?("::") -%>
+<%- (class_name.split("::").length + 1).times do |i| -%>
+<%= "  " * (class_name.split("::").length + 1 - i) %>end
+<%- end -%>
+<%- else -%>
+    end
+<%- end -%>
+  end
 end

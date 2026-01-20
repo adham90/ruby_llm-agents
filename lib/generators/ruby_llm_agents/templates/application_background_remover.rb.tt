@@ -1,22 +1,26 @@
 # frozen_string_literal: true
 
-# Base class for all background removers in the application
-#
-# Inherits from RubyLLM::Agents::BackgroundRemover and provides a common
-# foundation for custom background removal classes.
-#
-# @example Creating a custom remover
-#   class ProductBackgroundRemover < ApplicationBackgroundRemover
-#     model "rembg"
-#     output_format :png
-#     refine_edges true
-#     alpha_matting true
-#   end
-#
-class ApplicationBackgroundRemover < RubyLLM::Agents::BackgroundRemover
-  # Default configuration (can be overridden in subclasses)
-  # model "rembg"
-  # output_format :png
-  # refine_edges false
-  # alpha_matting false
+module <%= @root_namespace %>
+  module Image
+    # Base class for all background removers in the application
+    #
+    # Inherits from RubyLLM::Agents::BackgroundRemover and provides a common
+    # foundation for custom background removal classes.
+    #
+    # @example Creating a custom remover
+    #   class ProductBackgroundRemover < ApplicationBackgroundRemover
+    #     model "rembg"
+    #     output_format :png
+    #     refine_edges true
+    #     alpha_matting true
+    #   end
+    #
+    class ApplicationBackgroundRemover < RubyLLM::Agents::BackgroundRemover
+      # Default configuration (can be overridden in subclasses)
+      # model "rembg"
+      # output_format :png
+      # refine_edges false
+      # alpha_matting false
+    end
+  end
 end

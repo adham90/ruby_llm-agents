@@ -6,7 +6,7 @@
 # that apply to all embedders, or override them per-embedder as needed.
 #
 # Example:
-#   class DocumentEmbedder < ApplicationEmbedder
+#   class <%= @text_namespace %>::DocumentEmbedder < ApplicationEmbedder
 #     dimensions 512  # Reduce dimensions for storage efficiency
 #
 #     def preprocess(text)
@@ -15,32 +15,36 @@
 #   end
 #
 # Usage:
-#   DocumentEmbedder.call(text: "hello world")
-#   DocumentEmbedder.call(texts: ["hello", "world"])  # Batch
+#   <%= @text_namespace %>::DocumentEmbedder.call(text: "hello world")
+#   <%= @text_namespace %>::DocumentEmbedder.call(texts: ["hello", "world"])  # Batch
 #
-class ApplicationEmbedder < RubyLLM::Agents::Embedder
-  # ============================================
-  # Shared Model Configuration
-  # ============================================
-  # These settings are inherited by all embedders
+module <%= @root_namespace %>
+  module Text
+    class ApplicationEmbedder < RubyLLM::Agents::Embedder
+      # ============================================
+      # Shared Model Configuration
+      # ============================================
+      # These settings are inherited by all embedders
 
-  # model "text-embedding-3-small"  # Default embedding model
-  # dimensions 1536                  # Vector dimensions (nil = model default)
-  # batch_size 100                   # Texts per API call for batch processing
+      # model "text-embedding-3-small"  # Default embedding model
+      # dimensions 1536                  # Vector dimensions (nil = model default)
+      # batch_size 100                   # Texts per API call for batch processing
 
-  # ============================================
-  # Shared Caching
-  # ============================================
-  # Same text always produces same embedding, so caching is very effective
+      # ============================================
+      # Shared Caching
+      # ============================================
+      # Same text always produces same embedding, so caching is very effective
 
-  # cache_for 1.week  # Cache embeddings for a week
+      # cache_for 1.week  # Cache embeddings for a week
 
-  # ============================================
-  # Shared Preprocessing
-  # ============================================
-  # Override in subclass for custom preprocessing
+      # ============================================
+      # Shared Preprocessing
+      # ============================================
+      # Override in subclass for custom preprocessing
 
-  # def preprocess(text)
-  #   text.strip.gsub(/\s+/, ' ').truncate(8000)
-  # end
+      # def preprocess(text)
+      #   text.strip.gsub(/\s+/, ' ').truncate(8000)
+      # end
+    end
+  end
 end

@@ -8,27 +8,32 @@ RSpec.describe RubyLlmAgents::AgentGenerator, type: :generator do
     before { run_generator ["SearchIntent"] }
 
     it "creates the agent file with correct name" do
-      expect(file_exists?("app/agents/search_intent_agent.rb")).to be true
+      expect(file_exists?("app/llm/agents/search_intent_agent.rb")).to be true
     end
 
     it "creates a class that inherits from ApplicationAgent" do
-      content = file_content("app/agents/search_intent_agent.rb")
+      content = file_content("app/llm/agents/search_intent_agent.rb")
       expect(content).to include("class SearchIntentAgent < ApplicationAgent")
     end
 
+    it "wraps the class in LLM namespace" do
+      content = file_content("app/llm/agents/search_intent_agent.rb")
+      expect(content).to include("module LLM")
+    end
+
     it "includes default model configuration" do
-      content = file_content("app/agents/search_intent_agent.rb")
+      content = file_content("app/llm/agents/search_intent_agent.rb")
       expect(content).to include('model "gemini-2.0-flash"')
       expect(content).to include("temperature 0.0")
     end
 
     it "includes version" do
-      content = file_content("app/agents/search_intent_agent.rb")
+      content = file_content("app/llm/agents/search_intent_agent.rb")
       expect(content).to include('version "1.0"')
     end
 
     it "includes prompt methods" do
-      content = file_content("app/agents/search_intent_agent.rb")
+      content = file_content("app/llm/agents/search_intent_agent.rb")
       expect(content).to include("def system_prompt")
       expect(content).to include("def user_prompt")
     end
@@ -38,12 +43,12 @@ RSpec.describe RubyLlmAgents::AgentGenerator, type: :generator do
     before { run_generator ["SearchIntent", "query:required"] }
 
     it "creates param with required: true" do
-      content = file_content("app/agents/search_intent_agent.rb")
+      content = file_content("app/llm/agents/search_intent_agent.rb")
       expect(content).to include("param :query, required: true")
     end
 
     it "uses the param in user_prompt" do
-      content = file_content("app/agents/search_intent_agent.rb")
+      content = file_content("app/llm/agents/search_intent_agent.rb")
       # The template uses the first param name in user_prompt
       expect(content).to match(/def user_prompt\s+.*query/m)
     end
@@ -53,7 +58,7 @@ RSpec.describe RubyLlmAgents::AgentGenerator, type: :generator do
     before { run_generator ["SearchIntent", "limit:10"] }
 
     it "creates param with default value" do
-      content = file_content("app/agents/search_intent_agent.rb")
+      content = file_content("app/llm/agents/search_intent_agent.rb")
       expect(content).to include('param :limit, default: "10"')
     end
   end
@@ -62,7 +67,7 @@ RSpec.describe RubyLlmAgents::AgentGenerator, type: :generator do
     before { run_generator ["SearchIntent", "query:required", "limit:10", "format"] }
 
     it "creates all params" do
-      content = file_content("app/agents/search_intent_agent.rb")
+      content = file_content("app/llm/agents/search_intent_agent.rb")
       expect(content).to include("param :query, required: true")
       expect(content).to include('param :limit, default: "10"')
       expect(content).to include("param :format")
@@ -73,7 +78,7 @@ RSpec.describe RubyLlmAgents::AgentGenerator, type: :generator do
     before { run_generator ["SearchIntent", "--model=gpt-4o"] }
 
     it "uses the specified model" do
-      content = file_content("app/agents/search_intent_agent.rb")
+      content = file_content("app/llm/agents/search_intent_agent.rb")
       expect(content).to include('model "gpt-4o"')
     end
   end
@@ -82,7 +87,7 @@ RSpec.describe RubyLlmAgents::AgentGenerator, type: :generator do
     before { run_generator ["SearchIntent", "--temperature=0.7"] }
 
     it "uses the specified temperature" do
-      content = file_content("app/agents/search_intent_agent.rb")
+      content = file_content("app/llm/agents/search_intent_agent.rb")
       expect(content).to include("temperature 0.7")
     end
   end
@@ -91,7 +96,7 @@ RSpec.describe RubyLlmAgents::AgentGenerator, type: :generator do
     before { run_generator ["SearchIntent", "--cache=1.hour"] }
 
     it "includes cache configuration" do
-      content = file_content("app/agents/search_intent_agent.rb")
+      content = file_content("app/llm/agents/search_intent_agent.rb")
       expect(content).to include("cache 1.hour")
     end
   end
@@ -100,7 +105,7 @@ RSpec.describe RubyLlmAgents::AgentGenerator, type: :generator do
     before { run_generator ["SearchIntent"] }
 
     it "includes commented cache example" do
-      content = file_content("app/agents/search_intent_agent.rb")
+      content = file_content("app/llm/agents/search_intent_agent.rb")
       expect(content).to include("# cache 1.hour")
     end
   end
@@ -118,11 +123,11 @@ RSpec.describe RubyLlmAgents::AgentGenerator, type: :generator do
     end
 
     it "creates the agent file" do
-      expect(file_exists?("app/agents/content_generator_agent.rb")).to be true
+      expect(file_exists?("app/llm/agents/content_generator_agent.rb")).to be true
     end
 
     it "applies all options correctly" do
-      content = file_content("app/agents/content_generator_agent.rb")
+      content = file_content("app/llm/agents/content_generator_agent.rb")
       expect(content).to include("class ContentGeneratorAgent < ApplicationAgent")
       expect(content).to include('model "claude-3-sonnet"')
       expect(content).to include("temperature 0.5")
@@ -136,11 +141,11 @@ RSpec.describe RubyLlmAgents::AgentGenerator, type: :generator do
     before { run_generator ["MyAwesomeAgent"] }
 
     it "creates file with underscored name" do
-      expect(file_exists?("app/agents/my_awesome_agent_agent.rb")).to be true
+      expect(file_exists?("app/llm/agents/my_awesome_agent_agent.rb")).to be true
     end
 
     it "uses the correct class name" do
-      content = file_content("app/agents/my_awesome_agent_agent.rb")
+      content = file_content("app/llm/agents/my_awesome_agent_agent.rb")
       expect(content).to include("class MyAwesomeAgentAgent < ApplicationAgent")
     end
   end
@@ -149,12 +154,34 @@ RSpec.describe RubyLlmAgents::AgentGenerator, type: :generator do
     before { run_generator ["search_intent"] }
 
     it "creates file with correct name" do
-      expect(file_exists?("app/agents/search_intent_agent.rb")).to be true
+      expect(file_exists?("app/llm/agents/search_intent_agent.rb")).to be true
     end
 
     it "uses the correct class name" do
-      content = file_content("app/agents/search_intent_agent.rb")
+      content = file_content("app/llm/agents/search_intent_agent.rb")
       expect(content).to include("class SearchIntentAgent < ApplicationAgent")
+    end
+  end
+
+  describe "--root option" do
+    before { run_generator ["SearchIntent", "--root=ai"] }
+
+    it "creates the agent in the ai directory" do
+      expect(file_exists?("app/ai/agents/search_intent_agent.rb")).to be true
+    end
+
+    it "uses the AI namespace" do
+      content = file_content("app/ai/agents/search_intent_agent.rb")
+      expect(content).to include("module AI")
+    end
+  end
+
+  describe "--root and --namespace options" do
+    before { run_generator ["SearchIntent", "--root=ai", "--namespace=MyApp"] }
+
+    it "uses the custom namespace" do
+      content = file_content("app/ai/agents/search_intent_agent.rb")
+      expect(content).to include("module MyApp")
     end
   end
 end

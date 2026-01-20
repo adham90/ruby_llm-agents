@@ -1,39 +1,44 @@
 # frozen_string_literal: true
 
-<% module_namespacing do -%>
-# <%= class_name %> Background Remover
-#
-# Removes backgrounds from images, producing transparent PNGs.
-#
-# @example Basic usage
-#   result = <%= class_name %>BackgroundRemover.call(image: "path/to/photo.jpg")
-#   result.url        # => "https://..." (transparent PNG)
-#   result.has_alpha? # => true
-#
-# @example With runtime overrides
-#   result = <%= class_name %>BackgroundRemover.call(
-#     image: "portrait.jpg",
-#     alpha_matting: true,
-#     return_mask: true
-#   )
-#   result.mask_url  # => "https://..." (segmentation mask)
-#
-class <%= class_name %>BackgroundRemover < ApplicationBackgroundRemover
-  model "<%= options[:model] %>"
-  output_format :<%= options[:output_format] %>
+module <%= @root_namespace %>
+  module Image
+<%- if class_name.include?("::") -%>
+<%- class_name.split("::")[0..-2].each_with_index do |mod, i| -%>
+<%= "  " * (i + 2) %>module <%= mod %>
+<%- end -%>
+<%= "  " * (class_name.split("::").length + 1) %>class <%= class_name.split("::").last %>BackgroundRemover < ApplicationBackgroundRemover
+<%- else -%>
+    class <%= class_name %>BackgroundRemover < ApplicationBackgroundRemover
+<%- end -%>
+      # Model configuration
+      model "<%= options[:model] %>"
+      output_format :<%= options[:output_format] %>
 <% if options[:refine_edges] -%>
-  refine_edges true
+      refine_edges true
 <% end -%>
 <% if options[:alpha_matting] -%>
-  alpha_matting true
+      alpha_matting true
 <% end -%>
 <% if options[:return_mask] -%>
-  return_mask true
+      return_mask true
 <% end -%>
-<% if options[:cache].present? -%>
-  cache_for <%= options[:cache] %>
+<% if options[:cache] -%>
+
+      # Caching
+      cache_for <%= options[:cache] %>
 <% end -%>
 
-  description "Removes backgrounds from <%= class_name.underscore.humanize.downcase %> images"
+      # Optional: Edge threshold
+      # edge_threshold 0.5
+
+      # Optional: Description
+      # description "Removes backgrounds from <%= class_name.downcase %> images"
+<%- if class_name.include?("::") -%>
+<%- (class_name.split("::").length + 1).times do |i| -%>
+<%= "  " * (class_name.split("::").length + 1 - i) %>end
+<%- end -%>
+<%- else -%>
+    end
+<%- end -%>
+  end
 end
-<% end -%>

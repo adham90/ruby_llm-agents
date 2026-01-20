@@ -1,16 +1,33 @@
 # frozen_string_literal: true
 
-class <%= class_name %>Variator < ApplicationImageVariator
-  # Model configuration
-  model "<%= options[:model] %>"
-  size "<%= options[:size] %>"
-  variation_strength <%= options[:variation_strength] %>
+module <%= @root_namespace %>
+  module Image
+<%- if class_name.include?("::") -%>
+<%- class_name.split("::")[0..-2].each_with_index do |mod, i| -%>
+<%= "  " * (i + 2) %>module <%= mod %>
+<%- end -%>
+<%= "  " * (class_name.split("::").length + 1) %>class <%= class_name.split("::").last %>Variator < ApplicationImageVariator
+<%- else -%>
+    class <%= class_name %>Variator < ApplicationImageVariator
+<%- end -%>
+      # Model configuration
+      model "<%= options[:model] %>"
+      size "<%= options[:size] %>"
+      variation_strength <%= options[:variation_strength] %>
 <% if options[:cache] -%>
 
-  # Caching
-  cache_for <%= options[:cache] %>
+      # Caching
+      cache_for <%= options[:cache] %>
 <% end -%>
 
-  # Optional: Description
-  # description "Creates variations of <%= class_name.downcase %> images"
+      # Optional: Description
+      # description "Creates variations of <%= class_name.downcase %> images"
+<%- if class_name.include?("::") -%>
+<%- (class_name.split("::").length + 1).times do |i| -%>
+<%= "  " * (class_name.split("::").length + 1 - i) %>end
+<%- end -%>
+<%- else -%>
+    end
+<%- end -%>
+  end
 end
