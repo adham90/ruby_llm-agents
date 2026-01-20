@@ -43,6 +43,9 @@ module RubyLLM
           @cache_ttl = ttl
         end
 
+        # Alias for cache_for (for backward compatibility)
+        alias cache cache_for
+
         # Returns whether caching is enabled for this agent
         #
         # @return [Boolean] true if caching is enabled

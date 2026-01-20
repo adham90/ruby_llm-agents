@@ -22,24 +22,46 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
 
   let(:agent) { test_agent_class.new(query: "test") }
 
+  # Helper to create a complete mock response
+  def mock_llm_response(content: "Test response", input_tokens: 100, output_tokens: 50, model_id: "gpt-4")
+    mock = double("RubyLLM::Message")
+    allow(mock).to receive(:content).and_return(content)
+    allow(mock).to receive(:input_tokens).and_return(input_tokens)
+    allow(mock).to receive(:output_tokens).and_return(output_tokens)
+    allow(mock).to receive(:model_id).and_return(model_id)
+    allow(mock).to receive(:usage).and_return({
+      input_tokens: input_tokens,
+      output_tokens: output_tokens,
+      cache_creation_input_tokens: 0,
+      cache_read_input_tokens: 0
+    })
+    allow(mock).to receive(:finish_reason).and_return("stop")
+    allow(mock).to receive(:thinking).and_return(nil)
+    allow(mock).to receive(:thinking_content).and_return(nil)
+    allow(mock).to receive(:tool_call?).and_return(false)
+    allow(mock).to receive(:tool_calls).and_return([])
+    mock
+  end
+
   describe "#instrument_execution" do
-    let(:mock_response) do
-      double(
-        "RubyLLM::Message",
-        content: "Test response",
-        input_tokens: 100,
-        output_tokens: 50,
-        model_id: "gpt-4"
-      )
-    end
+    let(:mock_response) { mock_llm_response }
 
     let(:mock_client) do
       double("RubyLLM::Chat", ask: mock_response)
     end
 
+    # Shared config mock
+    let(:config) { RubyLLM::Agents.configuration }
+
+    before do
+      # Enable tracking for these tests
+      allow(config).to receive(:track_executions).and_return(true)
+      allow(config).to receive(:async_logging).and_return(false)
+    end
+
     context "successful execution" do
       before do
-        allow(agent).to receive(:client).and_return(mock_client)
+        allow(agent).to receive(:build_client).and_return(mock_client)
       end
 
       it "creates an execution record" do
@@ -82,7 +104,7 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       end
 
       before do
-        allow(agent).to receive(:client).and_return(error_client)
+        allow(agent).to receive(:build_client).and_return(error_client)
       end
 
       it "records error status" do
@@ -112,7 +134,7 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       end
 
       before do
-        allow(agent).to receive(:client).and_return(timeout_client)
+        allow(agent).to receive(:build_client).and_return(timeout_client)
       end
 
       it "records timeout status" do
@@ -150,16 +172,15 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       )
     end
 
-    let(:mock_response) do
-      double("RubyLLM::Message", content: "response", input_tokens: 10, output_tokens: 5, model_id: "gpt-4")
-    end
+    let(:mock_response) { mock_llm_response(input_tokens: 10, output_tokens: 5) }
 
     let(:mock_client) do
       double("RubyLLM::Chat", ask: mock_response)
     end
 
     before do
-      allow(sensitive_agent).to receive(:client).and_return(mock_client)
+      allow(RubyLLM::Agents.configuration).to receive(:track_executions).and_return(true)
+      allow(sensitive_agent).to receive(:build_client).and_return(mock_client)
     end
 
     it "sanitizes sensitive parameters" do
@@ -174,16 +195,15 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
   end
 
   describe "duration tracking" do
-    let(:mock_response) do
-      double("RubyLLM::Message", content: "response", input_tokens: 10, output_tokens: 5, model_id: "gpt-4")
-    end
+    let(:mock_response) { mock_llm_response(input_tokens: 10, output_tokens: 5) }
 
     let(:mock_client) do
       double("RubyLLM::Chat", ask: mock_response)
     end
 
     before do
-      allow(agent).to receive(:client).and_return(mock_client)
+      allow(RubyLLM::Agents.configuration).to receive(:track_executions).and_return(true)
+      allow(agent).to receive(:build_client).and_return(mock_client)
     end
 
     it "records start time" do
