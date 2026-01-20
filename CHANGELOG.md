@@ -5,6 +5,82 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0-beta.1] - 2026-01-20
+
+### Added
+
+#### New Agent Types
+- **Audio Agents** - Full audio processing support:
+  - `Transcriber` agent for speech-to-text with DSL, execution tracking, and results
+  - `Speaker` agent for text-to-speech synthesis
+  - Generators for scaffolding audio agents
+
+- **Image Agents** - Comprehensive image generation and manipulation:
+  - `ImageGenerator` agent with config, UI support, and pricing calculations
+  - `ImageAnalyzer` agent for image understanding
+  - `BackgroundRemover` agent for image editing
+  - `ImagePipeline` framework for multi-step image workflows
+  - Async/fiber support for concurrent image operations
+
+- **Embedder Agent** - Vector embedding support:
+  - Embedder base class with DSL and execution tracking
+  - Generators for creating embedding agents
+
+- **Moderator Agent** - Content safety:
+  - Input/output safety checks
+  - Comprehensive content moderation support
+
+#### Middleware Pipeline Architecture
+- **BaseAgent Class** - New flexible agent configuration with DSL modules
+- **Middleware Infrastructure** - Pluggable pipeline for agent execution
+- All existing agents migrated to new middleware pipeline:
+  - Base conversation agent
+  - ImageGenerator, Transcriber, Speaker
+  - Moderator, Embedder
+
+#### Extended Thinking Support
+- **Thinking DSL** - Configure extended reasoning capabilities
+- Runtime support for streaming thinking tokens
+- Example reasoning agent included
+
+#### Multi-Tenant Enhancements
+- **LLMTenant Concern** - Tenant DSL for per-tenant configuration
+- **API Keys Support** - Per-tenant API key configuration
+- **Execution Limits** - TenantBudget execution limits with DSL support
+- Comprehensive budget tracking with multi-tenant support
+
+#### Reliability Improvements
+- **Retryable Error Patterns** - Configure custom retryable error patterns in reliability DSL
+- **`fallback_provider` DSL** - New method for configuring provider-level fallbacks
+
+#### Workflows & Analytics
+- Workflows controller and views for detailed workflow analytics
+- Agent sub-type categorization and filtering UI
+
+#### Concurrent Execution
+- Async/fiber support for concurrent agent execution
+- Parallel agent execution capabilities
+
+### Changed
+
+#### Directory Structure (Breaking)
+- **New Root Directory** - All generators now use configurable root (default: `app/llm`)
+- Agents organized into `LLM` namespace (e.g., `LLM::Chat::SupportAgent`)
+- Documentation and examples updated for new structure
+
+#### Internal Refactoring
+- Agent directory structure reorganized
+- Cost calculation now rounds to 6 decimals for consistency
+- Renamed `test_app` to `example` directory
+- Removed `Chat::TestAgent` and related files
+
+### Documentation
+- New guides: Audio (`04_audio.md`), Image Generation (`05_image_generation.md`)
+- LLM directory restructure guide (`06_llm_directory_restructure.md`)
+- Gem internal restructure guide (`07_gem_internal_restructure.md`)
+- Updated best practices, queries, config, and generators guides
+- Replaced SVG logos with PNG versions
+
 ## [0.5.0] - 2026-01-18
 
 ### Added
@@ -224,6 +300,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[1.0.0-beta.1]: https://github.com/adham90/ruby_llm-agents/compare/v0.5.0...v1.0.0-beta.1
 [0.5.0]: https://github.com/adham90/ruby_llm-agents/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/adham90/ruby_llm-agents/compare/v0.3.6...v0.4.0
 [0.3.6]: https://github.com/adham90/ruby_llm-agents/compare/v0.3.3...v0.3.6
