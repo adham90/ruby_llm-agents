@@ -1,0 +1,261 @@
+# frozen_string_literal: true
+
+module RubyLLM
+  module Agents
+    module DSL
+      # Reliability DSL for retries, fallbacks, and circuit breakers.
+      #
+      # This module provides configuration methods for reliability features
+      # that can be mixed into any agent class.
+      #
+      # @example Block-style configuration
+      #   class MyAgent < RubyLLM::Agents::BaseAgent
+      #     extend DSL::Reliability
+      #
+      #     reliability do
+      #       retries max: 3, backoff: :exponential
+      #       fallback_models "gpt-4o-mini"
+      #       total_timeout 30
+      #       circuit_breaker errors: 5, within: 60
+      #     end
+      #   end
+      #
+      # @example Individual method configuration
+      #   class MyAgent < RubyLLM::Agents::BaseAgent
+      #     extend DSL::Reliability
+      #
+      #     retries max: 3
+      #     fallback_models "gpt-4o-mini", "gpt-3.5-turbo"
+      #   end
+      #
+      module Reliability
+        # @!group Reliability DSL
+
+        # Configures reliability features using a block syntax
+        #
+        # Groups all reliability configuration in a single block for clarity.
+        #
+        # @yield Block containing reliability configuration
+        # @return [void]
+        # @example
+        #   reliability do
+        #     retries max: 3, backoff: :exponential
+        #     fallback_models "gpt-4o-mini"
+        #     total_timeout 30
+        #     circuit_breaker errors: 5
+        #   end
+        def reliability(&block)
+          builder = ReliabilityBuilder.new
+          builder.instance_eval(&block)
+
+          @retries_config = builder.retries_config if builder.retries_config
+          @fallback_models = builder.fallback_models_list if builder.fallback_models_list.any?
+          @total_timeout = builder.total_timeout_value if builder.total_timeout_value
+          @circuit_breaker_config = builder.circuit_breaker_config if builder.circuit_breaker_config
+          @retryable_patterns = builder.retryable_patterns_list if builder.retryable_patterns_list
+        end
+
+        # Returns the complete reliability configuration hash
+        #
+        # Used by the Reliability middleware to get all settings.
+        #
+        # @return [Hash, nil] The reliability configuration
+        def reliability_config
+          return nil unless reliability_configured?
+
+          {
+            retries: retries_config,
+            fallback_models: fallback_models,
+            total_timeout: total_timeout,
+            circuit_breaker: circuit_breaker_config,
+            retryable_patterns: retryable_patterns
+          }.compact
+        end
+
+        # Checks if any reliability features are configured
+        #
+        # @return [Boolean] true if reliability is configured
+        def reliability_configured?
+          (retries_config && retries_config[:max]&.positive?) ||
+            fallback_models.any? ||
+            circuit_breaker_config.present?
+        end
+
+        # Configures retry behavior for this agent
+        #
+        # @param max [Integer] Maximum number of retry attempts (default: 0)
+        # @param backoff [Symbol] Backoff strategy (:constant or :exponential)
+        # @param base [Float] Base delay in seconds
+        # @param max_delay [Float] Maximum delay between retries
+        # @param on [Array<Class>] Error classes to retry on (extends defaults)
+        # @return [Hash] The current retry configuration
+        # @example
+        #   retries max: 2, backoff: :exponential
+        def retries(max: nil, backoff: nil, base: nil, max_delay: nil, on: nil)
+          if max || backoff || base || max_delay || on
+            @retries_config ||= default_retries_config.dup
+            @retries_config[:max] = max if max
+            @retries_config[:backoff] = backoff if backoff
+            @retries_config[:base] = base if base
+            @retries_config[:max_delay] = max_delay if max_delay
+            @retries_config[:on] = on if on
+          end
+          @retries_config || inherited_retry_config || default_retries_config
+        end
+
+        # Returns the retry configuration
+        #
+        # @return [Hash, nil] The retry configuration
+        def retries_config
+          @retries_config || inherited_retry_config
+        end
+
+        # Sets or returns fallback models to try when primary model fails
+        #
+        # @param models [Array<String>] Model identifiers to use as fallbacks
+        # @return [Array<String>] The current fallback models
+        # @example
+        #   fallback_models "gpt-4o-mini", "gpt-3.5-turbo"
+        def fallback_models(*models)
+          @fallback_models = models.flatten if models.any?
+          @fallback_models || inherited_fallback_models || []
+        end
+
+        # Sets or returns the total timeout for all retry/fallback attempts
+        #
+        # @param seconds [Integer, nil] Total timeout in seconds
+        # @return [Integer, nil] The current total timeout
+        # @example
+        #   total_timeout 30
+        def total_timeout(seconds = nil)
+          @total_timeout = seconds if seconds
+          @total_timeout || inherited_total_timeout
+        end
+
+        # Configures circuit breaker for this agent
+        #
+        # @param errors [Integer] Number of errors to trigger open state
+        # @param within [Integer] Rolling window in seconds
+        # @param cooldown [Integer] Cooldown period in seconds when open
+        # @return [Hash, nil] The current circuit breaker configuration
+        # @example
+        #   circuit_breaker errors: 10, within: 60, cooldown: 300
+        def circuit_breaker(errors: nil, within: nil, cooldown: nil)
+          if errors || within || cooldown
+            @circuit_breaker_config ||= { errors: 10, within: 60, cooldown: 300 }
+            @circuit_breaker_config[:errors] = errors if errors
+            @circuit_breaker_config[:within] = within if within
+            @circuit_breaker_config[:cooldown] = cooldown if cooldown
+          end
+          @circuit_breaker_config || inherited_circuit_breaker_config
+        end
+
+        # Returns the circuit breaker configuration
+        #
+        # @return [Hash, nil] The circuit breaker configuration
+        def circuit_breaker_config
+          @circuit_breaker_config || inherited_circuit_breaker_config
+        end
+
+        # Sets or returns additional retryable patterns for error message matching
+        #
+        # @param patterns [Array<String>] Pattern strings to match in error messages
+        # @return [Array<String>, nil] The current retryable patterns
+        # @example
+        #   retryable_patterns "custom_error", "another_pattern"
+        def retryable_patterns(*patterns)
+          @retryable_patterns = patterns.flatten if patterns.any?
+          @retryable_patterns || inherited_retryable_patterns
+        end
+
+        # @!endgroup
+
+        private
+
+        def inherited_retry_config
+          return nil unless superclass.respond_to?(:retries_config)
+
+          superclass.retries_config
+        end
+
+        def inherited_fallback_models
+          return nil unless superclass.respond_to?(:fallback_models)
+
+          superclass.fallback_models
+        end
+
+        def inherited_total_timeout
+          return nil unless superclass.respond_to?(:total_timeout)
+
+          superclass.total_timeout
+        end
+
+        def inherited_circuit_breaker_config
+          return nil unless superclass.respond_to?(:circuit_breaker_config)
+
+          superclass.circuit_breaker_config
+        end
+
+        def inherited_retryable_patterns
+          return nil unless superclass.respond_to?(:retryable_patterns)
+
+          superclass.retryable_patterns
+        end
+
+        def default_retries_config
+          {
+            max: 0,
+            backoff: :exponential,
+            base: 0.4,
+            max_delay: 3.0,
+            on: []
+          }
+        end
+
+        # Inner builder class for block-style configuration
+        class ReliabilityBuilder
+          attr_reader :retries_config, :fallback_models_list, :total_timeout_value,
+                      :circuit_breaker_config, :retryable_patterns_list
+
+          def initialize
+            @retries_config = nil
+            @fallback_models_list = []
+            @total_timeout_value = nil
+            @circuit_breaker_config = nil
+            @retryable_patterns_list = nil
+          end
+
+          def retries(max: 0, backoff: :exponential, base: 0.4, max_delay: 3.0, on: [])
+            @retries_config = {
+              max: max,
+              backoff: backoff,
+              base: base,
+              max_delay: max_delay,
+              on: on
+            }
+          end
+
+          def fallback_models(*models)
+            @fallback_models_list = models.flatten
+          end
+
+          def total_timeout(seconds)
+            @total_timeout_value = seconds
+          end
+
+          def circuit_breaker(errors: 10, within: 60, cooldown: 300)
+            @circuit_breaker_config = {
+              errors: errors,
+              within: within,
+              cooldown: cooldown
+            }
+          end
+
+          def retryable_patterns(*patterns)
+            @retryable_patterns_list = patterns.flatten
+          end
+        end
+      end
+    end
+  end
+end

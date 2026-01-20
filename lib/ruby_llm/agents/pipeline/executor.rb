@@ -20,7 +20,24 @@ module RubyLLM
       #   pipeline = Builder.for(MyAgent).build(Executor.new(agent))
       #   result = pipeline.call(context)
       #
+      # @example Convenience class method
+      #   result_context = Executor.execute(context)
+      #
       class Executor
+        # Execute a context through the full pipeline
+        #
+        # Builds the middleware stack based on the agent's configuration,
+        # then executes the context through it.
+        #
+        # @param context [Context] The execution context
+        # @return [Context] The context with output set
+        def self.execute(context)
+          agent_instance = context.agent_instance
+          core = new(agent_instance)
+          pipeline = Builder.for(context.agent_class).build(core)
+          pipeline.call(context)
+        end
+
         # @param agent [Object] The agent instance with an #execute method
         def initialize(agent)
           @agent = agent

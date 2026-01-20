@@ -22,6 +22,12 @@ require_relative "agents/infrastructure/reliability/executor"
 # Pipeline infrastructure (middleware-based execution)
 require_relative "agents/pipeline"
 
+# DSL modules for agent configuration
+require_relative "agents/dsl"
+
+# BaseAgent - new middleware-based agent architecture
+require_relative "agents/base_agent"
+
 # Infrastructure - Budget & Utilities
 require_relative "agents/infrastructure/redactor"
 require_relative "agents/infrastructure/circuit_breaker"

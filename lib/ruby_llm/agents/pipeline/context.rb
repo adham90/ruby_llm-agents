@@ -25,7 +25,10 @@ module RubyLLM
         # Request data
         attr_accessor :input, :model, :options
 
-        # Tenant data (set by Tenant middleware)
+        # Agent reference (for execution)
+        attr_accessor :agent_instance
+
+        # Tenant data (set by Tenant middleware, or passed in)
         attr_accessor :tenant_id, :tenant_object, :tenant_config
 
         # Execution tracking (set by Instrumentation middleware)
@@ -35,7 +38,13 @@ module RubyLLM
         attr_accessor :output, :error, :cached
 
         # Cost tracking
-        attr_accessor :input_tokens, :output_tokens, :total_cost
+        attr_accessor :input_tokens, :output_tokens, :input_cost, :output_cost, :total_cost
+
+        # Response metadata
+        attr_accessor :model_used, :finish_reason, :time_to_first_token_ms
+
+        # Streaming support
+        attr_accessor :stream_block, :skip_cache
 
         # Agent metadata
         attr_reader :agent_class, :agent_type
@@ -44,14 +53,30 @@ module RubyLLM
         #
         # @param input [Object] The input data for the agent
         # @param agent_class [Class] The agent class being executed
+        # @param agent_instance [Object, nil] The agent instance
         # @param model [String, nil] Override model (defaults to agent_class.model)
+        # @param tenant [Hash, Object, nil] Raw tenant (resolved by Tenant middleware)
+        # @param skip_cache [Boolean] Whether to skip caching
+        # @param stream_block [Proc, nil] Block for streaming
         # @param options [Hash] Additional options passed to the agent
-        def initialize(input:, agent_class:, model: nil, **options)
+        def initialize(input:, agent_class:, agent_instance: nil, model: nil, tenant: nil, skip_cache: false, stream_block: nil, **options)
           @input = input
           @agent_class = agent_class
+          @agent_instance = agent_instance
           @agent_type = extract_agent_type(agent_class)
           @model = model || extract_model(agent_class)
-          @options = options
+
+          # Store tenant in options for middleware to resolve
+          @options = options.merge(tenant: tenant).compact
+
+          # Tenant fields (set by Tenant middleware)
+          @tenant_id = nil
+          @tenant_object = nil
+          @tenant_config = nil
+
+          # Execution options
+          @skip_cache = skip_cache
+          @stream_block = stream_block
 
           # Initialize tracking fields
           @attempt = 0
@@ -62,6 +87,8 @@ module RubyLLM
           # Initialize cost fields
           @input_tokens = 0
           @output_tokens = 0
+          @input_cost = 0.0
+          @output_cost = 0.0
           @total_cost = 0.0
         end
 
@@ -133,6 +160,7 @@ module RubyLLM
             agent_class: @agent_class&.name,
             agent_type: @agent_type,
             model: @model,
+            model_used: @model_used,
             tenant_id: @tenant_id,
             duration_ms: duration_ms,
             cached: cached?,
@@ -140,7 +168,11 @@ module RubyLLM
             input_tokens: @input_tokens,
             output_tokens: @output_tokens,
             total_tokens: total_tokens,
+            input_cost: @input_cost,
+            output_cost: @output_cost,
             total_cost: @total_cost,
+            finish_reason: @finish_reason,
+            time_to_first_token_ms: @time_to_first_token_ms,
             attempts_made: @attempts_made,
             error_class: @error&.class&.name,
             error_message: @error&.message
@@ -151,12 +183,20 @@ module RubyLLM
         #
         # @return [Context] A new context with the same input but reset state
         def dup_for_retry
+          # Extract tenant from options since dup_for_retry is called after middleware
+          # has already resolved it - we want to preserve the resolved state
+          opts_without_tenant = @options.except(:tenant)
+
           new_ctx = self.class.new(
             input: @input,
             agent_class: @agent_class,
+            agent_instance: @agent_instance,
             model: @model,
-            **@options
+            skip_cache: @skip_cache,
+            stream_block: @stream_block,
+            **opts_without_tenant
           )
+          # Preserve resolved tenant state
           new_ctx.tenant_id = @tenant_id
           new_ctx.tenant_object = @tenant_object
           new_ctx.tenant_config = @tenant_config
