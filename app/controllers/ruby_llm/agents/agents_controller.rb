@@ -30,6 +30,15 @@ module RubyLLM
         @agents = all_items.reject { |a| a[:is_workflow] }
         @workflows = all_items.select { |a| a[:is_workflow] }
 
+        # Group agents by type for sub-tabs
+        @agents_by_type = {
+          agent: @agents.select { |a| a[:agent_type] == "agent" },
+          embedder: @agents.select { |a| a[:agent_type] == "embedder" },
+          moderator: @agents.select { |a| a[:agent_type] == "moderator" },
+          speaker: @agents.select { |a| a[:agent_type] == "speaker" },
+          transcriber: @agents.select { |a| a[:agent_type] == "transcriber" }
+        }
+
         # Group workflows by type for sub-tabs
         @workflows_by_type = {
           pipeline: @workflows.select { |w| w[:workflow_type] == "pipeline" },
@@ -44,6 +53,7 @@ module RubyLLM
         Rails.logger.error("[RubyLLM::Agents] Error loading agents: #{e.message}")
         @agents = []
         @workflows = []
+        @agents_by_type = { agent: [], embedder: [], moderator: [], speaker: [], transcriber: [] }
         @workflows_by_type = { pipeline: [], parallel: [], router: [] }
         @agent_count = 0
         @workflow_count = 0

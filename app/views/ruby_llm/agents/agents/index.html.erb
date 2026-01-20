@@ -37,6 +37,40 @@
     </nav>
   </div>
 
+  <!-- Agent Sub-tabs -->
+  <div x-show="activeTab === 'agents'" x-cloak class="mb-4">
+    <div class="flex flex-wrap gap-2">
+      <button type="button" @click="activeSubTab = null"
+              :class="activeSubTab === null ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
+              class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
+        All (<%= @agent_count %>)
+      </button>
+      <button type="button" @click="activeSubTab = 'agent'"
+              :class="activeSubTab === 'agent' ? 'bg-blue-600 text-white' : 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800'"
+              class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
+        Agents (<%= @agents_by_type[:agent].size %>)
+      </button>
+      <button type="button" @click="activeSubTab = 'embedder'"
+              :class="activeSubTab === 'embedder' ? 'bg-purple-600 text-white' : 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800'"
+              class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
+        Embedders (<%= @agents_by_type[:embedder].size %>)
+      </button>
+      <button type="button" @click="activeSubTab = 'moderator'"
+              :class="activeSubTab === 'moderator' ? 'bg-orange-600 text-white' : 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-800'"
+              class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
+        Moderators (<%= @agents_by_type[:moderator].size %>)
+      </button>
+      <% audio_count = @agents_by_type[:speaker].size + @agents_by_type[:transcriber].size %>
+      <% if audio_count > 0 %>
+        <button type="button" @click="activeSubTab = 'audio'"
+                :class="activeSubTab === 'audio' ? 'bg-pink-600 text-white' : 'bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-300 hover:bg-pink-200 dark:hover:bg-pink-800'"
+                class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
+          Audio (<%= audio_count %>)
+        </button>
+      <% end %>
+    </div>
+  </div>
+
   <!-- Workflow Sub-tabs -->
   <div x-show="activeTab === 'workflows'" x-cloak class="mb-4">
     <div class="flex flex-wrap gap-2">
@@ -70,7 +104,18 @@
     <% else %>
       <div class="space-y-3 sm:space-y-4">
         <% @agents.each do |agent| %>
-          <%= render partial: "ruby_llm/agents/agents/agent", locals: { agent: agent } %>
+          <%
+            # Determine if this agent should be shown based on sub-tab
+            # 'audio' sub-tab shows both speakers and transcribers
+            show_condition = if agent[:agent_type] == 'speaker' || agent[:agent_type] == 'transcriber'
+              "activeSubTab === null || activeSubTab === 'audio' || activeSubTab === '#{agent[:agent_type]}'"
+            else
+              "activeSubTab === null || activeSubTab === '#{agent[:agent_type]}'"
+            end
+          %>
+          <div x-show="<%= show_condition %>">
+            <%= render partial: "ruby_llm/agents/agents/agent", locals: { agent: agent } %>
+          </div>
         <% end %>
       </div>
     <% end %>

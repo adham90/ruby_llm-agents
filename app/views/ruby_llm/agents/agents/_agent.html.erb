@@ -16,6 +16,18 @@
         <% else %>
           <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">Deleted</span>
         <% end %>
+        <% if agent[:agent_type] && agent[:agent_type] != "agent" %>
+          <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium
+            <%= case agent[:agent_type]
+                when 'embedder' then 'bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300'
+                when 'moderator' then 'bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-300'
+                when 'speaker' then 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300'
+                when 'transcriber' then 'bg-pink-100 dark:bg-pink-900/50 text-pink-800 dark:text-pink-300'
+                else ''
+                end %>">
+            <%= agent[:agent_type].capitalize %>
+          </span>
+        <% end %>
       </div>
       <!-- Desktop: model -->
       <span class="hidden sm:block text-sm text-gray-500 dark:text-gray-400"><%= agent[:model] %></span>

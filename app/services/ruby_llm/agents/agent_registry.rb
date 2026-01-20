@@ -63,11 +63,15 @@ module RubyLLM
           # Ensure all agent and workflow classes are loaded
           eager_load_agents!
 
-          # Find all descendants of both base classes
+          # Find all descendants of all base classes
           agents = RubyLLM::Agents::Base.descendants.map(&:name).compact
           workflows = RubyLLM::Agents::Workflow.descendants.map(&:name).compact
+          embedders = RubyLLM::Agents::Embedder.descendants.map(&:name).compact
+          moderators = RubyLLM::Agents::Moderator.descendants.map(&:name).compact
+          speakers = RubyLLM::Agents::Speaker.descendants.map(&:name).compact
+          transcribers = RubyLLM::Agents::Transcriber.descendants.map(&:name).compact
 
-          (agents + workflows).uniq
+          (agents + workflows + embedders + moderators + speakers + transcribers).uniq
         rescue StandardError => e
           Rails.logger.error("[RubyLLM::Agents] Error loading agents from file system: #{e.message}")
           []
@@ -87,7 +91,7 @@ module RubyLLM
         #
         # @return [void]
         def eager_load_agents!
-          %w[agents workflows].each do |dir|
+          %w[agents workflows embedders moderators speakers transcribers].each do |dir|
             path = Rails.root.join("app", dir)
             next unless path.exist?
 
@@ -129,8 +133,11 @@ module RubyLLM
           agent_class = find(agent_type)
           stats = fetch_stats(agent_type)
 
+          # Detect the agent type (agent, workflow, embedder, moderator, speaker, transcriber)
+          detected_type = detect_agent_type(agent_class)
+
           # Check if this is a workflow class vs a regular agent
-          is_workflow = agent_class&.ancestors&.any? { |a| a.name&.include?("Workflow") }
+          is_workflow = detected_type == "workflow"
 
           # Determine specific workflow type and children
           workflow_type = is_workflow ? detect_workflow_type(agent_class) : nil
@@ -140,6 +147,7 @@ module RubyLLM
             name: agent_type,
             class: agent_class,
             active: agent_class.present?,
+            agent_type: detected_type,
             is_workflow: is_workflow,
             workflow_type: workflow_type,
             workflow_children: workflow_children,
@@ -210,6 +218,30 @@ module RubyLLM
             "parallel"
           elsif ancestors.include?("RubyLLM::Agents::Workflow::Router")
             "router"
+          end
+        end
+
+        # Detects the agent type from class hierarchy
+        #
+        # @param agent_class [Class, nil] The agent class
+        # @return [String] "agent", "workflow", "embedder", "moderator", "speaker", or "transcriber"
+        def detect_agent_type(agent_class)
+          return "agent" unless agent_class
+
+          ancestors = agent_class.ancestors.map { |a| a.name.to_s }
+
+          if ancestors.include?("RubyLLM::Agents::Embedder")
+            "embedder"
+          elsif ancestors.include?("RubyLLM::Agents::Moderator")
+            "moderator"
+          elsif ancestors.include?("RubyLLM::Agents::Speaker")
+            "speaker"
+          elsif ancestors.include?("RubyLLM::Agents::Transcriber")
+            "transcriber"
+          elsif ancestors.include?("RubyLLM::Agents::Workflow")
+            "workflow"
+          else
+            "agent"
           end
         end
 
