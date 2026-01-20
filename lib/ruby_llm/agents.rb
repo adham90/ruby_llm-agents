@@ -19,6 +19,9 @@ require_relative "agents/infrastructure/reliability/breaker_manager"
 require_relative "agents/infrastructure/reliability/execution_constraints"
 require_relative "agents/infrastructure/reliability/executor"
 
+# Pipeline infrastructure (middleware-based execution)
+require_relative "agents/pipeline"
+
 # Infrastructure - Budget & Utilities
 require_relative "agents/infrastructure/redactor"
 require_relative "agents/infrastructure/circuit_breaker"
