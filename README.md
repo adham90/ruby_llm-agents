@@ -1,3 +1,9 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./logo_dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="./logo_light.svg">
+  <img alt="RubyLLM::Agents" src="./logo_light.svg">
+</picture>
+
 # RubyLLM::Agents
 
 > **AI Agents:** For comprehensive documentation optimized for AI consumption, see [LLMS.txt](LLMS.txt)
