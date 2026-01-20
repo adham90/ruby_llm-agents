@@ -1,153 +1,206 @@
-# RubyLLM::Agents - AI Documentation Index
+# ruby_llm-agents
 
-> A Rails engine for building production-ready LLM-powered agents with built-in observability, reliability, and cost governance.
+> A production-ready Rails engine for building, managing, and monitoring LLM-powered AI agents. Provides a declarative DSL for creating intelligent agents with built-in execution tracking, cost analytics, budget controls, multi-tenancy, reliability patterns, and a real-time dashboard. Built on RubyLLM for provider abstraction. Requires Ruby >= 3.1.0 and Rails >= 7.0. MIT License.
 
-Version: 0.4.0
-Repository: https://github.com/adham90/ruby_llm-agents
-License: MIT
-Requirements: Ruby >= 3.1.0, Rails >= 7.0, RubyLLM >= 1.0
+ruby_llm-agents brings structure, observability, and control to LLM-based Rails applications. Define agents using a class-based DSL with model selection, temperature, parameters, prompts, and response schemas. Every execution is automatically tracked with token usage, costs, and duration. Set daily and monthly budget limits per tenant with alerts. Handle failures gracefully with automatic retries, model fallbacks, and circuit breakers. Compose complex workflows using pipelines, parallel execution, or routers. Process images with generation, analysis, editing, upscaling, and background removal. Handle audio with transcription and text-to-speech. Protect user data with PII redaction and content moderation.
 
-## Quick Reference
+## Documentation
 
-This index provides targeted documentation for AI assistants. Read only the wiki pages relevant to your task.
+- [Home](wiki/Home.md): Wiki home page and documentation index
+- [Getting Started](wiki/Getting-Started.md): Quick start guide and overview
+- [Installation](wiki/Installation.md): Detailed installation and setup instructions
+- [First Agent](wiki/First-Agent.md): Tutorial for creating your first agent
+- [Configuration](wiki/Configuration.md): Global configuration options reference
+- [Generators](wiki/Generators.md): Rails generators for agents, embedders, transcribers, and image operations
+- [Agent DSL](wiki/Agent-DSL.md): Complete DSL reference for defining agents
+- [Parameters](wiki/Parameters.md): Defining and validating agent parameters
+- [Prompts and Schemas](wiki/Prompts-and-Schemas.md): System prompts, user prompts, and response schemas
+- [Result Object](wiki/Result-Object.md): Understanding the unified result object with metadata
+- [Examples](wiki/Examples.md): Code examples and common patterns
+- [Best Practices](wiki/Best-Practices.md): Recommended patterns and guidelines
+- [API Reference](wiki/API-Reference.md): Complete API documentation
+- [FAQ](wiki/FAQ.md): Frequently asked questions
+- [Troubleshooting](wiki/Troubleshooting.md): Common issues and solutions
+- [Contributing](wiki/Contributing.md): How to contribute to the project
 
-## Documentation Sections
+## Core Components
 
-| Topic | Wiki Page | Description |
-|-------|-----------|-------------|
-| **Getting Started** | [wiki/Getting-Started.md](wiki/Getting-Started.md) | Installation and initial setup |
-| **Configuration** | [wiki/Configuration.md](wiki/Configuration.md) | All configuration options with reference table |
-| **Generators** | [wiki/Generators.md](wiki/Generators.md) | Rails generators for agents, embedders, speakers, transcribers |
-| **Agent DSL** | [wiki/Agent-DSL.md](wiki/Agent-DSL.md) | Full DSL reference: model, params, caching, streaming, reliability |
-| **Parameters** | [wiki/Parameters.md](wiki/Parameters.md) | Parameter definitions with type validation |
-| **Prompts & Schemas** | [wiki/Prompts-and-Schemas.md](wiki/Prompts-and-Schemas.md) | System/user prompts and structured output |
-| **Result Object** | [wiki/Result-Object.md](wiki/Result-Object.md) | All result properties: content, tokens, costs, timing |
-| **Tools** | [wiki/Tools.md](wiki/Tools.md) | Tool definitions and agent tool integration |
-| **Streaming** | [wiki/Streaming.md](wiki/Streaming.md) | Real-time response streaming |
-| **Thinking** | [wiki/Thinking.md](wiki/Thinking.md) | Extended reasoning/chain-of-thought |
-| **Conversation History** | [wiki/Conversation-History.md](wiki/Conversation-History.md) | Multi-turn conversations |
-| **Caching** | [wiki/Caching.md](wiki/Caching.md) | Response caching configuration |
+- [Base Agent](lib/ruby_llm/agents/base.rb): Base class for all agents with DSL and execution
+- [DSL](lib/ruby_llm/agents/base/dsl.rb): Class-level DSL for model, temperature, params, prompts
+- [Execution](lib/ruby_llm/agents/base/execution.rb): Agent execution logic and LLM interaction
+- [Response Building](lib/ruby_llm/agents/base/response_building.rb): Response parsing and schema validation
+- [Result](lib/ruby_llm/agents/result.rb): Unified result object with content, cost, tokens, duration
+- [Configuration](lib/ruby_llm/agents/configuration.rb): Global configuration with 50+ options
+- [Engine](lib/ruby_llm/agents/engine.rb): Rails engine setup and initialization
+- [Errors](lib/ruby_llm/agents/errors.rb): Custom error classes for agents
 
-### Specialized Capabilities
+## Execution Tracking
 
-| Topic | Wiki Page | Description |
-|-------|-----------|-------------|
-| **Embeddings** | [wiki/Embeddings.md](wiki/Embeddings.md) | Vector embeddings, batch processing, semantic search |
-| **Moderation** | [wiki/Moderation.md](wiki/Moderation.md) | Content safety filtering and standalone moderator |
-| **Audio** | [wiki/Audio.md](wiki/Audio.md) | Transcription (speech-to-text) and TTS (text-to-speech) |
-| **Image Generation** | [wiki/Image-Generation.md](wiki/Image-Generation.md) | Text-to-image, templates, pricing |
-| **Attachments** | [wiki/Attachments.md](wiki/Attachments.md) | Vision and multimodal support |
+- [Execution Tracking Guide](wiki/Execution-Tracking.md): How execution tracking works
+- [Execution Model](app/models/ruby_llm/agents/execution.rb): ActiveRecord model for tracking all executions
+- [Execution Metrics](app/models/ruby_llm/agents/execution/metrics.rb): Token usage, cost, and duration metrics
+- [Execution Analytics](app/models/ruby_llm/agents/execution/analytics.rb): Aggregation and reporting methods
+- [Execution Scopes](app/models/ruby_llm/agents/execution/scopes.rb): Query scopes for filtering executions
+- [Execution Workflow](app/models/ruby_llm/agents/execution/workflow.rb): Parent/child/root execution relationships
+- [Instrumentation](lib/ruby_llm/agents/instrumentation.rb): Execution logging and telemetry hooks
+- [Execution Logger Job](lib/ruby_llm/agents/execution_logger_job.rb): Background job for async logging
+- [Database Queries](wiki/Database-Queries.md): Common queries for execution data
 
-### Reliability
+## Reliability
 
-| Topic | Wiki Page | Description |
-|-------|-----------|-------------|
-| **Reliability Overview** | [wiki/Reliability.md](wiki/Reliability.md) | Resilient agent configuration |
-| **Automatic Retries** | [wiki/Automatic-Retries.md](wiki/Automatic-Retries.md) | Retry configuration with backoff |
-| **Model Fallbacks** | [wiki/Model-Fallbacks.md](wiki/Model-Fallbacks.md) | Fallback model chains |
-| **Circuit Breakers** | [wiki/Circuit-Breakers.md](wiki/Circuit-Breakers.md) | Prevent cascading failures |
-| **Error Handling** | [wiki/Error-Handling.md](wiki/Error-Handling.md) | Error types and recovery patterns |
+- [Reliability Guide](wiki/Reliability.md): Overview of reliability features
+- [Reliability Module](lib/ruby_llm/agents/reliability.rb): Main reliability configuration
+- [Reliability DSL](lib/ruby_llm/agents/base/reliability_dsl.rb): DSL for retry, fallback, circuit breaker
+- [Reliability Execution](lib/ruby_llm/agents/base/reliability_execution.rb): Execution with reliability patterns
+- [Automatic Retries](wiki/Automatic-Retries.md): Retry configuration and strategies
+- [Retry Strategy](lib/ruby_llm/agents/reliability/retry_strategy.rb): Exponential backoff implementation
+- [Model Fallbacks](wiki/Model-Fallbacks.md): Fallback model configuration
+- [Fallback Routing](lib/ruby_llm/agents/reliability/fallback_routing.rb): Automatic model switching on failure
+- [Circuit Breakers](wiki/Circuit-Breakers.md): Circuit breaker configuration and usage
+- [Circuit Breaker](lib/ruby_llm/agents/circuit_breaker.rb): Circuit breaker implementation
+- [Breaker Manager](lib/ruby_llm/agents/reliability/breaker_manager.rb): Managing multiple circuit breakers
+- [Execution Constraints](lib/ruby_llm/agents/reliability/execution_constraints.rb): Timeouts and rate limiting
+- [Reliability Executor](lib/ruby_llm/agents/reliability/executor.rb): Orchestrates retry, fallback, breaker
+- [Attempt Tracker](lib/ruby_llm/agents/attempt_tracker.rb): Tracks retry attempts and failures
 
-### Workflows
+## Budget and Cost
 
-| Topic | Wiki Page | Description |
-|-------|-----------|-------------|
-| **Workflows Overview** | [wiki/Workflows.md](wiki/Workflows.md) | Agent composition patterns |
-| **Pipeline Workflows** | [wiki/Pipeline-Workflows.md](wiki/Pipeline-Workflows.md) | Sequential execution |
-| **Parallel Workflows** | [wiki/Parallel-Workflows.md](wiki/Parallel-Workflows.md) | Concurrent execution |
-| **Router Workflows** | [wiki/Router-Workflows.md](wiki/Router-Workflows.md) | Conditional dispatch |
+- [Budget Controls](wiki/Budget-Controls.md): Setting up budget limits and alerts
+- [Budget Tracker](lib/ruby_llm/agents/budget_tracker.rb): Daily and monthly spending enforcement
+- [Budget Query](lib/ruby_llm/agents/budget/budget_query.rb): Querying budget usage
+- [Config Resolver](lib/ruby_llm/agents/budget/config_resolver.rb): Resolving budget configuration
+- [Forecaster](lib/ruby_llm/agents/budget/forecaster.rb): Spending forecasting
+- [Spend Recorder](lib/ruby_llm/agents/budget/spend_recorder.rb): Recording spending events
+- [Cost Calculation](lib/ruby_llm/agents/base/cost_calculation.rb): Per-execution cost calculation
+- [Tenant Budget Model](app/models/ruby_llm/agents/tenant_budget.rb): Per-tenant budget limits
+- [Alerts](wiki/Alerts.md): Setting up budget breach notifications
+- [Alert Manager](lib/ruby_llm/agents/alert_manager.rb): Slack and webhook alerts
 
-### Concurrency
+## Workflows
 
-| Topic | Wiki Page | Description |
-|-------|-----------|-------------|
-| **Async/Fiber** | [wiki/Async-Fiber.md](wiki/Async-Fiber.md) | Fiber-based concurrent execution, batch processing, rate limiting |
+- [Workflows Guide](wiki/Workflows.md): Overview of workflow orchestration
+- [Workflow Module](lib/ruby_llm/agents/workflow.rb): Main workflow entry point
+- [Pipeline Workflows](wiki/Pipeline-Workflows.md): Sequential execution guide
+- [Pipeline](lib/ruby_llm/agents/workflow/pipeline.rb): Sequential execution with data flow
+- [Parallel Workflows](wiki/Parallel-Workflows.md): Concurrent execution guide
+- [Parallel](lib/ruby_llm/agents/workflow/parallel.rb): Concurrent agent execution
+- [Router Workflows](wiki/Router-Workflows.md): Conditional routing guide
+- [Router](lib/ruby_llm/agents/workflow/router.rb): Conditional dispatch based on classification
+- [Workflow Result](lib/ruby_llm/agents/workflow/result.rb): Combined workflow results
+- [Workflow Instrumentation](lib/ruby_llm/agents/workflow/instrumentation.rb): Workflow-level tracking
+- [Thread Pool](lib/ruby_llm/agents/workflow/thread_pool.rb): Thread pool for parallel execution
+- [Async Executor](lib/ruby_llm/agents/workflow/async_executor.rb): Fiber-based async execution
 
-### Governance
+## Multi-Tenancy
 
-| Topic | Wiki Page | Description |
-|-------|-----------|-------------|
-| **Budget Controls** | [wiki/Budget-Controls.md](wiki/Budget-Controls.md) | Spending limits |
-| **Multi-Tenancy** | [wiki/Multi-Tenancy.md](wiki/Multi-Tenancy.md) | Per-tenant isolation, API keys, budgets |
-| **Alerts** | [wiki/Alerts.md](wiki/Alerts.md) | Notifications and webhooks |
-| **PII Redaction** | [wiki/PII-Redaction.md](wiki/PII-Redaction.md) | Sensitive data protection |
+- [Multi-Tenancy Guide](wiki/Multi-Tenancy.md): Setting up multi-tenant support
+- [LLM Tenant](lib/ruby_llm/agents/llm_tenant.rb): Tenant concern for models
+- [API Configuration](app/models/ruby_llm/agents/api_configuration.rb): Per-tenant API keys
+- [Tenant Budget](app/models/ruby_llm/agents/tenant_budget.rb): Per-tenant spending limits
 
-### Operations
+## Caching
 
-| Topic | Wiki Page | Description |
-|-------|-----------|-------------|
-| **Dashboard** | [wiki/Dashboard.md](wiki/Dashboard.md) | Monitoring UI setup and authentication |
-| **Database Queries** | [wiki/Database-Queries.md](wiki/Database-Queries.md) | Execution model scopes and analytics |
-| **Execution Tracking** | [wiki/Execution-Tracking.md](wiki/Execution-Tracking.md) | What gets logged, custom metadata |
-| **Testing Agents** | [wiki/Testing-Agents.md](wiki/Testing-Agents.md) | RSpec patterns and mocking |
-| **Best Practices** | [wiki/Best-Practices.md](wiki/Best-Practices.md) | Production guidelines |
+- [Caching Guide](wiki/Caching.md): Response caching strategies
+- [Caching Module](lib/ruby_llm/agents/base/caching.rb): Cache configuration DSL
+- [Cache Helper](lib/ruby_llm/agents/cache_helper.rb): Cache key generation and storage
 
-## Quick Start
+## Streaming
 
-```ruby
-# Gemfile
-gem "ruby_llm-agents"
-```
+- [Streaming Guide](wiki/Streaming.md): Real-time response streaming
+- [Conversation History](wiki/Conversation-History.md): Multi-turn conversation support
 
-```bash
-bundle install
-rails generate ruby_llm_agents:install
-rails db:migrate
-```
+## Text Operations
 
-```ruby
-class SearchAgent < ApplicationAgent
-  model "gpt-4o"
-  temperature 0.0
-  param :query, required: true
+- [Embeddings Guide](wiki/Embeddings.md): Vector embeddings with batching and caching
+- [Embedder](lib/ruby_llm/agents/embedder.rb): Base embedder class
+- [Embedder DSL](lib/ruby_llm/agents/embedder/dsl.rb): Embedder configuration DSL
+- [Embedder Execution](lib/ruby_llm/agents/embedder/execution.rb): Embedding generation logic
+- [Embedding Result](lib/ruby_llm/agents/embedding_result.rb): Embedding result with vectors
+- [Moderation Guide](wiki/Moderation.md): Content safety checks
+- [Moderator](lib/ruby_llm/agents/moderator.rb): Content moderation using OpenAI
+- [Moderation DSL](lib/ruby_llm/agents/base/moderation_dsl.rb): Moderation configuration
+- [Moderation Execution](lib/ruby_llm/agents/base/moderation_execution.rb): Moderation checking logic
+- [Moderation Result](lib/ruby_llm/agents/moderation_result.rb): Moderation result with flags
+- [PII Redaction Guide](wiki/PII-Redaction.md): Sensitive data protection
+- [Redactor](lib/ruby_llm/agents/redactor.rb): PII detection and redaction
 
-  def user_prompt
-    "Search for: #{query}"
-  end
-end
+## Audio Operations
 
-result = SearchAgent.call(query: "ruby metaprogramming")
-result.content      # => processed response
-result.total_cost   # => 0.00025
-```
+- [Audio Guide](wiki/Audio.md): Transcription and text-to-speech overview
+- [Transcriber](lib/ruby_llm/agents/transcriber.rb): Audio transcription base class
+- [Transcriber DSL](lib/ruby_llm/agents/transcriber/dsl.rb): Transcription configuration
+- [Transcriber Execution](lib/ruby_llm/agents/transcriber/execution.rb): Transcription logic
+- [Transcription Result](lib/ruby_llm/agents/transcription_result.rb): Result with text and segments
+- [Speaker](lib/ruby_llm/agents/speaker.rb): Text-to-speech base class
+- [Speaker DSL](lib/ruby_llm/agents/speaker/dsl.rb): Speech configuration with voice options
+- [Speaker Execution](lib/ruby_llm/agents/speaker/execution.rb): Speech synthesis logic
+- [Speech Result](lib/ruby_llm/agents/speech_result.rb): Result with audio data
 
-## Common Tasks
+## Image Operations
 
-| Task | Read |
-|------|------|
-| Create an agent | [wiki/Agent-DSL.md](wiki/Agent-DSL.md), [wiki/Generators.md](wiki/Generators.md) |
-| Add structured output | [wiki/Prompts-and-Schemas.md](wiki/Prompts-and-Schemas.md) |
-| Add reliability | [wiki/Reliability.md](wiki/Reliability.md) |
-| Build a workflow | [wiki/Workflows.md](wiki/Workflows.md) |
-| Concurrent execution | [wiki/Async-Fiber.md](wiki/Async-Fiber.md) |
-| Work with embeddings | [wiki/Embeddings.md](wiki/Embeddings.md) |
-| Transcription/TTS | [wiki/Audio.md](wiki/Audio.md) |
-| Generate images | [wiki/Image-Generation.md](wiki/Image-Generation.md) |
-| Content moderation | [wiki/Moderation.md](wiki/Moderation.md) |
-| Multi-tenant setup | [wiki/Multi-Tenancy.md](wiki/Multi-Tenancy.md) |
-| Configuration | [wiki/Configuration.md](wiki/Configuration.md) |
-| Testing | [wiki/Testing-Agents.md](wiki/Testing-Agents.md) |
-| Dashboard/analytics | [wiki/Dashboard.md](wiki/Dashboard.md), [wiki/Database-Queries.md](wiki/Database-Queries.md) |
+- [Image Generation Guide](wiki/Image-Generation.md): Image generation and manipulation overview
+- [Image Generator](lib/ruby_llm/agents/image_generator.rb): Image generation base class
+- [Image Generator DSL](lib/ruby_llm/agents/image_generator/dsl.rb): Generation configuration
+- [Image Generator Execution](lib/ruby_llm/agents/image_generator/execution.rb): Generation logic
+- [Image Generation Result](lib/ruby_llm/agents/image_generation_result.rb): Result with image URLs
+- [Image Generator Pricing](lib/ruby_llm/agents/image_generator/pricing.rb): Cost calculation for images
+- [Image Generator Templates](lib/ruby_llm/agents/image_generator/templates.rb): Prompt templates
+- [Content Policy](lib/ruby_llm/agents/image_generator/content_policy.rb): Image content safety
+- [ActiveStorage Support](lib/ruby_llm/agents/image_generator/active_storage_support.rb): Rails ActiveStorage integration
+- [Image Analyzer](lib/ruby_llm/agents/image_analyzer.rb): Extract captions, tags, objects from images
+- [Image Analyzer DSL](lib/ruby_llm/agents/image_analyzer/dsl.rb): Analysis configuration
+- [Image Analyzer Execution](lib/ruby_llm/agents/image_analyzer/execution.rb): Analysis logic
+- [Image Analysis Result](lib/ruby_llm/agents/image_analysis_result.rb): Result with extracted data
+- [Image Editor](lib/ruby_llm/agents/image_editor.rb): Modify existing images
+- [Image Editor DSL](lib/ruby_llm/agents/image_editor/dsl.rb): Editing configuration
+- [Image Editor Execution](lib/ruby_llm/agents/image_editor/execution.rb): Editing logic
+- [Image Edit Result](lib/ruby_llm/agents/image_edit_result.rb): Result with edited image
+- [Image Transformer](lib/ruby_llm/agents/image_transformer.rb): Style transfer and effects
+- [Image Transformer DSL](lib/ruby_llm/agents/image_transformer/dsl.rb): Transform configuration
+- [Image Transformer Execution](lib/ruby_llm/agents/image_transformer/execution.rb): Transform logic
+- [Image Transform Result](lib/ruby_llm/agents/image_transform_result.rb): Result with transformed image
+- [Image Upscaler](lib/ruby_llm/agents/image_upscaler.rb): Improve image resolution
+- [Image Upscaler DSL](lib/ruby_llm/agents/image_upscaler/dsl.rb): Upscaling configuration
+- [Image Upscaler Execution](lib/ruby_llm/agents/image_upscaler/execution.rb): Upscaling logic
+- [Image Upscale Result](lib/ruby_llm/agents/image_upscale_result.rb): Result with upscaled image
+- [Image Variator](lib/ruby_llm/agents/image_variator.rb): Generate image variations
+- [Image Variator DSL](lib/ruby_llm/agents/image_variator/dsl.rb): Variation configuration
+- [Image Variator Execution](lib/ruby_llm/agents/image_variator/execution.rb): Variation logic
+- [Image Variation Result](lib/ruby_llm/agents/image_variation_result.rb): Result with variations
+- [Background Remover](lib/ruby_llm/agents/background_remover.rb): Extract subjects with transparency
+- [Background Remover DSL](lib/ruby_llm/agents/background_remover/dsl.rb): Removal configuration
+- [Background Remover Execution](lib/ruby_llm/agents/background_remover/execution.rb): Removal logic
+- [Background Removal Result](lib/ruby_llm/agents/background_removal_result.rb): Result with transparent image
+- [Image Pipeline](lib/ruby_llm/agents/image_pipeline.rb): Chain multiple image operations
+- [Image Pipeline DSL](lib/ruby_llm/agents/image_pipeline/dsl.rb): Pipeline configuration
+- [Image Pipeline Execution](lib/ruby_llm/agents/image_pipeline/execution.rb): Pipeline execution
+- [Image Pipeline Result](lib/ruby_llm/agents/image_pipeline_result.rb): Combined pipeline result
+- [Image Operation DSL](lib/ruby_llm/agents/concerns/image_operation_dsl.rb): Shared DSL for image operations
+- [Image Operation Execution](lib/ruby_llm/agents/concerns/image_operation_execution.rb): Shared execution logic
 
-## File Structure
+## Tools
 
-```
-app/
-├── agents/
-│   ├── application_agent.rb      # Base class
-│   └── my_agent.rb               # Your agents
-├── embedders/
-│   ├── application_embedder.rb   # Base class
-│   └── document_embedder.rb      # Your embedders
-├── moderators/
-│   └── content_moderator.rb      # Standalone moderators
-├── image_generators/
-│   ├── application_image_generator.rb
-│   └── logo_generator.rb         # Your image generators
-├── transcribers/
-│   ├── application_transcriber.rb
-│   └── meeting_transcriber.rb
-└── speakers/
-    ├── application_speaker.rb
-    └── narrator_speaker.rb
-```
+- [Tools Guide](wiki/Tools.md): Adding tools/functions to agents
+- [Tool Tracking](lib/ruby_llm/agents/base/tool_tracking.rb): Tracking tool calls in executions
+- [Attachments](wiki/Attachments.md): Sending files and images to agents
+
+## Testing and Development
+
+- [Testing Agents](wiki/Testing-Agents.md): Testing strategies and mocking
+- [Error Handling](wiki/Error-Handling.md): Handling errors and exceptions
+
+## Dashboard
+
+- [Dashboard Guide](wiki/Dashboard.md): Real-time monitoring dashboard setup
+- [Production Deployment](wiki/Production-Deployment.md): Deploying to production
+- [Background Jobs](wiki/Background-Jobs.md): Configuring async execution logging
+
+## Optional
+
+- [Async/Fiber Guide](wiki/Async-Fiber.md): High-throughput fiber-based concurrency
+- [Async Module](lib/ruby_llm/agents/async.rb): Fiber-based async support
+- [Thinking Guide](wiki/Thinking.md): Extended thinking for complex reasoning
+- [Resolved Config](lib/ruby_llm/agents/resolved_config.rb): Runtime configuration resolution
+- [Inflections](lib/ruby_llm/agents/inflections.rb): Custom Rails inflections
+- [Deprecations](lib/ruby_llm/agents/deprecations.rb): Deprecated method handling
+- [Version](lib/ruby_llm/agents/version.rb): Gem version constant

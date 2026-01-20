@@ -19,17 +19,17 @@ RubyLLM::Agents provides three workflow patterns, all defined using a class-base
 Sequential execution with data flowing between steps:
 
 ```ruby
-class ContentPipeline < RubyLLM::Agents::Workflow::Pipeline
+class LLM::ContentPipeline < RubyLLM::Agents::Workflow::Pipeline
   version "1.0"
   timeout 60.seconds
   max_cost 1.00
 
-  step :extract,   agent: ExtractorAgent
-  step :classify,  agent: ClassifierAgent
-  step :format,    agent: FormatterAgent, optional: true
+  step :extract,   agent: LLM::ExtractorAgent
+  step :classify,  agent: LLM::ClassifierAgent
+  step :format,    agent: LLM::FormatterAgent, optional: true
 end
 
-result = ContentPipeline.call(text: "raw content")
+result = LLM::ContentPipeline.call(text: "raw content")
 result.steps[:extract].content   # Individual step result
 result.total_cost                # Sum of all steps
 ```
@@ -39,17 +39,17 @@ result.total_cost                # Sum of all steps
 Concurrent execution with result aggregation:
 
 ```ruby
-class ReviewAnalyzer < RubyLLM::Agents::Workflow::Parallel
+class LLM::ReviewAnalyzer < RubyLLM::Agents::Workflow::Parallel
   version "1.0"
   fail_fast false    # Continue even if a branch fails
   concurrency 3      # Max concurrent branches
 
-  branch :sentiment, agent: SentimentAgent
-  branch :entities,  agent: EntityAgent
-  branch :summary,   agent: SummaryAgent
+  branch :sentiment, agent: LLM::SentimentAgent
+  branch :entities,  agent: LLM::EntityAgent
+  branch :summary,   agent: LLM::SummaryAgent
 end
 
-result = ReviewAnalyzer.call(text: "analyze this")
+result = LLM::ReviewAnalyzer.call(text: "analyze this")
 result.branches[:sentiment].content  # Individual branch result
 result.content                       # Aggregated result hash
 ```
@@ -59,18 +59,18 @@ result.content                       # Aggregated result hash
 Conditional dispatch based on classification:
 
 ```ruby
-class SupportRouter < RubyLLM::Agents::Workflow::Router
+class LLM::SupportRouter < RubyLLM::Agents::Workflow::Router
   version "1.0"
   classifier_model "gpt-4o-mini"
   classifier_temperature 0.0
 
-  route :billing,   to: BillingAgent,   description: "Billing, charges, refunds"
-  route :technical, to: TechAgent,      description: "Bugs, errors, crashes"
-  route :sales,     to: SalesAgent,     description: "Pricing, plans, upgrades"
-  route :default,   to: GeneralAgent    # Fallback
+  route :billing,   to: LLM::BillingAgent,   description: "Billing, charges, refunds"
+  route :technical, to: LLM::TechAgent,      description: "Bugs, errors, crashes"
+  route :sales,     to: LLM::SalesAgent,     description: "Pricing, plans, upgrades"
+  route :default,   to: LLM::GeneralAgent    # Fallback
 end
 
-result = SupportRouter.call(message: "I was charged twice")
+result = LLM::SupportRouter.call(message: "I was charged twice")
 result.routed_to         # :billing
 result.classification    # Classification details
 ```
@@ -80,7 +80,7 @@ result.classification    # Classification details
 All workflow types support these class-level options:
 
 ```ruby
-class MyWorkflow < RubyLLM::Agents::Workflow::Pipeline
+class LLM::MyWorkflow < RubyLLM::Agents::Workflow::Pipeline
   version "2.0"           # Workflow version (default: "1.0")
   timeout 30.seconds      # Max duration for entire workflow
   max_cost 1.50           # Abort if cost exceeds this amount
@@ -92,7 +92,7 @@ end
 Workflow results provide aggregate metrics:
 
 ```ruby
-result = MyWorkflow.call(input: data)
+result = LLM::MyWorkflow.call(input: data)
 
 # Aggregate metrics
 result.total_cost       # Sum of all agent costs
@@ -144,25 +144,27 @@ Workflows can be composed by calling one workflow from another's agent:
 
 ```ruby
 # Parallel analysis sub-workflow
-class AnalysisWorkflow < RubyLLM::Agents::Workflow::Parallel
-  branch :sentiment, agent: SentimentAgent
-  branch :topics,    agent: TopicAgent
+class LLM::AnalysisWorkflow < RubyLLM::Agents::Workflow::Parallel
+  branch :sentiment, agent: LLM::SentimentAgent
+  branch :topics,    agent: LLM::TopicAgent
 end
 
 # Agent that wraps the sub-workflow
-class AnalysisAgent < ApplicationAgent
-  param :text, required: true
+module LLM
+  class AnalysisAgent < ApplicationAgent
+    param :text, required: true
 
-  def call
-    AnalysisWorkflow.call(text: text)
+    def call
+      LLM::AnalysisWorkflow.call(text: text)
+    end
   end
 end
 
 # Main pipeline using the nested workflow
-class MainPipeline < RubyLLM::Agents::Workflow::Pipeline
-  step :preprocess, agent: PreprocessorAgent
-  step :analyze,    agent: AnalysisAgent    # Nested workflow
-  step :summarize,  agent: SummaryAgent
+class LLM::MainPipeline < RubyLLM::Agents::Workflow::Pipeline
+  step :preprocess, agent: LLM::PreprocessorAgent
+  step :analyze,    agent: LLM::AnalysisAgent    # Nested workflow
+  step :summarize,  agent: LLM::SummaryAgent
 end
 ```
 
@@ -173,9 +175,9 @@ Each workflow type provides hooks for customization:
 ### Pipeline Hooks
 
 ```ruby
-class MyPipeline < RubyLLM::Agents::Workflow::Pipeline
-  step :extract, agent: ExtractorAgent
-  step :process, agent: ProcessorAgent
+class LLM::MyPipeline < RubyLLM::Agents::Workflow::Pipeline
+  step :extract, agent: LLM::ExtractorAgent
+  step :process, agent: LLM::ProcessorAgent
 
   # Transform input before a specific step
   def before_process(context)
@@ -192,9 +194,9 @@ end
 ### Parallel Hooks
 
 ```ruby
-class MyParallel < RubyLLM::Agents::Workflow::Parallel
-  branch :a, agent: AgentA
-  branch :b, agent: AgentB
+class LLM::MyParallel < RubyLLM::Agents::Workflow::Parallel
+  branch :a, agent: LLM::AgentA
+  branch :b, agent: LLM::AgentB
 
   # Custom result aggregation
   def aggregate(results)
@@ -209,9 +211,9 @@ end
 ### Router Hooks
 
 ```ruby
-class MyRouter < RubyLLM::Agents::Workflow::Router
-  route :fast, to: FastAgent, description: "Simple requests"
-  route :slow, to: SlowAgent, description: "Complex requests"
+class LLM::MyRouter < RubyLLM::Agents::Workflow::Router
+  route :fast, to: LLM::FastAgent, description: "Simple requests"
+  route :slow, to: LLM::SlowAgent, description: "Complex requests"
 
   # Custom classification logic (bypasses LLM)
   def classify(input)

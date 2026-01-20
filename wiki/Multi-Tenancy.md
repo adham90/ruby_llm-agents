@@ -61,10 +61,10 @@ You can bypass the tenant resolver by passing the tenant explicitly to `.call()`
 
 ```ruby
 # Pass tenant_id explicitly (bypasses resolver, uses DB or config_resolver)
-MyAgent.call(query: "Analyze this data", tenant: "acme_corp")
+LLM::MyAgent.call(query: "Analyze this data", tenant: "acme_corp")
 
 # Pass full config as a hash (runtime override, no DB lookup)
-MyAgent.call(query: "Analyze this data", tenant: {
+LLM::MyAgent.call(query: "Analyze this data", tenant: {
   id: "acme_corp",
   daily_limit: 100.0,
   monthly_limit: 1000.0,
@@ -463,9 +463,11 @@ RubyLLM::Agents::Execution
 When multi-tenancy is enabled, circuit breakers are isolated per tenant. This prevents one tenant's failures from affecting other tenants.
 
 ```ruby
-class MyAgent < ApplicationAgent
-  model "gpt-4o"
-  circuit_breaker errors: 10, within: 60, cooldown: 300
+module LLM
+  class MyAgent < ApplicationAgent
+    model "gpt-4o"
+    circuit_breaker errors: 10, within: 60, cooldown: 300
+  end
 end
 ```
 
@@ -479,13 +481,13 @@ With multi-tenancy enabled:
 ```ruby
 # Check if circuit is open for current tenant
 RubyLLM::Agents::CircuitBreaker.open_for?(
-  agent: MyAgent,
+  agent: LLM::MyAgent,
   tenant_id: Current.tenant_id
 )
 
 # Check for specific tenant
 RubyLLM::Agents::CircuitBreaker.open_for?(
-  agent: MyAgent,
+  agent: LLM::MyAgent,
   tenant_id: "tenant_123"
 )
 ```
@@ -495,15 +497,17 @@ RubyLLM::Agents::CircuitBreaker.open_for?(
 Include tenant information in execution metadata:
 
 ```ruby
-class TenantAwareAgent < ApplicationAgent
-  model "gpt-4o"
+module LLM
+  class TenantAwareAgent < ApplicationAgent
+    model "gpt-4o"
 
-  def execution_metadata
-    {
-      tenant_id: Current.tenant_id,
-      tenant_name: Current.tenant&.name,
-      tenant_plan: Current.tenant&.plan
-    }
+    def execution_metadata
+      {
+        tenant_id: Current.tenant_id,
+        tenant_name: Current.tenant&.name,
+        tenant_plan: Current.tenant&.plan
+      }
+    end
   end
 end
 ```
@@ -542,7 +546,7 @@ Execution is blocked if **any** limit is exceeded (when using `"hard"` enforceme
 
 ```ruby
 begin
-  result = MyAgent.call(query: params[:query])
+  result = LLM::MyAgent.call(query: params[:query])
 rescue RubyLLM::Agents::BudgetExceededError => e
   if e.tenant_budget?
     # Tenant-specific budget exceeded
@@ -611,11 +615,11 @@ When an agent executes, API keys are resolved in this order:
 ```ruby
 # Tenant's API keys are automatically applied when agent executes
 org = Organization.find_by(slug: "acme-corp")
-result = MyAgent.call(query: "Hello", tenant: org)
+result = LLM::MyAgent.call(query: "Hello", tenant: org)
 # Uses org.openai_api_key for OpenAI requests
 
 # Runtime hash also supports api_keys
-result = MyAgent.call(
+result = LLM::MyAgent.call(
   query: "Hello",
   tenant: {
     id: "acme-corp",
@@ -709,7 +713,7 @@ end
 class AiController < ApplicationController
   def analyze
     # Pass the organization as tenant - API keys and budget are automatic
-    result = AnalysisAgent.call(
+    result = LLM::AnalysisAgent.call(
       query: params[:query],
       tenant: Current.organization
     )

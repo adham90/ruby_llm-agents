@@ -246,12 +246,14 @@ end
 Agents can override defaults:
 
 ```ruby
-class MyAgent < ApplicationAgent
-  model "claude-3-5-sonnet"      # Override default model
-  temperature 0.7                 # Override default temperature
-  timeout 120                     # Override default timeout
-  cache 1.hour                    # Enable caching
-  streaming true                  # Enable streaming
+module LLM
+  class MyAgent < ApplicationAgent
+    model "claude-3-5-sonnet"      # Override default model
+    temperature 0.7                 # Override default temperature
+    timeout 120                     # Override default timeout
+    cache 1.hour                    # Enable caching
+    streaming true                  # Enable streaming
+  end
 end
 ```
 

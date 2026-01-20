@@ -52,8 +52,10 @@ Timeout::Error: execution expired
 
 1. Increase agent timeout:
    ```ruby
-   class MyAgent < ApplicationAgent
-     timeout 120  # 2 minutes
+   module LLM
+     class MyAgent < ApplicationAgent
+       timeout 120  # 2 minutes
+     end
    end
    ```
 

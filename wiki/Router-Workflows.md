@@ -7,18 +7,18 @@ Conditionally dispatch requests to different agents based on classification.
 Create a router by inheriting from `RubyLLM::Agents::Workflow::Router`:
 
 ```ruby
-class SupportRouter < RubyLLM::Agents::Workflow::Router
+class LLM::SupportRouter < RubyLLM::Agents::Workflow::Router
   version "1.0"
   classifier_model "gpt-4o-mini"
   classifier_temperature 0.0
 
-  route :billing,   to: BillingAgent,   description: "Billing, charges, refunds"
-  route :technical, to: TechSupportAgent, description: "Bugs, errors, crashes"
-  route :sales,     to: SalesAgent,     description: "Pricing, plans, upgrades"
-  route :default,   to: GeneralAgent    # Fallback route
+  route :billing,   to: LLM::BillingAgent,   description: "Billing, charges, refunds"
+  route :technical, to: LLM::TechSupportAgent, description: "Bugs, errors, crashes"
+  route :sales,     to: LLM::SalesAgent,     description: "Pricing, plans, upgrades"
+  route :default,   to: LLM::GeneralAgent    # Fallback route
 end
 
-result = SupportRouter.call(message: "I was charged twice")
+result = LLM::SupportRouter.call(message: "I was charged twice")
 result.routed_to  # => :billing
 ```
 
@@ -41,7 +41,7 @@ Input ──► Classify ─┼─► TechSupportAgent
 ### Basic Routes
 
 ```ruby
-route :name, to: AgentClass, description: "Description for classifier"
+route :name, to: LLM::AgentClass, description: "Description for classifier"
 ```
 
 The `description` is used by the LLM classifier to understand when to route to this agent.
@@ -51,9 +51,9 @@ The `description` is used by the LLM classifier to understand when to route to t
 Always provide a fallback for unmatched classifications:
 
 ```ruby
-route :billing,  to: BillingAgent, description: "Billing questions"
-route :support,  to: SupportAgent, description: "Technical support"
-route :default,  to: GeneralAgent  # No description needed
+route :billing,  to: LLM::BillingAgent, description: "Billing questions"
+route :support,  to: LLM::SupportAgent, description: "Technical support"
+route :default,  to: LLM::GeneralAgent  # No description needed
 ```
 
 ### Rule-Based Matching
@@ -61,15 +61,15 @@ route :default,  to: GeneralAgent  # No description needed
 Skip LLM classification for deterministic routing:
 
 ```ruby
-route :urgent, to: UrgentAgent, match: ->(input) {
+route :urgent, to: LLM::UrgentAgent, match: ->(input) {
   input[:priority] == "urgent"
 }
 
-route :vip, to: VIPAgent, match: ->(input) {
+route :vip, to: LLM::VIPAgent, match: ->(input) {
   input[:user_tier] == "enterprise"
 }
 
-route :default, to: StandardAgent
+route :default, to: LLM::StandardAgent
 ```
 
 Rules are evaluated in order. First match wins.
@@ -81,13 +81,13 @@ Rules are evaluated in order. First match wins.
 Uses the classifier model to analyze input and select a route:
 
 ```ruby
-class MyRouter < RubyLLM::Agents::Workflow::Router
+class LLM::MyRouter < RubyLLM::Agents::Workflow::Router
   classifier_model "gpt-4o-mini"      # Fast, cheap model
   classifier_temperature 0.0           # Deterministic
 
-  route :billing,  to: BillingAgent,  description: "Billing, charges, payments"
-  route :support,  to: SupportAgent,  description: "Technical issues, bugs"
-  route :default,  to: GeneralAgent
+  route :billing,  to: LLM::BillingAgent,  description: "Billing, charges, payments"
+  route :support,  to: LLM::SupportAgent,  description: "Technical issues, bugs"
+  route :default,  to: LLM::GeneralAgent
 end
 ```
 
@@ -98,16 +98,16 @@ The router automatically builds a prompt from route descriptions.
 Use `match` lambdas for deterministic, free routing:
 
 ```ruby
-class FastRouter < RubyLLM::Agents::Workflow::Router
-  route :urgent, to: UrgentAgent, match: ->(input) {
+class LLM::FastRouter < RubyLLM::Agents::Workflow::Router
+  route :urgent, to: LLM::UrgentAgent, match: ->(input) {
     input[:priority] == "urgent"
   }
 
-  route :billing, to: BillingAgent, match: ->(input) {
+  route :billing, to: LLM::BillingAgent, match: ->(input) {
     input[:message].downcase.include?("invoice")
   }
 
-  route :default, to: GeneralAgent
+  route :default, to: LLM::GeneralAgent
 end
 ```
 
@@ -116,9 +116,9 @@ end
 Override `classify` for custom logic:
 
 ```ruby
-class CustomRouter < RubyLLM::Agents::Workflow::Router
-  route :simple,  to: SimpleAgent,  description: "Simple requests"
-  route :complex, to: ComplexAgent, description: "Complex requests"
+class LLM::CustomRouter < RubyLLM::Agents::Workflow::Router
+  route :simple,  to: LLM::SimpleAgent,  description: "Simple requests"
+  route :complex, to: LLM::ComplexAgent, description: "Complex requests"
 
   def classify(input)
     # Return the route name as a symbol
@@ -138,7 +138,7 @@ end
 Use a fast, cheap model for classification:
 
 ```ruby
-class MyRouter < RubyLLM::Agents::Workflow::Router
+class LLM::MyRouter < RubyLLM::Agents::Workflow::Router
   classifier_model "gpt-4o-mini"  # Default
   # or
   classifier_model "claude-3-haiku"
@@ -150,7 +150,7 @@ end
 Use low temperature for deterministic classification:
 
 ```ruby
-class MyRouter < RubyLLM::Agents::Workflow::Router
+class LLM::MyRouter < RubyLLM::Agents::Workflow::Router
   classifier_temperature 0.0  # Default: deterministic
 end
 ```
@@ -162,9 +162,9 @@ end
 Transform input before passing to the selected agent:
 
 ```ruby
-class MyRouter < RubyLLM::Agents::Workflow::Router
-  route :billing,  to: BillingAgent,  description: "Billing questions"
-  route :support,  to: SupportAgent,  description: "Technical support"
+class LLM::MyRouter < RubyLLM::Agents::Workflow::Router
+  route :billing,  to: LLM::BillingAgent,  description: "Billing questions"
+  route :support,  to: LLM::SupportAgent,  description: "Technical support"
 
   def before_route(input, chosen_route)
     input.merge(
@@ -179,7 +179,7 @@ end
 ## Accessing Results
 
 ```ruby
-result = MyRouter.call(message: "I need help")
+result = LLM::MyRouter.call(message: "I need help")
 
 # Routing info
 result.routed_to           # :support - Selected route name
@@ -211,8 +211,8 @@ result.duration_ms        # Total execution time
 If no route matches and no default is defined, a `RouterError` is raised:
 
 ```ruby
-class MyRouter < RubyLLM::Agents::Workflow::Router
-  route :billing, to: BillingAgent, description: "Billing only"
+class LLM::MyRouter < RubyLLM::Agents::Workflow::Router
+  route :billing, to: LLM::BillingAgent, description: "Billing only"
   # No default route!
 end
 
@@ -222,7 +222,7 @@ end
 Always provide a default route:
 
 ```ruby
-route :default, to: FallbackAgent
+route :default, to: LLM::FallbackAgent
 ```
 
 ### Route Agent Failures
@@ -230,7 +230,7 @@ route :default, to: FallbackAgent
 Handle failures in routed agents:
 
 ```ruby
-result = MyRouter.call(message: "help")
+result = LLM::MyRouter.call(message: "help")
 
 if result.error?
   puts "Route agent failed: #{result.error_message}"
@@ -242,22 +242,22 @@ end
 ### Customer Service Router
 
 ```ruby
-class CustomerServiceRouter < RubyLLM::Agents::Workflow::Router
+class LLM::CustomerServiceRouter < RubyLLM::Agents::Workflow::Router
   version "1.0"
   classifier_model "gpt-4o-mini"
   classifier_temperature 0.0
 
   # Priority routing (rule-based, checked first)
-  route :urgent, to: UrgentSupportAgent, match: ->(input) {
+  route :urgent, to: LLM::UrgentSupportAgent, match: ->(input) {
     input[:priority] == "urgent" || input[:message].downcase.include?("urgent")
   }
 
   # LLM-classified routes
-  route :order_status, to: OrderStatusAgent, description: "Order tracking, delivery status, shipping"
-  route :returns,      to: ReturnAgent,      description: "Returns, refunds, exchanges"
-  route :product,      to: ProductAgent,     description: "Product questions, specifications"
-  route :billing,      to: BillingAgent,     description: "Charges, invoices, payment issues"
-  route :default,      to: GeneralSupportAgent
+  route :order_status, to: LLM::OrderStatusAgent, description: "Order tracking, delivery status, shipping"
+  route :returns,      to: LLM::ReturnAgent,      description: "Returns, refunds, exchanges"
+  route :product,      to: LLM::ProductAgent,     description: "Product questions, specifications"
+  route :billing,      to: LLM::BillingAgent,     description: "Charges, invoices, payment issues"
+  route :default,      to: LLM::GeneralSupportAgent
 
   def before_route(input, chosen_route)
     input.merge(
@@ -273,7 +273,7 @@ class CustomerServiceRouter < RubyLLM::Agents::Workflow::Router
   end
 end
 
-result = CustomerServiceRouter.call(
+result = LLM::CustomerServiceRouter.call(
   message: "Where is my order?",
   customer_id: 123
 )
@@ -282,28 +282,28 @@ result = CustomerServiceRouter.call(
 ### Multi-Language Router
 
 ```ruby
-class LanguageRouter < RubyLLM::Agents::Workflow::Router
+class LLM::LanguageRouter < RubyLLM::Agents::Workflow::Router
   version "1.0"
   classifier_model "gpt-4o-mini"
 
-  route :english,  to: EnglishAgent,  description: "English language text"
-  route :spanish,  to: SpanishAgent,  description: "Spanish language text"
-  route :french,   to: FrenchAgent,   description: "French language text"
-  route :german,   to: GermanAgent,   description: "German language text"
-  route :default,  to: EnglishAgent   # Fallback to English
+  route :english,  to: LLM::EnglishAgent,  description: "English language text"
+  route :spanish,  to: LLM::SpanishAgent,  description: "Spanish language text"
+  route :french,   to: LLM::FrenchAgent,   description: "French language text"
+  route :german,   to: LLM::GermanAgent,   description: "German language text"
+  route :default,  to: LLM::EnglishAgent   # Fallback to English
 end
 ```
 
 ### Content Moderation Router
 
 ```ruby
-class ModerationRouter < RubyLLM::Agents::Workflow::Router
+class LLM::ModerationRouter < RubyLLM::Agents::Workflow::Router
   version "1.0"
   classifier_model "gpt-4o-mini"
 
-  route :approve, to: PublishAgent,       description: "Safe, appropriate content"
-  route :review,  to: HumanReviewAgent,   description: "Questionable content needing review"
-  route :reject,  to: RejectionNotifier,  description: "Clearly inappropriate content"
+  route :approve, to: LLM::PublishAgent,       description: "Safe, appropriate content"
+  route :review,  to: LLM::HumanReviewAgent,   description: "Questionable content needing review"
+  route :reject,  to: LLM::RejectionNotifier,  description: "Clearly inappropriate content"
 
   def before_route(input, chosen_route)
     input.merge(
@@ -317,12 +317,12 @@ end
 ### Tiered Support Router
 
 ```ruby
-class TieredSupportRouter < RubyLLM::Agents::Workflow::Router
+class LLM::TieredSupportRouter < RubyLLM::Agents::Workflow::Router
   version "1.0"
 
-  route :tier1, to: BasicBotAgent,    description: "Simple FAQs, basic questions"
-  route :tier2, to: StandardAgent,    description: "Moderate complexity issues"
-  route :tier3, to: ExpertAgent,      description: "Complex technical problems"
+  route :tier1, to: LLM::BasicBotAgent,    description: "Simple FAQs, basic questions"
+  route :tier2, to: LLM::StandardAgent,    description: "Moderate complexity issues"
+  route :tier3, to: LLM::ExpertAgent,      description: "Complex technical problems"
 
   # Custom classification based on complexity scoring
   def classify(input)
@@ -351,23 +351,23 @@ end
 ### Hybrid Router (Rules + LLM)
 
 ```ruby
-class HybridRouter < RubyLLM::Agents::Workflow::Router
+class LLM::HybridRouter < RubyLLM::Agents::Workflow::Router
   version "1.0"
   classifier_model "gpt-4o-mini"
 
   # Rule-based routes (checked first, free)
-  route :vip, to: VIPAgent, match: ->(input) {
+  route :vip, to: LLM::VIPAgent, match: ->(input) {
     input[:user_tier] == "enterprise"
   }
 
-  route :urgent, to: UrgentAgent, match: ->(input) {
+  route :urgent, to: LLM::UrgentAgent, match: ->(input) {
     input[:priority] == "urgent"
   }
 
   # LLM-classified routes (fallback)
-  route :billing,  to: BillingAgent,  description: "Billing questions"
-  route :support,  to: SupportAgent,  description: "Technical support"
-  route :default,  to: GeneralAgent
+  route :billing,  to: LLM::BillingAgent,  description: "Billing questions"
+  route :support,  to: LLM::SupportAgent,  description: "Technical support"
+  route :default,  to: LLM::GeneralAgent
 end
 
 # VIP users -> VIPAgent (no LLM cost)
@@ -380,16 +380,16 @@ end
 Routers support inheritance:
 
 ```ruby
-class BaseRouter < RubyLLM::Agents::Workflow::Router
+class LLM::BaseRouter < RubyLLM::Agents::Workflow::Router
   classifier_model "gpt-4o-mini"
 
-  route :billing, to: BillingAgent, description: "Billing questions"
-  route :default, to: GeneralAgent
+  route :billing, to: LLM::BillingAgent, description: "Billing questions"
+  route :default, to: LLM::GeneralAgent
 end
 
-class ExtendedRouter < BaseRouter
+class LLM::ExtendedRouter < LLM::BaseRouter
   # Inherits :billing and :default routes
-  route :technical, to: TechAgent, description: "Technical issues"
+  route :technical, to: LLM::TechAgent, description: "Technical issues"
 end
 ```
 
@@ -400,7 +400,7 @@ end
 Use a fast, cheap model for classification:
 
 ```ruby
-class FastRouter < RubyLLM::Agents::Workflow::Router
+class LLM::FastRouter < RubyLLM::Agents::Workflow::Router
   classifier_model "gpt-4o-mini"  # Fast and cheap
   classifier_temperature 0.0       # Deterministic
 end
@@ -412,45 +412,45 @@ Use distinct, non-overlapping descriptions:
 
 ```ruby
 # Good: Distinct categories
-route :billing,  to: BillingAgent,  description: "Billing, charges, invoices"
-route :support,  to: SupportAgent,  description: "Technical issues, bugs, errors"
-route :sales,    to: SalesAgent,    description: "Pricing, plans, upgrades"
+route :billing,  to: LLM::BillingAgent,  description: "Billing, charges, invoices"
+route :support,  to: LLM::SupportAgent,  description: "Technical issues, bugs, errors"
+route :sales,    to: LLM::SalesAgent,    description: "Pricing, plans, upgrades"
 
 # Bad: Overlapping categories
-route :help,       to: HelpAgent,    description: "Help with anything"
-route :support,    to: SupportAgent, description: "Support for issues"
-route :assistance, to: AssistAgent,  description: "Assistance needed"
+route :help,       to: LLM::HelpAgent,    description: "Help with anything"
+route :support,    to: LLM::SupportAgent, description: "Support for issues"
+route :assistance, to: LLM::AssistAgent,  description: "Assistance needed"
 ```
 
 ### Always Have a Default
 
 ```ruby
-class SafeRouter < RubyLLM::Agents::Workflow::Router
-  route :known,   to: KnownAgent,   description: "Known request types"
-  route :default, to: FallbackAgent  # Always provide this!
+class LLM::SafeRouter < RubyLLM::Agents::Workflow::Router
+  route :known,   to: LLM::KnownAgent,   description: "Known request types"
+  route :default, to: LLM::FallbackAgent  # Always provide this!
 end
 ```
 
 ### Use Rules for Deterministic Cases
 
 ```ruby
-class EfficientRouter < RubyLLM::Agents::Workflow::Router
+class LLM::EfficientRouter < RubyLLM::Agents::Workflow::Router
   # Free, instant routing for known patterns
-  route :urgent, to: UrgentAgent, match: ->(i) { i[:priority] == "urgent" }
-  route :vip,    to: VIPAgent,    match: ->(i) { i[:tier] == "enterprise" }
+  route :urgent, to: LLM::UrgentAgent, match: ->(i) { i[:priority] == "urgent" }
+  route :vip,    to: LLM::VIPAgent,    match: ->(i) { i[:tier] == "enterprise" }
 
   # LLM only for ambiguous cases
-  route :billing, to: BillingAgent, description: "Billing questions"
-  route :default, to: GeneralAgent
+  route :billing, to: LLM::BillingAgent, description: "Billing questions"
+  route :default, to: LLM::GeneralAgent
 end
 ```
 
 ### Log Classification Decisions
 
 ```ruby
-class LoggingRouter < RubyLLM::Agents::Workflow::Router
-  route :a, to: AgentA, description: "Type A"
-  route :b, to: AgentB, description: "Type B"
+class LLM::LoggingRouter < RubyLLM::Agents::Workflow::Router
+  route :a, to: LLM::AgentA, description: "Type A"
+  route :b, to: LLM::AgentB, description: "Type B"
 
   def before_route(input, chosen_route)
     Rails.logger.info({

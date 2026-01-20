@@ -79,21 +79,23 @@ rails generate ruby_llm_agents:agent SearchIntent query:required
 ```
 
 ```ruby
-# app/agents/search_intent_agent.rb
-class SearchIntentAgent < ApplicationAgent
-  model "gpt-4o"
-  temperature 0.0
+# app/llm/agents/search_intent_agent.rb
+module LLM
+  class SearchIntentAgent < ApplicationAgent
+    model "gpt-4o"
+    temperature 0.0
 
-  param :query, required: true
+    param :query, required: true
 
-  def user_prompt
-    "Extract search intent from: #{query}"
-  end
+    def user_prompt
+      "Extract search intent from: #{query}"
+    end
 
-  def schema
-    @schema ||= RubyLLM::Schema.create do
-      string :refined_query, description: "Cleaned search query"
-      array :filters, of: :string, description: "Extracted filters"
+    def schema
+      @schema ||= RubyLLM::Schema.create do
+        string :refined_query, description: "Cleaned search query"
+        array :filters, of: :string, description: "Extracted filters"
+      end
     end
   end
 end
@@ -102,7 +104,7 @@ end
 ### Call the Agent
 
 ```ruby
-result = SearchIntentAgent.call(query: "red summer dress under $50")
+result = LLM::SearchIntentAgent.call(query: "red summer dress under $50")
 
 result.content        # => { refined_query: "red dress", filters: ["color:red", "price:<50"] }
 result.total_cost     # => 0.00025
@@ -136,34 +138,38 @@ rails generate ruby_llm_agents:embedder Document
 ```
 
 ```ruby
-# app/embedders/document_embedder.rb
-class DocumentEmbedder < ApplicationEmbedder
-  model "text-embedding-3-small"
-  dimensions 512
-  batch_size 100
-  cache_for 1.week
+# app/llm/text/embedders/document_embedder.rb
+module LLM
+  module Text
+    class DocumentEmbedder < ApplicationEmbedder
+      model "text-embedding-3-small"
+      dimensions 512
+      batch_size 100
+      cache_for 1.week
 
-  # Optional: preprocess text before embedding
-  def preprocess(text)
-    text.strip.downcase.gsub(/\s+/, ' ')
+      # Optional: preprocess text before embedding
+      def preprocess(text)
+        text.strip.downcase.gsub(/\s+/, ' ')
+      end
+    end
   end
 end
 ```
 
 ```ruby
 # Single text embedding
-result = DocumentEmbedder.call(text: "Hello world")
+result = LLM::Text::DocumentEmbedder.call(text: "Hello world")
 result.vector       # => [0.123, -0.456, ...]
 result.dimensions   # => 512
 result.total_tokens # => 2
 
 # Batch embedding
-result = DocumentEmbedder.call(texts: ["Hello", "World", "Ruby"])
+result = LLM::Text::DocumentEmbedder.call(texts: ["Hello", "World", "Ruby"])
 result.vectors      # => [[...], [...], [...]]
 result.count        # => 3
 
 # With progress callback for large batches
-DocumentEmbedder.call(texts: large_array) do |batch_result, index|
+LLM::Text::DocumentEmbedder.call(texts: large_array) do |batch_result, index|
   puts "Processed batch #{index + 1}"
 end
 ```
@@ -191,22 +197,22 @@ rails generate ruby_llm_agents:image_pipeline Ecommerce --steps generate,upscale
 
 ```ruby
 # Image Generation - create images from prompts
-result = LogoGenerator.call(prompt: "tech startup logo")
+result = LLM::Image::LogoGenerator.call(prompt: "tech startup logo")
 result.url          # => "https://..."
 result.save("logo.png")
 
 # Image Analysis - extract captions, tags, objects, colors
-result = ProductAnalyzer.call(image: "product.jpg")
+result = LLM::Image::ProductAnalyzer.call(image: "product.jpg")
 result.caption      # => "Red sneaker on white background"
 result.tags         # => ["sneaker", "red", "footwear"]
 result.colors       # => [{ hex: "#FF0000", percentage: 30 }]
 
 # Background Removal - extract subjects with transparency
-result = PhotoRemover.call(image: "portrait.jpg")
+result = LLM::Image::PhotoBackgroundRemover.call(image: "portrait.jpg")
 result.save("portrait_transparent.png")
 
 # Image Pipelines - chain multiple operations
-result = EcommercePipeline.call(
+result = LLM::Image::EcommercePipeline.call(
   prompt: "professional laptop photo",
   high_quality: true
 )
@@ -253,28 +259,31 @@ See [Image Operations](https://github.com/adham90/ruby_llm-agents/wiki/Image-Gen
 Build resilient agents with built-in fault tolerance:
 
 ```ruby
-class ReliableAgent < ApplicationAgent
-  model "gpt-4o"
-  description "A resilient agent with automatic retries and fallbacks"
+# app/llm/agents/reliable_agent.rb
+module LLM
+  class ReliableAgent < ApplicationAgent
+    model "gpt-4o"
+    description "A resilient agent with automatic retries and fallbacks"
 
-  # Option 1: Individual DSL methods
-  retries max: 3, backoff: :exponential
-  fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
-  circuit_breaker errors: 10, within: 60, cooldown: 300
-  total_timeout 30
-
-  # Option 2: Grouped reliability block (equivalent to above)
-  reliability do
+    # Option 1: Individual DSL methods
     retries max: 3, backoff: :exponential
     fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
     circuit_breaker errors: 10, within: 60, cooldown: 300
     total_timeout 30
-  end
 
-  param :query, required: true
+    # Option 2: Grouped reliability block (equivalent to above)
+    reliability do
+      retries max: 3, backoff: :exponential
+      fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
+      circuit_breaker errors: 10, within: 60, cooldown: 300
+      total_timeout 30
+    end
 
-  def user_prompt
-    query
+    param :query, required: true
+
+    def user_prompt
+      query
+    end
   end
 end
 ```
@@ -284,7 +293,7 @@ end
 The result object provides detailed execution metadata:
 
 ```ruby
-result = ReliableAgent.call(query: "test")
+result = LLM::ReliableAgent.call(query: "test")
 
 # Basic response
 result.content           # => { ... }

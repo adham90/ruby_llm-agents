@@ -133,12 +133,14 @@ config.persist_responses = false
 ### Parameters
 
 ```ruby
-class MyAgent < ApplicationAgent
-  param :user_email, required: true
-  param :credit_card, required: true
+module LLM
+  class MyAgent < ApplicationAgent
+    param :user_email, required: true
+    param :credit_card, required: true
+  end
 end
 
-MyAgent.call(
+LLM::MyAgent.call(
   user_email: "john@example.com",
   credit_card: "4111111111111111"
 )
@@ -174,25 +176,27 @@ end
 ### Per-Agent Redaction
 
 ```ruby
-class SensitiveAgent < ApplicationAgent
-  param :ssn, required: true
+module LLM
+  class SensitiveAgent < ApplicationAgent
+    param :ssn, required: true
 
-  def execution_metadata
-    {
-      ssn_provided: true,
-      # Don't include actual SSN
-    }
-  end
+    def execution_metadata
+      {
+        ssn_provided: true,
+        # Don't include actual SSN
+      }
+    end
 
-  # Override parameter sanitization
-  def sanitized_parameters
-    super.merge(ssn: mask_ssn(ssn))
-  end
+    # Override parameter sanitization
+    def sanitized_parameters
+      super.merge(ssn: mask_ssn(ssn))
+    end
 
-  private
+    private
 
-  def mask_ssn(ssn)
-    "XXX-XX-#{ssn[-4..]}"  # Show only last 4
+    def mask_ssn(ssn)
+      "XXX-XX-#{ssn[-4..]}"  # Show only last 4
+    end
   end
 end
 ```
@@ -290,14 +294,14 @@ config.redaction = {
 ```ruby
 RSpec.describe "PII Redaction" do
   it "redacts SSN from parameters" do
-    MyAgent.call(ssn: "123-45-6789", query: "test")
+    LLM::MyAgent.call(ssn: "123-45-6789", query: "test")
 
     execution = RubyLLM::Agents::Execution.last
     expect(execution.parameters["ssn"]).to eq("[REDACTED]")
   end
 
   it "redacts patterns from prompts" do
-    MyAgent.call(message: "My SSN is 123-45-6789")
+    LLM::MyAgent.call(message: "My SSN is 123-45-6789")
 
     execution = RubyLLM::Agents::Execution.last
     expect(execution.user_prompt).not_to include("123-45-6789")

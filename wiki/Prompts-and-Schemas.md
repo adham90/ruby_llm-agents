@@ -238,7 +238,7 @@ end
 The schema automatically parses the response:
 
 ```ruby
-result = MyAgent.call(query: "test")
+result = LLM::MyAgent.call(query: "test")
 result.content  # Already parsed and typed
 ```
 

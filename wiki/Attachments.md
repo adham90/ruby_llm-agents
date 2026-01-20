@@ -7,20 +7,22 @@ Send images, PDFs, and other files to vision-capable models using the `with:` op
 ### Single File
 
 ```ruby
-class VisionAgent < ApplicationAgent
-  model "gpt-4o"  # Vision-capable model
-  param :question, required: true
+module LLM
+  class VisionAgent < ApplicationAgent
+    model "gpt-4o"  # Vision-capable model
+    param :question, required: true
 
-  def user_prompt
-    question
+    def user_prompt
+      question
+    end
   end
 end
 
 # Local file
-VisionAgent.call(question: "Describe this image", with: "photo.jpg")
+LLM::VisionAgent.call(question: "Describe this image", with: "photo.jpg")
 
 # URL
-VisionAgent.call(
+LLM::VisionAgent.call(
   question: "What architecture is shown?",
   with: "https://example.com/building.jpg"
 )
@@ -29,7 +31,7 @@ VisionAgent.call(
 ### Multiple Files
 
 ```ruby
-VisionAgent.call(
+LLM::VisionAgent.call(
   question: "Compare these screenshots",
   with: ["screenshot_v1.png", "screenshot_v2.png"]
 )
@@ -62,16 +64,18 @@ Not all models support vision. Use these:
 ### Describe an Image
 
 ```ruby
-class ImageDescriber < ApplicationAgent
-  model "gpt-4o"
-  param :detail_level, default: "medium"
+module LLM
+  class ImageDescriber < ApplicationAgent
+    model "gpt-4o"
+    param :detail_level, default: "medium"
 
-  def user_prompt
-    "Describe this image in #{detail_level} detail."
+    def user_prompt
+      "Describe this image in #{detail_level} detail."
+    end
   end
 end
 
-result = ImageDescriber.call(
+result = LLM::ImageDescriber.call(
   detail_level: "high",
   with: "product_photo.jpg"
 )
@@ -80,58 +84,62 @@ result = ImageDescriber.call(
 ### Extract Text (OCR)
 
 ```ruby
-class OCRAgent < ApplicationAgent
-  model "gpt-4o"
+module LLM
+  class OCRAgent < ApplicationAgent
+    model "gpt-4o"
 
-  def user_prompt
-    <<~PROMPT
-      Extract all text from this image.
-      Preserve the original formatting and structure.
-      Return the text exactly as it appears.
-    PROMPT
-  end
+    def user_prompt
+      <<~PROMPT
+        Extract all text from this image.
+        Preserve the original formatting and structure.
+        Return the text exactly as it appears.
+      PROMPT
+    end
 
-  def schema
-    @schema ||= RubyLLM::Schema.create do
-      string :extracted_text, description: "All text found in image"
-      array :text_blocks, of: :object do
-        string :content
-        string :location, description: "top/middle/bottom"
+    def schema
+      @schema ||= RubyLLM::Schema.create do
+        string :extracted_text, description: "All text found in image"
+        array :text_blocks, of: :object do
+          string :content
+          string :location, description: "top/middle/bottom"
+        end
       end
     end
   end
 end
 
-result = OCRAgent.call(with: "document_scan.png")
+result = LLM::OCRAgent.call(with: "document_scan.png")
 puts result[:extracted_text]
 ```
 
 ### Compare Images
 
 ```ruby
-class ImageComparator < ApplicationAgent
-  model "claude-3-5-sonnet"
+module LLM
+  class ImageComparator < ApplicationAgent
+    model "claude-3-5-sonnet"
 
-  def user_prompt
-    <<~PROMPT
-      Compare these two images and identify:
-      1. Similarities
-      2. Differences
-      3. Which appears higher quality
-    PROMPT
-  end
+    def user_prompt
+      <<~PROMPT
+        Compare these two images and identify:
+        1. Similarities
+        2. Differences
+        3. Which appears higher quality
+      PROMPT
+    end
 
-  def schema
-    @schema ||= RubyLLM::Schema.create do
-      array :similarities, of: :string
-      array :differences, of: :string
-      string :quality_winner, enum: ["first", "second", "equal"]
-      string :explanation
+    def schema
+      @schema ||= RubyLLM::Schema.create do
+        array :similarities, of: :string
+        array :differences, of: :string
+        string :quality_winner, enum: ["first", "second", "equal"]
+        string :explanation
+      end
     end
   end
 end
 
-result = ImageComparator.call(with: ["design_v1.png", "design_v2.png"])
+result = LLM::ImageComparator.call(with: ["design_v1.png", "design_v2.png"])
 ```
 
 ## Document Analysis
@@ -139,23 +147,25 @@ result = ImageComparator.call(with: ["design_v1.png", "design_v2.png"])
 ### PDF Analysis
 
 ```ruby
-class PDFAnalyzer < ApplicationAgent
-  model "gpt-4o"
-  param :focus_area, default: "summary"
+module LLM
+  class PDFAnalyzer < ApplicationAgent
+    model "gpt-4o"
+    param :focus_area, default: "summary"
 
-  def user_prompt
-    <<~PROMPT
-      Analyze this PDF document. Focus on: #{focus_area}
+    def user_prompt
+      <<~PROMPT
+        Analyze this PDF document. Focus on: #{focus_area}
 
-      Provide:
-      - Main topics covered
-      - Key points
-      - Any important figures or data
-    PROMPT
+        Provide:
+        - Main topics covered
+        - Key points
+        - Any important figures or data
+      PROMPT
+    end
   end
 end
 
-result = PDFAnalyzer.call(
+result = LLM::PDFAnalyzer.call(
   focus_area: "financial data",
   with: "annual_report.pdf"
 )
@@ -164,31 +174,33 @@ result = PDFAnalyzer.call(
 ### Invoice Processing
 
 ```ruby
-class InvoiceExtractor < ApplicationAgent
-  model "gpt-4o"
+module LLM
+  class InvoiceExtractor < ApplicationAgent
+    model "gpt-4o"
 
-  def user_prompt
-    "Extract invoice details from this document."
-  end
+    def user_prompt
+      "Extract invoice details from this document."
+    end
 
-  def schema
-    @schema ||= RubyLLM::Schema.create do
-      string :invoice_number
-      string :date
-      string :vendor_name
-      number :total_amount
-      string :currency, default: "USD"
-      array :line_items, of: :object do
-        string :description
-        integer :quantity
-        number :unit_price
-        number :total
+    def schema
+      @schema ||= RubyLLM::Schema.create do
+        string :invoice_number
+        string :date
+        string :vendor_name
+        number :total_amount
+        string :currency, default: "USD"
+        array :line_items, of: :object do
+          string :description
+          integer :quantity
+          number :unit_price
+          number :total
+        end
       end
     end
   end
 end
 
-result = InvoiceExtractor.call(with: "invoice.pdf")
+result = LLM::InvoiceExtractor.call(with: "invoice.pdf")
 # => { invoice_number: "INV-2024-001", total_amount: 1250.00, ... }
 ```
 
@@ -198,30 +210,30 @@ result = InvoiceExtractor.call(with: "invoice.pdf")
 
 ```ruby
 # Relative path (from Rails root)
-result = VisionAgent.call(with: "storage/images/photo.jpg")
+result = LLM::VisionAgent.call(with: "storage/images/photo.jpg")
 
 # Absolute path
-result = VisionAgent.call(with: "/path/to/photo.jpg")
+result = LLM::VisionAgent.call(with: "/path/to/photo.jpg")
 
 # Active Storage
-result = VisionAgent.call(with: user.avatar.blob.path)
+result = LLM::VisionAgent.call(with: user.avatar.blob.path)
 ```
 
 ### URLs
 
 ```ruby
 # Direct image URL
-result = VisionAgent.call(with: "https://example.com/image.jpg")
+result = LLM::VisionAgent.call(with: "https://example.com/image.jpg")
 
 # S3 signed URL
 url = document.file.url(expires_in: 1.hour)
-result = VisionAgent.call(with: url)
+result = LLM::VisionAgent.call(with: url)
 ```
 
 ## Debug Mode
 
 ```ruby
-result = VisionAgent.call(
+result = LLM::VisionAgent.call(
   question: "test",
   with: ["image1.png", "image2.png"],
   dry_run: true
@@ -229,7 +241,7 @@ result = VisionAgent.call(
 
 # => {
 #   dry_run: true,
-#   agent: "VisionAgent",
+#   agent: "LLM::VisionAgent",
 #   attachments: ["image1.png", "image2.png"],
 #   ...
 # }
@@ -239,7 +251,7 @@ result = VisionAgent.call(
 
 ```ruby
 begin
-  result = VisionAgent.call(
+  result = LLM::VisionAgent.call(
     question: "Describe this",
     with: "missing_file.jpg"
   )
@@ -264,7 +276,7 @@ image = MiniMagick::Image.open("large_photo.jpg")
 image.resize "1024x1024>"
 image.write "optimized_photo.jpg"
 
-result = VisionAgent.call(with: "optimized_photo.jpg")
+result = LLM::VisionAgent.call(with: "optimized_photo.jpg")
 ```
 
 ### Use Appropriate Detail Level
@@ -284,7 +296,7 @@ Group related images in a single call:
 
 ```ruby
 # One call with multiple images (cheaper than multiple calls)
-result = CompareAgent.call(
+result = LLM::CompareAgent.call(
   with: ["before.jpg", "after.jpg"]
 )
 ```
@@ -294,12 +306,14 @@ result = CompareAgent.call(
 For large PDFs, consider chunking:
 
 ```ruby
-class LargeDocumentAgent < ApplicationAgent
-  model "gpt-4o"
-  timeout 180  # Longer timeout for large docs
+module LLM
+  class LargeDocumentAgent < ApplicationAgent
+    model "gpt-4o"
+    timeout 180  # Longer timeout for large docs
 
-  def user_prompt
-    "Analyze this document page by page. Focus on key information."
+    def user_prompt
+      "Analyze this document page by page. Focus on key information."
+    end
   end
 end
 ```

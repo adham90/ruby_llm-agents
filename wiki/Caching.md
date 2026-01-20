@@ -7,14 +7,16 @@ Cache LLM responses to reduce costs and latency for repeated requests.
 ### Per-Agent
 
 ```ruby
-class CachedAgent < ApplicationAgent
-  model "gpt-4o"
-  cache 1.hour  # Cache responses for 1 hour
+module LLM
+  class CachedAgent < ApplicationAgent
+    model "gpt-4o"
+    cache 1.hour  # Cache responses for 1 hour
 
-  param :query, required: true
+    param :query, required: true
 
-  def user_prompt
-    query
+    def user_prompt
+      query
+    end
   end
 end
 ```
@@ -49,15 +51,17 @@ cache 1.week
 All parameters are included in the cache key:
 
 ```ruby
-class SearchAgent < ApplicationAgent
-  cache 1.hour
-  param :query, required: true
-  param :limit, default: 10
+module LLM
+  class SearchAgent < ApplicationAgent
+    cache 1.hour
+    param :query, required: true
+    param :limit, default: 10
+  end
 end
 
 # These produce DIFFERENT cache keys
-SearchAgent.call(query: "test", limit: 10)
-SearchAgent.call(query: "test", limit: 20)
+LLM::SearchAgent.call(query: "test", limit: 10)
+LLM::SearchAgent.call(query: "test", limit: 20)
 ```
 
 ### Custom Cache Keys
@@ -65,22 +69,24 @@ SearchAgent.call(query: "test", limit: 20)
 Override `cache_key_data` to control what affects caching:
 
 ```ruby
-class SearchAgent < ApplicationAgent
-  cache 1.hour
-  param :query, required: true
-  param :limit, default: 10
-  param :request_id  # Should NOT affect caching
+module LLM
+  class SearchAgent < ApplicationAgent
+    cache 1.hour
+    param :query, required: true
+    param :limit, default: 10
+    param :request_id  # Should NOT affect caching
 
-  def cache_key_data
-    # Only query and limit affect the cache key
-    { query: query, limit: limit }
-    # request_id is excluded
+    def cache_key_data
+      # Only query and limit affect the cache key
+      { query: query, limit: limit }
+      # request_id is excluded
+    end
   end
 end
 
 # These now use the SAME cache (request_id ignored)
-SearchAgent.call(query: "test", limit: 10, request_id: "abc")
-SearchAgent.call(query: "test", limit: 10, request_id: "xyz")
+LLM::SearchAgent.call(query: "test", limit: 10, request_id: "abc")
+LLM::SearchAgent.call(query: "test", limit: 10, request_id: "xyz")
 ```
 
 ## Version-Based Invalidation
@@ -88,15 +94,19 @@ SearchAgent.call(query: "test", limit: 10, request_id: "xyz")
 Change the version to invalidate all cached responses:
 
 ```ruby
-class MyAgent < ApplicationAgent
-  version "1.0"  # Current cache
-  cache 1.day
+module LLM
+  class MyAgent < ApplicationAgent
+    version "1.0"  # Current cache
+    cache 1.day
+  end
 end
 
 # After updating prompts, bump the version
-class MyAgent < ApplicationAgent
-  version "1.1"  # New version = new cache keys
-  cache 1.day
+module LLM
+  class MyAgent < ApplicationAgent
+    version "1.1"  # New version = new cache keys
+    cache 1.day
+  end
 end
 ```
 
@@ -106,13 +116,13 @@ end
 
 ```ruby
 # Force a fresh API call
-result = MyAgent.call(query: "test", skip_cache: true)
+result = LLM::MyAgent.call(query: "test", skip_cache: true)
 ```
 
 ### Check if Result Was Cached
 
 ```ruby
-result = MyAgent.call(query: "test")
+result = LLM::MyAgent.call(query: "test")
 result.cached?  # => true/false (if available)
 ```
 
@@ -159,14 +169,16 @@ config.cache_store = ActiveSupport::Cache::FileStore.new(
 High TTL for stable, factual responses:
 
 ```ruby
-class FactAgent < ApplicationAgent
-  version "1.0"
-  cache 1.week  # Facts don't change often
+module LLM
+  class FactAgent < ApplicationAgent
+    version "1.0"
+    cache 1.week  # Facts don't change often
 
-  param :topic, required: true
+    param :topic, required: true
 
-  def user_prompt
-    "Explain: #{topic}"
+    def user_prompt
+      "Explain: #{topic}"
+    end
   end
 end
 ```
@@ -176,13 +188,15 @@ end
 Include user context in cache key:
 
 ```ruby
-class PersonalizedAgent < ApplicationAgent
-  cache 1.hour
-  param :query, required: true
-  param :user_id, required: true
+module LLM
+  class PersonalizedAgent < ApplicationAgent
+    cache 1.hour
+    param :query, required: true
+    param :user_id, required: true
 
-  def cache_key_data
-    { query: query, user_id: user_id }
+    def cache_key_data
+      { query: query, user_id: user_id }
+    end
   end
 end
 ```
@@ -192,14 +206,16 @@ end
 Short TTL or no caching:
 
 ```ruby
-class NewsAgent < ApplicationAgent
-  # No caching - always fetch fresh
-  param :topic, required: true
-end
+module LLM
+  class NewsAgent < ApplicationAgent
+    # No caching - always fetch fresh
+    param :topic, required: true
+  end
 
-# Or very short cache
-class WeatherAgent < ApplicationAgent
-  cache 15.minutes
+  # Or very short cache
+  class WeatherAgent < ApplicationAgent
+    cache 15.minutes
+  end
 end
 ```
 
@@ -208,13 +224,15 @@ end
 **Important:** Streaming responses are never cached.
 
 ```ruby
-class StreamingAgent < ApplicationAgent
-  streaming true
-  cache 1.hour  # Ignored when streaming
+module LLM
+  class StreamingAgent < ApplicationAgent
+    streaming true
+    cache 1.hour  # Ignored when streaming
+  end
 end
 
 # This will always make an API call
-StreamingAgent.call(prompt: "test") do |chunk|
+LLM::StreamingAgent.call(prompt: "test") do |chunk|
   print chunk
 end
 ```
@@ -229,7 +247,7 @@ cache_hits = 0
 cache_misses = 0
 
 # Wrap agent calls
-result = MyAgent.call(query: query)
+result = LLM::MyAgent.call(query: query)
 if result.cached?
   cache_hits += 1
 else
@@ -265,18 +283,22 @@ rails tmp:cache:clear
 ### Cache Deterministic Responses
 
 ```ruby
-class ClassifierAgent < ApplicationAgent
-  temperature 0.0  # Deterministic
-  cache 1.day      # Safe to cache
+module LLM
+  class ClassifierAgent < ApplicationAgent
+    temperature 0.0  # Deterministic
+    cache 1.day      # Safe to cache
+  end
 end
 ```
 
 ### Be Careful with High Temperature
 
 ```ruby
-class CreativeAgent < ApplicationAgent
-  temperature 1.0  # Non-deterministic
-  cache 30.minutes # Short cache or no cache
+module LLM
+  class CreativeAgent < ApplicationAgent
+    temperature 1.0  # Non-deterministic
+    cache 30.minutes # Short cache or no cache
+  end
 end
 ```
 
@@ -319,7 +341,7 @@ Rails.cache.instance_variable_get(:@data).size
 
 3. Verify cache key is consistent:
    ```ruby
-   result = MyAgent.call(query: "test", dry_run: true)
+   result = LLM::MyAgent.call(query: "test", dry_run: true)
    # Check parameters in output
    ```
 

@@ -22,7 +22,7 @@ Raised when budget limits are exceeded (with `:hard` enforcement):
 
 ```ruby
 begin
-  result = ExpensiveAgent.call(query: params[:query])
+  result = LLM::ExpensiveAgent.call(query: params[:query])
 rescue RubyLLM::Agents::BudgetExceededError => e
   e.message       # => "Daily budget exceeded: $100.00 limit reached"
   e.budget_type   # => :daily or :monthly
@@ -42,7 +42,7 @@ Raised when the circuit breaker is open (too many recent failures):
 
 ```ruby
 begin
-  result = MyAgent.call(query: params[:query])
+  result = LLM::MyAgent.call(query: params[:query])
 rescue RubyLLM::Agents::CircuitBreakerOpenError => e
   e.message       # => "Circuit breaker open for MyAgent"
   e.agent_type    # => "MyAgent"
@@ -63,12 +63,14 @@ Raised when agent configuration is invalid:
 
 ```ruby
 # Missing required configuration
-class BadAgent < ApplicationAgent
-  # No model specified
-  param :query, required: true
+module LLM
+  class BadAgent < ApplicationAgent
+    # No model specified
+    param :query, required: true
+  end
 end
 
-BadAgent.call(query: "test")
+LLM::BadAgent.call(query: "test")
 # => Raises ConfigurationError: "Model must be configured"
 ```
 
@@ -78,7 +80,7 @@ Raised when `total_timeout` is exceeded:
 
 ```ruby
 begin
-  result = SlowAgent.call(query: params[:query])
+  result = LLM::SlowAgent.call(query: params[:query])
 rescue RubyLLM::Agents::TimeoutError => e
   e.message     # => "Total timeout of 30s exceeded"
   e.timeout     # => 30
@@ -94,11 +96,13 @@ end
 Raised when parameter validation fails:
 
 ```ruby
-class TypedAgent < ApplicationAgent
-  param :count, type: :integer, required: true
+module LLM
+  class TypedAgent < ApplicationAgent
+    param :count, type: :integer, required: true
+  end
 end
 
-TypedAgent.call(count: "not a number")
+LLM::TypedAgent.call(count: "not a number")
 # => Raises ValidationError: "Parameter 'count' must be Integer, got String"
 ```
 
@@ -125,7 +129,7 @@ RubyLLM::Agents automatically classifies errors:
 ### Checking Error Type in Results
 
 ```ruby
-result = MyAgent.call(query: "test")
+result = LLM::MyAgent.call(query: "test")
 
 unless result.success?
   if result.retryable?
@@ -144,7 +148,7 @@ end
 
 ```ruby
 def search(query)
-  result = SearchAgent.call(query: query)
+  result = LLM::SearchAgent.call(query: query)
 
   if result.success?
     result.content
@@ -174,7 +178,7 @@ class SearchService
   private
 
   def ai_search(query)
-    result = SearchAgent.call(query: query)
+    result = LLM::SearchAgent.call(query: query)
     raise result.error unless result.success?
     result.content[:results]
   end
@@ -279,7 +283,7 @@ end
 ```ruby
 class Api::V1::SearchController < Api::BaseController
   def search
-    result = SearchAgent.call(query: params[:q])
+    result = LLM::SearchAgent.call(query: params[:q])
 
     if result.success?
       render json: {

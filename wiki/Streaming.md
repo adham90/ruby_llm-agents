@@ -7,14 +7,16 @@ Stream LLM responses in real-time as they're generated, reducing perceived laten
 ### Per-Agent
 
 ```ruby
-class StreamingAgent < ApplicationAgent
-  model "gpt-4o"
-  streaming true  # Enable streaming for this agent
+module LLM
+  class StreamingAgent < ApplicationAgent
+    model "gpt-4o"
+    streaming true  # Enable streaming for this agent
 
-  param :prompt, required: true
+    param :prompt, required: true
 
-  def user_prompt
-    prompt
+    def user_prompt
+      prompt
+    end
   end
 end
 ```
@@ -33,7 +35,7 @@ end
 Process chunks as they arrive:
 
 ```ruby
-StreamingAgent.call(prompt: "Write a story") do |chunk|
+LLM::StreamingAgent.call(prompt: "Write a story") do |chunk|
   print chunk.content  # chunk is a RubyLLM::Chunk object
 end
 ```
@@ -48,7 +50,7 @@ Once... upon... a... time...
 For more explicit streaming, use the `.stream()` class method which forces streaming regardless of class settings:
 
 ```ruby
-result = MyAgent.stream(prompt: "Write a story") do |chunk|
+result = LLM::MyAgent.stream(prompt: "Write a story") do |chunk|
   print chunk.content
 end
 
@@ -67,7 +69,7 @@ This method:
 When streaming completes, the returned Result contains streaming-specific metadata:
 
 ```ruby
-result = StreamingAgent.call(prompt: "test") do |chunk|
+result = LLM::StreamingAgent.call(prompt: "test") do |chunk|
   print chunk.content
 end
 
@@ -89,7 +91,7 @@ class StreamingController < ApplicationController
     response.headers['Cache-Control'] = 'no-cache'
     response.headers['X-Accel-Buffering'] = 'no'  # Disable nginx buffering
 
-    StreamingAgent.call(prompt: params[:prompt]) do |chunk|
+    LLM::StreamingAgent.call(prompt: params[:prompt]) do |chunk|
       response.stream.write "data: #{chunk.to_json}\n\n"
     end
 
@@ -131,7 +133,7 @@ class ChatController < ApplicationController
   def create
     respond_to do |format|
       format.turbo_stream do
-        StreamingAgent.call(prompt: params[:message]) do |chunk|
+        LLM::StreamingAgent.call(prompt: params[:message]) do |chunk|
           Turbo::StreamsChannel.broadcast_append_to(
             "chat_#{params[:chat_id]}",
             target: "messages",
@@ -187,26 +189,28 @@ RubyLLM::Agents::Execution
 When using schemas, the full response is still validated:
 
 ```ruby
-class StructuredStreamingAgent < ApplicationAgent
-  model "gpt-4o"
-  streaming true
+module LLM
+  class StructuredStreamingAgent < ApplicationAgent
+    model "gpt-4o"
+    streaming true
 
-  param :topic, required: true
+    param :topic, required: true
 
-  def user_prompt
-    "Write about #{topic}"
-  end
+    def user_prompt
+      "Write about #{topic}"
+    end
 
-  def schema
-    @schema ||= RubyLLM::Schema.create do
-      string :title
-      string :content
+    def schema
+      @schema ||= RubyLLM::Schema.create do
+        string :title
+        string :content
+      end
     end
   end
 end
 
 # Stream the raw text
-StructuredStreamingAgent.call(topic: "AI") do |chunk|
+LLM::StructuredStreamingAgent.call(topic: "AI") do |chunk|
   print chunk  # Raw JSON chunks
 end
 # Result is parsed and validated at the end
@@ -217,9 +221,11 @@ end
 **Important:** Streaming responses are not cached by design, as caching would defeat the purpose of real-time streaming.
 
 ```ruby
-class MyAgent < ApplicationAgent
-  streaming true
-  cache_for 1.hour  # Cache is ignored when streaming
+module LLM
+  class MyAgent < ApplicationAgent
+    streaming true
+    cache_for 1.hour  # Cache is ignored when streaming
+  end
 end
 ```
 
@@ -232,7 +238,7 @@ If you need caching with streaming-like UX, consider:
 
 ```ruby
 begin
-  StreamingAgent.call(prompt: "test") do |chunk|
+  LLM::StreamingAgent.call(prompt: "test") do |chunk|
     print chunk
   end
 rescue Timeout::Error
@@ -249,7 +255,7 @@ For long-running streams, use ActionCable:
 ```ruby
 class StreamingJob < ApplicationJob
   def perform(prompt, channel_id)
-    StreamingAgent.call(prompt: prompt) do |chunk|
+    LLM::StreamingAgent.call(prompt: prompt) do |chunk|
       ActionCable.server.broadcast(
         channel_id,
         { type: 'chunk', content: chunk }
@@ -277,7 +283,7 @@ Streaming is most beneficial for:
 
 ```ruby
 def stream_response
-  StreamingAgent.call(prompt: params[:prompt]) do |chunk|
+  LLM::StreamingAgent.call(prompt: params[:prompt]) do |chunk|
     break if response.stream.closed?
     response.stream.write "data: #{chunk.to_json}\n\n"
   end
@@ -289,9 +295,11 @@ end
 ### Set Appropriate Timeouts
 
 ```ruby
-class LongFormAgent < ApplicationAgent
-  streaming true
-  timeout 180  # 3 minutes for long content
+module LLM
+  class LongFormAgent < ApplicationAgent
+    streaming true
+    timeout 180  # 3 minutes for long content
+  end
 end
 ```
 

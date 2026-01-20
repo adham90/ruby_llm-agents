@@ -5,9 +5,11 @@ Automatically try alternative models when your primary model fails.
 ## Basic Configuration
 
 ```ruby
-class MyAgent < ApplicationAgent
-  model "gpt-4o"
-  fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
+module LLM
+  class MyAgent < ApplicationAgent
+    model "gpt-4o"
+    fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
+  end
 end
 ```
 
@@ -36,10 +38,12 @@ When the primary model fails (after any retries):
 Each model gets its own retry attempts:
 
 ```ruby
-class MyAgent < ApplicationAgent
-  model "gpt-4o"
-  retries max: 2
-  fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
+module LLM
+  class MyAgent < ApplicationAgent
+    model "gpt-4o"
+    retries max: 2
+    fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
+  end
 end
 
 # Total possible attempts:
@@ -52,7 +56,7 @@ end
 ## Tracking Fallback Usage
 
 ```ruby
-result = MyAgent.call(query: "test")
+result = LLM::MyAgent.call(query: "test")
 
 # Check which model succeeded
 result.model_id         # Original model requested
@@ -87,9 +91,11 @@ end
 Start expensive, fall back to cheaper:
 
 ```ruby
-class CostOptimizedAgent < ApplicationAgent
-  model "gpt-4o"               # Best quality
-  fallback_models "gpt-4o-mini" # Cheaper fallback
+module LLM
+  class CostOptimizedAgent < ApplicationAgent
+    model "gpt-4o"               # Best quality
+    fallback_models "gpt-4o-mini" # Cheaper fallback
+  end
 end
 ```
 
@@ -98,10 +104,12 @@ end
 Spread across providers for outage resilience:
 
 ```ruby
-class MultiProviderAgent < ApplicationAgent
-  model "gpt-4o"
-  fallback_models "claude-3-5-sonnet", "gemini-2.0-flash"
-  # OpenAI → Anthropic → Google
+module LLM
+  class MultiProviderAgent < ApplicationAgent
+    model "gpt-4o"
+    fallback_models "claude-3-5-sonnet", "gemini-2.0-flash"
+    # OpenAI → Anthropic → Google
+  end
 end
 ```
 
@@ -110,9 +118,11 @@ end
 Progressively lower quality:
 
 ```ruby
-class TieredAgent < ApplicationAgent
-  model "gpt-4o"
-  fallback_models "gpt-4o-mini", "gpt-3.5-turbo"
+module LLM
+  class TieredAgent < ApplicationAgent
+    model "gpt-4o"
+    fallback_models "gpt-4o-mini", "gpt-3.5-turbo"
+  end
 end
 ```
 
@@ -121,9 +131,11 @@ end
 Fastest models first:
 
 ```ruby
-class SpeedFirstAgent < ApplicationAgent
-  model "gemini-2.0-flash"
-  fallback_models "gpt-4o-mini", "claude-3-haiku"
+module LLM
+  class SpeedFirstAgent < ApplicationAgent
+    model "gemini-2.0-flash"
+    fallback_models "gpt-4o-mini", "claude-3-haiku"
+  end
 end
 ```
 
@@ -141,9 +153,11 @@ end
 Per-agent configuration overrides global:
 
 ```ruby
-class MyAgent < ApplicationAgent
-  model "gpt-4o"
-  fallback_models "claude-3-5-sonnet"  # Overrides global
+module LLM
+  class MyAgent < ApplicationAgent
+    model "gpt-4o"
+    fallback_models "claude-3-5-sonnet"  # Overrides global
+  end
 end
 ```
 
@@ -156,14 +170,16 @@ When using fallbacks across providers, ensure your prompts work with all models:
 All fallback models should support your schema:
 
 ```ruby
-class MyAgent < ApplicationAgent
-  model "gpt-4o"
-  fallback_models "claude-3-5-sonnet", "gemini-2.0-flash"
-  # All three support JSON mode/structured output
+module LLM
+  class MyAgent < ApplicationAgent
+    model "gpt-4o"
+    fallback_models "claude-3-5-sonnet", "gemini-2.0-flash"
+    # All three support JSON mode/structured output
 
-  def schema
-    @schema ||= RubyLLM::Schema.create do
-      string :result
+    def schema
+      @schema ||= RubyLLM::Schema.create do
+        string :result
+      end
     end
   end
 end
@@ -258,7 +274,7 @@ fallback_models "gpt-4o-mini"  # $0.00015/1K input
 ```ruby
 # In tests, verify each model works
 ["gpt-4o", "gpt-4o-mini", "claude-3-5-sonnet"].each do |model|
-  result = MyAgent.call(query: "test", model: model)
+  result = LLM::MyAgent.call(query: "test", model: model)
   expect(result.success?).to be true
 end
 ```

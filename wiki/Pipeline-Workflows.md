@@ -7,17 +7,17 @@ Execute agents sequentially, passing each agent's output to the next.
 Create a pipeline by inheriting from `RubyLLM::Agents::Workflow::Pipeline`:
 
 ```ruby
-class ContentPipeline < RubyLLM::Agents::Workflow::Pipeline
+class LLM::ContentPipeline < RubyLLM::Agents::Workflow::Pipeline
   version "1.0"
   timeout 60.seconds
   max_cost 1.00
 
-  step :extract,  agent: ExtractorAgent
-  step :classify, agent: ClassifierAgent
-  step :format,   agent: FormatterAgent
+  step :extract,  agent: LLM::ExtractorAgent
+  step :classify, agent: LLM::ClassifierAgent
+  step :format,   agent: LLM::FormatterAgent
 end
 
-result = ContentPipeline.call(text: "raw content")
+result = LLM::ContentPipeline.call(text: "raw content")
 ```
 
 ## Data Flow
@@ -43,7 +43,7 @@ step :name, agent: AgentClass
 Steps that can fail without aborting the pipeline:
 
 ```ruby
-step :enrich, agent: EnricherAgent, optional: true
+step :enrich, agent: LLM::EnricherAgent, optional: true
 # Alias
 step :enrich, agent: EnricherAgent, continue_on_error: true
 ```
@@ -53,7 +53,7 @@ step :enrich, agent: EnricherAgent, continue_on_error: true
 Skip steps based on runtime conditions:
 
 ```ruby
-step :premium_check, agent: PremiumAgent, skip_on: ->(ctx) {
+step :premium_check, agent: LLM::PremiumAgent, skip_on: ->(ctx) {
   ctx[:input][:user_tier] != "premium"
 }
 ```
@@ -67,10 +67,10 @@ The `skip_on` proc receives the current context and returns `true` to skip.
 Transform input before a specific step:
 
 ```ruby
-class MyPipeline < RubyLLM::Agents::Workflow::Pipeline
-  step :extract, agent: ExtractorAgent
-  step :process, agent: ProcessorAgent
-  step :format,  agent: FormatterAgent
+class LLM::MyPipeline < RubyLLM::Agents::Workflow::Pipeline
+  step :extract, agent: LLM::ExtractorAgent
+  step :process, agent: LLM::ProcessorAgent
+  step :format,  agent: LLM::FormatterAgent
 
   # Transform input for :process step
   def before_process(context)
@@ -111,13 +111,13 @@ end
 By default, if a step fails, the pipeline aborts:
 
 ```ruby
-class MyPipeline < RubyLLM::Agents::Workflow::Pipeline
-  step :step1, agent: Agent1
-  step :step2, agent: Agent2  # If this fails, pipeline aborts
-  step :step3, agent: Agent3  # Never reached
+class LLM::MyPipeline < RubyLLM::Agents::Workflow::Pipeline
+  step :step1, agent: LLM::Agent1
+  step :step2, agent: LLM::Agent2  # If this fails, pipeline aborts
+  step :step3, agent: LLM::Agent3  # Never reached
 end
 
-result = MyPipeline.call(input: data)
+result = LLM::MyPipeline.call(input: data)
 result.status  # => "error"
 ```
 
@@ -126,7 +126,7 @@ result.status  # => "error"
 Mark steps as optional to continue after failures:
 
 ```ruby
-step :optional_step, agent: OptionalAgent, optional: true
+step :optional_step, agent: LLM::OptionalAgent, optional: true
 ```
 
 ### Custom Error Handling
@@ -134,10 +134,10 @@ step :optional_step, agent: OptionalAgent, optional: true
 Override `on_step_failure` for custom logic:
 
 ```ruby
-class MyPipeline < RubyLLM::Agents::Workflow::Pipeline
-  step :step1, agent: Agent1
-  step :step2, agent: Agent2
-  step :step3, agent: Agent3
+class LLM::MyPipeline < RubyLLM::Agents::Workflow::Pipeline
+  step :step1, agent: LLM::Agent1
+  step :step2, agent: LLM::Agent2
+  step :step3, agent: LLM::Agent3
 
   def on_step_failure(step_name, error, context)
     Rails.logger.error("Step #{step_name} failed: #{error.message}")
@@ -162,8 +162,8 @@ Return values:
 Handle errors for specific steps:
 
 ```ruby
-class MyPipeline < RubyLLM::Agents::Workflow::Pipeline
-  step :risky, agent: RiskyAgent
+class LLM::MyPipeline < RubyLLM::Agents::Workflow::Pipeline
+  step :risky, agent: LLM::RiskyAgent
 
   def on_risky_failure(error, context)
     # Return :skip or :abort
@@ -175,7 +175,7 @@ end
 ## Accessing Results
 
 ```ruby
-result = MyPipeline.call(text: "input")
+result = LLM::MyPipeline.call(text: "input")
 
 # Final output
 result.content                 # Last step's output
@@ -204,11 +204,11 @@ result.duration_ms             # Total execution time
 Set a timeout for the entire pipeline:
 
 ```ruby
-class MyPipeline < RubyLLM::Agents::Workflow::Pipeline
+class LLM::MyPipeline < RubyLLM::Agents::Workflow::Pipeline
   timeout 60.seconds  # or timeout 60
 
-  step :step1, agent: Agent1
-  step :step2, agent: Agent2
+  step :step1, agent: LLM::Agent1
+  step :step2, agent: LLM::Agent2
 end
 ```
 
@@ -217,12 +217,12 @@ end
 Abort if accumulated cost exceeds threshold:
 
 ```ruby
-class MyPipeline < RubyLLM::Agents::Workflow::Pipeline
+class LLM::MyPipeline < RubyLLM::Agents::Workflow::Pipeline
   max_cost 1.00  # $1.00 maximum
 
-  step :step1, agent: Agent1  # $0.30
-  step :step2, agent: Agent2  # $0.40
-  step :step3, agent: Agent3  # Would exceed $1.00, aborts
+  step :step1, agent: LLM::Agent1  # $0.30
+  step :step2, agent: LLM::Agent2  # $0.40
+  step :step3, agent: LLM::Agent3  # Would exceed $1.00, aborts
 end
 ```
 
@@ -231,7 +231,7 @@ end
 Track pipeline versions:
 
 ```ruby
-class MyPipeline < RubyLLM::Agents::Workflow::Pipeline
+class LLM::MyPipeline < RubyLLM::Agents::Workflow::Pipeline
   version "2.1"
 end
 ```
@@ -242,52 +242,58 @@ end
 
 ```ruby
 # Step 1: Extract text from document
-class TextExtractorAgent < ApplicationAgent
-  model "gpt-4o"
-  param :document, required: true
+module LLM
+  class TextExtractorAgent < ApplicationAgent
+    model "gpt-4o"
+    param :document, required: true
 
-  def user_prompt
-    "Extract all text content from this document"
+    def user_prompt
+      "Extract all text content from this document"
+    end
   end
 end
 
 # Step 2: Classify the content
-class ContentClassifierAgent < ApplicationAgent
-  model "gpt-4o-mini"
-  param :text, required: true
+module LLM
+  class ContentClassifierAgent < ApplicationAgent
+    model "gpt-4o-mini"
+    param :text, required: true
 
-  def user_prompt
-    "Classify this content: #{text}"
-  end
+    def user_prompt
+      "Classify this content: #{text}"
+    end
 
-  def schema
-    @schema ||= RubyLLM::Schema.create do
-      string :category, enum: ["article", "report", "memo", "other"]
-      array :topics, of: :string
+    def schema
+      @schema ||= RubyLLM::Schema.create do
+        string :category, enum: ["article", "report", "memo", "other"]
+        array :topics, of: :string
+      end
     end
   end
 end
 
 # Step 3: Generate summary
-class SummarizerAgent < ApplicationAgent
-  model "gpt-4o"
-  param :text, required: true
-  param :category
+module LLM
+  class SummarizerAgent < ApplicationAgent
+    model "gpt-4o"
+    param :text, required: true
+    param :category
 
-  def user_prompt
-    "Summarize this #{category}: #{text}"
+    def user_prompt
+      "Summarize this #{category}: #{text}"
+    end
   end
 end
 
 # The pipeline
-class DocumentPipeline < RubyLLM::Agents::Workflow::Pipeline
+class LLM::DocumentPipeline < RubyLLM::Agents::Workflow::Pipeline
   version "1.0"
   timeout 120.seconds
   max_cost 0.50
 
-  step :extract,   agent: TextExtractorAgent
-  step :classify,  agent: ContentClassifierAgent
-  step :summarize, agent: SummarizerAgent
+  step :extract,   agent: LLM::TextExtractorAgent
+  step :classify,  agent: LLM::ContentClassifierAgent
+  step :summarize, agent: LLM::SummarizerAgent
 
   def before_classify(context)
     { text: context[:extract].content }
@@ -302,7 +308,7 @@ class DocumentPipeline < RubyLLM::Agents::Workflow::Pipeline
 end
 
 # Usage
-result = DocumentPipeline.call(document: uploaded_file)
+result = LLM::DocumentPipeline.call(document: uploaded_file)
 
 puts result.steps[:classify].content[:category]  # "report"
 puts result.steps[:classify].content[:topics]    # ["finance", "quarterly"]
@@ -314,17 +320,17 @@ puts result.content                              # Summary text
 Pipelines support inheritance:
 
 ```ruby
-class BasePipeline < RubyLLM::Agents::Workflow::Pipeline
+class LLM::BasePipeline < RubyLLM::Agents::Workflow::Pipeline
   version "1.0"
   timeout 60.seconds
 
-  step :validate, agent: ValidatorAgent
+  step :validate, agent: LLM::ValidatorAgent
 end
 
-class ExtendedPipeline < BasePipeline
+class LLM::ExtendedPipeline < LLM::BasePipeline
   # Inherits :validate step
-  step :process, agent: ProcessorAgent
-  step :format,  agent: FormatterAgent
+  step :process, agent: LLM::ProcessorAgent
+  step :format,  agent: LLM::FormatterAgent
 end
 ```
 
@@ -334,10 +340,10 @@ end
 
 ```ruby
 # Good: 3-5 steps
-class GoodPipeline < RubyLLM::Agents::Workflow::Pipeline
-  step :extract, agent: ExtractorAgent
-  step :process, agent: ProcessorAgent
-  step :format,  agent: FormatterAgent
+class LLM::GoodPipeline < RubyLLM::Agents::Workflow::Pipeline
+  step :extract, agent: LLM::ExtractorAgent
+  step :process, agent: LLM::ProcessorAgent
+  step :format,  agent: LLM::FormatterAgent
 end
 
 # Consider breaking up long pipelines
@@ -347,30 +353,34 @@ end
 
 ```ruby
 # Classification: Fast, cheap model
-class ClassifierAgent < ApplicationAgent
-  model "gpt-4o-mini"
+module LLM
+  class ClassifierAgent < ApplicationAgent
+    model "gpt-4o-mini"
+  end
 end
 
 # Generation: Better model
-class GeneratorAgent < ApplicationAgent
-  model "gpt-4o"
+module LLM
+  class GeneratorAgent < ApplicationAgent
+    model "gpt-4o"
+  end
 end
 ```
 
 ### Handle Failures Gracefully
 
 ```ruby
-class RobustPipeline < RubyLLM::Agents::Workflow::Pipeline
-  step :critical, agent: CriticalAgent
-  step :enhance,  agent: EnhancerAgent, optional: true
-  step :final,    agent: FinalAgent
+class LLM::RobustPipeline < RubyLLM::Agents::Workflow::Pipeline
+  step :critical, agent: LLM::CriticalAgent
+  step :enhance,  agent: LLM::EnhancerAgent, optional: true
+  step :final,    agent: LLM::FinalAgent
 end
 ```
 
 ### Monitor Performance
 
 ```ruby
-result = MyPipeline.call(input: data)
+result = LLM::MyPipeline.call(input: data)
 
 result.steps.each do |name, step_result|
   if step_result.duration_ms > 5000

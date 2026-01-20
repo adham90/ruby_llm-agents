@@ -36,14 +36,18 @@ The `ImageGenerator` base class provides a DSL for creating image generators wit
 rails generate ruby_llm_agents:image_generator Logo
 ```
 
-This creates `app/image_generators/logo_generator.rb`:
+This creates `app/llm/image/generators/logo_generator.rb`:
 
 ```ruby
-class LogoGenerator < ApplicationImageGenerator
-  model "gpt-image-1"
-  size "1024x1024"
-  quality "standard"
-  style "vivid"
+module LLM
+  module Image
+    class LogoGenerator < ApplicationImageGenerator
+      model "gpt-image-1"
+      size "1024x1024"
+      quality "standard"
+      style "vivid"
+    end
+  end
 end
 ```
 
@@ -51,7 +55,7 @@ end
 
 ```ruby
 # Generate a single image
-result = LogoGenerator.call(prompt: "Minimalist tech company logo")
+result = LLM::Image::LogoGenerator.call(prompt: "Minimalist tech company logo")
 result.url          # "https://..."
 result.total_cost   # 0.04
 result.success?     # true
@@ -60,7 +64,7 @@ result.success?     # true
 result.save("logo.png")
 
 # Generate multiple images
-result = LogoGenerator.call(prompt: "App icon variations", count: 4)
+result = LLM::Image::LogoGenerator.call(prompt: "App icon variations", count: 4)
 result.urls         # ["https://...", ...]
 result.count        # 4
 result.save_all("./icons")
@@ -71,23 +75,31 @@ result.save_all("./icons")
 ### Model Selection
 
 ```ruby
-class ProductImageGenerator < ApplicationImageGenerator
-  model "gpt-image-1"    # OpenAI GPT Image 1
-  # or
-  model "dall-e-3"       # OpenAI DALL-E 3
-  # or
-  model "flux-pro"       # Flux Pro
+module LLM
+  module Image
+    class ProductImageGenerator < ApplicationImageGenerator
+      model "gpt-image-1"    # OpenAI GPT Image 1
+      # or
+      model "dall-e-3"       # OpenAI DALL-E 3
+      # or
+      model "flux-pro"       # Flux Pro
+    end
+  end
 end
 ```
 
 ### Size and Quality
 
 ```ruby
-class HeroImageGenerator < ApplicationImageGenerator
-  model "gpt-image-1"
-  size "1792x1024"       # Wide format
-  quality "hd"           # High definition
-  style "vivid"          # Vivid or natural
+module LLM
+  module Image
+    class HeroImageGenerator < ApplicationImageGenerator
+      model "gpt-image-1"
+      size "1792x1024"       # Wide format
+      quality "hd"           # High definition
+      style "vivid"          # Vivid or natural
+    end
+  end
 end
 ```
 
@@ -102,9 +114,13 @@ Available sizes depend on the model:
 Same prompt with same settings always produces similar results, so caching can be effective:
 
 ```ruby
-class CachedGenerator < ApplicationImageGenerator
-  model "gpt-image-1"
-  cache_for 1.day
+module LLM
+  module Image
+    class CachedGenerator < ApplicationImageGenerator
+      model "gpt-image-1"
+      cache_for 1.day
+    end
+  end
 end
 ```
 
@@ -113,10 +129,14 @@ end
 Bump version to invalidate cache when changing templates:
 
 ```ruby
-class StyledGenerator < ApplicationImageGenerator
-  model "gpt-image-1"
-  version "2.0"
-  cache_for 1.week
+module LLM
+  module Image
+    class StyledGenerator < ApplicationImageGenerator
+      model "gpt-image-1"
+      version "2.0"
+      cache_for 1.week
+    end
+  end
 end
 ```
 
@@ -125,9 +145,13 @@ end
 Add a description for documentation and dashboard display:
 
 ```ruby
-class ProductPhotoGenerator < ApplicationImageGenerator
-  model "gpt-image-1"
-  description "Generates professional product photography"
+module LLM
+  module Image
+    class ProductPhotoGenerator < ApplicationImageGenerator
+      model "gpt-image-1"
+      description "Generates professional product photography"
+    end
+  end
 end
 ```
 
@@ -136,7 +160,7 @@ end
 The result object provides access to images and metadata:
 
 ```ruby
-result = MyGenerator.call(prompt: "A sunset over mountains")
+result = LLM::Image::MyGenerator.call(prompt: "A sunset over mountains")
 
 # Images
 result.image            # First image object
@@ -195,24 +219,28 @@ Validate prompts before generation to prevent inappropriate content.
 ### Policy Levels
 
 ```ruby
-class SafeGenerator < ApplicationImageGenerator
-  model "gpt-image-1"
-  content_policy :strict    # Blocks violence, nudity, hate, weapons, drugs
-end
+module LLM
+  module Image
+    class SafeGenerator < ApplicationImageGenerator
+      model "gpt-image-1"
+      content_policy :strict    # Blocks violence, nudity, hate, weapons, drugs
+    end
 
-class ModerateGenerator < ApplicationImageGenerator
-  model "gpt-image-1"
-  content_policy :moderate  # Blocks explicit content, gore, hate speech
-end
+    class ModerateGenerator < ApplicationImageGenerator
+      model "gpt-image-1"
+      content_policy :moderate  # Blocks explicit content, gore, hate speech
+    end
 
-class StandardGenerator < ApplicationImageGenerator
-  model "gpt-image-1"
-  content_policy :standard  # Relies on model's built-in filters (default)
-end
+    class StandardGenerator < ApplicationImageGenerator
+      model "gpt-image-1"
+      content_policy :standard  # Relies on model's built-in filters (default)
+    end
 
-class UnfilteredGenerator < ApplicationImageGenerator
-  model "gpt-image-1"
-  content_policy :none      # No validation
+    class UnfilteredGenerator < ApplicationImageGenerator
+      model "gpt-image-1"
+      content_policy :none      # No validation
+    end
+  end
 end
 ```
 
@@ -244,13 +272,17 @@ Define reusable templates for consistent styling.
 ### Custom Templates
 
 ```ruby
-class ProductPhotoGenerator < ApplicationImageGenerator
-  model "gpt-image-1"
-  template "Professional product photography of {prompt}, " \
-           "white background, studio lighting, 8k resolution"
+module LLM
+  module Image
+    class ProductPhotoGenerator < ApplicationImageGenerator
+      model "gpt-image-1"
+      template "Professional product photography of {prompt}, " \
+               "white background, studio lighting, 8k resolution"
+    end
+  end
 end
 
-result = ProductPhotoGenerator.call(prompt: "a red sneaker")
+result = LLM::Image::ProductPhotoGenerator.call(prompt: "a red sneaker")
 # Actual prompt: "Professional product photography of a red sneaker, ..."
 ```
 
@@ -298,7 +330,7 @@ ImageGenerator::Templates.preset_names
 Generate multiple images in a single call:
 
 ```ruby
-result = LogoGenerator.call(prompt: "Tech startup logo", count: 4)
+result = LLM::Image::LogoGenerator.call(prompt: "Tech startup logo", count: 4)
 
 result.count   # => 4
 result.urls    # => ["https://...", "https://...", ...]
@@ -317,14 +349,18 @@ result.save_all("./logos")
 Some options are specific to certain providers:
 
 ```ruby
-class FluxGenerator < ApplicationImageGenerator
-  model "flux-pro"
+module LLM
+  module Image
+    class FluxGenerator < ApplicationImageGenerator
+      model "flux-pro"
 
-  # Provider-specific options
-  negative_prompt "blurry, low quality, distorted"
-  seed 12345                    # Reproducible generation
-  guidance_scale 7.5            # CFG scale (1.0-20.0)
-  steps 50                      # Inference steps
+      # Provider-specific options
+      negative_prompt "blurry, low quality, distorted"
+      seed 12345                    # Reproducible generation
+      guidance_scale 7.5            # CFG scale (1.0-20.0)
+      steps 50                      # Inference steps
+    end
+  end
 end
 ```
 
@@ -338,23 +374,27 @@ class Product < ApplicationRecord
   has_many_attached :gallery_images
 end
 
-class ProductImageGenerator < ApplicationImageGenerator
-  include RubyLLM::Agents::ImageGenerator::ActiveStorageSupport
+module LLM
+  module Image
+    class ProductImageGenerator < ApplicationImageGenerator
+      include RubyLLM::Agents::ImageGenerator::ActiveStorageSupport
 
-  model "gpt-image-1"
-  size "1024x1024"
+      model "gpt-image-1"
+      size "1024x1024"
+    end
+  end
 end
 
 # Generate and attach a single image
 product = Product.find(1)
-result = ProductImageGenerator.generate_and_attach(
+result = LLM::Image::ProductImageGenerator.generate_and_attach(
   prompt: "Professional product photo of a red sneaker",
   record: product,
   attachment_name: :hero_image
 )
 
 # Generate and attach multiple images
-result = ProductImageGenerator.generate_and_attach_multiple(
+result = LLM::Image::ProductImageGenerator.generate_and_attach_multiple(
   prompt: "Product gallery shots",
   record: product,
   attachment_name: :gallery_images,
@@ -368,26 +408,26 @@ Override class settings at call time:
 
 ```ruby
 # Override model
-result = LogoGenerator.call(
+result = LLM::Image::LogoGenerator.call(
   prompt: "A logo",
   model: "dall-e-3"
 )
 
 # Override size and quality
-result = LogoGenerator.call(
+result = LLM::Image::LogoGenerator.call(
   prompt: "A logo",
   size: "1792x1024",
   quality: "hd"
 )
 
 # With tenant for multi-tenancy
-result = LogoGenerator.call(
+result = LLM::Image::LogoGenerator.call(
   prompt: "A logo",
   tenant: current_organization
 )
 
 # Skip cache
-result = LogoGenerator.call(
+result = LLM::Image::LogoGenerator.call(
   prompt: "A logo",
   skip_cache: true
 )
@@ -430,17 +470,17 @@ Full multi-tenancy support:
 
 ```ruby
 # Using resolver
-result = LogoGenerator.call(prompt: "A logo")
+result = LLM::Image::LogoGenerator.call(prompt: "A logo")
 # Automatically uses Current.tenant if configured
 
 # Explicit tenant
-result = LogoGenerator.call(
+result = LLM::Image::LogoGenerator.call(
   prompt: "A logo",
   tenant: "acme_corp"
 )
 
 # Tenant with budget limits
-result = LogoGenerator.call(
+result = LLM::Image::LogoGenerator.call(
   prompt: "A logo",
   tenant: {
     id: "acme_corp",
@@ -527,38 +567,46 @@ Image generation can be expensive at scale:
 ### Product Image Generator
 
 ```ruby
-class ProductImageGenerator < ApplicationImageGenerator
-  model "gpt-image-1"
-  size "1024x1024"
-  quality "hd"
-  content_policy :strict
+module LLM
+  module Image
+    class ProductImageGenerator < ApplicationImageGenerator
+      model "gpt-image-1"
+      size "1024x1024"
+      quality "hd"
+      content_policy :strict
 
-  template "Professional product photography of {prompt}, " \
-           "white background, soft studio lighting, commercial quality, " \
-           "high resolution, clean and minimalist"
+      template "Professional product photography of {prompt}, " \
+               "white background, soft studio lighting, commercial quality, " \
+               "high resolution, clean and minimalist"
+    end
+  end
 end
 
-result = ProductImageGenerator.call(prompt: "a wireless mouse")
+result = LLM::Image::ProductImageGenerator.call(prompt: "a wireless mouse")
 result.save("product_photo.png")
 ```
 
 ### Logo Generator with Variations
 
 ```ruby
-class LogoGenerator < ApplicationImageGenerator
-  model "gpt-image-1"
-  size "1024x1024"
-  quality "hd"
-  style "vivid"
-  content_policy :strict
+module LLM
+  module Image
+    class LogoGenerator < ApplicationImageGenerator
+      model "gpt-image-1"
+      size "1024x1024"
+      quality "hd"
+      style "vivid"
+      content_policy :strict
 
-  template "Minimalist logo design for {prompt}, " \
-           "clean lines, professional, vector style, " \
-           "suitable for business use, modern aesthetic"
+      template "Minimalist logo design for {prompt}, " \
+               "clean lines, professional, vector style, " \
+               "suitable for business use, modern aesthetic"
+    end
+  end
 end
 
 # Generate 4 variations
-result = LogoGenerator.call(
+result = LLM::Image::LogoGenerator.call(
   prompt: "a tech startup called 'Nexus AI'",
   count: 4
 )
@@ -570,20 +618,24 @@ puts "Generated #{result.count} logos for $#{result.total_cost}"
 ### Avatar Generator with ActiveStorage
 
 ```ruby
-class AvatarGenerator < ApplicationImageGenerator
-  include RubyLLM::Agents::ImageGenerator::ActiveStorageSupport
+module LLM
+  module Image
+    class AvatarGenerator < ApplicationImageGenerator
+      include RubyLLM::Agents::ImageGenerator::ActiveStorageSupport
 
-  model "flux-schnell"  # Fast and cheap for avatars
-  size "512x512"
+      model "flux-schnell"  # Fast and cheap for avatars
+      size "512x512"
 
-  template "Digital avatar portrait of {prompt}, " \
-           "friendly expression, vibrant colors, " \
-           "suitable for profile picture"
+      template "Digital avatar portrait of {prompt}, " \
+               "friendly expression, vibrant colors, " \
+               "suitable for profile picture"
+    end
+  end
 end
 
 # In a controller
 def generate_avatar
-  result = AvatarGenerator.generate_and_attach(
+  result = LLM::Image::AvatarGenerator.generate_and_attach(
     prompt: params[:description],
     record: current_user,
     attachment_name: :avatar
@@ -623,12 +675,16 @@ The `ImageAnalyzer` base class provides a DSL for creating image analyzers with:
 rails generate ruby_llm_agents:image_analyzer Product
 ```
 
-This creates `app/image_analyzers/product_analyzer.rb`:
+This creates `app/llm/image/analyzers/product_analyzer.rb`:
 
 ```ruby
-class ProductAnalyzer < ApplicationImageAnalyzer
-  model "gpt-4o"
-  analysis_type :detailed
+module LLM
+  module Image
+    class ProductAnalyzer < ApplicationImageAnalyzer
+      model "gpt-4o"
+      analysis_type :detailed
+    end
+  end
 end
 ```
 
@@ -636,17 +692,17 @@ end
 
 ```ruby
 # Analyze an image
-result = ProductAnalyzer.call(image: "product.jpg")
+result = LLM::Image::ProductAnalyzer.call(image: "product.jpg")
 result.caption        # "A red sneaker on white background"
 result.description    # Detailed description
 result.tags           # ["sneaker", "red", "footwear", "product"]
 result.success?       # true
 
 # Analyze from URL
-result = ProductAnalyzer.call(image: "https://example.com/image.jpg")
+result = LLM::Image::ProductAnalyzer.call(image: "https://example.com/image.jpg")
 
 # With specific analysis types
-result = ProductAnalyzer.call(image: "photo.jpg", analysis_type: :all)
+result = LLM::Image::ProductAnalyzer.call(image: "photo.jpg", analysis_type: :all)
 result.objects        # [{ name: "shoe", confidence: "high" }]
 result.colors         # [{ hex: "#FF0000", percentage: 30 }]
 ```
@@ -656,35 +712,43 @@ result.colors         # [{ hex: "#FF0000", percentage: 30 }]
 ### Model Selection
 
 ```ruby
-class ProductAnalyzer < ApplicationImageAnalyzer
-  model "gpt-4o"          # OpenAI GPT-4 Vision
-  # or
-  model "claude-3-opus"   # Anthropic Claude Vision
-  # or
-  model "gemini-pro"      # Google Gemini Vision
+module LLM
+  module Image
+    class ProductAnalyzer < ApplicationImageAnalyzer
+      model "gpt-4o"          # OpenAI GPT-4 Vision
+      # or
+      model "claude-3-opus"   # Anthropic Claude Vision
+      # or
+      model "gemini-pro"      # Google Gemini Vision
+    end
+  end
 end
 ```
 
 ### Analysis Types
 
 ```ruby
-class DetailedAnalyzer < ApplicationImageAnalyzer
-  model "gpt-4o"
-  analysis_type :detailed    # Caption + detailed description
-end
+module LLM
+  module Image
+    class DetailedAnalyzer < ApplicationImageAnalyzer
+      model "gpt-4o"
+      analysis_type :detailed    # Caption + detailed description
+    end
 
-class TaggingAnalyzer < ApplicationImageAnalyzer
-  model "gpt-4o"
-  analysis_type :tags        # Tags only
-  max_tags 20                # Maximum number of tags
-end
+    class TaggingAnalyzer < ApplicationImageAnalyzer
+      model "gpt-4o"
+      analysis_type :tags        # Tags only
+      max_tags 20                # Maximum number of tags
+    end
 
-class FullAnalyzer < ApplicationImageAnalyzer
-  model "gpt-4o"
-  analysis_type :all         # Everything: caption, description, tags, objects, colors
-  extract_colors true        # Extract dominant colors
-  detect_objects true        # Detect objects with locations
-  extract_text true          # OCR text extraction
+    class FullAnalyzer < ApplicationImageAnalyzer
+      model "gpt-4o"
+      analysis_type :all         # Everything: caption, description, tags, objects, colors
+      extract_colors true        # Extract dominant colors
+      detect_objects true        # Detect objects with locations
+      extract_text true          # OCR text extraction
+    end
+  end
 end
 ```
 
@@ -699,19 +763,27 @@ Available analysis types:
 ### Custom Prompts
 
 ```ruby
-class EcommerceAnalyzer < ApplicationImageAnalyzer
-  model "gpt-4o"
-  custom_prompt "Describe this product for an e-commerce listing. " \
-                "Include material, color, style, and key features."
+module LLM
+  module Image
+    class EcommerceAnalyzer < ApplicationImageAnalyzer
+      model "gpt-4o"
+      custom_prompt "Describe this product for an e-commerce listing. " \
+                    "Include material, color, style, and key features."
+    end
+  end
 end
 ```
 
 ### Caching
 
 ```ruby
-class CachedAnalyzer < ApplicationImageAnalyzer
-  model "gpt-4o"
-  cache_for 7.days       # Cache results for repeated images
+module LLM
+  module Image
+    class CachedAnalyzer < ApplicationImageAnalyzer
+      model "gpt-4o"
+      cache_for 7.days       # Cache results for repeated images
+    end
+  end
 end
 ```
 
@@ -720,7 +792,7 @@ end
 The result object provides access to analysis data:
 
 ```ruby
-result = MyAnalyzer.call(image: "photo.jpg")
+result = LLM::Image::MyAnalyzer.call(image: "photo.jpg")
 
 # Content
 result.caption           # Short caption
@@ -762,19 +834,23 @@ result.total_cost        # Cost in USD
 ### Product Catalog Analyzer
 
 ```ruby
-class ProductCatalogAnalyzer < ApplicationImageAnalyzer
-  model "gpt-4o"
-  analysis_type :all
-  extract_colors true
-  detect_objects true
-  max_tags 15
+module LLM
+  module Image
+    class ProductCatalogAnalyzer < ApplicationImageAnalyzer
+      model "gpt-4o"
+      analysis_type :all
+      extract_colors true
+      detect_objects true
+      max_tags 15
 
-  custom_prompt "Analyze this product image for e-commerce. " \
-                "Identify the product type, brand if visible, " \
-                "colors, materials, and key features."
+      custom_prompt "Analyze this product image for e-commerce. " \
+                    "Identify the product type, brand if visible, " \
+                    "colors, materials, and key features."
+    end
+  end
 end
 
-result = ProductCatalogAnalyzer.call(image: "product.jpg")
+result = LLM::Image::ProductCatalogAnalyzer.call(image: "product.jpg")
 
 # Use for categorization
 category = determine_category(result.tags)
@@ -789,17 +865,21 @@ keywords = result.tags.join(", ")
 ### Content Moderation Analyzer
 
 ```ruby
-class ContentModerationAnalyzer < ApplicationImageAnalyzer
-  model "gpt-4o"
-  analysis_type :detailed
-  detect_objects true
+module LLM
+  module Image
+    class ContentModerationAnalyzer < ApplicationImageAnalyzer
+      model "gpt-4o"
+      analysis_type :detailed
+      detect_objects true
 
-  custom_prompt "Analyze this image for content moderation. " \
-                "Identify any inappropriate content, violence, " \
-                "nudity, or concerning elements. Be specific."
+      custom_prompt "Analyze this image for content moderation. " \
+                    "Identify any inappropriate content, violence, " \
+                    "nudity, or concerning elements. Be specific."
+    end
+  end
 end
 
-result = ContentModerationAnalyzer.call(image: uploaded_file)
+result = LLM::Image::ContentModerationAnalyzer.call(image: uploaded_file)
 
 if result.has_object?("weapon") || result.has_tag?("violence")
   flag_for_review(result)
@@ -831,12 +911,16 @@ The `BackgroundRemover` base class provides a DSL for creating background remove
 rails generate ruby_llm_agents:background_remover Photo
 ```
 
-This creates `app/background_removers/photo_background_remover.rb`:
+This creates `app/llm/image/background_removers/photo_background_remover.rb`:
 
 ```ruby
-class PhotoBackgroundRemover < ApplicationBackgroundRemover
-  model "rembg"
-  output_format :png
+module LLM
+  module Image
+    class PhotoBackgroundRemover < ApplicationBackgroundRemover
+      model "rembg"
+      output_format :png
+    end
+  end
 end
 ```
 
@@ -844,7 +928,7 @@ end
 
 ```ruby
 # Remove background
-result = PhotoBackgroundRemover.call(image: "photo.jpg")
+result = LLM::Image::PhotoBackgroundRemover.call(image: "photo.jpg")
 result.url              # URL of foreground image
 result.has_alpha?       # true (PNG with transparency)
 result.success?         # true
@@ -863,50 +947,66 @@ end
 ### Model Selection
 
 ```ruby
-class ProductRemover < ApplicationBackgroundRemover
-  model "rembg"              # Fast, good for general use
-  # or
-  model "segment-anything"   # Better quality, slower
+module LLM
+  module Image
+    class ProductRemover < ApplicationBackgroundRemover
+      model "rembg"              # Fast, good for general use
+      # or
+      model "segment-anything"   # Better quality, slower
+    end
+  end
 end
 ```
 
 ### Output Format
 
 ```ruby
-class TransparentRemover < ApplicationBackgroundRemover
-  model "rembg"
-  output_format :png        # PNG with alpha (default)
-end
+module LLM
+  module Image
+    class TransparentRemover < ApplicationBackgroundRemover
+      model "rembg"
+      output_format :png        # PNG with alpha (default)
+    end
 
-class WebOptimizedRemover < ApplicationBackgroundRemover
-  model "rembg"
-  output_format :webp       # WebP with alpha
+    class WebOptimizedRemover < ApplicationBackgroundRemover
+      model "rembg"
+      output_format :webp       # WebP with alpha
+    end
+  end
 end
 ```
 
 ### Edge Refinement
 
 ```ruby
-class HighQualityRemover < ApplicationBackgroundRemover
-  model "segment-anything"
-  output_format :png
-  refine_edges true          # Smooth edge transitions
-  alpha_matting true         # Fine edge detection
-  foreground_threshold 0.6   # Foreground sensitivity (0.0-1.0)
-  background_threshold 0.4   # Background sensitivity (0.0-1.0)
-  erode_size 2               # Edge erosion for cleaner cuts
+module LLM
+  module Image
+    class HighQualityRemover < ApplicationBackgroundRemover
+      model "segment-anything"
+      output_format :png
+      refine_edges true          # Smooth edge transitions
+      alpha_matting true         # Fine edge detection
+      foreground_threshold 0.6   # Foreground sensitivity (0.0-1.0)
+      background_threshold 0.4   # Background sensitivity (0.0-1.0)
+      erode_size 2               # Edge erosion for cleaner cuts
+    end
+  end
 end
 ```
 
 ### Mask Output
 
 ```ruby
-class MaskRemover < ApplicationBackgroundRemover
-  model "rembg"
-  return_mask true           # Also return the mask image
+module LLM
+  module Image
+    class MaskRemover < ApplicationBackgroundRemover
+      model "rembg"
+      return_mask true           # Also return the mask image
+    end
+  end
 end
 
-result = MaskRemover.call(image: "photo.jpg")
+result = LLM::Image::MaskRemover.call(image: "photo.jpg")
 result.mask?                 # true
 result.mask_url              # URL of mask image
 result.save_mask("mask.png") # Save mask separately
@@ -915,9 +1015,13 @@ result.save_mask("mask.png") # Save mask separately
 ### Caching
 
 ```ruby
-class CachedRemover < ApplicationBackgroundRemover
-  model "rembg"
-  cache_for 30.days          # Cache results
+module LLM
+  module Image
+    class CachedRemover < ApplicationBackgroundRemover
+      model "rembg"
+      cache_for 30.days          # Cache results
+    end
+  end
 end
 ```
 
@@ -926,7 +1030,7 @@ end
 The result object provides access to extracted images:
 
 ```ruby
-result = MyRemover.call(image: "photo.jpg")
+result = LLM::Image::MyRemover.call(image: "photo.jpg")
 
 # Foreground (subject)
 result.foreground        # Foreground image object
@@ -967,19 +1071,23 @@ result.total_cost        # Cost in USD
 ### Product Photo Background Remover
 
 ```ruby
-class ProductPhotoRemover < ApplicationBackgroundRemover
-  model "segment-anything"
-  output_format :png
-  refine_edges true
-  alpha_matting true
-  foreground_threshold 0.55
+module LLM
+  module Image
+    class ProductPhotoRemover < ApplicationBackgroundRemover
+      model "segment-anything"
+      output_format :png
+      refine_edges true
+      alpha_matting true
+      foreground_threshold 0.55
 
-  description "Removes backgrounds from product photos"
+      description "Removes backgrounds from product photos"
+    end
+  end
 end
 
 # In a controller
 def remove_background
-  result = ProductPhotoRemover.call(image: params[:image])
+  result = LLM::Image::ProductPhotoRemover.call(image: params[:image])
 
   if result.success?
     # Attach to product using ActiveStorage
@@ -998,18 +1106,22 @@ end
 ### Portrait Background Remover with Compositing
 
 ```ruby
-class PortraitRemover < ApplicationBackgroundRemover
-  model "segment-anything"
-  output_format :png
-  alpha_matting true
-  refine_edges true
-  return_mask true
+module LLM
+  module Image
+    class PortraitRemover < ApplicationBackgroundRemover
+      model "segment-anything"
+      output_format :png
+      alpha_matting true
+      refine_edges true
+      return_mask true
 
-  description "Extracts portraits for compositing"
+      description "Extracts portraits for compositing"
+    end
+  end
 end
 
 # Get subject and mask for compositing
-result = PortraitRemover.call(image: "portrait.jpg")
+result = LLM::Image::PortraitRemover.call(image: "portrait.jpg")
 
 if result.success?
   # Save foreground with transparency
@@ -1047,13 +1159,17 @@ The `ImageVariator` base class provides a DSL for creating image variators with:
 rails generate ruby_llm_agents:image_variator Logo
 ```
 
-This creates `app/image_variators/logo_variator.rb`:
+This creates `app/llm/image/variators/logo_variator.rb`:
 
 ```ruby
-class LogoVariator < ApplicationImageVariator
-  model "gpt-image-1"
-  size "1024x1024"
-  variation_strength 0.5
+module LLM
+  module Image
+    class LogoVariator < ApplicationImageVariator
+      model "gpt-image-1"
+      size "1024x1024"
+      variation_strength 0.5
+    end
+  end
 end
 ```
 
@@ -1061,7 +1177,7 @@ end
 
 ```ruby
 # Generate variations
-result = LogoVariator.call(image: "logo.png", count: 4)
+result = LLM::Image::LogoVariator.call(image: "logo.png", count: 4)
 result.urls           # ["https://...", "https://...", ...]
 result.count          # 4
 result.success?       # true
@@ -1075,9 +1191,13 @@ result.save_all("./logo_variations")
 ### Model and Size
 
 ```ruby
-class ProductVariator < ApplicationImageVariator
-  model "gpt-image-1"
-  size "1024x1024"
+module LLM
+  module Image
+    class ProductVariator < ApplicationImageVariator
+      model "gpt-image-1"
+      size "1024x1024"
+    end
+  end
 end
 ```
 
@@ -1086,30 +1206,38 @@ end
 Control how different variations should be from the original:
 
 ```ruby
-class SubtleVariator < ApplicationImageVariator
-  model "gpt-image-1"
-  variation_strength 0.2  # Subtle changes
-end
+module LLM
+  module Image
+    class SubtleVariator < ApplicationImageVariator
+      model "gpt-image-1"
+      variation_strength 0.2  # Subtle changes
+    end
 
-class BoldVariator < ApplicationImageVariator
-  model "gpt-image-1"
-  variation_strength 0.8  # More dramatic changes
+    class BoldVariator < ApplicationImageVariator
+      model "gpt-image-1"
+      variation_strength 0.8  # More dramatic changes
+    end
+  end
 end
 ```
 
 ### Caching
 
 ```ruby
-class CachedVariator < ApplicationImageVariator
-  model "gpt-image-1"
-  cache_for 1.day
+module LLM
+  module Image
+    class CachedVariator < ApplicationImageVariator
+      model "gpt-image-1"
+      cache_for 1.day
+    end
+  end
 end
 ```
 
 ## ImageVariationResult
 
 ```ruby
-result = MyVariator.call(image: "source.png", count: 4)
+result = LLM::Image::MyVariator.call(image: "source.png", count: 4)
 
 # Images
 result.images          # All variation image objects
@@ -1155,12 +1283,16 @@ The `ImageEditor` base class provides a DSL for creating image editors with:
 rails generate ruby_llm_agents:image_editor Product
 ```
 
-This creates `app/image_editors/product_editor.rb`:
+This creates `app/llm/image/editors/product_editor.rb`:
 
 ```ruby
-class ProductEditor < ApplicationImageEditor
-  model "gpt-image-1"
-  size "1024x1024"
+module LLM
+  module Image
+    class ProductEditor < ApplicationImageEditor
+      model "gpt-image-1"
+      size "1024x1024"
+    end
+  end
 end
 ```
 
@@ -1168,7 +1300,7 @@ end
 
 ```ruby
 # Edit an image region
-result = ProductEditor.call(
+result = LLM::Image::ProductEditor.call(
   image: "product.png",
   mask: "mask.png",       # White areas will be edited
   prompt: "Replace background with beach scene"
@@ -1177,7 +1309,7 @@ result.url            # Edited image URL
 result.success?       # true
 
 # Generate multiple edit options
-result = ProductEditor.call(
+result = LLM::Image::ProductEditor.call(
   image: "product.png",
   mask: "mask.png",
   prompt: "Add sunset sky",
@@ -1191,27 +1323,39 @@ result.urls           # ["https://...", ...]
 ### Model and Size
 
 ```ruby
-class BackgroundEditor < ApplicationImageEditor
-  model "gpt-image-1"
-  size "1024x1024"
+module LLM
+  module Image
+    class BackgroundEditor < ApplicationImageEditor
+      model "gpt-image-1"
+      size "1024x1024"
+    end
+  end
 end
 ```
 
 ### Content Policy
 
 ```ruby
-class SafeEditor < ApplicationImageEditor
-  model "gpt-image-1"
-  content_policy :strict  # Validate edit prompts
+module LLM
+  module Image
+    class SafeEditor < ApplicationImageEditor
+      model "gpt-image-1"
+      content_policy :strict  # Validate edit prompts
+    end
+  end
 end
 ```
 
 ### Caching
 
 ```ruby
-class CachedEditor < ApplicationImageEditor
-  model "gpt-image-1"
-  cache_for 1.hour
+module LLM
+  module Image
+    class CachedEditor < ApplicationImageEditor
+      model "gpt-image-1"
+      cache_for 1.hour
+    end
+  end
 end
 ```
 
@@ -1226,7 +1370,7 @@ Masks should be:
 ## ImageEditResult
 
 ```ruby
-result = MyEditor.call(image: "photo.png", mask: "mask.png", prompt: "...")
+result = LLM::Image::MyEditor.call(image: "photo.png", mask: "mask.png", prompt: "...")
 
 # Images
 result.image           # Edited image object
@@ -1272,12 +1416,16 @@ The `ImageTransformer` base class provides a DSL for creating transformers with:
 rails generate ruby_llm_agents:image_transformer Anime
 ```
 
-This creates `app/image_transformers/anime_transformer.rb`:
+This creates `app/llm/image/transformers/anime_transformer.rb`:
 
 ```ruby
-class AnimeTransformer < ApplicationImageTransformer
-  model "sdxl"
-  strength 0.75
+module LLM
+  module Image
+    class AnimeTransformer < ApplicationImageTransformer
+      model "sdxl"
+      strength 0.75
+    end
+  end
 end
 ```
 
@@ -1285,7 +1433,7 @@ end
 
 ```ruby
 # Transform an image
-result = AnimeTransformer.call(
+result = LLM::Image::AnimeTransformer.call(
   image: "photo.jpg",
   prompt: "anime style portrait"
 )
@@ -1293,7 +1441,7 @@ result.url            # Transformed image URL
 result.success?       # true
 
 # Override strength at runtime
-result = AnimeTransformer.call(
+result = LLM::Image::AnimeTransformer.call(
   image: "photo.jpg",
   prompt: "anime style portrait",
   strength: 0.9       # More dramatic transformation
@@ -1305,9 +1453,13 @@ result = AnimeTransformer.call(
 ### Model and Size
 
 ```ruby
-class WatercolorTransformer < ApplicationImageTransformer
-  model "sdxl"
-  size "1024x1024"
+module LLM
+  module Image
+    class WatercolorTransformer < ApplicationImageTransformer
+      model "sdxl"
+      size "1024x1024"
+    end
+  end
 end
 ```
 
@@ -1316,53 +1468,69 @@ end
 Control how much the image changes:
 
 ```ruby
-class SubtleTransformer < ApplicationImageTransformer
-  model "sdxl"
-  strength 0.3        # Subtle style transfer
-  preserve_composition true
-end
+module LLM
+  module Image
+    class SubtleTransformer < ApplicationImageTransformer
+      model "sdxl"
+      strength 0.3        # Subtle style transfer
+      preserve_composition true
+    end
 
-class DramaticTransformer < ApplicationImageTransformer
-  model "sdxl"
-  strength 0.9        # Dramatic transformation
+    class DramaticTransformer < ApplicationImageTransformer
+      model "sdxl"
+      strength 0.9        # Dramatic transformation
+    end
+  end
 end
 ```
 
 ### Prompt Templates
 
 ```ruby
-class OilPaintingTransformer < ApplicationImageTransformer
-  model "sdxl"
-  strength 0.8
-  template "oil painting, classical style, museum quality, {prompt}"
+module LLM
+  module Image
+    class OilPaintingTransformer < ApplicationImageTransformer
+      model "sdxl"
+      strength 0.8
+      template "oil painting, classical style, museum quality, {prompt}"
+    end
+  end
 end
 ```
 
 ### Advanced Options
 
 ```ruby
-class PreciseTransformer < ApplicationImageTransformer
-  model "sdxl"
-  strength 0.75
-  negative_prompt "blurry, low quality, distorted"
-  guidance_scale 7.5  # CFG scale (1.0-20.0)
-  steps 50            # Inference steps
+module LLM
+  module Image
+    class PreciseTransformer < ApplicationImageTransformer
+      model "sdxl"
+      strength 0.75
+      negative_prompt "blurry, low quality, distorted"
+      guidance_scale 7.5  # CFG scale (1.0-20.0)
+      steps 50            # Inference steps
+    end
+  end
 end
 ```
 
 ### Caching
 
 ```ruby
-class CachedTransformer < ApplicationImageTransformer
-  model "sdxl"
-  cache_for 1.day
+module LLM
+  module Image
+    class CachedTransformer < ApplicationImageTransformer
+      model "sdxl"
+      cache_for 1.day
+    end
+  end
 end
 ```
 
 ## ImageTransformResult
 
 ```ruby
-result = MyTransformer.call(image: "photo.jpg", prompt: "watercolor")
+result = LLM::Image::MyTransformer.call(image: "photo.jpg", prompt: "watercolor")
 
 # Images
 result.image           # Transformed image object
@@ -1390,14 +1558,18 @@ result.duration_ms     # Processing time
 ### Photo to Painting
 
 ```ruby
-class ArtTransformer < ApplicationImageTransformer
-  model "sdxl"
-  strength 0.85
-  template "masterpiece painting, {prompt}, detailed brushwork"
-  negative_prompt "photo, realistic, modern"
+module LLM
+  module Image
+    class ArtTransformer < ApplicationImageTransformer
+      model "sdxl"
+      strength 0.85
+      template "masterpiece painting, {prompt}, detailed brushwork"
+      negative_prompt "photo, realistic, modern"
+    end
+  end
 end
 
-result = ArtTransformer.call(
+result = LLM::Image::ArtTransformer.call(
   image: "landscape.jpg",
   prompt: "impressionist landscape at sunset"
 )
@@ -1427,12 +1599,16 @@ The `ImageUpscaler` base class provides a DSL for creating upscalers with:
 rails generate ruby_llm_agents:image_upscaler Photo
 ```
 
-This creates `app/image_upscalers/photo_upscaler.rb`:
+This creates `app/llm/image/upscalers/photo_upscaler.rb`:
 
 ```ruby
-class PhotoUpscaler < ApplicationImageUpscaler
-  model "real-esrgan"
-  scale 4
+module LLM
+  module Image
+    class PhotoUpscaler < ApplicationImageUpscaler
+      model "real-esrgan"
+      scale 4
+    end
+  end
 end
 ```
 
@@ -1440,7 +1616,7 @@ end
 
 ```ruby
 # Upscale an image
-result = PhotoUpscaler.call(image: "low_res.jpg")
+result = LLM::Image::PhotoUpscaler.call(image: "low_res.jpg")
 result.url            # High resolution image URL
 result.output_size    # "4096x4096" (if input was 1024x1024)
 result.success?       # true
@@ -1454,60 +1630,80 @@ result.save("high_res.png")
 ### Model Selection
 
 ```ruby
-class PhotoUpscaler < ApplicationImageUpscaler
-  model "real-esrgan"     # General purpose, good quality
-  # or
-  model "swinir"          # Better for natural images
+module LLM
+  module Image
+    class PhotoUpscaler < ApplicationImageUpscaler
+      model "real-esrgan"     # General purpose, good quality
+      # or
+      model "swinir"          # Better for natural images
+    end
+  end
 end
 ```
 
 ### Scale Factor
 
 ```ruby
-class SmallUpscaler < ApplicationImageUpscaler
-  model "real-esrgan"
-  scale 2                 # 2x upscale
-end
+module LLM
+  module Image
+    class SmallUpscaler < ApplicationImageUpscaler
+      model "real-esrgan"
+      scale 2                 # 2x upscale
+    end
 
-class LargeUpscaler < ApplicationImageUpscaler
-  model "real-esrgan"
-  scale 8                 # 8x upscale (maximum)
+    class LargeUpscaler < ApplicationImageUpscaler
+      model "real-esrgan"
+      scale 8                 # 8x upscale (maximum)
+    end
+  end
 end
 ```
 
 ### Face Enhancement
 
 ```ruby
-class PortraitUpscaler < ApplicationImageUpscaler
-  model "real-esrgan"
-  scale 4
-  face_enhance true       # Improve facial details
+module LLM
+  module Image
+    class PortraitUpscaler < ApplicationImageUpscaler
+      model "real-esrgan"
+      scale 4
+      face_enhance true       # Improve facial details
+    end
+  end
 end
 ```
 
 ### Noise Reduction
 
 ```ruby
-class DenoisingUpscaler < ApplicationImageUpscaler
-  model "real-esrgan"
-  scale 4
-  denoise_strength 0.5    # Reduce noise (0.0-1.0)
+module LLM
+  module Image
+    class DenoisingUpscaler < ApplicationImageUpscaler
+      model "real-esrgan"
+      scale 4
+      denoise_strength 0.5    # Reduce noise (0.0-1.0)
+    end
+  end
 end
 ```
 
 ### Caching
 
 ```ruby
-class CachedUpscaler < ApplicationImageUpscaler
-  model "real-esrgan"
-  cache_for 7.days
+module LLM
+  module Image
+    class CachedUpscaler < ApplicationImageUpscaler
+      model "real-esrgan"
+      cache_for 7.days
+    end
+  end
 end
 ```
 
 ## ImageUpscaleResult
 
 ```ruby
-result = MyUpscaler.call(image: "photo.jpg")
+result = LLM::Image::MyUpscaler.call(image: "photo.jpg")
 
 # Image
 result.image           # Upscaled image object
@@ -1539,16 +1735,20 @@ result.duration_ms     # Processing time
 ### Product Photo Upscaler
 
 ```ruby
-class ProductUpscaler < ApplicationImageUpscaler
-  model "real-esrgan"
-  scale 4
+module LLM
+  module Image
+    class ProductUpscaler < ApplicationImageUpscaler
+      model "real-esrgan"
+      scale 4
 
-  description "Upscales product photos for e-commerce"
+      description "Upscales product photos for e-commerce"
+    end
+  end
 end
 
 # In a controller
 def upscale_image
-  result = ProductUpscaler.call(image: params[:image])
+  result = LLM::Image::ProductUpscaler.call(image: params[:image])
 
   if result.success?
     @product.high_res_image.attach(
@@ -1566,16 +1766,20 @@ end
 ### Portrait Upscaler with Face Enhancement
 
 ```ruby
-class PortraitUpscaler < ApplicationImageUpscaler
-  model "real-esrgan"
-  scale 4
-  face_enhance true
-  denoise_strength 0.3
+module LLM
+  module Image
+    class PortraitUpscaler < ApplicationImageUpscaler
+      model "real-esrgan"
+      scale 4
+      face_enhance true
+      denoise_strength 0.3
 
-  description "Upscales portraits with face enhancement"
+      description "Upscales portraits with face enhancement"
+    end
+  end
 end
 
-result = PortraitUpscaler.call(image: "headshot.jpg")
+result = LLM::Image::PortraitUpscaler.call(image: "headshot.jpg")
 result.save("headshot_hd.png")
 ```
 
@@ -1604,16 +1808,20 @@ The `ImagePipeline` base class provides a DSL for creating multi-step image work
 rails generate ruby_llm_agents:image_pipeline Product --steps generate,upscale,analyze
 ```
 
-This creates `app/image_pipelines/product_pipeline.rb`:
+This creates `app/llm/image/pipelines/product_pipeline.rb`:
 
 ```ruby
-class ProductPipeline < ApplicationImagePipeline
-  step :generate, generator: ProductGenerator
-  step :upscale, upscaler: ProductUpscaler
-  step :analyze, analyzer: ProductAnalyzer
+module LLM
+  module Image
+    class ProductPipeline < ApplicationImagePipeline
+      step :generate, generator: ProductGenerator
+      step :upscale, upscaler: ProductUpscaler
+      step :analyze, analyzer: ProductAnalyzer
 
-  description "Product image processing pipeline"
-  version "1.0"
+      description "Product image processing pipeline"
+      version "1.0"
+    end
+  end
 end
 ```
 
@@ -1621,7 +1829,7 @@ end
 
 ```ruby
 # Run the pipeline
-result = ProductPipeline.call(prompt: "Professional laptop photo")
+result = LLM::Image::ProductPipeline.call(prompt: "Professional laptop photo")
 result.success?        # true if all steps succeeded
 result.final_image     # Final processed image URL
 result.total_cost      # Combined cost of all steps
@@ -1640,27 +1848,31 @@ result.save("output.png")
 ### Defining Steps
 
 ```ruby
-class MyPipeline < ApplicationImagePipeline
-  # Generation step (text-to-image)
-  step :generate, generator: ProductGenerator
+module LLM
+  module Image
+    class MyPipeline < ApplicationImagePipeline
+      # Generation step (text-to-image)
+      step :generate, generator: ProductGenerator
 
-  # Upscaling step
-  step :upscale, upscaler: PhotoUpscaler, scale: 2
+      # Upscaling step
+      step :upscale, upscaler: PhotoUpscaler, scale: 2
 
-  # Transformation step (img2img)
-  step :transform, transformer: StyleTransformer, strength: 0.7
+      # Transformation step (img2img)
+      step :transform, transformer: StyleTransformer, strength: 0.7
 
-  # Editing step (inpainting)
-  step :edit, editor: PhotoEditor
+      # Editing step (inpainting)
+      step :edit, editor: PhotoEditor
 
-  # Variation step
-  step :vary, variator: ProductVariator
+      # Variation step
+      step :vary, variator: ProductVariator
 
-  # Analysis step (non-image output)
-  step :analyze, analyzer: ContentAnalyzer
+      # Analysis step (non-image output)
+      step :analyze, analyzer: ContentAnalyzer
 
-  # Background removal step
-  step :remove_bg, remover: BackgroundRemover
+      # Background removal step
+      step :remove_bg, remover: BackgroundRemover
+    end
+  end
 end
 ```
 
@@ -1681,20 +1893,24 @@ end
 Execute steps based on context:
 
 ```ruby
-class SmartPipeline < ApplicationImagePipeline
-  step :generate, generator: ProductGenerator
+module LLM
+  module Image
+    class SmartPipeline < ApplicationImagePipeline
+      step :generate, generator: ProductGenerator
 
-  # Only upscale if high_quality option is passed
-  step :upscale, upscaler: PhotoUpscaler, if: ->(ctx) { ctx[:high_quality] }
+      # Only upscale if high_quality option is passed
+      step :upscale, upscaler: PhotoUpscaler, if: ->(ctx) { ctx[:high_quality] }
 
-  # Skip background removal if keep_background is true
-  step :remove_bg, remover: BackgroundRemover, unless: ->(ctx) { ctx[:keep_background] }
+      # Skip background removal if keep_background is true
+      step :remove_bg, remover: BackgroundRemover, unless: ->(ctx) { ctx[:keep_background] }
 
-  step :analyze, analyzer: ProductAnalyzer
+      step :analyze, analyzer: ProductAnalyzer
+    end
+  end
 end
 
 # Usage with conditions
-result = SmartPipeline.call(
+result = LLM::Image::SmartPipeline.call(
   prompt: "Product photo",
   high_quality: true,      # Triggers upscale step
   keep_background: false   # Triggers remove_bg step
@@ -1706,10 +1922,14 @@ result = SmartPipeline.call(
 Pass options to individual steps:
 
 ```ruby
-class CustomPipeline < ApplicationImagePipeline
-  step :generate, generator: ProductGenerator, size: "1792x1024"
-  step :upscale, upscaler: PhotoUpscaler, scale: 4
-  step :transform, transformer: StyleTransformer, strength: 0.8
+module LLM
+  module Image
+    class CustomPipeline < ApplicationImagePipeline
+      step :generate, generator: ProductGenerator, size: "1792x1024"
+      step :upscale, upscaler: PhotoUpscaler, scale: 4
+      step :transform, transformer: StyleTransformer, strength: 0.8
+    end
+  end
 end
 ```
 
@@ -1718,30 +1938,34 @@ end
 Run code before or after the pipeline:
 
 ```ruby
-class CallbackPipeline < ApplicationImagePipeline
-  step :generate, generator: ProductGenerator
-  step :upscale, upscaler: PhotoUpscaler
+module LLM
+  module Image
+    class CallbackPipeline < ApplicationImagePipeline
+      step :generate, generator: ProductGenerator
+      step :upscale, upscaler: PhotoUpscaler
 
-  # Before callbacks
-  before_pipeline :validate_inputs
-  before_pipeline { |ctx| ctx[:started_at] = Time.current }
+      # Before callbacks
+      before_pipeline :validate_inputs
+      before_pipeline { |ctx| ctx[:started_at] = Time.current }
 
-  # After callbacks
-  after_pipeline :log_completion
-  after_pipeline { |result| notify_webhook(result) }
+      # After callbacks
+      after_pipeline :log_completion
+      after_pipeline { |result| notify_webhook(result) }
 
-  private
+      private
 
-  def validate_inputs
-    raise ArgumentError, "Prompt required" unless context[:prompt]
-  end
+      def validate_inputs
+        raise ArgumentError, "Prompt required" unless context[:prompt]
+      end
 
-  def log_completion(result)
-    Rails.logger.info("Pipeline #{self.class.name}: #{result.success?}")
-  end
+      def log_completion(result)
+        Rails.logger.info("Pipeline #{self.class.name}: #{result.success?}")
+      end
 
-  def notify_webhook(result)
-    WebhookService.notify(result.to_h)
+      def notify_webhook(result)
+        WebhookService.notify(result.to_h)
+      end
+    end
   end
 end
 ```
@@ -1749,19 +1973,23 @@ end
 ### Error Handling
 
 ```ruby
-class ResilientPipeline < ApplicationImagePipeline
-  step :generate, generator: ProductGenerator
-  step :upscale, upscaler: PhotoUpscaler
-  step :analyze, analyzer: ProductAnalyzer
+module LLM
+  module Image
+    class ResilientPipeline < ApplicationImagePipeline
+      step :generate, generator: ProductGenerator
+      step :upscale, upscaler: PhotoUpscaler
+      step :analyze, analyzer: ProductAnalyzer
 
-  # Stop pipeline on first error (default)
-  stop_on_error true
+      # Stop pipeline on first error (default)
+      stop_on_error true
 
-  # Or continue despite errors
-  # stop_on_error false
+      # Or continue despite errors
+      # stop_on_error false
+    end
+  end
 end
 
-result = ResilientPipeline.call(prompt: "Test")
+result = LLM::Image::ResilientPipeline.call(prompt: "Test")
 
 if result.partial?
   # Some steps succeeded, some failed
@@ -1772,25 +2000,33 @@ end
 ### Caching
 
 ```ruby
-class CachedPipeline < ApplicationImagePipeline
-  step :generate, generator: ProductGenerator
-  step :upscale, upscaler: PhotoUpscaler
+module LLM
+  module Image
+    class CachedPipeline < ApplicationImagePipeline
+      step :generate, generator: ProductGenerator
+      step :upscale, upscaler: PhotoUpscaler
 
-  cache_for 1.hour
+      cache_for 1.hour
 
-  # Version bump invalidates cache
-  version "2.0"
+      # Version bump invalidates cache
+      version "2.0"
+    end
+  end
 end
 ```
 
 ### Metadata
 
 ```ruby
-class DocumentedPipeline < ApplicationImagePipeline
-  step :generate, generator: ProductGenerator
+module LLM
+  module Image
+    class DocumentedPipeline < ApplicationImagePipeline
+      step :generate, generator: ProductGenerator
 
-  description "Generates professional product images"
-  version "1.0"
+      description "Generates professional product images"
+      version "1.0"
+    end
+  end
 end
 ```
 
@@ -1799,7 +2035,7 @@ end
 The result object provides access to all step results:
 
 ```ruby
-result = MyPipeline.call(prompt: "Test")
+result = LLM::Image::MyPipeline.call(prompt: "Test")
 
 # Status
 result.success?              # true if all steps succeeded
@@ -1848,24 +2084,28 @@ result.to_cache              # Cacheable format
 ### E-commerce Product Pipeline
 
 ```ruby
-class EcommercePipeline < ApplicationImagePipeline
-  # Generate professional product photo
-  step :generate, generator: ProductPhotoGenerator
+module LLM
+  module Image
+    class EcommercePipeline < ApplicationImagePipeline
+      # Generate professional product photo
+      step :generate, generator: ProductPhotoGenerator
 
-  # Upscale for high resolution
-  step :upscale, upscaler: PhotoUpscaler, scale: 2
+      # Upscale for high resolution
+      step :upscale, upscaler: PhotoUpscaler, scale: 2
 
-  # Remove background for transparent cutout
-  step :remove_bg, remover: ProductBackgroundRemover
+      # Remove background for transparent cutout
+      step :remove_bg, remover: ProductBackgroundRemover
 
-  # Analyze for auto-tagging
-  step :analyze, analyzer: ProductAnalyzer
+      # Analyze for auto-tagging
+      step :analyze, analyzer: ProductAnalyzer
 
-  description "Complete e-commerce product image workflow"
-  version "1.0"
+      description "Complete e-commerce product image workflow"
+      version "1.0"
+    end
+  end
 end
 
-result = EcommercePipeline.call(
+result = LLM::Image::EcommercePipeline.call(
   prompt: "Professional photo of wireless headphones",
   tenant: current_store
 )
@@ -1887,28 +2127,32 @@ end
 ### Content Moderation Pipeline
 
 ```ruby
-class ModerationPipeline < ApplicationImagePipeline
-  # Analyze uploaded content
-  step :analyze, analyzer: ContentModerationAnalyzer
+module LLM
+  module Image
+    class ModerationPipeline < ApplicationImagePipeline
+      # Analyze uploaded content
+      step :analyze, analyzer: ContentModerationAnalyzer
 
-  description "Content safety analysis"
-  version "1.0"
+      description "Content safety analysis"
+      version "1.0"
 
-  after_pipeline :log_moderation_result
+      after_pipeline :log_moderation_result
 
-  private
+      private
 
-  def log_moderation_result(result)
-    if result.analysis&.success?
-      Rails.logger.info(
-        "[Moderation] safe=#{result.analysis.safe?}, " \
-        "tags=#{result.analysis.tags.join(', ')}"
-      )
+      def log_moderation_result(result)
+        if result.analysis&.success?
+          Rails.logger.info(
+            "[Moderation] safe=#{result.analysis.safe?}, " \
+            "tags=#{result.analysis.tags.join(', ')}"
+          )
+        end
+      end
     end
   end
 end
 
-result = ModerationPipeline.call(image: uploaded_file.path)
+result = LLM::Image::ModerationPipeline.call(image: uploaded_file.path)
 
 if result.analysis&.safe?
   save_to_storage(uploaded_file)
@@ -1920,27 +2164,31 @@ end
 ### Marketing Asset Pipeline
 
 ```ruby
-class MarketingPipeline < ApplicationImagePipeline
-  step :generate, generator: MarketingImageGenerator, size: "1792x1024"
-  step :upscale, upscaler: PhotoUpscaler, scale: 2
+module LLM
+  module Image
+    class MarketingPipeline < ApplicationImagePipeline
+      step :generate, generator: MarketingImageGenerator, size: "1792x1024"
+      step :upscale, upscaler: PhotoUpscaler, scale: 2
 
-  cache_for 1.day
-  description "High-quality marketing asset generation"
-  version "1.0"
+      cache_for 1.day
+      description "High-quality marketing asset generation"
+      version "1.0"
 
-  before_pipeline :validate_prompt
+      before_pipeline :validate_prompt
 
-  private
+      private
 
-  def validate_prompt
-    prompt = context[:prompt]
-    raise ArgumentError, "Prompt required" if prompt.blank?
-    raise ArgumentError, "Prompt too short" if prompt.length < 10
+      def validate_prompt
+        prompt = context[:prompt]
+        raise ArgumentError, "Prompt required" if prompt.blank?
+        raise ArgumentError, "Prompt too short" if prompt.length < 10
+      end
+    end
   end
 end
 
 # Generate hero images for campaigns
-result = MarketingPipeline.call(
+result = LLM::Image::MarketingPipeline.call(
   prompt: "Modern tech startup team collaborating in bright office",
   tenant: current_organization
 )
@@ -1954,31 +2202,35 @@ campaign.hero_image.attach(
 ### Conditional Quality Pipeline
 
 ```ruby
-class QualityPipeline < ApplicationImagePipeline
-  step :generate, generator: ProductGenerator
+module LLM
+  module Image
+    class QualityPipeline < ApplicationImagePipeline
+      step :generate, generator: ProductGenerator
 
-  # Premium tier gets upscaling
-  step :upscale, upscaler: PhotoUpscaler, scale: 4,
-       if: ->(ctx) { ctx[:tier] == :premium }
+      # Premium tier gets upscaling
+      step :upscale, upscaler: PhotoUpscaler, scale: 4,
+           if: ->(ctx) { ctx[:tier] == :premium }
 
-  # Enterprise tier gets background removal
-  step :remove_bg, remover: BackgroundRemover,
-       if: ->(ctx) { ctx[:tier] == :enterprise }
+      # Enterprise tier gets background removal
+      step :remove_bg, remover: BackgroundRemover,
+           if: ->(ctx) { ctx[:tier] == :enterprise }
 
-  # Everyone gets analysis
-  step :analyze, analyzer: ProductAnalyzer
+      # Everyone gets analysis
+      step :analyze, analyzer: ProductAnalyzer
+    end
+  end
 end
 
 # Basic tier - just generate + analyze
-result = QualityPipeline.call(prompt: "Product", tier: :basic)
+result = LLM::Image::QualityPipeline.call(prompt: "Product", tier: :basic)
 result.step_count  # 2
 
 # Premium tier - generate + upscale + analyze
-result = QualityPipeline.call(prompt: "Product", tier: :premium)
+result = LLM::Image::QualityPipeline.call(prompt: "Product", tier: :premium)
 result.step_count  # 3
 
 # Enterprise tier - all steps
-result = QualityPipeline.call(prompt: "Product", tier: :enterprise)
+result = LLM::Image::QualityPipeline.call(prompt: "Product", tier: :enterprise)
 result.step_count  # 4
 ```
 

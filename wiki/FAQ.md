@@ -65,8 +65,10 @@ end
 ### How do I enable caching?
 
 ```ruby
-class MyAgent < ApplicationAgent
-  cache 1.hour  # Cache for 1 hour
+module LLM
+  class MyAgent < ApplicationAgent
+    cache 1.hour  # Cache for 1 hour
+  end
 end
 ```
 
@@ -85,7 +87,7 @@ config.dashboard_auth = ->(controller) {
 ### How do I call an agent?
 
 ```ruby
-result = MyAgent.call(query: "test")
+result = LLM::MyAgent.call(query: "test")
 result.content      # The response
 result.total_cost   # Cost in USD
 ```
@@ -93,11 +95,13 @@ result.total_cost   # Cost in USD
 ### How do I use streaming?
 
 ```ruby
-class StreamingAgent < ApplicationAgent
-  streaming true
+module LLM
+  class StreamingAgent < ApplicationAgent
+    streaming true
+  end
 end
 
-StreamingAgent.call(prompt: "Write a story") do |chunk|
+LLM::StreamingAgent.call(prompt: "Write a story") do |chunk|
   print chunk
 end
 ```
@@ -105,7 +109,7 @@ end
 ### How do I send images to an agent?
 
 ```ruby
-result = VisionAgent.call(
+result = LLM::VisionAgent.call(
   question: "Describe this image",
   with: "photo.jpg"
 )
@@ -125,7 +129,7 @@ end
 ### How do I debug an agent?
 
 ```ruby
-result = MyAgent.call(query: "test", dry_run: true)
+result = LLM::MyAgent.call(query: "test", dry_run: true)
 # Shows prompts without making API call
 ```
 

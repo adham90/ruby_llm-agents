@@ -20,27 +20,29 @@ We'll create a **SearchIntentAgent** that extracts search intent from natural la
 rails generate ruby_llm_agents:agent SearchIntent query:required limit:10
 ```
 
-This creates `app/agents/search_intent_agent.rb`:
+This creates `app/llm/agents/search_intent_agent.rb`:
 
 ```ruby
-class SearchIntentAgent < ApplicationAgent
-  model "gemini-2.0-flash"
-  temperature 0.0
-  version "1.0"
+module LLM
+  class SearchIntentAgent < ApplicationAgent
+    model "gemini-2.0-flash"
+    temperature 0.0
+    version "1.0"
 
-  param :query, required: true
-  param :limit, default: 10
+    param :query, required: true
+    param :limit, default: 10
 
-  private
+    private
 
-  def system_prompt
-    <<~PROMPT
-      You are a SearchIntentAgent.
-    PROMPT
-  end
+    def system_prompt
+      <<~PROMPT
+        You are a SearchIntentAgent.
+      PROMPT
+    end
 
-  def user_prompt
-    query
+    def user_prompt
+      query
+    end
   end
 end
 ```
@@ -110,43 +112,45 @@ end
 Here's the complete agent:
 
 ```ruby
-class SearchIntentAgent < ApplicationAgent
-  model "gpt-4o"
-  temperature 0.0
-  version "1.0"
-  cache 30.minutes
+module LLM
+  class SearchIntentAgent < ApplicationAgent
+    model "gpt-4o"
+    temperature 0.0
+    version "1.0"
+    cache 30.minutes
 
-  param :query, required: true
-  param :limit, default: 10
+    param :query, required: true
+    param :limit, default: 10
 
-  private
+    private
 
-  def system_prompt
-    <<~PROMPT
-      You are a search assistant that parses user queries and extracts
-      structured search filters. Analyze natural language and identify:
+    def system_prompt
+      <<~PROMPT
+        You are a search assistant that parses user queries and extracts
+        structured search filters. Analyze natural language and identify:
 
-      1. The core search query (cleaned and refined)
-      2. Any filters (color, size, price range, category, etc.)
-      3. The most likely product category
+        1. The core search query (cleaned and refined)
+        2. Any filters (color, size, price range, category, etc.)
+        3. The most likely product category
 
-      Be precise and extract only what's explicitly or strongly implied.
-    PROMPT
-  end
+        Be precise and extract only what's explicitly or strongly implied.
+      PROMPT
+    end
 
-  def user_prompt
-    <<~PROMPT
-      Extract search intent from: "#{query}"
-      Return up to #{limit} filters.
-    PROMPT
-  end
+    def user_prompt
+      <<~PROMPT
+        Extract search intent from: "#{query}"
+        Return up to #{limit} filters.
+      PROMPT
+    end
 
-  def schema
-    @schema ||= RubyLLM::Schema.create do
-      string :refined_query, description: "Cleaned search query"
-      array :filters, of: :string, description: "Filters as 'type:value'"
-      integer :category_id, description: "Category ID", nullable: true
-      number :confidence, description: "Confidence 0-1"
+    def schema
+      @schema ||= RubyLLM::Schema.create do
+        string :refined_query, description: "Cleaned search query"
+        array :filters, of: :string, description: "Filters as 'type:value'"
+        integer :category_id, description: "Category ID", nullable: true
+        number :confidence, description: "Confidence 0-1"
+      end
     end
   end
 end
@@ -156,7 +160,7 @@ end
 
 ```ruby
 # Basic call
-result = SearchIntentAgent.call(query: "red summer dress under $50")
+result = LLM::SearchIntentAgent.call(query: "red summer dress under $50")
 
 # Access structured response
 result.content
@@ -177,7 +181,7 @@ result[:filters]        # => ["color:red", "season:summer", "price:<50"]
 Every call includes rich metadata:
 
 ```ruby
-result = SearchIntentAgent.call(query: "blue jeans")
+result = LLM::SearchIntentAgent.call(query: "blue jeans")
 
 # Token usage
 result.input_tokens   # => 85
@@ -204,7 +208,7 @@ result.finish_reason  # => "stop"
 Test without making API calls:
 
 ```ruby
-result = SearchIntentAgent.call(query: "test", dry_run: true)
+result = LLM::SearchIntentAgent.call(query: "test", dry_run: true)
 
 # => {
 #   dry_run: true,
@@ -230,7 +234,7 @@ Visit `/agents` to see:
 ```ruby
 class SearchController < ApplicationController
   def search
-    result = SearchIntentAgent.call(query: params[:q])
+    result = LLM::SearchIntentAgent.call(query: params[:q])
 
     @products = Product.where(category_id: result[:category_id])
                        .search(result[:refined_query])
@@ -244,7 +248,7 @@ end
 ```ruby
 class SearchController < ApplicationController
   def search
-    result = SearchIntentAgent.call(query: params[:q])
+    result = LLM::SearchIntentAgent.call(query: params[:q])
 
     if result.success?
       @products = Product.search(result[:refined_query])

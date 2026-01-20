@@ -9,10 +9,12 @@ The Agent DSL provides a clean, declarative way to configure your AI agents.
 Set the LLM model for the agent:
 
 ```ruby
-class MyAgent < ApplicationAgent
-  model "gpt-4o"                    # OpenAI GPT-4
-  # model "claude-3-5-sonnet"       # Anthropic Claude
-  # model "gemini-2.0-flash"        # Google Gemini (default)
+module LLM
+  class MyAgent < ApplicationAgent
+    model "gpt-4o"                    # OpenAI GPT-4
+    # model "claude-3-5-sonnet"       # Anthropic Claude
+    # model "gemini-2.0-flash"        # Google Gemini (default)
+  end
 end
 ```
 
@@ -29,15 +31,17 @@ end
 Document what your agent does (displayed in dashboard and introspection):
 
 ```ruby
-class MyAgent < ApplicationAgent
-  description "Extracts search intent and filters from user queries"
+module LLM
+  class MyAgent < ApplicationAgent
+    description "Extracts search intent and filters from user queries"
+  end
 end
 ```
 
 Access programmatically:
 
 ```ruby
-MyAgent.description  # => "Extracts search intent and filters from user queries"
+LLM::MyAgent.description  # => "Extracts search intent and filters from user queries"
 ```
 
 ### temperature
@@ -45,10 +49,12 @@ MyAgent.description  # => "Extracts search intent and filters from user queries"
 Control response randomness (0.0 = deterministic, 2.0 = very random):
 
 ```ruby
-class MyAgent < ApplicationAgent
-  temperature 0.0   # Deterministic, best for classification
-  # temperature 0.7 # Balanced, good for general use
-  # temperature 1.0 # Creative, good for brainstorming
+module LLM
+  class MyAgent < ApplicationAgent
+    temperature 0.0   # Deterministic, best for classification
+    # temperature 0.7 # Balanced, good for general use
+    # temperature 1.0 # Creative, good for brainstorming
+  end
 end
 ```
 
@@ -57,8 +63,10 @@ end
 Version string for cache invalidation:
 
 ```ruby
-class MyAgent < ApplicationAgent
-  version "2.0"  # Changing this invalidates cached responses
+module LLM
+  class MyAgent < ApplicationAgent
+    version "2.0"  # Changing this invalidates cached responses
+  end
 end
 ```
 
@@ -67,9 +75,11 @@ end
 Maximum time for a single request (in seconds):
 
 ```ruby
-class MyAgent < ApplicationAgent
-  timeout 60     # Default
-  # timeout 120  # For slow/complex prompts
+module LLM
+  class MyAgent < ApplicationAgent
+    timeout 60     # Default
+    # timeout 120  # For slow/complex prompts
+  end
 end
 ```
 
@@ -78,10 +88,12 @@ end
 Enable response caching with TTL:
 
 ```ruby
-class MyAgent < ApplicationAgent
-  cache_for 1.hour     # Cache for 1 hour
-  # cache_for 30.minutes
-  # cache_for 1.day
+module LLM
+  class MyAgent < ApplicationAgent
+    cache_for 1.hour     # Cache for 1 hour
+    # cache_for 30.minutes
+    # cache_for 1.day
+  end
 end
 ```
 
@@ -90,8 +102,10 @@ end
 > **Deprecated:** Use `cache_for` instead. This method still works but may be removed in a future version.
 
 ```ruby
-class MyAgent < ApplicationAgent
-  cache 1.hour  # Deprecated - use cache_for instead
+module LLM
+  class MyAgent < ApplicationAgent
+    cache 1.hour  # Deprecated - use cache_for instead
+  end
 end
 ```
 
@@ -100,8 +114,10 @@ end
 Enable real-time response streaming:
 
 ```ruby
-class MyAgent < ApplicationAgent
-  streaming true
+module LLM
+  class MyAgent < ApplicationAgent
+    streaming true
+  end
 end
 ```
 
@@ -112,9 +128,11 @@ See [Streaming](Streaming) for details.
 Enable extended thinking/reasoning for supported models:
 
 ```ruby
-class MyAgent < ApplicationAgent
-  model "claude-opus-4-5-20250514"
-  thinking effort: :high, budget: 10000
+module LLM
+  class MyAgent < ApplicationAgent
+    model "claude-opus-4-5-20250514"
+    thinking effort: :high, budget: 10000
+  end
 end
 ```
 
@@ -125,15 +143,15 @@ end
 **Runtime override:**
 ```ruby
 # Override at call time
-MyAgent.call(query: "Complex problem", thinking: { effort: :high, budget: 15000 })
+LLM::MyAgent.call(query: "Complex problem", thinking: { effort: :high, budget: 15000 })
 
 # Disable for simple questions
-MyAgent.call(query: "Quick question", thinking: false)
+LLM::MyAgent.call(query: "Quick question", thinking: false)
 ```
 
 **Access thinking data:**
 ```ruby
-result = MyAgent.call(query: "Solve this...")
+result = LLM::MyAgent.call(query: "Solve this...")
 result.thinking_text   # The reasoning process
 result.has_thinking?   # Whether thinking was used
 result.thinking_tokens # Tokens used for thinking
@@ -146,20 +164,24 @@ See [Thinking](Thinking) for details on supported providers and best practices.
 Register tools for the agent to use:
 
 ```ruby
-class MyAgent < ApplicationAgent
-  tools [SearchTool, CalculatorTool, WeatherTool]
+module LLM
+  class MyAgent < ApplicationAgent
+    tools [SearchTool, CalculatorTool, WeatherTool]
+  end
 end
 ```
 
 For dynamic tool selection based on runtime context, override as an instance method:
 
 ```ruby
-class SmartAgent < ApplicationAgent
-  param :user_role
+module LLM
+  class SmartAgent < ApplicationAgent
+    param :user_role
 
-  def tools
-    base = [SearchTool, InfoTool]
-    user_role == "admin" ? base + [AdminTool] : base
+    def tools
+      base = [SearchTool, InfoTool]
+      user_role == "admin" ? base + [AdminTool] : base
+    end
   end
 end
 ```
@@ -173,21 +195,23 @@ See [Tools](Tools) for details.
 Define agent parameters:
 
 ```ruby
-class MyAgent < ApplicationAgent
-  # Required parameter - raises ArgumentError if missing
-  param :query, required: true
+module LLM
+  class MyAgent < ApplicationAgent
+    # Required parameter - raises ArgumentError if missing
+    param :query, required: true
 
-  # Optional parameter with default
-  param :limit, default: 10
+    # Optional parameter with default
+    param :limit, default: 10
 
-  # Optional parameter without default (nil)
-  param :filters
+    # Optional parameter without default (nil)
+    param :filters
 
-  # Parameter with type validation (v0.4.0+)
-  param :count, type: :integer, required: true
-  param :tags, type: :array, default: []
-  param :options, type: :hash
-  param :enabled, type: :boolean, default: true
+    # Parameter with type validation (v0.4.0+)
+    param :count, type: :integer, required: true
+    param :tags, type: :array, default: []
+    param :options, type: :hash
+    param :enabled, type: :boolean, default: true
+  end
 end
 ```
 
@@ -219,11 +243,13 @@ See [Parameters](Parameters) for details.
 Configure automatic retry behavior:
 
 ```ruby
-class MyAgent < ApplicationAgent
-  retries max: 3                              # Max 3 retries
-  retries max: 3, backoff: :exponential       # With exponential backoff
-  retries max: 3, backoff: :constant          # Fixed delay between retries
-  retries max: 3, base: 0.5, max_delay: 10.0  # Custom backoff timing
+module LLM
+  class MyAgent < ApplicationAgent
+    retries max: 3                              # Max 3 retries
+    retries max: 3, backoff: :exponential       # With exponential backoff
+    retries max: 3, backoff: :constant          # Fixed delay between retries
+    retries max: 3, base: 0.5, max_delay: 10.0  # Custom backoff timing
+  end
 end
 ```
 
@@ -234,9 +260,11 @@ See [Automatic Retries](Automatic-Retries) for details.
 Specify fallback models if primary fails:
 
 ```ruby
-class MyAgent < ApplicationAgent
-  model "gpt-4o"
-  fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
+module LLM
+  class MyAgent < ApplicationAgent
+    model "gpt-4o"
+    fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
+  end
 end
 ```
 
@@ -247,8 +275,10 @@ See [Model Fallbacks](Model-Fallbacks) for details.
 Prevent cascading failures:
 
 ```ruby
-class MyAgent < ApplicationAgent
-  circuit_breaker errors: 10, within: 60, cooldown: 300
+module LLM
+  class MyAgent < ApplicationAgent
+    circuit_breaker errors: 10, within: 60, cooldown: 300
+  end
 end
 ```
 
@@ -259,9 +289,11 @@ See [Circuit Breakers](Circuit-Breakers) for details.
 Maximum time for all attempts (including retries):
 
 ```ruby
-class MyAgent < ApplicationAgent
-  retries max: 5
-  total_timeout 30  # Abort everything after 30 seconds
+module LLM
+  class MyAgent < ApplicationAgent
+    retries max: 5
+    total_timeout 30  # Abort everything after 30 seconds
+  end
 end
 ```
 
@@ -270,14 +302,16 @@ end
 Group all reliability settings in a single block (v0.4.0+):
 
 ```ruby
-class MyAgent < ApplicationAgent
-  model "gpt-4o"
+module LLM
+  class MyAgent < ApplicationAgent
+    model "gpt-4o"
 
-  reliability do
-    retries max: 3, backoff: :exponential
-    fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
-    circuit_breaker errors: 10, within: 60, cooldown: 300
-    total_timeout 30
+    reliability do
+      retries max: 3, backoff: :exponential
+      fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
+      circuit_breaker errors: 10, within: 60, cooldown: 300
+      total_timeout 30
+    end
   end
 end
 ```
@@ -346,7 +380,7 @@ You can also pass messages at call-time or use the chainable `with_messages` met
 
 ```ruby
 # Call-time
-MyAgent.call(query: "Follow up", messages: [...])
+LLM::MyAgent.call(query: "Follow up", messages: [...])
 
 # Chainable
 agent.with_messages([...]).call
@@ -399,61 +433,63 @@ end
 ## Complete Example
 
 ```ruby
-class ContentGeneratorAgent < ApplicationAgent
-  model "gpt-4o"
-  description "Generates SEO-optimized blog articles from topics"
-  temperature 0.7
-  version "1.2"
-  timeout 90
-  cache_for 2.hours  # Use cache_for instead of cache
+module LLM
+  class ContentGeneratorAgent < ApplicationAgent
+    model "gpt-4o"
+    description "Generates SEO-optimized blog articles from topics"
+    temperature 0.7
+    version "1.2"
+    timeout 90
+    cache_for 2.hours  # Use cache_for instead of cache
 
-  # Grouped reliability configuration
-  reliability do
-    retries max: 3, backoff: :exponential
-    fallback_models "gpt-4o-mini"
-    total_timeout 120
-  end
-
-  param :topic, required: true
-  param :tone, default: "professional"
-  param :word_count, type: :integer, default: 500
-  param :user_id, type: :integer, required: true
-
-  private
-
-  def system_prompt
-    <<~PROMPT
-      You are a professional content writer.
-      Write in a #{tone} tone with clear structure.
-    PROMPT
-  end
-
-  def user_prompt
-    <<~PROMPT
-      Write a #{word_count}-word article about: #{topic}
-
-      Requirements:
-      - Clear introduction, body, and conclusion
-      - Use examples where relevant
-    PROMPT
-  end
-
-  def schema
-    @schema ||= RubyLLM::Schema.create do
-      string :title, description: "Article title"
-      string :content, description: "Full article content"
-      array :tags, of: :string, description: "Relevant tags"
+    # Grouped reliability configuration
+    reliability do
+      retries max: 3, backoff: :exponential
+      fallback_models "gpt-4o-mini"
+      total_timeout 120
     end
-  end
 
-  def process_response(response)
-    result = super(response)
-    result[:generated_at] = Time.current
-    result
-  end
+    param :topic, required: true
+    param :tone, default: "professional"
+    param :word_count, type: :integer, default: 500
+    param :user_id, type: :integer, required: true
 
-  def execution_metadata
-    { user_id: user_id, topic: topic }
+    private
+
+    def system_prompt
+      <<~PROMPT
+        You are a professional content writer.
+        Write in a #{tone} tone with clear structure.
+      PROMPT
+    end
+
+    def user_prompt
+      <<~PROMPT
+        Write a #{word_count}-word article about: #{topic}
+
+        Requirements:
+        - Clear introduction, body, and conclusion
+        - Use examples where relevant
+      PROMPT
+    end
+
+    def schema
+      @schema ||= RubyLLM::Schema.create do
+        string :title, description: "Article title"
+        string :content, description: "Full article content"
+        array :tags, of: :string, description: "Relevant tags"
+      end
+    end
+
+    def process_response(response)
+      result = super(response)
+      result[:generated_at] = Time.current
+      result
+    end
+
+    def execution_metadata
+      { user_id: user_id, topic: topic }
+    end
   end
 end
 ```
