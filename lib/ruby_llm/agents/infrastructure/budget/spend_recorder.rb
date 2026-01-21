@@ -42,11 +42,10 @@ module RubyLLM
           def record_tokens!(agent_type, tokens, tenant_id:, budget_config:)
             return if tokens.nil? || tokens <= 0
 
-            # Increment all relevant token counters
+            # Increment global token counters (daily and monthly)
+            # Note: We only track global token usage, not per-agent (scope is ignored in increment_tokens)
             increment_tokens(:global, :daily, tokens, tenant_id: tenant_id)
             increment_tokens(:global, :monthly, tokens, tenant_id: tenant_id)
-            increment_tokens(:agent, :daily, tokens, agent_type: agent_type, tenant_id: tenant_id)
-            increment_tokens(:agent, :monthly, tokens, agent_type: agent_type, tenant_id: tenant_id)
 
             # Check for soft cap alerts
             check_soft_token_alerts(agent_type, tenant_id, budget_config) if budget_config[:enabled]

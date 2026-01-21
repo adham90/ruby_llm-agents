@@ -69,16 +69,14 @@ RSpec.describe RubyLLM::Agents::Budget::SpendRecorder do
       }
     end
 
-    # NOTE: record_tokens! calls increment_tokens 4 times (global daily, global monthly, agent daily, agent monthly)
-    # but increment_tokens ignores scope parameter, so daily/monthly tokens are each incremented twice.
-    # This is documented behavior ("For now, we only track global token usage").
+    # NOTE: record_tokens! only tracks global token usage (not per-agent)
+    # increment_tokens is called twice: once for daily, once for monthly
 
-    it "increments token counters (note: doubled due to global+agent calls)" do
+    it "increments token counters" do
       described_class.record_tokens!("TestAgent", 1000, tenant_id: nil, budget_config: budget_config)
 
-      # Tokens are incremented twice per period (global + agent calls to same key)
-      expect(RubyLLM::Agents::Budget::BudgetQuery.current_tokens(:daily, tenant_id: nil)).to eq(2000)
-      expect(RubyLLM::Agents::Budget::BudgetQuery.current_tokens(:monthly, tenant_id: nil)).to eq(2000)
+      expect(RubyLLM::Agents::Budget::BudgetQuery.current_tokens(:daily, tenant_id: nil)).to eq(1000)
+      expect(RubyLLM::Agents::Budget::BudgetQuery.current_tokens(:monthly, tenant_id: nil)).to eq(1000)
     end
 
     it "skips recording when tokens is nil" do
@@ -96,13 +94,12 @@ RSpec.describe RubyLLM::Agents::Budget::SpendRecorder do
       expect(RubyLLM::Agents::Budget::BudgetQuery.current_tokens(:daily, tenant_id: nil)).to eq(0)
     end
 
-    it "records tokens with tenant isolation (note: doubled due to global+agent calls)" do
+    it "records tokens with tenant isolation" do
       described_class.record_tokens!("TestAgent", 1000, tenant_id: "org_123", budget_config: budget_config)
       described_class.record_tokens!("TestAgent", 500, tenant_id: "org_456", budget_config: budget_config)
 
-      # Tokens are incremented twice per period (global + agent calls to same key)
-      expect(RubyLLM::Agents::Budget::BudgetQuery.current_tokens(:daily, tenant_id: "org_123")).to eq(2000)
-      expect(RubyLLM::Agents::Budget::BudgetQuery.current_tokens(:daily, tenant_id: "org_456")).to eq(1000)
+      expect(RubyLLM::Agents::Budget::BudgetQuery.current_tokens(:daily, tenant_id: "org_123")).to eq(1000)
+      expect(RubyLLM::Agents::Budget::BudgetQuery.current_tokens(:daily, tenant_id: "org_456")).to eq(500)
     end
   end
 
@@ -394,9 +391,8 @@ RSpec.describe RubyLLM::Agents::Budget::SpendRecorder do
       it "triggers token_soft_cap alert when global daily tokens exceeded" do
         allow(RubyLLM::Agents::AlertManager).to receive(:notify)
 
-        # Note: record_tokens! calls increment_tokens twice per period (global + agent)
-        # So 600 tokens becomes 1200 in the counter
-        described_class.record_tokens!("TestAgent", 600, tenant_id: nil, budget_config: token_budget_config)
+        # Record 1100 tokens to exceed the 1000 limit
+        described_class.record_tokens!("TestAgent", 1100, tenant_id: nil, budget_config: token_budget_config)
 
         expect(RubyLLM::Agents::AlertManager).to have_received(:notify).with(
           :token_soft_cap,
@@ -408,7 +404,7 @@ RSpec.describe RubyLLM::Agents::Budget::SpendRecorder do
         hard_token_config = token_budget_config.merge(enforcement: :hard)
         allow(RubyLLM::Agents::AlertManager).to receive(:notify)
 
-        described_class.record_tokens!("TestAgent", 600, tenant_id: nil, budget_config: hard_token_config)
+        described_class.record_tokens!("TestAgent", 1100, tenant_id: nil, budget_config: hard_token_config)
 
         expect(RubyLLM::Agents::AlertManager).to have_received(:notify).with(
           :token_hard_cap,
@@ -419,7 +415,7 @@ RSpec.describe RubyLLM::Agents::Budget::SpendRecorder do
       it "does not trigger duplicate token alerts" do
         allow(RubyLLM::Agents::AlertManager).to receive(:notify)
 
-        described_class.record_tokens!("TestAgent", 600, tenant_id: nil, budget_config: token_budget_config)
+        described_class.record_tokens!("TestAgent", 1100, tenant_id: nil, budget_config: token_budget_config)
         described_class.record_tokens!("TestAgent", 100, tenant_id: nil, budget_config: token_budget_config)
 
         expect(RubyLLM::Agents::AlertManager).to have_received(:notify).with(
@@ -431,7 +427,7 @@ RSpec.describe RubyLLM::Agents::Budget::SpendRecorder do
       it "includes correct payload in token alert" do
         allow(RubyLLM::Agents::AlertManager).to receive(:notify)
 
-        described_class.record_tokens!("TestAgent", 600, tenant_id: "org_xyz", budget_config: token_budget_config)
+        described_class.record_tokens!("TestAgent", 1100, tenant_id: "org_xyz", budget_config: token_budget_config)
 
         expect(RubyLLM::Agents::AlertManager).to have_received(:notify).with(
           :token_soft_cap,

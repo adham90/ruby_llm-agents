@@ -91,6 +91,7 @@ RSpec.describe RubyLLM::Agents::Budget::BudgetQuery do
       RubyLLM::Agents::Budget::SpendRecorder.increment_spend(:global, :daily, 30.0, tenant_id: nil)
       RubyLLM::Agents::Budget::SpendRecorder.increment_spend(:global, :monthly, 300.0, tenant_id: nil)
       RubyLLM::Agents::Budget::SpendRecorder.increment_spend(:agent, :daily, 3.0, agent_type: "TestAgent", tenant_id: nil)
+      RubyLLM::Agents::Budget::SpendRecorder.increment_spend(:agent, :monthly, 30.0, agent_type: "TestAgent", tenant_id: nil)
     end
 
     it "returns remaining global daily budget" do
@@ -106,6 +107,17 @@ RSpec.describe RubyLLM::Agents::Budget::BudgetQuery do
     it "returns remaining per-agent daily budget" do
       result = described_class.remaining_budget(:agent, :daily, agent_type: "TestAgent", tenant_id: nil, budget_config: budget_config)
       expect(result).to eq(7.0)
+    end
+
+    it "returns remaining per-agent monthly budget" do
+      result = described_class.remaining_budget(:agent, :monthly, agent_type: "TestAgent", tenant_id: nil, budget_config: budget_config)
+      expect(result).to eq(70.0)
+    end
+
+    it "returns nil when no per-agent monthly limit configured" do
+      no_limit_config = budget_config.merge(per_agent_monthly: nil)
+      result = described_class.remaining_budget(:agent, :monthly, agent_type: "TestAgent", tenant_id: nil, budget_config: no_limit_config)
+      expect(result).to be_nil
     end
 
     it "returns nil when no limit configured" do

@@ -149,6 +149,53 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Budget do
         # Should not raise, should continue execution
         expect { middleware.call(context) }.not_to raise_error
       end
+
+      it "logs but does not fail on spend recording errors" do
+        context = build_context
+        context.total_cost = 0.05
+
+        allow(RubyLLM::Agents::BudgetTracker).to receive(:check!)
+        allow(app).to receive(:call) do |ctx|
+          ctx.output = "result"
+          ctx.total_cost = 0.05
+          ctx
+        end
+        allow(RubyLLM::Agents::BudgetTracker).to receive(:record_spend!).and_raise(
+          StandardError.new("Redis connection failed")
+        )
+
+        # Should not raise, should continue execution
+        expect { middleware.call(context) }.not_to raise_error
+      end
+
+      it "does not record spend when context is not successful" do
+        context = build_context
+        context.total_cost = 0.05
+
+        allow(RubyLLM::Agents::BudgetTracker).to receive(:check!)
+        allow(app).to receive(:call) do |ctx|
+          ctx.error = StandardError.new("Something went wrong")
+          ctx
+        end
+
+        expect(RubyLLM::Agents::BudgetTracker).not_to receive(:record_spend!)
+
+        middleware.call(context)
+      end
+    end
+
+    context "when budgets_enabled? raises an error" do
+      before do
+        allow(config).to receive(:budgets_enabled?).and_raise(StandardError.new("Config error"))
+      end
+
+      it "treats budgets as disabled and passes through" do
+        context = build_context
+        expect(app).to receive(:call).with(context).and_return(context)
+
+        result = middleware.call(context)
+        expect(result).to eq(context)
+      end
     end
   end
 end
