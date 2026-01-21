@@ -155,12 +155,6 @@ module RubyLlmAgents
     end
 
     def camelize(str)
-      # Handle special cases for common abbreviations
-      return "AI" if str.downcase == "ai"
-      return "ML" if str.downcase == "ml"
-      return "LLM" if str.downcase == "llm"
-
-      # Standard camelization
       str.split(/[-_]/).map(&:capitalize).join
     end
   end

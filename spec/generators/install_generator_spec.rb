@@ -67,14 +67,14 @@ RSpec.describe RubyLlmAgents::InstallGenerator, type: :generator do
       expect(content).to include("class ApplicationAgent < RubyLLM::Agents::Base")
     end
 
-    it "uses LLM namespace" do
+    it "uses Llm namespace" do
       content = file_content("app/llm/agents/application_agent.rb")
-      expect(content).to include("module LLM")
+      expect(content).to include("module Llm")
     end
 
     it "includes usage examples with namespace" do
       content = file_content("app/llm/agents/application_agent.rb")
-      expect(content).to include("LLM::MyAgent")
+      expect(content).to include("Llm::MyAgent")
     end
   end
 
@@ -86,9 +86,9 @@ RSpec.describe RubyLlmAgents::InstallGenerator, type: :generator do
       expect(content).to include("class ApplicationEmbedder < RubyLLM::Agents::Embedder")
     end
 
-    it "uses LLM::Text namespace" do
+    it "uses Llm::Text namespace" do
       content = file_content("app/llm/text/embedders/application_embedder.rb")
-      expect(content).to include("module LLM")
+      expect(content).to include("module Llm")
       expect(content).to include("module Text")
     end
 
@@ -109,15 +109,15 @@ RSpec.describe RubyLlmAgents::InstallGenerator, type: :generator do
       expect(directory_exists?("app/ai/text/embedders")).to be true
     end
 
-    it "uses AI namespace in application_agent.rb" do
+    it "uses Ai namespace in application_agent.rb" do
       content = file_content("app/ai/agents/application_agent.rb")
-      expect(content).to include("module AI")
-      expect(content).to include("AI::MyAgent")
+      expect(content).to include("module Ai")
+      expect(content).to include("Ai::MyAgent")
     end
 
-    it "uses AI::Text namespace in application_embedder.rb" do
+    it "uses Ai::Text namespace in application_embedder.rb" do
       content = file_content("app/ai/text/embedders/application_embedder.rb")
-      expect(content).to include("module AI")
+      expect(content).to include("module Ai")
       expect(content).to include("module Text")
     end
   end
