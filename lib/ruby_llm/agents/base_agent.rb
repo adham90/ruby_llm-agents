@@ -537,13 +537,12 @@ module RubyLLM
       # @param response [RubyLLM::Message] The response
       # @param context [Pipeline::Context] The context
       def capture_response(response, context)
-        usage = response.usage || {}
-        context.input_tokens = usage[:input_tokens]
-        context.output_tokens = usage[:output_tokens]
+        context.input_tokens = response.input_tokens
+        context.output_tokens = response.output_tokens
         context.model_used = response.model_id || model
         context.finish_reason = response.finish_reason
 
-        calculate_costs(response, context) if usage[:input_tokens]
+        calculate_costs(response, context) if context.input_tokens
       end
 
       # Calculates costs for the response
@@ -551,14 +550,12 @@ module RubyLLM
       # @param response [RubyLLM::Message] The response
       # @param context [Pipeline::Context] The context
       def calculate_costs(response, context)
-        usage = response.usage || {}
         model_info = find_model_info(response.model_id || model)
         return unless model_info
 
-        input_tokens = usage[:input_tokens] || 0
-        output_tokens = usage[:output_tokens] || 0
+        input_tokens = context.input_tokens || 0
+        output_tokens = context.output_tokens || 0
 
-        # Model::Info uses method access, not hash access
         input_price = extract_model_price(model_info, :input_price)
         output_price = extract_model_price(model_info, :output_price)
 
