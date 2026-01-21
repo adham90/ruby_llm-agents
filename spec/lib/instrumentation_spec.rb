@@ -354,6 +354,34 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
         def test_capture_response(response)
           capture_response(response)
         end
+
+        def test_redacted_system_prompt
+          redacted_system_prompt
+        end
+
+        def test_redacted_user_prompt
+          redacted_user_prompt
+        end
+
+        def test_redacted_response(response)
+          redacted_response(response)
+        end
+
+        def test_extract_routing_data(attempt_tracker, error)
+          extract_routing_data(attempt_tracker, error)
+        end
+
+        def test_serialize_tool_calls(response)
+          serialize_tool_calls(response)
+        end
+
+        def test_safe_serialize_response(response)
+          safe_serialize_response(response)
+        end
+
+        def test_record_cache_hit_execution(cache_key, cached_result, started_at)
+          record_cache_hit_execution(cache_key, cached_result, started_at)
+        end
       end
     end
 
@@ -771,6 +799,332 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
         result = test_instance.test_safe_user_prompt
 
         expect(result).to eq("Hello world")
+      end
+    end
+
+    describe "#redacted_system_prompt" do
+      it "returns nil when system prompt is nil" do
+        instance = test_class.new
+        allow(instance).to receive(:safe_system_prompt).and_return(nil)
+
+        result = instance.test_redacted_system_prompt
+
+        expect(result).to be_nil
+      end
+
+      it "redacts sensitive data from system prompt when patterns configured" do
+        RubyLLM::Agents.configure do |config|
+          config.redaction = { patterns: [/sk-[a-zA-Z0-9]+/] }
+        end
+        instance = test_class.new
+        allow(instance).to receive(:safe_system_prompt).and_return("API key is sk-secret123")
+
+        result = instance.test_redacted_system_prompt
+
+        expect(result).to include("[REDACTED]")
+        expect(result).not_to include("sk-secret123")
+      end
+
+      it "returns prompt unchanged when no patterns configured" do
+        RubyLLM::Agents.reset_configuration!
+        result = test_instance.test_redacted_system_prompt
+
+        expect(result).to eq("You are a test assistant.")
+      end
+    end
+
+    describe "#redacted_user_prompt" do
+      it "returns nil when user prompt is nil" do
+        instance = test_class.new
+        allow(instance).to receive(:safe_user_prompt).and_return(nil)
+
+        result = instance.test_redacted_user_prompt
+
+        expect(result).to be_nil
+      end
+
+      it "redacts sensitive data from user prompt when patterns configured" do
+        RubyLLM::Agents.configure do |config|
+          config.redaction = { patterns: [/sk-[a-zA-Z0-9]+/] }
+        end
+        instance = test_class.new
+        allow(instance).to receive(:safe_user_prompt).and_return("My API key is sk-myapikey123")
+
+        result = instance.test_redacted_user_prompt
+
+        expect(result).to include("[REDACTED]")
+        expect(result).not_to include("sk-myapikey123")
+      end
+
+      it "returns prompt unchanged when no patterns configured" do
+        RubyLLM::Agents.reset_configuration!
+        result = test_instance.test_redacted_user_prompt
+
+        expect(result).to eq("Hello world")
+      end
+    end
+
+    describe "#redacted_response" do
+      it "redacts sensitive data from response when patterns configured" do
+        RubyLLM::Agents.configure do |config|
+          config.redaction = { patterns: [/sk-[a-zA-Z0-9]+/] }
+        end
+        mock_response = double("Response",
+          content: "Here is your API key: sk-secret123",
+          model_id: "gpt-4",
+          input_tokens: 100,
+          output_tokens: 50,
+          cached_tokens: 0,
+          cache_creation_tokens: 0,
+          tool_calls: nil)
+        allow(mock_response).to receive(:respond_to?).and_return(true)
+
+        result = test_instance.test_redacted_response(mock_response)
+
+        expect(result[:content]).to include("[REDACTED]")
+        expect(result[:content]).not_to include("sk-secret123")
+      end
+
+      it "preserves non-sensitive data" do
+        RubyLLM::Agents.reset_configuration!
+        mock_response = double("Response",
+          content: "Hello world",
+          model_id: "gpt-4",
+          input_tokens: 100,
+          output_tokens: 50,
+          cached_tokens: 0,
+          cache_creation_tokens: 0,
+          tool_calls: nil)
+        allow(mock_response).to receive(:respond_to?).and_return(true)
+
+        result = test_instance.test_redacted_response(mock_response)
+
+        expect(result[:content]).to eq("Hello world")
+        expect(result[:model_id]).to eq("gpt-4")
+      end
+    end
+
+    describe "#extract_routing_data" do
+      let(:tracker) { RubyLLM::Agents::AttemptTracker.new }
+
+      it "returns empty hash when no fallback used" do
+        attempt = tracker.start_attempt("gpt-4")
+        mock_resp = double("Response", input_tokens: 100, output_tokens: 50, cached_tokens: 0, cache_creation_tokens: 0, model_id: "gpt-4")
+        tracker.complete_attempt(attempt, success: true, response: mock_resp)
+
+        result = test_instance.test_extract_routing_data(tracker, nil)
+
+        expect(result).to eq({})
+      end
+
+      it "includes fallback_reason when fallback was used" do
+        attempt1 = tracker.start_attempt("gpt-4")
+        tracker.complete_attempt(attempt1, success: false, error: StandardError.new("Error"))
+
+        attempt2 = tracker.start_attempt("gpt-3.5-turbo")
+        mock_resp = double("Response", input_tokens: 100, output_tokens: 50, cached_tokens: 0, cache_creation_tokens: 0, model_id: "gpt-3.5-turbo")
+        tracker.complete_attempt(attempt2, success: true, response: mock_resp)
+
+        result = test_instance.test_extract_routing_data(tracker, nil)
+
+        expect(result[:fallback_reason]).to eq("error")
+      end
+
+      it "includes retryable and rate_limited flags for errors" do
+        attempt = tracker.start_attempt("gpt-4")
+        mock_resp = double("Response", input_tokens: 100, output_tokens: 50, cached_tokens: 0, cache_creation_tokens: 0, model_id: "gpt-4")
+        tracker.complete_attempt(attempt, success: true, response: mock_resp)
+
+        error = Class.new(StandardError) { def self.name; "RateLimitError"; end }.new("Rate limited")
+        result = test_instance.test_extract_routing_data(tracker, error)
+
+        expect(result[:retryable]).to be true
+        expect(result[:rate_limited]).to be true
+      end
+
+      it "marks non-retryable errors correctly" do
+        attempt = tracker.start_attempt("gpt-4")
+        mock_resp = double("Response", input_tokens: 100, output_tokens: 50, cached_tokens: 0, cache_creation_tokens: 0, model_id: "gpt-4")
+        tracker.complete_attempt(attempt, success: true, response: mock_resp)
+
+        error = StandardError.new("Invalid input")
+        result = test_instance.test_extract_routing_data(tracker, error)
+
+        expect(result[:retryable]).to be false
+        expect(result[:rate_limited]).to be false
+      end
+    end
+
+    describe "#serialize_tool_calls" do
+      it "returns nil when no tool_calls" do
+        mock_response = double("Response")
+        allow(mock_response).to receive(:respond_to?).with(:tool_calls).and_return(false)
+
+        result = test_instance.test_serialize_tool_calls(mock_response)
+
+        expect(result).to be_nil
+      end
+
+      it "returns nil when tool_calls is empty" do
+        mock_response = double("Response", tool_calls: {})
+        allow(mock_response).to receive(:respond_to?).with(:tool_calls).and_return(true)
+
+        result = test_instance.test_serialize_tool_calls(mock_response)
+
+        expect(result).to be_nil
+      end
+
+      it "serializes tool calls with to_h method" do
+        tool_call = double("ToolCall")
+        allow(tool_call).to receive(:respond_to?).with(:to_h).and_return(true)
+        allow(tool_call).to receive(:to_h).and_return({ id: "call_1", name: "calculator", arguments: { x: 1, y: 2 } })
+
+        mock_response = double("Response", tool_calls: { "call_1" => tool_call })
+        allow(mock_response).to receive(:respond_to?).with(:tool_calls).and_return(true)
+
+        result = test_instance.test_serialize_tool_calls(mock_response)
+
+        expect(result).to be_an(Array)
+        expect(result.first[:name]).to eq("calculator")
+      end
+
+      it "serializes tool calls from hash without to_h" do
+        tool_call = double("ToolCall")
+        allow(tool_call).to receive(:respond_to?).with(:to_h).and_return(false)
+        allow(tool_call).to receive(:[]).with(:name).and_return("search")
+        allow(tool_call).to receive(:[]).with(:arguments).and_return({ query: "test" })
+
+        mock_response = double("Response", tool_calls: { "call_2" => tool_call })
+        allow(mock_response).to receive(:respond_to?).with(:tool_calls).and_return(true)
+
+        result = test_instance.test_serialize_tool_calls(mock_response)
+
+        expect(result).to be_an(Array)
+        expect(result.first[:id]).to eq("call_2")
+        expect(result.first[:name]).to eq("search")
+      end
+    end
+
+    describe "#safe_serialize_response" do
+      it "serializes response with all fields" do
+        mock_response = double("Response",
+          content: "Hello",
+          model_id: "gpt-4",
+          input_tokens: 100,
+          output_tokens: 50,
+          cached_tokens: 10,
+          cache_creation_tokens: 5,
+          tool_calls: nil)
+        allow(mock_response).to receive(:respond_to?).and_return(true)
+
+        result = test_instance.test_safe_serialize_response(mock_response)
+
+        expect(result[:content]).to eq("Hello")
+        expect(result[:model_id]).to eq("gpt-4")
+        expect(result[:input_tokens]).to eq(100)
+        expect(result[:output_tokens]).to eq(50)
+        expect(result[:cached_tokens]).to eq(10)
+      end
+
+      it "includes tool_calls from accumulated_tool_calls" do
+        test_instance.accumulated_tool_calls = [
+          { id: "call_1", name: "search", arguments: {} }
+        ]
+        mock_response = double("Response",
+          content: "Done",
+          model_id: "gpt-4",
+          input_tokens: 50,
+          output_tokens: 25,
+          cached_tokens: 0,
+          cache_creation_tokens: 0,
+          tool_calls: nil)
+        allow(mock_response).to receive(:respond_to?).and_return(true)
+
+        result = test_instance.test_safe_serialize_response(mock_response)
+
+        expect(result[:tool_calls]).to be_an(Array)
+        expect(result[:tool_calls].first[:name]).to eq("search")
+      end
+
+      it "compacts nil values" do
+        mock_response = double("Response",
+          content: nil,
+          model_id: nil,
+          input_tokens: 100,
+          output_tokens: 50,
+          cached_tokens: 0,
+          cache_creation_tokens: 0,
+          tool_calls: nil)
+        allow(mock_response).to receive(:respond_to?).and_return(true)
+
+        result = test_instance.test_safe_serialize_response(mock_response)
+
+        expect(result).not_to have_key(:content)
+        expect(result).not_to have_key(:model_id)
+        expect(result).to have_key(:input_tokens)
+      end
+    end
+
+    describe "#record_cache_hit_execution" do
+      before do
+        RubyLLM::Agents.reset_configuration!
+        RubyLLM::Agents.configure do |config|
+          config.async_logging = false
+        end
+      end
+
+      it "creates execution record with cache_hit: true" do
+        expect {
+          test_instance.test_record_cache_hit_execution("cache_key_123", { result: "cached" }, 1.second.ago)
+        }.to change(RubyLLM::Agents::Execution, :count).by(1)
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution.cache_hit).to be true
+        expect(execution.status).to eq("success")
+        expect(execution.total_cost).to eq(0)
+      end
+
+      it "sets token counts to zero" do
+        test_instance.test_record_cache_hit_execution("cache_key_123", { result: "cached" }, 1.second.ago)
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution.input_tokens).to eq(0)
+        expect(execution.output_tokens).to eq(0)
+        expect(execution.total_tokens).to eq(0)
+      end
+
+      it "records the cache key" do
+        test_instance.test_record_cache_hit_execution("my_cache_key", { result: "cached" }, 1.second.ago)
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution.response_cache_key).to eq("my_cache_key")
+      end
+
+      it "calculates duration_ms correctly" do
+        started_at = 0.1.seconds.ago
+        test_instance.test_record_cache_hit_execution("cache_key", { result: "cached" }, started_at)
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution.duration_ms).to be >= 100
+        expect(execution.duration_ms).to be < 500 # reasonable upper bound
+      end
+
+      it "uses async logging when configured" do
+        RubyLLM::Agents.configure do |config|
+          config.async_logging = true
+        end
+
+        expect(RubyLLM::Agents::ExecutionLoggerJob).to receive(:perform_later).with(hash_including(cache_hit: true))
+
+        test_instance.test_record_cache_hit_execution("cache_key", { result: "cached" }, 1.second.ago)
+      end
+
+      it "handles errors gracefully" do
+        allow(RubyLLM::Agents::Execution).to receive(:create!).and_raise(StandardError.new("DB error"))
+
+        expect {
+          test_instance.test_record_cache_hit_execution("cache_key", { result: "cached" }, 1.second.ago)
+        }.not_to raise_error
       end
     end
   end
