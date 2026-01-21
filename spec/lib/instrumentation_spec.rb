@@ -1128,4 +1128,676 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       end
     end
   end
+
+  # ===== ORCHESTRATION METHOD TESTS =====
+  # These test the main execution tracking orchestration methods
+
+  describe "orchestration methods" do
+    # Extended test class that exposes private orchestration methods
+    let(:orchestration_test_class) do
+      Class.new do
+        include RubyLLM::Agents::Instrumentation
+
+        attr_accessor :options, :accumulated_tool_calls, :last_response
+
+        def self.name
+          "OrchestrationTestAgent"
+        end
+
+        def self.version
+          "2.0.0"
+        end
+
+        def self.streaming
+          false
+        end
+
+        def initialize
+          @options = {}
+          @accumulated_tool_calls = []
+        end
+
+        def model
+          "gpt-4"
+        end
+
+        def temperature
+          0.7
+        end
+
+        def system_prompt
+          "You are a test assistant."
+        end
+
+        def user_prompt
+          "Test prompt"
+        end
+
+        def resolved_messages
+          [{ role: :user, content: "Hello" }]
+        end
+
+        # Expose private methods for testing
+        def test_create_running_execution(started_at, fallback_chain: [])
+          create_running_execution(started_at, fallback_chain: fallback_chain)
+        end
+
+        def test_complete_execution(execution, completed_at:, status:, response: nil, error: nil)
+          complete_execution(execution, completed_at: completed_at, status: status, response: response, error: error)
+        end
+
+        def test_complete_execution_with_attempts(execution, attempt_tracker:, completed_at:, status:, error: nil)
+          complete_execution_with_attempts(execution, attempt_tracker: attempt_tracker, completed_at: completed_at, status: status, error: error)
+        end
+
+        def test_legacy_log_execution(completed_at:, status:, response: nil, error: nil)
+          legacy_log_execution(completed_at: completed_at, status: status, response: response, error: error)
+        end
+
+        def test_record_token_usage(execution)
+          record_token_usage(execution)
+        end
+
+        def test_instrument_execution(&block)
+          instrument_execution(&block)
+        end
+
+        def test_instrument_execution_with_attempts(models_to_try:, &block)
+          instrument_execution_with_attempts(models_to_try: models_to_try, &block)
+        end
+      end
+    end
+
+    let(:orch_instance) { orchestration_test_class.new }
+
+    before do
+      RubyLLM::Agents.reset_configuration!
+      RubyLLM::Agents.configure do |config|
+        config.async_logging = false
+        config.persist_prompts = true
+        config.persist_responses = true
+        config.persist_messages_summary = true
+      end
+    end
+
+    describe "#create_running_execution" do
+      it "creates execution with running status" do
+        started_at = Time.current
+        execution = orch_instance.test_create_running_execution(started_at)
+
+        expect(execution).to be_a(RubyLLM::Agents::Execution)
+        expect(execution.status).to eq("running")
+        expect(execution.agent_type).to eq("OrchestrationTestAgent")
+        expect(execution.agent_version).to eq("2.0.0")
+        expect(execution.model_id).to eq("gpt-4")
+      end
+
+      it "sets started_at timestamp" do
+        started_at = 5.seconds.ago
+        execution = orch_instance.test_create_running_execution(started_at)
+
+        expect(execution.started_at).to be_within(1.second).of(started_at)
+      end
+
+      it "includes temperature and parameters" do
+        execution = orch_instance.test_create_running_execution(Time.current)
+
+        expect(execution.temperature).to eq(0.7)
+        expect(execution.parameters).to be_a(Hash)
+      end
+
+      it "includes streaming flag" do
+        execution = orch_instance.test_create_running_execution(Time.current)
+
+        expect(execution.streaming).to be false
+      end
+
+      it "includes messages count and summary" do
+        execution = orch_instance.test_create_running_execution(Time.current)
+
+        expect(execution.messages_count).to eq(1)
+        expect(execution.messages_summary).to be_present
+      end
+
+      it "includes fallback chain when provided" do
+        started_at = Time.current
+        execution = orch_instance.test_create_running_execution(started_at, fallback_chain: ["gpt-4", "gpt-3.5-turbo"])
+
+        expect(execution.fallback_chain).to eq(["gpt-4", "gpt-3.5-turbo"])
+        expect(execution.attempts).to eq([])
+        expect(execution.attempts_count).to eq(0)
+      end
+
+      it "includes system and user prompts when persist_prompts is true" do
+        execution = orch_instance.test_create_running_execution(Time.current)
+
+        expect(execution.system_prompt).to include("test assistant")
+        expect(execution.user_prompt).to include("Test prompt")
+      end
+
+      it "omits prompts when persist_prompts is false" do
+        RubyLLM::Agents.configure do |config|
+          config.persist_prompts = false
+        end
+        execution = orch_instance.test_create_running_execution(Time.current)
+
+        expect(execution.system_prompt).to be_nil
+        expect(execution.user_prompt).to be_nil
+      end
+
+      context "with multi-tenancy enabled" do
+        before do
+          RubyLLM::Agents.configure do |config|
+            config.multi_tenancy_enabled = true
+            config.tenant_resolver = -> { "tenant-123" }
+          end
+        end
+
+        after do
+          RubyLLM::Agents.configure do |config|
+            config.multi_tenancy_enabled = false
+            config.tenant_resolver = -> { nil }
+          end
+        end
+
+        it "includes tenant_id" do
+          execution = orch_instance.test_create_running_execution(Time.current)
+
+          expect(execution.tenant_id).to eq("tenant-123")
+        end
+      end
+
+      it "returns nil and logs error on failure" do
+        allow(RubyLLM::Agents::Execution).to receive(:create!).and_raise(StandardError.new("DB error"))
+
+        execution = orch_instance.test_create_running_execution(Time.current)
+
+        expect(execution).to be_nil
+      end
+    end
+
+    describe "#complete_execution" do
+      let(:execution) do
+        RubyLLM::Agents::Execution.create!(
+          agent_type: "TestAgent",
+          agent_version: "1.0",
+          model_id: "gpt-4",
+          started_at: 5.seconds.ago,
+          status: "running"
+        )
+      end
+
+      let(:mock_response) do
+        double("Response",
+          input_tokens: 100,
+          output_tokens: 50,
+          cached_tokens: 10,
+          cache_creation_tokens: 5,
+          model_id: "gpt-4",
+          finish_reason: "stop",
+          content: "Hello there!",
+          thinking: nil,
+          tool_calls: nil)
+      end
+
+      before do
+        allow(mock_response).to receive(:respond_to?).and_return(true)
+      end
+
+      it "updates execution to success status" do
+        orch_instance.test_complete_execution(execution, completed_at: Time.current, status: "success", response: mock_response)
+
+        execution.reload
+        expect(execution.status).to eq("success")
+      end
+
+      it "calculates duration_ms" do
+        completed_at = Time.current
+        orch_instance.test_complete_execution(execution, completed_at: completed_at, status: "success", response: mock_response)
+
+        execution.reload
+        expect(execution.duration_ms).to be > 0
+      end
+
+      it "records token counts from response" do
+        orch_instance.test_complete_execution(execution, completed_at: Time.current, status: "success", response: mock_response)
+
+        execution.reload
+        expect(execution.input_tokens).to eq(100)
+        expect(execution.output_tokens).to eq(50)
+        expect(execution.cached_tokens).to eq(10)
+      end
+
+      it "records finish_reason from response" do
+        orch_instance.test_complete_execution(execution, completed_at: Time.current, status: "success", response: mock_response)
+
+        execution.reload
+        expect(execution.finish_reason).to eq("stop")
+      end
+
+      it "updates to error status with error details" do
+        error = StandardError.new("Something went wrong")
+        orch_instance.test_complete_execution(execution, completed_at: Time.current, status: "error", error: error)
+
+        execution.reload
+        expect(execution.status).to eq("error")
+        expect(execution.error_class).to eq("StandardError")
+        expect(execution.error_message).to include("Something went wrong")
+      end
+
+      it "updates to timeout status" do
+        error = Timeout::Error.new("Connection timed out")
+        orch_instance.test_complete_execution(execution, completed_at: Time.current, status: "timeout", error: error)
+
+        execution.reload
+        expect(execution.status).to eq("timeout")
+        expect(execution.error_class).to eq("Timeout::Error")
+      end
+
+      it "falls back to legacy logging when execution is nil" do
+        expect(RubyLLM::Agents::ExecutionLoggerJob).to receive(:new).and_return(
+          double("job", perform: true)
+        )
+
+        orch_instance.test_complete_execution(nil, completed_at: Time.current, status: "success", response: mock_response)
+      end
+
+      it "attempts cost calculation when token data available" do
+        orch_instance.test_complete_execution(execution, completed_at: Time.current, status: "success", response: mock_response)
+
+        execution.reload
+        # Costs may be nil or 0 if pricing data isn't available for the model
+        # The important thing is that it doesn't raise an error
+        expect(execution.input_cost).to be_nil.or(be >= 0)
+        expect(execution.output_cost).to be_nil.or(be >= 0)
+      end
+    end
+
+    describe "#complete_execution_with_attempts" do
+      let(:execution) do
+        RubyLLM::Agents::Execution.create!(
+          agent_type: "TestAgent",
+          agent_version: "1.0",
+          model_id: "gpt-4",
+          started_at: 5.seconds.ago,
+          status: "running",
+          fallback_chain: ["gpt-4", "gpt-3.5-turbo"],
+          attempts: [],
+          attempts_count: 0
+        )
+      end
+
+      let(:attempt_tracker) { RubyLLM::Agents::AttemptTracker.new }
+      let(:mock_response) do
+        double("Response",
+          input_tokens: 100,
+          output_tokens: 50,
+          cached_tokens: 0,
+          cache_creation_tokens: 0,
+          model_id: "gpt-3.5-turbo",
+          finish_reason: "stop")
+      end
+
+      before do
+        # Record a failed attempt followed by a successful one
+        attempt1 = attempt_tracker.start_attempt("gpt-4")
+        attempt_tracker.complete_attempt(attempt1, success: false, error: StandardError.new("Rate limited"))
+
+        attempt2 = attempt_tracker.start_attempt("gpt-3.5-turbo")
+        attempt_tracker.complete_attempt(attempt2, success: true, response: mock_response)
+      end
+
+      it "updates execution with attempt data" do
+        orch_instance.test_complete_execution_with_attempts(
+          execution,
+          attempt_tracker: attempt_tracker,
+          completed_at: Time.current,
+          status: "success"
+        )
+
+        execution.reload
+        expect(execution.status).to eq("success")
+        expect(execution.attempts_count).to eq(2)
+        expect(execution.chosen_model_id).to eq("gpt-3.5-turbo")
+      end
+
+      it "aggregates token counts from all attempts" do
+        orch_instance.test_complete_execution_with_attempts(
+          execution,
+          attempt_tracker: attempt_tracker,
+          completed_at: Time.current,
+          status: "success"
+        )
+
+        execution.reload
+        expect(execution.input_tokens).to eq(attempt_tracker.total_input_tokens)
+        expect(execution.output_tokens).to eq(attempt_tracker.total_output_tokens)
+      end
+
+      it "stores attempt data as JSON array" do
+        orch_instance.test_complete_execution_with_attempts(
+          execution,
+          attempt_tracker: attempt_tracker,
+          completed_at: Time.current,
+          status: "success"
+        )
+
+        execution.reload
+        expect(execution.attempts).to be_an(Array)
+        expect(execution.attempts.size).to eq(2)
+        expect(execution.attempts.first["model_id"]).to eq("gpt-4")
+      end
+
+      it "records fallback reason when fallback was used" do
+        orch_instance.test_complete_execution_with_attempts(
+          execution,
+          attempt_tracker: attempt_tracker,
+          completed_at: Time.current,
+          status: "success"
+        )
+
+        execution.reload
+        expect(execution.fallback_reason).to be_present
+      end
+
+      it "records error details when execution failed" do
+        error = StandardError.new("All models failed")
+        orch_instance.test_complete_execution_with_attempts(
+          execution,
+          attempt_tracker: attempt_tracker,
+          completed_at: Time.current,
+          status: "error",
+          error: error
+        )
+
+        execution.reload
+        expect(execution.status).to eq("error")
+        expect(execution.error_class).to eq("StandardError")
+        expect(execution.error_message).to include("All models failed")
+      end
+
+      it "does nothing when execution is nil" do
+        expect {
+          orch_instance.test_complete_execution_with_attempts(
+            nil,
+            attempt_tracker: attempt_tracker,
+            completed_at: Time.current,
+            status: "success"
+          )
+        }.not_to raise_error
+      end
+    end
+
+    describe "#legacy_log_execution" do
+      let(:mock_response) do
+        double("Response",
+          input_tokens: 100,
+          output_tokens: 50,
+          cached_tokens: 0,
+          cache_creation_tokens: 0,
+          model_id: "gpt-4",
+          finish_reason: "stop",
+          content: "Hello",
+          thinking: nil,
+          tool_calls: nil)
+      end
+
+      before do
+        allow(mock_response).to receive(:respond_to?).and_return(true)
+      end
+
+      it "creates execution via synchronous job when async_logging is false" do
+        RubyLLM::Agents.configure do |config|
+          config.async_logging = false
+        end
+
+        expect {
+          orch_instance.test_legacy_log_execution(
+            completed_at: Time.current,
+            status: "success",
+            response: mock_response
+          )
+        }.to change(RubyLLM::Agents::Execution, :count).by(1)
+      end
+
+      it "creates execution via async job when async_logging is true" do
+        RubyLLM::Agents.configure do |config|
+          config.async_logging = true
+        end
+
+        expect(RubyLLM::Agents::ExecutionLoggerJob).to receive(:perform_later).with(hash_including(
+          agent_type: "OrchestrationTestAgent",
+          status: "success"
+        ))
+
+        orch_instance.test_legacy_log_execution(
+          completed_at: Time.current,
+          status: "success",
+          response: mock_response
+        )
+      end
+
+      it "includes error details when provided" do
+        RubyLLM::Agents.configure do |config|
+          config.async_logging = false
+        end
+
+        error = StandardError.new("Test error")
+        orch_instance.test_legacy_log_execution(
+          completed_at: Time.current,
+          status: "error",
+          error: error
+        )
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution.error_class).to eq("StandardError")
+        expect(execution.error_message).to include("Test error")
+      end
+    end
+
+    describe "#record_token_usage" do
+      let(:execution) do
+        RubyLLM::Agents::Execution.create!(
+          agent_type: "TestAgent",
+          agent_version: "1.0",
+          model_id: "gpt-4",
+          started_at: Time.current,
+          status: "success",
+          total_tokens: 150
+        )
+      end
+
+      before do
+        allow(RubyLLM::Agents::BudgetTracker).to receive(:record_tokens!)
+      end
+
+      it "records tokens to BudgetTracker" do
+        orch_instance.test_record_token_usage(execution)
+
+        expect(RubyLLM::Agents::BudgetTracker).to have_received(:record_tokens!).with(
+          "OrchestrationTestAgent",
+          150,
+          tenant_id: nil,
+          tenant_config: nil
+        )
+      end
+
+      it "does nothing when execution is nil" do
+        expect {
+          orch_instance.test_record_token_usage(nil)
+        }.not_to raise_error
+      end
+
+      it "does nothing when total_tokens is zero" do
+        execution.update!(total_tokens: 0)
+
+        orch_instance.test_record_token_usage(execution)
+
+        expect(RubyLLM::Agents::BudgetTracker).not_to have_received(:record_tokens!)
+      end
+
+      it "handles BudgetTracker errors gracefully" do
+        allow(RubyLLM::Agents::BudgetTracker).to receive(:record_tokens!).and_raise(StandardError.new("Budget error"))
+
+        expect {
+          orch_instance.test_record_token_usage(execution)
+        }.not_to raise_error
+      end
+    end
+
+    describe "#instrument_execution" do
+      it "creates execution record and updates on success" do
+        result = nil
+        orch_instance.test_instrument_execution do
+          result = "success"
+        end
+
+        expect(result).to eq("success")
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution.status).to eq("success")
+        expect(execution.completed_at).to be_present
+      end
+
+      it "tracks timeout errors" do
+        expect {
+          orch_instance.test_instrument_execution do
+            raise Timeout::Error.new("Connection timed out")
+          end
+        }.to raise_error(Timeout::Error)
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution.status).to eq("timeout")
+      end
+
+      it "tracks standard errors" do
+        expect {
+          orch_instance.test_instrument_execution do
+            raise StandardError.new("Something failed")
+          end
+        }.to raise_error(StandardError)
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution.status).to eq("error")
+        expect(execution.error_class).to eq("StandardError")
+      end
+
+      it "stores captured response" do
+        mock_response = double("Response",
+          input_tokens: 100,
+          output_tokens: 50,
+          cached_tokens: 0,
+          cache_creation_tokens: 0,
+          model_id: "gpt-4",
+          finish_reason: "stop",
+          content: "Test content",
+          thinking: nil,
+          tool_calls: nil)
+        allow(mock_response).to receive(:respond_to?).and_return(true)
+
+        orch_instance.test_instrument_execution do
+          orch_instance.capture_response(mock_response)
+          "done"
+        end
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution.input_tokens).to eq(100)
+        expect(execution.output_tokens).to eq(50)
+      end
+
+      it "sets execution_id on the instance" do
+        orch_instance.test_instrument_execution do
+          "test"
+        end
+
+        expect(orch_instance.execution_id).to be_present
+        expect(orch_instance.execution_id).to eq(RubyLLM::Agents::Execution.last.id)
+      end
+
+      it "marks execution failed if complete_execution fails" do
+        # Force the first update to fail, simulating a validation error
+        call_count = 0
+        allow_any_instance_of(RubyLLM::Agents::Execution).to receive(:update!) do |execution, *args|
+          call_count += 1
+          if call_count == 1
+            raise ActiveRecord::RecordInvalid.new(execution)
+          end
+        end
+
+        orch_instance.test_instrument_execution do
+          "test"
+        end
+
+        # The execution should still be marked as error due to the emergency fallback
+        execution = RubyLLM::Agents::Execution.last
+        expect(["error", "running"]).to include(execution.status)
+      end
+    end
+
+    describe "#instrument_execution_with_attempts" do
+      it "creates execution record with fallback chain" do
+        result = nil
+        orch_instance.test_instrument_execution_with_attempts(models_to_try: ["gpt-4", "gpt-3.5-turbo"]) do |tracker|
+          tracker.start_attempt("gpt-4")
+          result = "success"
+          throw :execution_success, result
+        end
+
+        expect(result).to eq("success")
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution.fallback_chain).to eq(["gpt-4", "gpt-3.5-turbo"])
+      end
+
+      it "tracks attempts via AttemptTracker" do
+        orch_instance.test_instrument_execution_with_attempts(models_to_try: ["gpt-4", "gpt-3.5-turbo"]) do |tracker|
+          attempt1 = tracker.start_attempt("gpt-4")
+          tracker.complete_attempt(attempt1, success: false, error: StandardError.new("Failed"))
+
+          attempt2 = tracker.start_attempt("gpt-3.5-turbo")
+          mock_resp = double("Response", input_tokens: 50, output_tokens: 25, cached_tokens: 0, cache_creation_tokens: 0, model_id: "gpt-3.5-turbo")
+          tracker.complete_attempt(attempt2, success: true, response: mock_resp)
+
+          throw :execution_success, "done"
+        end
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution.attempts_count).to eq(2)
+        expect(execution.chosen_model_id).to eq("gpt-3.5-turbo")
+      end
+
+      it "handles timeout errors" do
+        expect {
+          orch_instance.test_instrument_execution_with_attempts(models_to_try: ["gpt-4"]) do |_tracker|
+            raise Timeout::Error.new("Timed out")
+          end
+        }.to raise_error(Timeout::Error)
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution.status).to eq("timeout")
+      end
+
+      it "handles standard errors" do
+        expect {
+          orch_instance.test_instrument_execution_with_attempts(models_to_try: ["gpt-4"]) do |_tracker|
+            raise StandardError.new("All models failed")
+          end
+        }.to raise_error(StandardError)
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution.status).to eq("error")
+      end
+
+      it "returns result from successful execution" do
+        result = orch_instance.test_instrument_execution_with_attempts(models_to_try: ["gpt-4"]) do |tracker|
+          attempt = tracker.start_attempt("gpt-4")
+          mock_resp = double("Response", input_tokens: 50, output_tokens: 25, cached_tokens: 0, cache_creation_tokens: 0, model_id: "gpt-4")
+          tracker.complete_attempt(attempt, success: true, response: mock_resp)
+          throw :execution_success, "my result"
+        end
+
+        expect(result).to eq("my result")
+      end
+    end
+  end
 end

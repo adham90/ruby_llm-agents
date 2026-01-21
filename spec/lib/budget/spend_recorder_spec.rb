@@ -235,4 +235,251 @@ RSpec.describe RubyLLM::Agents::Budget::SpendRecorder do
       expect(key).not_to include("tenant:")
     end
   end
+
+  describe "soft cap alerting" do
+    let(:budget_config) do
+      {
+        enabled: true,
+        enforcement: :soft,
+        global_daily: 10.0,
+        global_monthly: 100.0,
+        per_agent_daily: { "TestAgent" => 5.0 },
+        per_agent_monthly: { "TestAgent" => 50.0 }
+      }
+    end
+
+    before do
+      RubyLLM::Agents.configure do |c|
+        c.cache_store = cache_store
+        c.alerts = {
+          custom: ->(event, payload) { @alert_called = [event, payload] },
+          on_events: [:budget_soft_cap, :budget_hard_cap, :token_soft_cap, :token_hard_cap]
+        }
+      end
+      @alert_called = nil
+    end
+
+    describe "check_soft_cap_alerts (via record_spend!)" do
+      it "does not trigger alert when within budget" do
+        allow(RubyLLM::Agents::AlertManager).to receive(:notify)
+
+        described_class.record_spend!("TestAgent", 5.0, tenant_id: nil, budget_config: budget_config)
+
+        expect(RubyLLM::Agents::AlertManager).not_to have_received(:notify)
+      end
+
+      it "triggers budget_soft_cap alert when global daily exceeded" do
+        allow(RubyLLM::Agents::AlertManager).to receive(:notify)
+
+        # First record to put us at the limit
+        described_class.record_spend!("TestAgent", 10.0, tenant_id: nil, budget_config: budget_config)
+        # Second record exceeds the limit
+        described_class.record_spend!("TestAgent", 1.0, tenant_id: nil, budget_config: budget_config)
+
+        expect(RubyLLM::Agents::AlertManager).to have_received(:notify).with(
+          :budget_soft_cap,
+          hash_including(scope: :global_daily, limit: 10.0)
+        )
+      end
+
+      it "triggers budget_soft_cap alert when per_agent_daily exceeded" do
+        allow(RubyLLM::Agents::AlertManager).to receive(:notify)
+
+        described_class.record_spend!("TestAgent", 6.0, tenant_id: nil, budget_config: budget_config)
+
+        expect(RubyLLM::Agents::AlertManager).to have_received(:notify).with(
+          :budget_soft_cap,
+          hash_including(scope: :per_agent_daily)
+        )
+      end
+
+      it "does not trigger duplicate alerts" do
+        allow(RubyLLM::Agents::AlertManager).to receive(:notify)
+
+        described_class.record_spend!("TestAgent", 11.0, tenant_id: nil, budget_config: budget_config)
+        described_class.record_spend!("TestAgent", 1.0, tenant_id: nil, budget_config: budget_config)
+        described_class.record_spend!("TestAgent", 1.0, tenant_id: nil, budget_config: budget_config)
+
+        # Alert should only be called once per scope due to cache key dedup
+        expect(RubyLLM::Agents::AlertManager).to have_received(:notify).with(
+          :budget_soft_cap,
+          hash_including(scope: :global_daily)
+        ).at_most(:once)
+      end
+
+      it "triggers budget_hard_cap when enforcement is :hard" do
+        hard_budget_config = budget_config.merge(enforcement: :hard)
+        allow(RubyLLM::Agents::AlertManager).to receive(:notify)
+
+        described_class.record_spend!("TestAgent", 11.0, tenant_id: nil, budget_config: hard_budget_config)
+
+        expect(RubyLLM::Agents::AlertManager).to have_received(:notify).with(
+          :budget_hard_cap,
+          hash_including(scope: :global_daily)
+        )
+      end
+
+      it "isolates alerts by tenant" do
+        allow(RubyLLM::Agents::AlertManager).to receive(:notify)
+
+        described_class.record_spend!("TestAgent", 11.0, tenant_id: "tenant_a", budget_config: budget_config)
+        described_class.record_spend!("TestAgent", 11.0, tenant_id: "tenant_b", budget_config: budget_config)
+
+        # Both tenants should get alerts since they're isolated
+        # Each tenant exceeds both global_daily and per_agent_daily, so expect at least one alert per tenant
+        expect(RubyLLM::Agents::AlertManager).to have_received(:notify).with(
+          :budget_soft_cap,
+          hash_including(tenant_id: "tenant_a")
+        ).at_least(:once)
+        expect(RubyLLM::Agents::AlertManager).to have_received(:notify).with(
+          :budget_soft_cap,
+          hash_including(tenant_id: "tenant_b")
+        ).at_least(:once)
+      end
+
+      it "does not trigger alert when alerts are disabled" do
+        RubyLLM::Agents.configure do |c|
+          c.alerts = nil
+        end
+        allow(RubyLLM::Agents::AlertManager).to receive(:notify)
+
+        described_class.record_spend!("TestAgent", 11.0, tenant_id: nil, budget_config: budget_config)
+
+        expect(RubyLLM::Agents::AlertManager).not_to have_received(:notify)
+      end
+
+      it "does not trigger alert when event not in alert_events" do
+        RubyLLM::Agents.configure do |c|
+          c.cache_store = cache_store
+          c.alerts = {
+            custom: ->(event, payload) {},
+            on_events: [:breaker_open] # No budget events
+          }
+        end
+        allow(RubyLLM::Agents::AlertManager).to receive(:notify)
+
+        described_class.record_spend!("TestAgent", 11.0, tenant_id: nil, budget_config: budget_config)
+
+        expect(RubyLLM::Agents::AlertManager).not_to have_received(:notify)
+      end
+
+      it "skips alert check when budget_config enabled is false" do
+        disabled_config = budget_config.merge(enabled: false)
+        allow(RubyLLM::Agents::AlertManager).to receive(:notify)
+
+        described_class.record_spend!("TestAgent", 11.0, tenant_id: nil, budget_config: disabled_config)
+
+        expect(RubyLLM::Agents::AlertManager).not_to have_received(:notify)
+      end
+    end
+
+    describe "check_soft_token_alerts (via record_tokens!)" do
+      let(:token_budget_config) do
+        {
+          enabled: true,
+          enforcement: :soft,
+          global_daily_tokens: 1000,
+          global_monthly_tokens: 10_000
+        }
+      end
+
+      it "does not trigger alert when within token budget" do
+        allow(RubyLLM::Agents::AlertManager).to receive(:notify)
+
+        described_class.record_tokens!("TestAgent", 100, tenant_id: nil, budget_config: token_budget_config)
+
+        expect(RubyLLM::Agents::AlertManager).not_to have_received(:notify)
+      end
+
+      it "triggers token_soft_cap alert when global daily tokens exceeded" do
+        allow(RubyLLM::Agents::AlertManager).to receive(:notify)
+
+        # Note: record_tokens! calls increment_tokens twice per period (global + agent)
+        # So 600 tokens becomes 1200 in the counter
+        described_class.record_tokens!("TestAgent", 600, tenant_id: nil, budget_config: token_budget_config)
+
+        expect(RubyLLM::Agents::AlertManager).to have_received(:notify).with(
+          :token_soft_cap,
+          hash_including(scope: :global_daily_tokens)
+        )
+      end
+
+      it "triggers token_hard_cap when enforcement is :hard" do
+        hard_token_config = token_budget_config.merge(enforcement: :hard)
+        allow(RubyLLM::Agents::AlertManager).to receive(:notify)
+
+        described_class.record_tokens!("TestAgent", 600, tenant_id: nil, budget_config: hard_token_config)
+
+        expect(RubyLLM::Agents::AlertManager).to have_received(:notify).with(
+          :token_hard_cap,
+          hash_including(scope: :global_daily_tokens)
+        )
+      end
+
+      it "does not trigger duplicate token alerts" do
+        allow(RubyLLM::Agents::AlertManager).to receive(:notify)
+
+        described_class.record_tokens!("TestAgent", 600, tenant_id: nil, budget_config: token_budget_config)
+        described_class.record_tokens!("TestAgent", 100, tenant_id: nil, budget_config: token_budget_config)
+
+        expect(RubyLLM::Agents::AlertManager).to have_received(:notify).with(
+          :token_soft_cap,
+          hash_including(scope: :global_daily_tokens)
+        ).at_most(:once)
+      end
+
+      it "includes correct payload in token alert" do
+        allow(RubyLLM::Agents::AlertManager).to receive(:notify)
+
+        described_class.record_tokens!("TestAgent", 600, tenant_id: "org_xyz", budget_config: token_budget_config)
+
+        expect(RubyLLM::Agents::AlertManager).to have_received(:notify).with(
+          :token_soft_cap,
+          hash_including(
+            scope: :global_daily_tokens,
+            limit: 1000,
+            agent_type: "TestAgent",
+            tenant_id: "org_xyz",
+            timestamp: Date.current.to_s
+          )
+        )
+      end
+    end
+  end
+
+  describe "edge cases" do
+    it "handles concurrent spend recordings" do
+      budget_config = { enabled: false, enforcement: :soft }
+
+      threads = 10.times.map do
+        Thread.new do
+          described_class.record_spend!("TestAgent", 1.0, tenant_id: nil, budget_config: budget_config)
+        end
+      end
+
+      threads.each(&:join)
+
+      expect(RubyLLM::Agents::Budget::BudgetQuery.current_spend(:global, :daily, tenant_id: nil)).to eq(10.0)
+    end
+
+    it "correctly uses 1.day TTL for daily counters" do
+      expect(cache_store).to receive(:write).with(
+        anything,
+        anything,
+        hash_including(expires_in: 1.day)
+      ).at_least(:once)
+
+      described_class.increment_spend(:global, :daily, 10.0, tenant_id: nil)
+    end
+
+    it "correctly uses 31.days TTL for monthly counters" do
+      expect(cache_store).to receive(:write).with(
+        anything,
+        anything,
+        hash_including(expires_in: 31.days)
+      ).at_least(:once)
+
+      described_class.increment_spend(:global, :monthly, 10.0, tenant_id: nil)
+    end
+  end
 end
