@@ -424,5 +424,107 @@ RSpec.describe RubyLLM::Agents::LLMTenant do
     it "supports custom date ranges" do
       expect(organization.llm_cost(period: 2.days.ago..Time.current)).to eq(1.5)
     end
+
+    it "filters tokens by this month" do
+      expect(organization.llm_tokens_this_month).to eq(0)
+    end
+
+    it "filters by yesterday" do
+      expect(organization.llm_cost(period: :yesterday)).to eq(1.0)
+    end
+
+    it "filters by this week" do
+      expect(organization.llm_cost(period: :this_week)).to eq(1.5)
+    end
+  end
+
+  describe "#llm_budget_status" do
+    it "returns budget status from BudgetTracker" do
+      allow(RubyLLM::Agents::BudgetTracker).to receive(:status).and_return({
+        enabled: true,
+        global_daily: { remaining: 50, percentage_used: 50 }
+      })
+
+      status = organization.llm_budget_status
+      expect(status[:enabled]).to be true
+    end
+  end
+
+  describe "#llm_within_budget?" do
+    it "returns true when budget is disabled" do
+      allow(RubyLLM::Agents::BudgetTracker).to receive(:status).and_return({
+        enabled: false
+      })
+
+      expect(organization.llm_within_budget?).to be true
+    end
+
+    it "returns true when under budget" do
+      allow(RubyLLM::Agents::BudgetTracker).to receive(:status).and_return({
+        enabled: true,
+        global_daily: { percentage_used: 50 }
+      })
+
+      expect(organization.llm_within_budget?(type: :daily_cost)).to be true
+    end
+
+    it "returns false when over budget" do
+      allow(RubyLLM::Agents::BudgetTracker).to receive(:status).and_return({
+        enabled: true,
+        global_daily: { percentage_used: 100 }
+      })
+
+      expect(organization.llm_within_budget?(type: :daily_cost)).to be false
+    end
+
+    it "supports different budget types" do
+      allow(RubyLLM::Agents::BudgetTracker).to receive(:status).and_return({
+        enabled: true,
+        global_monthly: { percentage_used: 75 },
+        global_daily_tokens: { percentage_used: 90 }
+      })
+
+      expect(organization.llm_within_budget?(type: :monthly_cost)).to be true
+      expect(organization.llm_within_budget?(type: :daily_tokens)).to be true
+    end
+  end
+
+  describe "#llm_remaining_budget" do
+    it "returns remaining budget from status" do
+      allow(RubyLLM::Agents::BudgetTracker).to receive(:status).and_return({
+        enabled: true,
+        global_daily: { remaining: 50.0 }
+      })
+
+      expect(organization.llm_remaining_budget(type: :daily_cost)).to eq(50.0)
+    end
+
+    it "returns remaining for different budget types" do
+      allow(RubyLLM::Agents::BudgetTracker).to receive(:status).and_return({
+        enabled: true,
+        global_monthly: { remaining: 200.0 },
+        global_daily_tokens: { remaining: 10000 },
+        global_monthly_tokens: { remaining: 50000 },
+        global_daily_executions: { remaining: 100 },
+        global_monthly_executions: { remaining: 500 }
+      })
+
+      expect(organization.llm_remaining_budget(type: :monthly_cost)).to eq(200.0)
+      expect(organization.llm_remaining_budget(type: :daily_tokens)).to eq(10000)
+      expect(organization.llm_remaining_budget(type: :monthly_tokens)).to eq(50000)
+      expect(organization.llm_remaining_budget(type: :daily_executions)).to eq(100)
+      expect(organization.llm_remaining_budget(type: :monthly_executions)).to eq(500)
+    end
+  end
+
+  describe "#llm_check_budget!" do
+    it "delegates to BudgetTracker.check_budget!" do
+      expect(RubyLLM::Agents::BudgetTracker).to receive(:check_budget!).with(
+        "TestOrganization",
+        tenant_id: organization.llm_tenant_id
+      )
+
+      organization.llm_check_budget!
+    end
   end
 end

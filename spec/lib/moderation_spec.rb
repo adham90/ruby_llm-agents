@@ -672,6 +672,173 @@ RSpec.describe "Moderation Support" do
         config = { phases: [:input], categories: [:hate, :violence], on_flagged: :block }
         expect(agent.send(:content_flagged?, result, config, :input)).to be false
       end
+
+      it "uses phase-specific threshold" do
+        result = mock_moderation_result(
+          flagged: true,
+          categories: [:hate],
+          scores: { hate: 0.7 }
+        )
+        config = { phases: [:input], input_threshold: 0.6, on_flagged: :block }
+        expect(agent.send(:content_flagged?, result, config, :input)).to be true
+
+        config_high = { phases: [:input], input_threshold: 0.8, on_flagged: :block }
+        expect(agent.send(:content_flagged?, result, config_high, :input)).to be false
+      end
+
+      it "returns false when scores are nil" do
+        result = mock_moderation_result(
+          flagged: true,
+          categories: [:hate],
+          scores: {}
+        )
+        config = { phases: [:input], threshold: 0.8, on_flagged: :block }
+        expect(agent.send(:content_flagged?, result, config, :input)).to be false
+      end
+    end
+
+    describe "#handle_flagged_content" do
+      let(:agent) { agent_class.new }
+      let(:result) { mock_moderation_result(flagged: true, categories: [:hate]) }
+
+      it "raises ModerationError when on_flagged is :raise" do
+        config = { phases: [:input], on_flagged: :raise }
+        expect {
+          agent.send(:handle_flagged_content, result, config, :input)
+        }.to raise_error(RubyLLM::Agents::ModerationError)
+      end
+
+      it "sets moderation_blocked when on_flagged is :block" do
+        config = { phases: [:input], on_flagged: :block }
+        agent.send(:handle_flagged_content, result, config, :input)
+        expect(agent.moderation_blocked?).to be true
+        expect(agent.moderation_blocked_phase).to eq(:input)
+      end
+
+      it "logs warning when on_flagged is :warn" do
+        config = { phases: [:input], on_flagged: :warn }
+        expect(Rails.logger).to receive(:warn).with(/Content flagged/)
+        agent.send(:handle_flagged_content, result, config, :input)
+      end
+
+      it "logs info when on_flagged is :log" do
+        config = { phases: [:input], on_flagged: :log }
+        expect(Rails.logger).to receive(:info).with(/Content flagged/)
+        agent.send(:handle_flagged_content, result, config, :input)
+      end
+
+      it "calls custom handler when configured" do
+        agent_with_handler = create_agent_class do
+          moderation :input, custom_handler: :my_custom_handler
+
+          def my_custom_handler(result, phase)
+            @custom_handler_called = true
+            :continue
+          end
+
+          attr_reader :custom_handler_called
+
+          def system_prompt
+            "Test"
+          end
+
+          def user_prompt
+            "Test"
+          end
+        end.new
+
+        config = { phases: [:input], custom_handler: :my_custom_handler }
+        agent_with_handler.send(:handle_flagged_content, result, config, :input)
+        expect(agent_with_handler.custom_handler_called).to be true
+      end
+    end
+
+    describe "#normalize_category" do
+      let(:agent) { agent_class.new }
+
+      it "normalizes slashes to underscores" do
+        expect(agent.send(:normalize_category, "hate/threatening")).to eq(:hate_threatening)
+      end
+
+      it "normalizes hyphens to underscores" do
+        expect(agent.send(:normalize_category, "self-harm")).to eq(:self_harm)
+      end
+
+      it "converts to lowercase symbol" do
+        expect(agent.send(:normalize_category, "HATE")).to eq(:hate)
+      end
+
+      it "handles symbols" do
+        expect(agent.send(:normalize_category, :hate)).to eq(:hate)
+      end
+    end
+
+    describe "#default_moderation_model" do
+      let(:agent) { agent_class.new }
+
+      it "returns the configured default model" do
+        expect(agent.send(:default_moderation_model)).to eq("omni-moderation-latest")
+      end
+    end
+
+    describe "#build_moderation_input" do
+      it "returns string prompt as-is" do
+        agent = create_agent_class do
+          def system_prompt
+            "System"
+          end
+
+          def user_prompt
+            "Hello world"
+          end
+        end.new
+
+        expect(agent.send(:build_moderation_input)).to eq("Hello world")
+      end
+
+      it "joins array prompts with newlines" do
+        agent = create_agent_class do
+          def system_prompt
+            "System"
+          end
+
+          def user_prompt
+            ["First message", "Second message"]
+          end
+        end.new
+
+        expect(agent.send(:build_moderation_input)).to eq("First message\nSecond message")
+      end
+
+      it "extracts content from hash prompts" do
+        agent = create_agent_class do
+          def system_prompt
+            "System"
+          end
+
+          def user_prompt
+            [{ content: "Message one" }, { content: "Message two" }]
+          end
+        end.new
+
+        expect(agent.send(:build_moderation_input)).to eq("Message one\nMessage two")
+      end
+    end
+
+    describe "#moderation_blocked?" do
+      let(:agent) { agent_class.new }
+
+      it "returns false by default" do
+        expect(agent.moderation_blocked?).to be false
+      end
+    end
+
+    describe "#moderation_results" do
+      let(:agent) { agent_class.new }
+
+      it "returns empty hash by default" do
+        expect(agent.moderation_results).to eq({})
+      end
     end
   end
 

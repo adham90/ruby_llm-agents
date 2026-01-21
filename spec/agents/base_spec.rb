@@ -751,4 +751,227 @@ RSpec.describe RubyLLM::Agents::Base do
       end
     end
   end
+
+  describe ".agent_type" do
+    it "returns :conversation" do
+      expect(described_class.agent_type).to eq(:conversation)
+    end
+  end
+
+  describe "#resolved_tenant_id" do
+    let(:agent_class) do
+      Class.new(described_class) do
+        model "gpt-4"
+        param :query, required: true
+
+        def user_prompt
+          query
+        end
+      end
+    end
+
+    it "returns nil when no tenant is resolved" do
+      agent = agent_class.new(query: "test")
+      allow(agent).to receive(:resolve_tenant).and_return(nil)
+
+      expect(agent.resolved_tenant_id).to be_nil
+    end
+
+    it "returns id from hash tenant" do
+      agent = agent_class.new(query: "test")
+      allow(agent).to receive(:resolve_tenant).and_return({ id: 123 })
+
+      expect(agent.resolved_tenant_id).to eq("123")
+    end
+
+    it "returns nil when tenant hash has no id" do
+      agent = agent_class.new(query: "test")
+      allow(agent).to receive(:resolve_tenant).and_return({ name: "Test Tenant" })
+
+      expect(agent.resolved_tenant_id).to be_nil
+    end
+  end
+
+  describe "#execution_model_available?" do
+    let(:agent_class) do
+      Class.new(described_class) do
+        model "gpt-4"
+        param :query, required: true
+
+        def user_prompt
+          query
+        end
+      end
+    end
+
+    it "returns true when Execution table exists" do
+      agent = agent_class.new(query: "test")
+      expect(agent.send(:execution_model_available?)).to be true
+    end
+
+    it "memoizes the result" do
+      agent = agent_class.new(query: "test")
+
+      # Call twice
+      first_call = agent.send(:execution_model_available?)
+      second_call = agent.send(:execution_model_available?)
+
+      expect(first_call).to eq(second_call)
+    end
+
+    it "returns false when table_exists? raises an error" do
+      agent = agent_class.new(query: "test")
+
+      # Reset the memoized value
+      agent.remove_instance_variable(:@execution_model_available) if agent.instance_variable_defined?(:@execution_model_available)
+
+      allow(RubyLLM::Agents::Execution).to receive(:table_exists?).and_raise(StandardError.new("Connection error"))
+
+      expect(agent.send(:execution_model_available?)).to be false
+    end
+  end
+
+  describe "execute with moderation" do
+    let(:moderated_agent_class) do
+      Class.new(described_class) do
+        model "gpt-4"
+        moderation :input, on_flagged: :block
+        param :query, required: true
+
+        def system_prompt
+          "Test prompt"
+        end
+
+        def user_prompt
+          query
+        end
+
+        def self.name
+          "ModeratedTestAgent"
+        end
+      end
+    end
+
+    def mock_moderation_result(flagged:, categories: [])
+      double(
+        "ModerationResult",
+        flagged?: flagged,
+        flagged_categories: categories,
+        category_scores: {},
+        model: "omni-moderation-latest",
+        id: "modr-123"
+      )
+    end
+
+    it "blocks execution when input moderation is flagged" do
+      agent = moderated_agent_class.new(query: "bad content")
+
+      # Mock the moderation to flag content
+      allow(RubyLLM).to receive(:moderate).and_return(
+        mock_moderation_result(flagged: true, categories: [:hate])
+      )
+
+      # Create a context for pipeline execution
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "bad content",
+        agent_class: moderated_agent_class,
+        agent_instance: agent
+      )
+
+      agent.execute(context)
+
+      expect(context.output).to be_a(RubyLLM::Agents::Result)
+      expect(context.output.status).to eq(:input_moderation_blocked)
+      expect(context.output.moderation_flagged?).to be true
+    end
+
+    it "continues execution when moderation passes" do
+      agent = moderated_agent_class.new(query: "good content")
+
+      # Mock the moderation to pass
+      allow(RubyLLM).to receive(:moderate).and_return(
+        mock_moderation_result(flagged: false)
+      )
+
+      # Mock the LLM response
+      mock_response = build_mock_response(content: "Test response", input_tokens: 100, output_tokens: 50)
+      mock_chat = build_mock_chat_client(response: mock_response)
+      stub_ruby_llm_chat(mock_chat)
+      stub_agent_configuration
+
+      # Create a context for pipeline execution
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "good content",
+        agent_class: moderated_agent_class,
+        agent_instance: agent
+      )
+
+      agent.execute(context)
+
+      expect(context.output).to be_a(RubyLLM::Agents::Result)
+      expect(context.output.status).to eq(:success)
+      expect(context.output.moderation_flagged?).to be false
+    end
+  end
+
+  describe "execute with output moderation" do
+    let(:output_moderated_agent_class) do
+      Class.new(described_class) do
+        model "gpt-4"
+        moderation :output, on_flagged: :block
+        param :query, required: true
+
+        def system_prompt
+          "Test prompt"
+        end
+
+        def user_prompt
+          query
+        end
+
+        def self.name
+          "OutputModeratedTestAgent"
+        end
+      end
+    end
+
+    def mock_moderation_result(flagged:, categories: [])
+      double(
+        "ModerationResult",
+        flagged?: flagged,
+        flagged_categories: categories,
+        category_scores: {},
+        model: "omni-moderation-latest",
+        id: "modr-123"
+      )
+    end
+
+    it "blocks execution when output moderation is flagged" do
+      agent = output_moderated_agent_class.new(query: "test")
+
+      # Mock the LLM response first
+      mock_response = build_mock_response(content: "Bad response", input_tokens: 100, output_tokens: 50)
+      mock_chat = build_mock_chat_client(response: mock_response)
+      stub_ruby_llm_chat(mock_chat)
+      stub_agent_configuration
+
+      # Mock output moderation to flag the response
+      allow(RubyLLM).to receive(:moderate).and_return(
+        mock_moderation_result(flagged: true, categories: [:hate])
+      )
+
+      # Create a context for pipeline execution
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: output_moderated_agent_class,
+        agent_instance: agent
+      )
+
+      agent.execute(context)
+
+      expect(context.output).to be_a(RubyLLM::Agents::Result)
+      expect(context.output.status).to eq(:output_moderation_blocked)
+      expect(context.output.moderation_flagged?).to be true
+    end
+  end
 end
