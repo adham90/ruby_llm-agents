@@ -250,10 +250,7 @@ RSpec.describe "API Key Resolution Integration", type: :integration do
     end
 
     describe "apply_api_configuration! is called during execution" do
-      # NOTE: In the new middleware pipeline architecture, API key application from DB
-      # needs to be implemented in the Tenant middleware. These tests are pending until
-      # that functionality is added.
-      it "applies DB key to RubyLLM.config BEFORE chat client creation", pending: "API key application to be added to Tenant middleware" do
+      it "applies DB key to RubyLLM.config BEFORE chat client creation" do
         # Set global DB key
         global_config = RubyLLM::Agents::ApiConfiguration.global
         global_config.update!(openai_api_key: "db-api-key-for-execution")
@@ -276,7 +273,7 @@ RSpec.describe "API Key Resolution Integration", type: :integration do
     end
 
     describe "tenant option passes correct tenant_id to resolution" do
-      it "applies tenant-specific key during client build", pending: "API key application to be added to Tenant middleware" do
+      it "applies tenant-specific key during client build" do
         global_config = RubyLLM::Agents::ApiConfiguration.global
         global_config.update!(openai_api_key: "global-key")
 
@@ -295,11 +292,11 @@ RSpec.describe "API Key Resolution Integration", type: :integration do
         agent = test_agent_class.new(query: "test", tenant: { id: "tenant123" })
         agent.call
 
-        # Tenant-specific API key should be applied during initialize
+        # Tenant-specific API key should be applied via Tenant middleware
         expect(key_at_chat_creation).to eq("tenant123-key")
       end
 
-      it "uses global key when no tenant option provided", pending: "API key application to be added to Tenant middleware" do
+      it "uses global key when no tenant option provided" do
         # Set global key
         global_config = RubyLLM::Agents::ApiConfiguration.global
         global_config.update!(openai_api_key: "global-only-key")
@@ -320,7 +317,7 @@ RSpec.describe "API Key Resolution Integration", type: :integration do
     end
 
     describe "tenant hash option" do
-      it "extracts tenant_id from hash option and applies tenant key", pending: "API key application to be added to Tenant middleware" do
+      it "extracts tenant_id from hash option and applies tenant key" do
         tenant_config = RubyLLM::Agents::ApiConfiguration.for_tenant!("hash_tenant")
         tenant_config.update!(openai_api_key: "hash-tenant-key")
 
@@ -369,55 +366,11 @@ RSpec.describe "API Key Resolution Integration", type: :integration do
       end
     end
 
-    describe "with_messages preserves tenant context" do
-      # NOTE: with_messages method has been removed in the new architecture.
-      # Conversation history is handled differently now.
-      it "uses tenant API key after with_messages rebuilds client", pending: "with_messages removed - use messages param instead" do
+    describe "messages parameter for conversation history" do
+      # Conversation history is now passed via the messages param, not with_messages method
+      it "supports conversation history via messages method override" do
         tenant_config = RubyLLM::Agents::ApiConfiguration.for_tenant!("messages_tenant")
         tenant_config.update!(openai_api_key: "messages-tenant-key")
-
-        key_at_rebuild = nil
-        call_count = 0
-
-        # Need to include add_message mock for with_messages
-        mock_client_with_messages = instance_double("RubyLLM::Chat")
-        allow(mock_client_with_messages).to receive(:with_model).and_return(mock_client_with_messages)
-        allow(mock_client_with_messages).to receive(:with_temperature).and_return(mock_client_with_messages)
-        allow(mock_client_with_messages).to receive(:with_instructions).and_return(mock_client_with_messages)
-        allow(mock_client_with_messages).to receive(:with_schema).and_return(mock_client_with_messages)
-        allow(mock_client_with_messages).to receive(:with_tools).and_return(mock_client_with_messages)
-        allow(mock_client_with_messages).to receive(:add_message).and_return(mock_client_with_messages)
-        allow(mock_client_with_messages).to receive(:messages).and_return([])
-
-        mock_response = instance_double("RubyLLM::Message",
-          content: "test response",
-          input_tokens: 10,
-          output_tokens: 20,
-          model_id: "gpt-4"
-        )
-        allow(mock_client_with_messages).to receive(:ask).and_return(mock_response)
-
-        allow(RubyLLM).to receive(:chat) do
-          call_count += 1
-          key_at_rebuild = RubyLLM.config.openai_api_key if call_count == 2
-          mock_client_with_messages
-        end
-
-        # Create agent with tenant, then use with_messages (which rebuilds client)
-        # Note: tenant must be an object with llm_tenant_id or a hash with :id key
-        agent = test_agent_class.new(query: "test", tenant: { id: "messages_tenant" })
-        agent.with_messages([{ role: :user, content: "Hello" }])
-        agent.call
-
-        # The tenant key should still be used after with_messages rebuilds the client
-        expect(key_at_rebuild).to eq("messages-tenant-key")
-      end
-    end
-
-    describe "streaming mode uses tenant keys" do
-      it "applies tenant API key when using stream class method", pending: "API key application to be added to Tenant middleware" do
-        tenant_config = RubyLLM::Agents::ApiConfiguration.for_tenant!("stream_tenant")
-        tenant_config.update!(openai_api_key: "stream-tenant-key")
 
         key_at_chat_creation = nil
 
@@ -426,8 +379,47 @@ RSpec.describe "API Key Resolution Integration", type: :integration do
           mock_chat_client
         end
 
+        # Create an agent class that overrides messages for conversation history
+        agent_with_messages = Class.new(test_agent_class) do
+          def messages
+            [{ role: :user, content: "Hello" }]
+          end
+        end
+
+        agent = agent_with_messages.new(query: "test", tenant: { id: "messages_tenant" })
+        agent.call
+
+        # The tenant key should be applied via middleware
+        expect(key_at_chat_creation).to eq("messages-tenant-key")
+      end
+    end
+
+    describe "streaming mode uses tenant keys" do
+      it "applies tenant API key when using stream class method" do
+        tenant_config = RubyLLM::Agents::ApiConfiguration.for_tenant!("stream_tenant")
+        tenant_config.update!(openai_api_key: "stream-tenant-key")
+
+        key_at_chat_creation = nil
+
+        # For streaming, we need to mock the streaming response
+        allow(mock_chat_client).to receive(:ask) do |&block|
+          block&.call("chunk") if block
+          double("RubyLLM::Message",
+            content: "test response",
+            input_tokens: 10,
+            output_tokens: 20,
+            model_id: "gpt-4",
+            usage: { input_tokens: 10, output_tokens: 20 },
+            finish_reason: "stop"
+          )
+        end
+
+        allow(RubyLLM).to receive(:chat) do
+          key_at_chat_creation = RubyLLM.config.openai_api_key
+          mock_chat_client
+        end
+
         # Execute via stream class method with tenant option
-        # Note: tenant must be an object with llm_tenant_id or a hash with :id key
         test_agent_class.stream(query: "test", tenant: { id: "stream_tenant" }) { |_chunk| }
 
         expect(key_at_chat_creation).to eq("stream-tenant-key")
@@ -435,7 +427,7 @@ RSpec.describe "API Key Resolution Integration", type: :integration do
     end
 
     describe "non-existent tenant fallback" do
-      it "falls back to global key when tenant has no config", pending: "API key application to be added to Tenant middleware" do
+      it "falls back to global key when tenant has no config" do
         global_config = RubyLLM::Agents::ApiConfiguration.global
         global_config.update!(openai_api_key: "global-fallback-key")
 
@@ -448,7 +440,6 @@ RSpec.describe "API Key Resolution Integration", type: :integration do
           mock_chat_client
         end
 
-        # Note: tenant must be an object with llm_tenant_id or a hash with :id key
         agent = test_agent_class.new(query: "test", tenant: { id: "missing_tenant" })
         agent.call
 
@@ -457,26 +448,24 @@ RSpec.describe "API Key Resolution Integration", type: :integration do
       end
     end
 
-    describe "idempotency of resolve_tenant_context!" do
-      # NOTE: In the new middleware pipeline architecture, tenant context resolution
-      # happens in the Tenant middleware, not on the agent instance.
-      it "does not re-resolve tenant context on subsequent calls", pending: "Tenant context resolved via middleware, not on instance" do
-        tenant_config = RubyLLM::Agents::ApiConfiguration.for_tenant!("idempotent_tenant")
-        tenant_config.update!(openai_api_key: "idempotent-key")
+    describe "tenant context resolution via middleware" do
+      it "resolves tenant context through the pipeline middleware" do
+        tenant_config = RubyLLM::Agents::ApiConfiguration.for_tenant!("middleware_tenant")
+        tenant_config.update!(openai_api_key: "middleware-key")
 
         allow(RubyLLM).to receive(:chat).and_return(mock_chat_client)
 
-        # Note: tenant must be an object with llm_tenant_id or a hash with :id key
-        agent = test_agent_class.new(query: "test", tenant: { id: "idempotent_tenant" })
+        agent = test_agent_class.new(query: "test", tenant: { id: "middleware_tenant" })
 
-        # The tenant_id should be set after initialize
-        expect(agent.instance_variable_get(:@tenant_id)).to eq("idempotent_tenant")
-        expect(agent.instance_variable_get(:@tenant_context_resolved)).to be true
+        # The resolve_tenant method returns the tenant hash for context building
+        resolved = agent.send(:resolve_tenant)
+        expect(resolved[:id]).to eq("middleware_tenant")
 
-        # Calling resolve_tenant_context! again should not change anything
-        original_tenant_id = agent.instance_variable_get(:@tenant_id)
-        agent.send(:resolve_tenant_context!)
-        expect(agent.instance_variable_get(:@tenant_id)).to eq(original_tenant_id)
+        # Execute the agent - API key is applied via Tenant middleware
+        agent.call
+
+        # Verify the key was applied
+        expect(RubyLLM.config.openai_api_key).to eq("middleware-key")
       end
     end
   end

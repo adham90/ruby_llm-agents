@@ -192,7 +192,7 @@ module RubyLLM
           #
           # @param data [Hash] Execution data
           def queue_async_logging(data)
-            ExecutionLoggerJob.perform_later(data)
+            Infrastructure::ExecutionLoggerJob.perform_later(data)
           end
 
           # Creates execution record synchronously
@@ -238,7 +238,7 @@ module RubyLLM
           #
           # @return [Boolean]
           def async_logging?
-            global_config.async_logging && defined?(ExecutionLoggerJob)
+            global_config.async_logging && defined?(Infrastructure::ExecutionLoggerJob)
           rescue StandardError
             false
           end

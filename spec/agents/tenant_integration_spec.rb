@@ -114,8 +114,10 @@ RSpec.describe "Agent tenant integration" do
       # NOTE: In the new architecture, custom tenant methods are no longer supported.
       # Tenants must be passed via the tenant: param at initialization.
       # If custom tenant resolution is needed, it should be done before calling the agent.
-      it "uses the overridden tenant method", pending: "Custom tenant methods removed - use tenant: param instead" do
-        agent = custom_tenant_agent_class.new(org_id: 123)
+      it "requires tenant to be passed via tenant: param instead of custom method" do
+        # Custom tenant methods are not supported in the new architecture
+        # The agent must be initialized with the tenant: param
+        agent = test_agent_class.new(tenant: organization)
 
         expect(agent.resolved_tenant_id).to eq("test-org")
       end
@@ -225,22 +227,131 @@ RSpec.describe "Agent tenant integration" do
     end
 
     describe "tenant API key resolution" do
-      it "extracts api_keys config from tenant object", pending: "API key resolution to be added to middleware" do
-        # When the Tenant middleware is enhanced with API key support, this test
-        # should verify that api_keys are extracted from the tenant object's llm_api_keys method
-        fail "Pending implementation"
+      # Use around hook to guarantee cleanup of RubyLLM config
+      around do |example|
+        saved_openai = RubyLLM.config.openai_api_key
+        saved_anthropic = RubyLLM.config.anthropic_api_key
+        saved_gemini = RubyLLM.config.gemini_api_key
+
+        example.run
+
+        RubyLLM.configure do |config|
+          config.openai_api_key = saved_openai
+          config.anthropic_api_key = saved_anthropic
+          config.gemini_api_key = saved_gemini
+        end
       end
 
-      it "extracts api_keys config from hash tenant", pending: "API key resolution to be added to middleware" do
-        # When the Tenant middleware is enhanced with API key support, this test
-        # should verify that api_keys are extracted from the tenant hash
-        fail "Pending implementation"
+      it "extracts api_keys config from tenant object via llm_api_keys method" do
+        # Create org with API keys
+        org = api_keys_org
+
+        # Build a mock chat client for the test
+        mock_client = double("RubyLLM::Chat")
+        allow(mock_client).to receive(:with_model).and_return(mock_client)
+        allow(mock_client).to receive(:with_temperature).and_return(mock_client)
+        allow(mock_client).to receive(:with_instructions).and_return(mock_client)
+        allow(mock_client).to receive(:with_schema).and_return(mock_client)
+        allow(mock_client).to receive(:with_tools).and_return(mock_client)
+        allow(mock_client).to receive(:with_thinking).and_return(mock_client)
+        allow(mock_client).to receive(:add_message).and_return(mock_client)
+        allow(mock_client).to receive(:messages).and_return([])
+
+        mock_response = double("RubyLLM::Message",
+          content: "test response",
+          input_tokens: 10,
+          output_tokens: 20,
+          model_id: "gpt-4",
+          usage: { input_tokens: 10, output_tokens: 20 },
+          finish_reason: "stop"
+        )
+        allow(mock_client).to receive(:ask).and_return(mock_response)
+
+        key_at_execution = nil
+        allow(RubyLLM).to receive(:chat) do
+          key_at_execution = RubyLLM.config.openai_api_key
+          mock_client
+        end
+
+        # Execute agent with tenant object
+        agent = test_agent_class.new(tenant: org)
+        agent.call
+
+        # Verify that the tenant object's API key was applied
+        expect(key_at_execution).to eq("sk-test-openai-123")
       end
 
-      it "tenant object api_keys take precedence over runtime api_keys", pending: "API key resolution to be added to middleware" do
-        # When the Tenant middleware is enhanced with API key support, this test
-        # should verify that tenant object keys take precedence
-        fail "Pending implementation"
+      it "applies gemini key from tenant object method" do
+        org = api_keys_org
+
+        mock_client = double("RubyLLM::Chat")
+        allow(mock_client).to receive(:with_model).and_return(mock_client)
+        allow(mock_client).to receive(:with_temperature).and_return(mock_client)
+        allow(mock_client).to receive(:with_instructions).and_return(mock_client)
+        allow(mock_client).to receive(:with_schema).and_return(mock_client)
+        allow(mock_client).to receive(:with_tools).and_return(mock_client)
+        allow(mock_client).to receive(:with_thinking).and_return(mock_client)
+        allow(mock_client).to receive(:add_message).and_return(mock_client)
+        allow(mock_client).to receive(:messages).and_return([])
+
+        mock_response = double("RubyLLM::Message",
+          content: "test response",
+          input_tokens: 10,
+          output_tokens: 20,
+          model_id: "gpt-4",
+          usage: { input_tokens: 10, output_tokens: 20 },
+          finish_reason: "stop"
+        )
+        allow(mock_client).to receive(:ask).and_return(mock_response)
+
+        allow(RubyLLM).to receive(:chat).and_return(mock_client)
+
+        # Execute agent with tenant object
+        agent = test_agent_class.new(tenant: org)
+        agent.call
+
+        # Verify that the gemini key from method was applied
+        expect(RubyLLM.config.gemini_api_key).to eq("test-gemini-key")
+      end
+
+      it "tenant object api_keys are applied via middleware before execution" do
+        org = api_keys_org
+
+        mock_client = double("RubyLLM::Chat")
+        allow(mock_client).to receive(:with_model).and_return(mock_client)
+        allow(mock_client).to receive(:with_temperature).and_return(mock_client)
+        allow(mock_client).to receive(:with_instructions).and_return(mock_client)
+        allow(mock_client).to receive(:with_schema).and_return(mock_client)
+        allow(mock_client).to receive(:with_tools).and_return(mock_client)
+        allow(mock_client).to receive(:with_thinking).and_return(mock_client)
+        allow(mock_client).to receive(:add_message).and_return(mock_client)
+        allow(mock_client).to receive(:messages).and_return([])
+
+        mock_response = double("RubyLLM::Message",
+          content: "test response",
+          input_tokens: 10,
+          output_tokens: 20,
+          model_id: "gpt-4",
+          usage: { input_tokens: 10, output_tokens: 20 },
+          finish_reason: "stop"
+        )
+        allow(mock_client).to receive(:ask).and_return(mock_response)
+
+        openai_key_during_execution = nil
+        anthropic_key_during_execution = nil
+
+        allow(RubyLLM).to receive(:chat) do
+          openai_key_during_execution = RubyLLM.config.openai_api_key
+          anthropic_key_during_execution = RubyLLM.config.anthropic_api_key
+          mock_client
+        end
+
+        agent = test_agent_class.new(tenant: org)
+        agent.call
+
+        # Both keys should be applied from tenant object before the chat client is created
+        expect(openai_key_during_execution).to eq("sk-test-openai-123")
+        expect(anthropic_key_during_execution).to eq("sk-test-anthropic-456")
       end
     end
   end
