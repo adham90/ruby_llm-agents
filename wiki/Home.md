@@ -10,6 +10,7 @@ Welcome to the official documentation for **RubyLLM::Agents**, a production-read
 - **[Configuration](Configuration)** - Configure the initializer
 - **[First Agent](First-Agent)** - Build your first AI agent
 - **[Generators](Generators)** - Scaffold agents, embedders, and more
+- **[Migration](Migration)** - Upgrade from v0.5.0 to v1.0.0
 
 ### Core Concepts
 - **[Agent DSL](Agent-DSL)** - Declarative agent configuration
@@ -88,7 +89,7 @@ RubyLLM::Agents is a Rails engine that provides:
 
 ## Current Version
 
-**v0.4.0** - See [CHANGELOG](https://github.com/adham90/ruby_llm-agents/blob/main/CHANGELOG.md) for release history.
+**v1.0.0-beta.3** - See [CHANGELOG](https://github.com/adham90/ruby_llm-agents/blob/main/CHANGELOG.md) for release history.
 
 ## Supported LLM Providers
 
