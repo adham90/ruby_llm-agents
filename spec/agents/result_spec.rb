@@ -358,4 +358,218 @@ RSpec.describe RubyLLM::Agents::Result do
       expect(result.to_json).to eq('{"key":"value"}')
     end
   end
+
+  describe "#has_thinking?" do
+    it "returns true when thinking_text is present" do
+      result = described_class.new(
+        content: "test",
+        thinking_text: "Let me think about this..."
+      )
+      expect(result.has_thinking?).to be true
+    end
+
+    it "returns false when thinking_text is nil" do
+      result = described_class.new(content: "test", thinking_text: nil)
+      expect(result.has_thinking?).to be false
+    end
+
+    it "returns false when thinking_text is empty" do
+      result = described_class.new(content: "test", thinking_text: "")
+      expect(result.has_thinking?).to be false
+    end
+
+    it "returns false by default" do
+      result = described_class.new(content: "test")
+      expect(result.has_thinking?).to be false
+    end
+  end
+
+  describe "#moderation_flagged?" do
+    it "returns true when moderation_flagged is true" do
+      result = described_class.new(
+        content: "test",
+        moderation_flagged: true
+      )
+      expect(result.moderation_flagged?).to be true
+    end
+
+    it "returns false when moderation_flagged is false" do
+      result = described_class.new(
+        content: "test",
+        moderation_flagged: false
+      )
+      expect(result.moderation_flagged?).to be false
+    end
+
+    it "returns false by default" do
+      result = described_class.new(content: "test")
+      expect(result.moderation_flagged?).to be false
+    end
+
+    it "returns false when moderation_flagged is nil" do
+      result = described_class.new(content: "test", moderation_flagged: nil)
+      expect(result.moderation_flagged?).to be false
+    end
+  end
+
+  describe "#moderation_passed?" do
+    it "returns true when not flagged" do
+      result = described_class.new(
+        content: "test",
+        moderation_flagged: false
+      )
+      expect(result.moderation_passed?).to be true
+    end
+
+    it "returns false when flagged" do
+      result = described_class.new(
+        content: "test",
+        moderation_flagged: true
+      )
+      expect(result.moderation_passed?).to be false
+    end
+
+    it "returns true by default" do
+      result = described_class.new(content: "test")
+      expect(result.moderation_passed?).to be true
+    end
+  end
+
+  describe "#moderation_categories" do
+    let(:moderation_result) do
+      mock = double("ModerationResult")
+      allow(mock).to receive(:flagged_categories).and_return(["hate", "violence"])
+      mock
+    end
+
+    it "returns flagged categories from moderation result" do
+      result = described_class.new(
+        content: "test",
+        moderation_result: moderation_result
+      )
+      expect(result.moderation_categories).to eq(["hate", "violence"])
+    end
+
+    it "returns empty array when moderation_result is nil" do
+      result = described_class.new(content: "test", moderation_result: nil)
+      expect(result.moderation_categories).to eq([])
+    end
+  end
+
+  describe "#moderation_scores" do
+    let(:moderation_result) do
+      mock = double("ModerationResult")
+      allow(mock).to receive(:category_scores).and_return({
+        "hate" => 0.95,
+        "violence" => 0.12
+      })
+      mock
+    end
+
+    it "returns category scores from moderation result" do
+      result = described_class.new(
+        content: "test",
+        moderation_result: moderation_result
+      )
+      expect(result.moderation_scores).to eq({ "hate" => 0.95, "violence" => 0.12 })
+    end
+
+    it "returns empty hash when moderation_result is nil" do
+      result = described_class.new(content: "test", moderation_result: nil)
+      expect(result.moderation_scores).to eq({})
+    end
+  end
+
+  describe "thinking attributes" do
+    it "sets thinking_text" do
+      result = described_class.new(
+        content: "test",
+        thinking_text: "reasoning content"
+      )
+      expect(result.thinking_text).to eq("reasoning content")
+    end
+
+    it "sets thinking_signature" do
+      result = described_class.new(
+        content: "test",
+        thinking_signature: "sig_abc123"
+      )
+      expect(result.thinking_signature).to eq("sig_abc123")
+    end
+
+    it "sets thinking_tokens" do
+      result = described_class.new(
+        content: "test",
+        thinking_tokens: 500
+      )
+      expect(result.thinking_tokens).to eq(500)
+    end
+  end
+
+  describe "moderation attributes" do
+    it "sets status" do
+      result = described_class.new(
+        content: "test",
+        status: :input_moderation_blocked
+      )
+      expect(result.status).to eq(:input_moderation_blocked)
+    end
+
+    it "defaults status to :success" do
+      result = described_class.new(content: "test")
+      expect(result.status).to eq(:success)
+    end
+
+    it "sets moderation_phase" do
+      result = described_class.new(
+        content: "test",
+        moderation_phase: :output
+      )
+      expect(result.moderation_phase).to eq(:output)
+    end
+  end
+
+  describe "#to_h with moderation data" do
+    let(:moderation_result) do
+      mock = double("ModerationResult")
+      allow(mock).to receive(:flagged_categories).and_return(["hate"])
+      allow(mock).to receive(:category_scores).and_return({ "hate" => 0.95 })
+      mock
+    end
+
+    it "includes moderation fields in hash" do
+      result = described_class.new(
+        content: "test",
+        moderation_flagged: true,
+        moderation_result: moderation_result,
+        moderation_phase: :input,
+        status: :input_moderation_blocked
+      )
+
+      hash = result.to_h
+
+      expect(hash[:status]).to eq(:input_moderation_blocked)
+      expect(hash[:moderation_flagged]).to be true
+      expect(hash[:moderation_phase]).to eq(:input)
+      expect(hash[:moderation_categories]).to eq(["hate"])
+      expect(hash[:moderation_scores]).to eq({ "hate" => 0.95 })
+    end
+  end
+
+  describe "#to_h with thinking data" do
+    it "includes thinking fields in hash" do
+      result = described_class.new(
+        content: "test",
+        thinking_text: "Let me reason...",
+        thinking_signature: "sig_123",
+        thinking_tokens: 200
+      )
+
+      hash = result.to_h
+
+      expect(hash[:thinking_text]).to eq("Let me reason...")
+      expect(hash[:thinking_signature]).to eq("sig_123")
+      expect(hash[:thinking_tokens]).to eq(200)
+    end
+  end
 end
