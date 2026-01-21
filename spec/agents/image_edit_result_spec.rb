@@ -4,16 +4,7 @@ require "rails_helper"
 
 RSpec.describe RubyLLM::Agents::ImageEditResult do
   let(:mock_image) do
-    double(
-      "Image",
-      url: "https://example.com/edited.png",
-      data: nil,
-      base64?: false,
-      mime_type: "image/png",
-      revised_prompt: "Edited background",
-      to_blob: "\x89PNG\r\n",
-      save: true
-    )
+    RubyLLM::Agents::TestSupport::MockImage.edited
   end
 
   describe "#initialize" do

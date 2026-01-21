@@ -79,5 +79,98 @@ FactoryBot.define do
       tool_calls_count { 2 }
       finish_reason { "tool_calls" }
     end
+
+    trait :with_tenant do
+      sequence(:tenant_id) { |n| "tenant_#{n}" }
+    end
+
+    trait :with_thinking do
+      thinking_content { "Let me think through this step by step..." }
+      model_id { "claude-3-5-sonnet-20241022" }
+    end
+
+    trait :streaming do
+      streamed { true }
+      finish_reason { "stop" }
+    end
+
+    trait :cached do
+      cache_hit { true }
+      input_tokens { 0 }
+      output_tokens { 0 }
+      total_tokens { 0 }
+      input_cost { 0 }
+      output_cost { 0 }
+      total_cost { 0 }
+      response_cache_key { "ruby_llm_agent/TestAgent/v1.0/#{SecureRandom.hex(8)}" }
+    end
+
+    trait :with_moderation do
+      moderation_flagged { false }
+      moderation_result do
+        {
+          "flagged" => false,
+          "categories" => { "hate" => false, "violence" => false },
+          "scores" => { "hate" => 0.001, "violence" => 0.002 }
+        }
+      end
+    end
+
+    trait :moderation_flagged do
+      moderation_flagged { true }
+      moderation_result do
+        {
+          "flagged" => true,
+          "categories" => { "hate" => true, "violence" => false },
+          "scores" => { "hate" => 0.95, "violence" => 0.001 }
+        }
+      end
+    end
+
+    trait :running do
+      status { "running" }
+      completed_at { nil }
+      duration_ms { nil }
+    end
+
+    trait :anthropic do
+      model_id { "claude-3-5-sonnet-20241022" }
+    end
+
+    trait :openai do
+      model_id { "gpt-4o" }
+    end
+
+    trait :workflow do
+      workflow_id { SecureRandom.uuid }
+      workflow_type { "workflow" }
+      model_id { "workflow" }
+    end
+
+    trait :image_generation do
+      agent_type { "ImageGenerator" }
+      model_id { "dall-e-3" }
+      metadata { { prompt: "A sunset over mountains", size: "1024x1024" } }
+    end
+
+    trait :embedding do
+      agent_type { "Embedder" }
+      model_id { "text-embedding-3-small" }
+      input_tokens { 50 }
+      output_tokens { 0 }
+      total_tokens { 50 }
+    end
+
+    trait :this_month do
+      created_at { Time.current.beginning_of_month + 1.day }
+      started_at { Time.current.beginning_of_month + 1.day }
+      completed_at { Time.current.beginning_of_month + 1.day + 1.second }
+    end
+
+    trait :last_month do
+      created_at { 1.month.ago }
+      started_at { 1.month.ago }
+      completed_at { 1.month.ago + 1.second }
+    end
   end
 end

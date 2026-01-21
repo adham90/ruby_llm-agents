@@ -4,25 +4,11 @@ require "rails_helper"
 
 RSpec.describe RubyLLM::Agents::BackgroundRemovalResult do
   let(:mock_foreground) do
-    double(
-      "foreground",
-      url: "https://example.com/foreground.png",
-      data: "base64data",
-      base64?: true,
-      mime_type: "image/png",
-      save: true,
-      to_blob: "blob_data"
-    )
+    RubyLLM::Agents::TestSupport::MockImage.foreground
   end
 
   let(:mock_mask) do
-    double(
-      "mask",
-      url: "https://example.com/mask.png",
-      data: "mask_base64",
-      save: true,
-      to_blob: "mask_blob"
-    )
+    RubyLLM::Agents::TestSupport::MockImage.mask
   end
 
   let(:successful_result) do
@@ -144,7 +130,7 @@ RSpec.describe RubyLLM::Agents::BackgroundRemovalResult do
 
     it "falls back to format-based mime type" do
       result_without_foreground_mime = described_class.new(
-        foreground: double("fg", url: "url", data: nil, base64?: false, mime_type: nil),
+        foreground: RubyLLM::Agents::TestSupport::MockImage.new(url: "url", mime_type: nil),
         mask: nil,
         source_image: "photo.jpg",
         model_id: "rembg",
@@ -246,7 +232,7 @@ RSpec.describe RubyLLM::Agents::BackgroundRemovalResult do
   describe "#save" do
     it "saves the foreground image" do
       successful_result.save("/tmp/output.png")
-      expect(mock_foreground).to have_received(:save).with("/tmp/output.png")
+      expect(mock_foreground.saved_paths).to include("/tmp/output.png")
     end
 
     it "raises error when no foreground" do
@@ -257,7 +243,7 @@ RSpec.describe RubyLLM::Agents::BackgroundRemovalResult do
   describe "#save_mask" do
     it "saves the mask image" do
       successful_result.save_mask("/tmp/mask.png")
-      expect(mock_mask).to have_received(:save).with("/tmp/mask.png")
+      expect(mock_mask.saved_paths).to include("/tmp/mask.png")
     end
 
     it "raises error when no mask" do

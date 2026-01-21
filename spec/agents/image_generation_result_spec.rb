@@ -4,28 +4,15 @@ require "rails_helper"
 
 RSpec.describe RubyLLM::Agents::ImageGenerationResult do
   let(:mock_image) do
-    double(
-      "Image",
-      url: "https://example.com/image.png",
-      data: nil,
-      base64?: false,
-      mime_type: "image/png",
-      revised_prompt: "A beautiful sunset over mountains",
-      to_blob: "\x89PNG\r\n",
-      save: true
+    RubyLLM::Agents::TestSupport::MockImage.with_url(
+      "https://example.com/image.png",
+      revised_prompt: "A beautiful sunset over mountains"
     )
   end
 
   let(:base64_image) do
-    double(
-      "Base64Image",
-      url: nil,
-      data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-      base64?: true,
-      mime_type: "image/png",
-      revised_prompt: nil,
-      to_blob: "\x89PNG\r\n",
-      save: true
+    RubyLLM::Agents::TestSupport::MockImage.with_base64(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
     )
   end
 
@@ -227,7 +214,7 @@ RSpec.describe RubyLLM::Agents::ImageGenerationResult do
 
   describe "#urls" do
     it "returns all image URLs" do
-      image2 = double("Image2", url: "https://example.com/image2.png")
+      image2 = RubyLLM::Agents::TestSupport::MockImage.with_url("https://example.com/image2.png")
 
       result = described_class.new(
         images: [mock_image, image2],

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "spec_helper"
+require "rails_helper"
 
 RSpec.describe "Agent tenant integration" do
   # Create test table and model
@@ -246,30 +246,13 @@ RSpec.describe "Agent tenant integration" do
         # Create org with API keys
         org = api_keys_org
 
-        # Build a mock chat client for the test
-        mock_client = double("RubyLLM::Chat")
-        allow(mock_client).to receive(:with_model).and_return(mock_client)
-        allow(mock_client).to receive(:with_temperature).and_return(mock_client)
-        allow(mock_client).to receive(:with_instructions).and_return(mock_client)
-        allow(mock_client).to receive(:with_schema).and_return(mock_client)
-        allow(mock_client).to receive(:with_tools).and_return(mock_client)
-        allow(mock_client).to receive(:with_thinking).and_return(mock_client)
-        allow(mock_client).to receive(:add_message).and_return(mock_client)
-        allow(mock_client).to receive(:messages).and_return([])
-
-        mock_response = instance_double(RubyLLM::Message,
-          content: "test response",
-          input_tokens: 10,
-          output_tokens: 20,
-          model_id: "gpt-4",
-          tool_calls: nil
-        )
-        allow(mock_client).to receive(:ask).and_return(mock_response)
+        # Build mock using shared helper
+        mock_response = build_mock_response(content: "test response", input_tokens: 10, output_tokens: 20)
+        mock_client = build_mock_chat_client(response: mock_response)
 
         key_at_execution = nil
-        allow(RubyLLM).to receive(:chat) do
-          key_at_execution = RubyLLM.config.openai_api_key
-          mock_client
+        stub_ruby_llm_chat(mock_client) do |config|
+          key_at_execution = config.openai_api_key
         end
 
         # Execute agent with tenant object
@@ -283,26 +266,10 @@ RSpec.describe "Agent tenant integration" do
       it "applies gemini key from tenant object method" do
         org = api_keys_org
 
-        mock_client = double("RubyLLM::Chat")
-        allow(mock_client).to receive(:with_model).and_return(mock_client)
-        allow(mock_client).to receive(:with_temperature).and_return(mock_client)
-        allow(mock_client).to receive(:with_instructions).and_return(mock_client)
-        allow(mock_client).to receive(:with_schema).and_return(mock_client)
-        allow(mock_client).to receive(:with_tools).and_return(mock_client)
-        allow(mock_client).to receive(:with_thinking).and_return(mock_client)
-        allow(mock_client).to receive(:add_message).and_return(mock_client)
-        allow(mock_client).to receive(:messages).and_return([])
-
-        mock_response = instance_double(RubyLLM::Message,
-          content: "test response",
-          input_tokens: 10,
-          output_tokens: 20,
-          model_id: "gpt-4",
-          tool_calls: nil
-        )
-        allow(mock_client).to receive(:ask).and_return(mock_response)
-
-        allow(RubyLLM).to receive(:chat).and_return(mock_client)
+        # Build mock using shared helper
+        mock_response = build_mock_response(content: "test response", input_tokens: 10, output_tokens: 20)
+        mock_client = build_mock_chat_client(response: mock_response)
+        stub_ruby_llm_chat(mock_client)
 
         # Execute agent with tenant object
         agent = test_agent_class.new(tenant: org)
@@ -315,32 +282,16 @@ RSpec.describe "Agent tenant integration" do
       it "tenant object api_keys are applied via middleware before execution" do
         org = api_keys_org
 
-        mock_client = double("RubyLLM::Chat")
-        allow(mock_client).to receive(:with_model).and_return(mock_client)
-        allow(mock_client).to receive(:with_temperature).and_return(mock_client)
-        allow(mock_client).to receive(:with_instructions).and_return(mock_client)
-        allow(mock_client).to receive(:with_schema).and_return(mock_client)
-        allow(mock_client).to receive(:with_tools).and_return(mock_client)
-        allow(mock_client).to receive(:with_thinking).and_return(mock_client)
-        allow(mock_client).to receive(:add_message).and_return(mock_client)
-        allow(mock_client).to receive(:messages).and_return([])
-
-        mock_response = instance_double(RubyLLM::Message,
-          content: "test response",
-          input_tokens: 10,
-          output_tokens: 20,
-          model_id: "gpt-4",
-          tool_calls: nil
-        )
-        allow(mock_client).to receive(:ask).and_return(mock_response)
+        # Build mock using shared helper
+        mock_response = build_mock_response(content: "test response", input_tokens: 10, output_tokens: 20)
+        mock_client = build_mock_chat_client(response: mock_response)
 
         openai_key_during_execution = nil
         anthropic_key_during_execution = nil
 
-        allow(RubyLLM).to receive(:chat) do
-          openai_key_during_execution = RubyLLM.config.openai_api_key
-          anthropic_key_during_execution = RubyLLM.config.anthropic_api_key
-          mock_client
+        stub_ruby_llm_chat(mock_client) do |config|
+          openai_key_during_execution = config.openai_api_key
+          anthropic_key_during_execution = config.anthropic_api_key
         end
 
         agent = test_agent_class.new(tenant: org)

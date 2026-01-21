@@ -404,37 +404,16 @@ RSpec.describe RubyLLM::Agents::Base do
     end
 
     let(:mock_response) do
-      instance_double(
-        RubyLLM::Message,
-        content: "Cached response content",
-        input_tokens: 100,
-        output_tokens: 50,
-        model_id: "gpt-4",
-        tool_calls: nil
-      )
+      build_mock_response(content: "Cached response content", input_tokens: 100, output_tokens: 50)
     end
 
     let(:mock_chat) do
-      chat = double("RubyLLM::Chat")
-      allow(chat).to receive(:with_model).and_return(chat)
-      allow(chat).to receive(:with_temperature).and_return(chat)
-      allow(chat).to receive(:with_instructions).and_return(chat)
-      allow(chat).to receive(:with_schema).and_return(chat)
-      allow(chat).to receive(:with_tools).and_return(chat)
-      allow(chat).to receive(:with_thinking).and_return(chat)
-      allow(chat).to receive(:add_message).and_return(chat)
-      allow(chat).to receive(:ask).and_return(mock_response)
-      allow(chat).to receive(:messages).and_return([])
-      chat
+      build_mock_chat_client(response: mock_response)
     end
 
     before do
-      RubyLLM::Agents.reset_configuration!
-      allow(RubyLLM::Agents.configuration).to receive(:cache_store).and_return(cache_store)
-      allow(RubyLLM::Agents.configuration).to receive(:async_logging).and_return(false)
-      allow(RubyLLM::Agents.configuration).to receive(:track_executions).and_return(true)
-      allow(RubyLLM::Agents.configuration).to receive(:track_cache_hits).and_return(true)
-      allow(RubyLLM).to receive(:chat).and_return(mock_chat)
+      stub_agent_configuration(cache_store: cache_store)
+      stub_ruby_llm_chat(mock_chat)
       cache_store.clear
     end
 
@@ -648,20 +627,11 @@ RSpec.describe RubyLLM::Agents::Base do
 
     describe "#apply_messages" do
       let(:mock_chat) do
-        chat = double("RubyLLM::Chat")
-        allow(chat).to receive(:with_model).and_return(chat)
-        allow(chat).to receive(:with_temperature).and_return(chat)
-        allow(chat).to receive(:with_instructions).and_return(chat)
-        allow(chat).to receive(:with_schema).and_return(chat)
-        allow(chat).to receive(:with_tools).and_return(chat)
-        allow(chat).to receive(:with_thinking).and_return(chat)
-        allow(chat).to receive(:add_message).and_return(chat)
-        allow(chat).to receive(:messages).and_return([])
-        chat
+        build_mock_chat_client
       end
 
       before do
-        allow(RubyLLM).to receive(:chat).and_return(mock_chat)
+        stub_ruby_llm_chat(mock_chat)
       end
 
       it "applies messages via add_message calls" do
@@ -696,34 +666,16 @@ RSpec.describe RubyLLM::Agents::Base do
 
     describe "integration with agent execution" do
       let(:mock_response) do
-        instance_double(
-          RubyLLM::Message,
-          content: "Response with context",
-          input_tokens: 100,
-          output_tokens: 50,
-          model_id: "gpt-4",
-          tool_calls: nil
-        )
+        build_mock_response(content: "Response with context", input_tokens: 100, output_tokens: 50)
       end
 
       let(:mock_chat) do
-        chat = double("RubyLLM::Chat")
-        allow(chat).to receive(:with_model).and_return(chat)
-        allow(chat).to receive(:with_temperature).and_return(chat)
-        allow(chat).to receive(:with_instructions).and_return(chat)
-        allow(chat).to receive(:with_schema).and_return(chat)
-        allow(chat).to receive(:with_tools).and_return(chat)
-        allow(chat).to receive(:with_thinking).and_return(chat)
-        allow(chat).to receive(:add_message).and_return(chat)
-        allow(chat).to receive(:ask).and_return(mock_response)
-        allow(chat).to receive(:messages).and_return([])
-        chat
+        build_mock_chat_client(response: mock_response)
       end
 
       before do
-        RubyLLM::Agents.reset_configuration!
-        allow(RubyLLM::Agents.configuration).to receive(:async_logging).and_return(false)
-        allow(RubyLLM).to receive(:chat).and_return(mock_chat)
+        stub_agent_configuration
+        stub_ruby_llm_chat(mock_chat)
       end
 
       it "passes messages to the client when called via class method" do

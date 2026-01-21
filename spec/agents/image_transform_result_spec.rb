@@ -4,15 +4,8 @@ require "rails_helper"
 
 RSpec.describe RubyLLM::Agents::ImageTransformResult do
   let(:mock_image) do
-    double(
-      "Image",
-      url: "https://example.com/transformed.png",
-      data: nil,
-      base64?: false,
-      mime_type: "image/png",
-      revised_prompt: "Anime style portrait",
-      to_blob: "\x89PNG\r\n",
-      save: true
+    RubyLLM::Agents::TestSupport::MockImage.transformed(
+      revised_prompt: "Anime style portrait"
     )
   end
 

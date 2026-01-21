@@ -164,29 +164,15 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       )
     end
 
-    let(:mock_response) { mock_llm_response(input_tokens: 10, output_tokens: 5) }
+    let(:mock_response) { build_mock_response(input_tokens: 10, output_tokens: 5) }
 
     let(:mock_chat) do
-      chat = double("RubyLLM::Chat")
-      allow(chat).to receive(:with_model).and_return(chat)
-      allow(chat).to receive(:with_temperature).and_return(chat)
-      allow(chat).to receive(:with_instructions).and_return(chat)
-      allow(chat).to receive(:with_schema).and_return(chat)
-      allow(chat).to receive(:with_tools).and_return(chat)
-      allow(chat).to receive(:with_thinking).and_return(chat)
-      allow(chat).to receive(:add_message).and_return(chat)
-      allow(chat).to receive(:messages).and_return([])
-      allow(chat).to receive(:ask).and_return(mock_response)
-      chat
+      build_mock_chat_client(response: mock_response)
     end
 
     before do
-      # Ensure we have a fresh configuration to mock
-      RubyLLM::Agents.reset_configuration!
-      allow(RubyLLM::Agents.configuration).to receive(:track_executions).and_return(true)
-      allow(RubyLLM::Agents.configuration).to receive(:track_cache_hits).and_return(true)
-      allow(RubyLLM::Agents.configuration).to receive(:async_logging).and_return(false)
-      allow(RubyLLM).to receive(:chat).and_return(mock_chat)
+      stub_agent_configuration
+      stub_ruby_llm_chat(mock_chat)
     end
 
     it "sanitizes sensitive parameters" do
@@ -201,29 +187,15 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
   end
 
   describe "duration tracking" do
-    let(:mock_response) { mock_llm_response(input_tokens: 10, output_tokens: 5) }
+    let(:mock_response) { build_mock_response(input_tokens: 10, output_tokens: 5) }
 
     let(:mock_chat) do
-      chat = double("RubyLLM::Chat")
-      allow(chat).to receive(:with_model).and_return(chat)
-      allow(chat).to receive(:with_temperature).and_return(chat)
-      allow(chat).to receive(:with_instructions).and_return(chat)
-      allow(chat).to receive(:with_schema).and_return(chat)
-      allow(chat).to receive(:with_tools).and_return(chat)
-      allow(chat).to receive(:with_thinking).and_return(chat)
-      allow(chat).to receive(:add_message).and_return(chat)
-      allow(chat).to receive(:messages).and_return([])
-      allow(chat).to receive(:ask).and_return(mock_response)
-      chat
+      build_mock_chat_client(response: mock_response)
     end
 
     before do
-      # Ensure we have a fresh configuration to mock
-      RubyLLM::Agents.reset_configuration!
-      allow(RubyLLM::Agents.configuration).to receive(:track_executions).and_return(true)
-      allow(RubyLLM::Agents.configuration).to receive(:track_cache_hits).and_return(true)
-      allow(RubyLLM::Agents.configuration).to receive(:async_logging).and_return(false)
-      allow(RubyLLM).to receive(:chat).and_return(mock_chat)
+      stub_agent_configuration
+      stub_ruby_llm_chat(mock_chat)
     end
 
     it "records start time" do

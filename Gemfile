@@ -15,4 +15,5 @@ group :development, :test do
   gem "sqlite3"
   gem "database_cleaner-active_record"
   gem "rails-controller-testing"
+  gem "simplecov", require: false
 end

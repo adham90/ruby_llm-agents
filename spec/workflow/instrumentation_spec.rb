@@ -74,8 +74,7 @@ RSpec.describe RubyLLM::Agents::Workflow::Instrumentation do
       end
 
       it "stores aggregate metrics from result" do
-        step_result = double(
-          success?: true,
+        step_result = RubyLLM::Agents::TestSupport::MockStepResult.successful(
           total_cost: 0.01,
           input_tokens: 100,
           output_tokens: 50,
@@ -235,8 +234,7 @@ RSpec.describe RubyLLM::Agents::Workflow::Instrumentation do
     end
 
     it "includes step summaries for pipeline workflows" do
-      step_result = double(
-        success?: true,
+      step_result = RubyLLM::Agents::TestSupport::MockStepResult.successful(
         total_cost: 0.01,
         duration_ms: 100
       )
@@ -256,8 +254,7 @@ RSpec.describe RubyLLM::Agents::Workflow::Instrumentation do
     end
 
     it "includes branch summaries for parallel workflows" do
-      branch_result = double(
-        success?: true,
+      branch_result = RubyLLM::Agents::TestSupport::MockStepResult.successful(
         total_cost: 0.02,
         duration_ms: 200
       )
@@ -291,7 +288,7 @@ RSpec.describe RubyLLM::Agents::Workflow::Instrumentation do
         content: "test",
         status: "success",
         routed_to: :billing,
-        classifier_result: double(total_cost: 0.001)
+        classifier_result: RubyLLM::Agents::TestSupport::MockStepResult.successful(total_cost: 0.001)
       )
 
       summary = workflow.send(:build_response_summary, result)

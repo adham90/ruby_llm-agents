@@ -4,15 +4,7 @@ require "rails_helper"
 
 RSpec.describe RubyLLM::Agents::ImageVariationResult do
   let(:mock_image) do
-    double(
-      "Image",
-      url: "https://example.com/variation.png",
-      data: nil,
-      base64?: false,
-      mime_type: "image/png",
-      to_blob: "\x89PNG\r\n",
-      save: true
-    )
+    RubyLLM::Agents::TestSupport::MockImage.variation
   end
 
   describe "#initialize" do
