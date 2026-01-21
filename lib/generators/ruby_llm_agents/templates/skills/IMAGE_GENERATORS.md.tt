@@ -1,0 +1,282 @@
+# <%= @root_namespace %>::Image Generators
+
+This directory contains image generation services. All generators inherit from `ApplicationImageGenerator`.
+
+## Creating a New Generator
+
+Use the generator:
+```bash
+rails generate ruby_llm_agents:image_generator GeneratorName
+rails generate ruby_llm_agents:image_generator Logo --model gpt-image-1 --size 1024x1024
+rails generate ruby_llm_agents:image_generator Product --quality hd --style vivid
+```
+
+Or create manually:
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class LogoGenerator < ApplicationImageGenerator
+      model "gpt-image-1"
+      size "1024x1024"
+      quality "hd"
+      style "vivid"
+      content_policy :standard
+    end
+  end
+end
+```
+
+## DSL Reference
+
+### Model Configuration
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `model` | Image generation model | `model "gpt-image-1"` |
+| `size` | Output image size | `size "1024x1024"` |
+| `quality` | Image quality | `quality "hd"` |
+| `style` | Generation style | `style "vivid"` |
+| `content_policy` | Content filtering level | `content_policy :strict` |
+
+### Available Sizes
+
+- `1024x1024` - Square (default)
+- `1792x1024` - Landscape
+- `1024x1792` - Portrait
+- `512x512` - Small square
+- `256x256` - Thumbnail
+
+### Quality Options
+
+- `standard` - Faster generation, good quality
+- `hd` - Higher detail, slower generation
+
+### Style Options
+
+- `vivid` - Hyper-real, dramatic (default)
+- `natural` - More natural, less extreme
+
+### Content Policy Levels
+
+- `:none` - No filtering
+- `:standard` - Default content filtering
+- `:moderate` - Stricter filtering
+- `:strict` - Maximum filtering
+
+### Caching
+
+```ruby
+cache_for 1.day    # Cache generated images
+cache_for 1.week   # Long-term caching
+```
+
+## Optional Methods & DSL
+
+### `template`
+Define a prompt template:
+
+```ruby
+template "Professional {prompt}, minimalist design, vector art style"
+```
+
+### `negative_prompt`
+Specify what to avoid (for supported models):
+
+```ruby
+negative_prompt "blurry, low quality, distorted, watermark"
+```
+
+### `preprocess_prompt(prompt)`
+Transform prompt before generation:
+
+```ruby
+def preprocess_prompt(prompt)
+  "#{prompt}, professional quality, 8k resolution"
+end
+```
+
+## Using Generators
+
+### Basic Generation
+
+```ruby
+result = <%= @root_namespace %>::Image::LogoGenerator.call(prompt: "Tech startup logo")
+
+result.url          # Temporary URL to generated image
+result.image_data   # Binary image data
+result.size         # "1024x1024"
+result.total_cost   # Cost in USD
+```
+
+### Save to File
+
+```ruby
+result = <%= @root_namespace %>::Image::LogoGenerator.call(prompt: "Company logo")
+result.save("logo.png")
+```
+
+### Generate Multiple Images
+
+```ruby
+result = <%= @root_namespace %>::Image::LogoGenerator.call(
+  prompt: "Product photography",
+  count: 4
+)
+
+result.urls         # Array of image URLs
+result.images       # Array of image data
+```
+
+### Override Settings at Runtime
+
+```ruby
+result = <%= @root_namespace %>::Image::LogoGenerator.call(
+  prompt: "High quality portrait",
+  quality: "hd",
+  size: "1792x1024",
+  style: "natural"
+)
+```
+
+### With ActiveStorage
+
+If ActiveStorage is available:
+
+```ruby
+result = <%= @root_namespace %>::Image::ProductGenerator.call(prompt: "Product shot")
+
+# Attach to a model
+product.images.attach(
+  io: StringIO.new(result.image_data),
+  filename: "product_image.png",
+  content_type: "image/png"
+)
+```
+
+## Use Cases
+
+### Product Photography
+
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class ProductGenerator < ApplicationImageGenerator
+      model "gpt-image-1"
+      size "1024x1024"
+      quality "hd"
+      style "natural"
+
+      template "Professional product photography of {prompt}, " \
+               "white background, studio lighting, e-commerce style"
+
+      negative_prompt "text, watermark, blurry, low quality"
+    end
+  end
+end
+```
+
+### Marketing Banners
+
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class BannerGenerator < ApplicationImageGenerator
+      model "gpt-image-1"
+      size "1792x1024"  # Landscape
+      quality "hd"
+      style "vivid"
+
+      template "Marketing banner for {prompt}, bold colors, " \
+               "eye-catching design, professional"
+    end
+  end
+end
+```
+
+### Avatar Generation
+
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class AvatarGenerator < ApplicationImageGenerator
+      model "gpt-image-1"
+      size "512x512"
+      quality "standard"
+      style "vivid"
+      content_policy :strict
+
+      template "Friendly cartoon avatar of {prompt}, " \
+               "professional, approachable, colorful"
+    end
+  end
+end
+```
+
+### Social Media Graphics
+
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class SocialGenerator < ApplicationImageGenerator
+      model "gpt-image-1"
+      quality "standard"
+
+      def preprocess_prompt(prompt)
+        "#{prompt}, social media post, engaging, modern design"
+      end
+    end
+  end
+end
+
+# Usage with different sizes
+<%= @root_namespace %>::Image::SocialGenerator.call(
+  prompt: "Tech announcement",
+  size: "1024x1024"  # Instagram
+)
+
+<%= @root_namespace %>::Image::SocialGenerator.call(
+  prompt: "Tech announcement",
+  size: "1792x1024"  # Twitter/LinkedIn
+)
+```
+
+## Testing Generators
+
+```ruby
+RSpec.describe <%= @root_namespace %>::Image::LogoGenerator do
+  describe ".call" do
+    it "generates an image" do
+      result = described_class.call(prompt: "Test logo")
+
+      expect(result.url).to be_present
+      expect(result.size).to eq("1024x1024")
+    end
+
+    it "respects quality setting" do
+      result = described_class.call(prompt: "Test", quality: "hd")
+
+      expect(result.quality).to eq("hd")
+    end
+  end
+
+  describe "#preprocess_prompt" do
+    it "enhances the prompt" do
+      generator = described_class.new(prompt: "simple logo")
+
+      result = generator.preprocess_prompt("simple logo")
+
+      expect(result).to include("simple logo")
+    end
+  end
+end
+```
+
+## Best Practices
+
+1. **Use templates** - Ensure consistent style across generations
+2. **Set appropriate quality** - HD for final assets, standard for drafts
+3. **Use caching** - Same prompt produces same image
+4. **Add negative prompts** - Exclude unwanted elements
+5. **Match size to use case** - Don't generate larger than needed
+6. **Consider content policy** - Use strict for user-facing content
+7. **Handle errors gracefully** - Content policy rejections, rate limits

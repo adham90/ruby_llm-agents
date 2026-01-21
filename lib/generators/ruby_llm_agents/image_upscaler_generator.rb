@@ -34,6 +34,27 @@ module RubyLlmAgents
                  default: nil,
                  desc: "Root namespace (default: camelized root or config)"
 
+    def ensure_base_class_and_skill_file
+      @root_namespace = root_namespace
+      @image_namespace = "#{root_namespace}::Image"
+      upscalers_dir = "app/#{root_directory}/image/upscalers"
+
+      # Create directory if needed
+      empty_directory upscalers_dir
+
+      # Create base class if it doesn't exist
+      base_class_path = "#{upscalers_dir}/application_image_upscaler.rb"
+      unless File.exist?(File.join(destination_root, base_class_path))
+        template "application_image_upscaler.rb.tt", base_class_path
+      end
+
+      # Create skill file if it doesn't exist
+      skill_file_path = "#{upscalers_dir}/IMAGE_UPSCALERS.md"
+      unless File.exist?(File.join(destination_root, skill_file_path))
+        template "skills/IMAGE_UPSCALERS.md.tt", skill_file_path
+      end
+    end
+
     def create_image_upscaler_file
       @root_namespace = root_namespace
       @image_namespace = "#{root_namespace}::Image"

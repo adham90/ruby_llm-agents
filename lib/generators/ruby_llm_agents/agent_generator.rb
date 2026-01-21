@@ -37,6 +37,26 @@ module RubyLlmAgents
                  default: nil,
                  desc: "Root namespace (default: camelized root or config)"
 
+    def ensure_base_class_and_skill_file
+      @root_namespace = root_namespace
+      agents_dir = "app/#{root_directory}/agents"
+
+      # Create directory if needed
+      empty_directory agents_dir
+
+      # Create base class if it doesn't exist
+      base_class_path = "#{agents_dir}/application_agent.rb"
+      unless File.exist?(File.join(destination_root, base_class_path))
+        template "application_agent.rb.tt", base_class_path
+      end
+
+      # Create skill file if it doesn't exist
+      skill_file_path = "#{agents_dir}/AGENTS.md"
+      unless File.exist?(File.join(destination_root, skill_file_path))
+        template "skills/AGENTS.md.tt", skill_file_path
+      end
+    end
+
     def create_agent_file
       # Support nested paths: "chat/support" -> "app/{root}/agents/chat/support_agent.rb"
       # Rails' class_name handles namespacing: "chat/support" -> "Chat::Support"

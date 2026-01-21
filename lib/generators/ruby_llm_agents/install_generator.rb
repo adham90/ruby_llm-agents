@@ -73,6 +73,25 @@ module RubyLlmAgents
       template "application_embedder.rb.tt", "app/#{root_directory}/text/embedders/application_embedder.rb"
     end
 
+    def create_skill_files
+      @root_namespace = root_namespace
+      say_status :create, "skill documentation files", :green
+
+      # Create agents skill file
+      template "skills/AGENTS.md.tt", "app/#{root_directory}/agents/AGENTS.md"
+
+      # Create embedders skill file
+      template "skills/EMBEDDERS.md.tt", "app/#{root_directory}/text/embedders/EMBEDDERS.md"
+
+      # Create tools directory and skill file
+      empty_directory "app/#{root_directory}/tools"
+      template "skills/TOOLS.md.tt", "app/#{root_directory}/tools/TOOLS.md"
+
+      # Create workflows directory and skill file
+      empty_directory "app/#{root_directory}/workflows"
+      template "skills/WORKFLOWS.md.tt", "app/#{root_directory}/workflows/WORKFLOWS.md"
+    end
+
     def mount_dashboard_engine
       return unless options[:mount_dashboard]
 
@@ -95,10 +114,18 @@ module RubyLlmAgents
       say "Directory structure created:"
       say "  app/#{root_directory}/"
       say "  ├── agents/"
-      say "  │   └── application_agent.rb"
-      say "  └── text/"
-      say "      └── embedders/"
-      say "          └── application_embedder.rb"
+      say "  │   ├── application_agent.rb"
+      say "  │   └── AGENTS.md"
+      say "  ├── text/"
+      say "  │   └── embedders/"
+      say "  │       ├── application_embedder.rb"
+      say "  │       └── EMBEDDERS.md"
+      say "  ├── tools/"
+      say "  │   └── TOOLS.md"
+      say "  └── workflows/"
+      say "      └── WORKFLOWS.md"
+      say ""
+      say "Skill files (*.md) help AI coding assistants understand how to use this gem."
       say ""
       say "Namespace: #{root_namespace}::"
       say ""

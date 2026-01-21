@@ -1,0 +1,120 @@
+# <%= @root_namespace %>::Image Variators
+
+This directory contains image variation services. All variators inherit from `ApplicationImageVariator`.
+
+## Creating a New Variator
+
+Use the generator:
+```bash
+rails generate ruby_llm_agents:image_variator VariatorName
+rails generate ruby_llm_agents:image_variator Product --count 4
+```
+
+Or create manually:
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class ProductVariator < ApplicationImageVariator
+      model "gpt-image-1"
+      count 4
+      size "1024x1024"
+    end
+  end
+end
+```
+
+## DSL Reference
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `model` | Variation model | `model "gpt-image-1"` |
+| `count` | Number of variations | `count 4` |
+| `size` | Output size | `size "1024x1024"` |
+| `variation_strength` | How different from original | `variation_strength 0.5` |
+
+### Variation Strength
+- `0.1-0.3` - Very similar to original
+- `0.4-0.6` - Moderate differences
+- `0.7-1.0` - Significant variations
+
+## Using Variators
+
+```ruby
+result = <%= @root_namespace %>::Image::ProductVariator.call(image: "product.png")
+
+result.urls         # Array of variation URLs
+result.images       # Array of image data
+result.count        # Number of variations
+result.total_cost   # Combined cost
+```
+
+### Override Count
+
+```ruby
+result = <%= @root_namespace %>::Image::ProductVariator.call(
+  image: "logo.png",
+  count: 8  # Generate 8 variations
+)
+```
+
+### Save All Variations
+
+```ruby
+result = <%= @root_namespace %>::Image::ProductVariator.call(image: "design.png")
+
+result.images.each_with_index do |image_data, i|
+  File.write("variation_#{i}.png", image_data)
+end
+```
+
+## Use Cases
+
+### Design Exploration
+
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class DesignVariator < ApplicationImageVariator
+      count 6
+      variation_strength 0.5  # Moderate differences
+    end
+  end
+end
+
+# Generate design alternatives
+result = <%= @root_namespace %>::Image::DesignVariator.call(image: "concept.png")
+```
+
+### A/B Testing Assets
+
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class MarketingVariator < ApplicationImageVariator
+      count 4
+      variation_strength 0.3  # Similar but different
+    end
+  end
+end
+```
+
+### Avatar Options
+
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class AvatarVariator < ApplicationImageVariator
+      count 8
+      size "512x512"
+      variation_strength 0.4
+    end
+  end
+end
+```
+
+## Best Practices
+
+1. **Start with fewer variations** - Generate more if needed
+2. **Adjust strength for use case** - Subtle for refinement, strong for exploration
+3. **Use high-quality source** - Better input = better variations
+4. **Consider cost** - Each variation costs separately

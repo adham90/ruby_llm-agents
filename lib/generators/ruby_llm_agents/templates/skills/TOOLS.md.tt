@@ -1,0 +1,227 @@
+# <%= @root_namespace %> Tools
+
+This directory contains tools that agents can use to perform actions. Tools allow LLM agents to interact with external systems, APIs, databases, and more.
+
+## Creating a Tool
+
+Tools use the RubyLLM tool interface. Create a class that includes `RubyLLM::Tool`:
+
+```ruby
+module <%= @root_namespace %>
+  class SearchTool
+    include RubyLLM::Tool
+
+    description "Searches the knowledge base for relevant documents"
+
+    param :query, type: :string, description: "The search query", required: true
+    param :limit, type: :integer, description: "Maximum results to return", default: 10
+
+    def execute(query:, limit: 10)
+      # Implement your tool logic here
+      results = Document.search(query).limit(limit)
+
+      results.map do |doc|
+        { title: doc.title, content: doc.content, score: doc.score }
+      end
+    end
+  end
+end
+```
+
+## Tool DSL Reference
+
+### `description`
+Human-readable description of what the tool does. The LLM uses this to decide when to call the tool.
+
+```ruby
+description "Fetches current weather data for a given location"
+```
+
+### `param`
+Define parameters the tool accepts:
+
+```ruby
+param :name, type: :string, description: "Parameter description", required: true
+param :count, type: :integer, description: "Optional count", default: 5
+```
+
+**Supported types:**
+- `:string` - Text values
+- `:integer` - Whole numbers
+- `:number` - Decimal numbers
+- `:boolean` - true/false
+- `:array` - Lists of values
+- `:object` - Nested objects
+
+### `execute`
+The method that runs when the tool is called. Receives keyword arguments matching the defined params.
+
+```ruby
+def execute(query:, limit: 10)
+  # Tool implementation
+  # Return value is passed back to the LLM
+end
+```
+
+## Using Tools with Agents
+
+Register tools in your agent:
+
+```ruby
+module <%= @root_namespace %>
+  class ResearchAgent < ApplicationAgent
+    model "gpt-4o"
+
+    tools [SearchTool, CalculatorTool, WebFetchTool]
+
+    param :question, required: true
+
+    private
+
+    def system_prompt
+      <<~PROMPT
+        You are a research assistant. Use the available tools to answer questions.
+        Always cite your sources.
+      PROMPT
+    end
+
+    def user_prompt
+      question
+    end
+  end
+end
+```
+
+## Tool Patterns
+
+### Database Query Tool
+
+```ruby
+module <%= @root_namespace %>
+  class CustomerLookupTool
+    include RubyLLM::Tool
+
+    description "Looks up customer information by email or ID"
+
+    param :email, type: :string, description: "Customer email address"
+    param :id, type: :integer, description: "Customer ID"
+
+    def execute(email: nil, id: nil)
+      customer = if id
+        Customer.find_by(id: id)
+      elsif email
+        Customer.find_by(email: email)
+      end
+
+      return { error: "Customer not found" } unless customer
+
+      {
+        id: customer.id,
+        name: customer.name,
+        email: customer.email,
+        plan: customer.subscription_plan
+      }
+    end
+  end
+end
+```
+
+### API Integration Tool
+
+```ruby
+module <%= @root_namespace %>
+  class WeatherTool
+    include RubyLLM::Tool
+
+    description "Gets current weather for a location"
+
+    param :city, type: :string, description: "City name", required: true
+    param :units, type: :string, description: "Temperature units (celsius/fahrenheit)", default: "celsius"
+
+    def execute(city:, units: "celsius")
+      response = HTTP.get("https://api.weather.com/current", params: {
+        q: city,
+        units: units == "celsius" ? "metric" : "imperial"
+      })
+
+      data = JSON.parse(response.body)
+
+      {
+        temperature: data["temp"],
+        conditions: data["conditions"],
+        humidity: data["humidity"]
+      }
+    rescue HTTP::Error => e
+      { error: "Failed to fetch weather: #{e.message}" }
+    end
+  end
+end
+```
+
+### Action Tool
+
+```ruby
+module <%= @root_namespace %>
+  class SendEmailTool
+    include RubyLLM::Tool
+
+    description "Sends an email to a recipient"
+
+    param :to, type: :string, description: "Recipient email", required: true
+    param :subject, type: :string, description: "Email subject", required: true
+    param :body, type: :string, description: "Email body content", required: true
+
+    def execute(to:, subject:, body:)
+      # Validate email format
+      unless to.match?(URI::MailTo::EMAIL_REGEXP)
+        return { error: "Invalid email address" }
+      end
+
+      UserMailer.custom_email(to: to, subject: subject, body: body).deliver_later
+
+      { success: true, message: "Email queued for delivery to #{to}" }
+    end
+  end
+end
+```
+
+## Best Practices
+
+1. **Clear descriptions** - Write descriptions that help the LLM understand when to use the tool
+2. **Validate inputs** - Check parameters before executing
+3. **Handle errors gracefully** - Return error objects instead of raising exceptions
+4. **Keep tools focused** - One tool, one purpose
+5. **Return structured data** - Return hashes that the LLM can interpret
+6. **Consider rate limits** - Add throttling for API-calling tools
+7. **Log tool usage** - Track which tools are called and how often
+
+## Testing Tools
+
+```ruby
+RSpec.describe <%= @root_namespace %>::SearchTool do
+  describe "#execute" do
+    it "returns search results" do
+      tool = described_class.new
+      results = tool.execute(query: "ruby programming", limit: 5)
+
+      expect(results).to be_an(Array)
+      expect(results.length).to be <= 5
+    end
+
+    it "handles empty results" do
+      tool = described_class.new
+      results = tool.execute(query: "xyznonexistent123", limit: 5)
+
+      expect(results).to eq([])
+    end
+  end
+end
+```
+
+## Security Considerations
+
+- **Sanitize inputs** - Never trust LLM-provided parameters directly
+- **Limit scope** - Tools should only access what they need
+- **Audit actions** - Log destructive operations
+- **Rate limit** - Prevent abuse of expensive operations
+- **Validate permissions** - Check user authorization before actions

@@ -38,6 +38,27 @@ module RubyLlmAgents
                  default: nil,
                  desc: "Root namespace (default: camelized root or config)"
 
+    def ensure_base_class_and_skill_file
+      @root_namespace = root_namespace
+      @image_namespace = "#{root_namespace}::Image"
+      transformers_dir = "app/#{root_directory}/image/transformers"
+
+      # Create directory if needed
+      empty_directory transformers_dir
+
+      # Create base class if it doesn't exist
+      base_class_path = "#{transformers_dir}/application_image_transformer.rb"
+      unless File.exist?(File.join(destination_root, base_class_path))
+        template "application_image_transformer.rb.tt", base_class_path
+      end
+
+      # Create skill file if it doesn't exist
+      skill_file_path = "#{transformers_dir}/IMAGE_TRANSFORMERS.md"
+      unless File.exist?(File.join(destination_root, skill_file_path))
+        template "skills/IMAGE_TRANSFORMERS.md.tt", skill_file_path
+      end
+    end
+
     def create_image_transformer_file
       @root_namespace = root_namespace
       @image_namespace = "#{root_namespace}::Image"

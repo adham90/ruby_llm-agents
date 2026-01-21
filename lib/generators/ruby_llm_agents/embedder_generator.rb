@@ -34,6 +34,27 @@ module RubyLlmAgents
                  default: nil,
                  desc: "Root namespace (default: camelized root or config)"
 
+    def ensure_base_class_and_skill_file
+      @root_namespace = root_namespace
+      @text_namespace = "#{root_namespace}::Text"
+      embedders_dir = "app/#{root_directory}/text/embedders"
+
+      # Create directory if needed
+      empty_directory embedders_dir
+
+      # Create base class if it doesn't exist
+      base_class_path = "#{embedders_dir}/application_embedder.rb"
+      unless File.exist?(File.join(destination_root, base_class_path))
+        template "application_embedder.rb.tt", base_class_path
+      end
+
+      # Create skill file if it doesn't exist
+      skill_file_path = "#{embedders_dir}/EMBEDDERS.md"
+      unless File.exist?(File.join(destination_root, skill_file_path))
+        template "skills/EMBEDDERS.md.tt", skill_file_path
+      end
+    end
+
     def create_embedder_file
       # Support nested paths: "search/document" -> "app/{root}/text/embedders/search/document_embedder.rb"
       @root_namespace = root_namespace

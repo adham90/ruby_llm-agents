@@ -1,0 +1,131 @@
+# <%= @root_namespace %>::Image Background Removers
+
+This directory contains background removal services. All removers inherit from `ApplicationBackgroundRemover`.
+
+## Creating a New Remover
+
+Use the generator:
+```bash
+rails generate ruby_llm_agents:background_remover RemoverName
+rails generate ruby_llm_agents:background_remover Product --edge_refinement high
+```
+
+Or create manually:
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class ProductRemover < ApplicationBackgroundRemover
+      model "remove-bg"
+      edge_refinement :high
+      output_format :png
+    end
+  end
+end
+```
+
+## DSL Reference
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `model` | Background removal model | `model "remove-bg"` |
+| `edge_refinement` | Edge quality | `edge_refinement :high` |
+| `output_format` | Output format | `output_format :png` |
+| `background_color` | Replace with color | `background_color "#FFFFFF"` |
+
+### Edge Refinement
+- `:low` - Fastest, rough edges
+- `:medium` - Balanced (default)
+- `:high` - Slow, clean edges
+
+### Output Formats
+- `:png` - Transparent background (default)
+- `:jpg` - With background color
+- `:webp` - Modern format, smaller size
+
+## Using Removers
+
+```ruby
+result = <%= @root_namespace %>::Image::ProductRemover.call(image: "product.jpg")
+
+result.url          # Image URL with transparent background
+result.image_data   # PNG binary data
+result.has_alpha?   # true (has transparency)
+result.save("product_nobg.png")
+```
+
+### With Background Color
+
+```ruby
+result = <%= @root_namespace %>::Image::ProductRemover.call(
+  image: "product.jpg",
+  background_color: "#FFFFFF"  # White background
+)
+```
+
+### Override Settings
+
+```ruby
+result = <%= @root_namespace %>::Image::ProductRemover.call(
+  image: "complex_photo.jpg",
+  edge_refinement: :high,
+  output_format: :webp
+)
+```
+
+## Use Cases
+
+### E-commerce Product Photos
+
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class ProductBackgroundRemover < ApplicationBackgroundRemover
+      edge_refinement :high
+      output_format :png
+
+      cache_for 30.days  # Product images don't change often
+    end
+  end
+end
+```
+
+### Profile Photo Processing
+
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class AvatarBackgroundRemover < ApplicationBackgroundRemover
+      edge_refinement :high
+      output_format :png
+    end
+  end
+end
+
+# Remove background and resize
+result = <%= @root_namespace %>::Image::AvatarBackgroundRemover.call(image: uploaded_photo)
+```
+
+### Batch Processing
+
+```ruby
+Product.where(background_removed: false).find_each do |product|
+  result = <%= @root_namespace %>::Image::ProductBackgroundRemover.call(
+    image: product.original_image.download
+  )
+
+  product.processed_image.attach(
+    io: StringIO.new(result.image_data),
+    filename: "#{product.id}_nobg.png",
+    content_type: "image/png"
+  )
+  product.update!(background_removed: true)
+end
+```
+
+## Best Practices
+
+1. **Use high edge refinement for products** - Clean edges look professional
+2. **PNG for transparency** - JPG doesn't support alpha
+3. **Cache aggressively** - Same image = same result
+4. **Consider file size** - PNG is larger than JPG
+5. **Test edge cases** - Complex backgrounds, similar colors

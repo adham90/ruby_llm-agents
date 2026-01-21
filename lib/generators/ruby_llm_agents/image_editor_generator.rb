@@ -34,6 +34,27 @@ module RubyLlmAgents
                  default: nil,
                  desc: "Root namespace (default: camelized root or config)"
 
+    def ensure_base_class_and_skill_file
+      @root_namespace = root_namespace
+      @image_namespace = "#{root_namespace}::Image"
+      editors_dir = "app/#{root_directory}/image/editors"
+
+      # Create directory if needed
+      empty_directory editors_dir
+
+      # Create base class if it doesn't exist
+      base_class_path = "#{editors_dir}/application_image_editor.rb"
+      unless File.exist?(File.join(destination_root, base_class_path))
+        template "application_image_editor.rb.tt", base_class_path
+      end
+
+      # Create skill file if it doesn't exist
+      skill_file_path = "#{editors_dir}/IMAGE_EDITORS.md"
+      unless File.exist?(File.join(destination_root, skill_file_path))
+        template "skills/IMAGE_EDITORS.md.tt", skill_file_path
+      end
+    end
+
     def create_image_editor_file
       @root_namespace = root_namespace
       @image_namespace = "#{root_namespace}::Image"

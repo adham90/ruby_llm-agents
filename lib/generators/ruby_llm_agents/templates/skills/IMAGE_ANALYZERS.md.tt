@@ -1,0 +1,120 @@
+# <%= @root_namespace %>::Image Analyzers
+
+This directory contains image analysis services. All analyzers inherit from `ApplicationImageAnalyzer`.
+
+## Creating a New Analyzer
+
+Use the generator:
+```bash
+rails generate ruby_llm_agents:image_analyzer AnalyzerName
+rails generate ruby_llm_agents:image_analyzer Product --model gpt-4o
+```
+
+Or create manually:
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class ProductAnalyzer < ApplicationImageAnalyzer
+      model "gpt-4o"
+      analysis_type :detailed
+      extract_colors true
+      detect_objects true
+    end
+  end
+end
+```
+
+## DSL Reference
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `model` | Vision model | `model "gpt-4o"` |
+| `analysis_type` | Detail level | `analysis_type :detailed` |
+| `extract_colors` | Extract color palette | `extract_colors true` |
+| `detect_objects` | Detect objects in image | `detect_objects true` |
+
+### Analysis Types
+- `:basic` - Quick overview
+- `:detailed` - Comprehensive analysis
+- `:custom` - With custom prompt
+
+## Using Analyzers
+
+```ruby
+result = <%= @root_namespace %>::Image::ProductAnalyzer.call(image: "product.jpg")
+
+result.description   # Text description
+result.objects       # Detected objects
+result.colors        # Color palette
+result.tags          # Suggested tags
+result.total_cost    # Cost in USD
+```
+
+### Analyze URL
+
+```ruby
+result = <%= @root_namespace %>::Image::ProductAnalyzer.call(
+  image: "https://example.com/photo.jpg"
+)
+```
+
+### Custom Analysis Prompt
+
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class CustomAnalyzer < ApplicationImageAnalyzer
+      model "gpt-4o"
+      analysis_type :custom
+
+      def analysis_prompt
+        "Analyze this image for: composition, lighting, color harmony. " \
+        "Return JSON with scores from 1-10 for each aspect."
+      end
+    end
+  end
+end
+```
+
+## Use Cases
+
+### Content Moderation
+
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class ModerationAnalyzer < ApplicationImageAnalyzer
+      model "gpt-4o"
+
+      def analysis_prompt
+        "Analyze this image for inappropriate content. " \
+        "Return JSON with: safe (boolean), reason (string if unsafe)"
+      end
+    end
+  end
+end
+```
+
+### Product Categorization
+
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class CategoryAnalyzer < ApplicationImageAnalyzer
+      model "gpt-4o"
+      detect_objects true
+
+      def analysis_prompt
+        "Identify the product category, brand if visible, and condition."
+      end
+    end
+  end
+end
+```
+
+## Best Practices
+
+1. **Choose appropriate model** - GPT-4o for detailed analysis
+2. **Use structured prompts** - Request JSON for parsing
+3. **Enable object detection** - When identifying items
+4. **Extract colors** - For visual matching/search

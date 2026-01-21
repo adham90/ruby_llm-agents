@@ -34,6 +34,27 @@ module RubyLlmAgents
                  default: nil,
                  desc: "Root namespace (default: camelized root or config)"
 
+    def ensure_base_class_and_skill_file
+      @root_namespace = root_namespace
+      @audio_namespace = "#{root_namespace}::Audio"
+      transcribers_dir = "app/#{root_directory}/audio/transcribers"
+
+      # Create directory if needed
+      empty_directory transcribers_dir
+
+      # Create base class if it doesn't exist
+      base_class_path = "#{transcribers_dir}/application_transcriber.rb"
+      unless File.exist?(File.join(destination_root, base_class_path))
+        template "application_transcriber.rb.tt", base_class_path
+      end
+
+      # Create skill file if it doesn't exist
+      skill_file_path = "#{transcribers_dir}/TRANSCRIBERS.md"
+      unless File.exist?(File.join(destination_root, skill_file_path))
+        template "skills/TRANSCRIBERS.md.tt", skill_file_path
+      end
+    end
+
     def create_transcriber_file
       # Support nested paths: "interview/meeting" -> "app/{root}/audio/transcribers/interview/meeting_transcriber.rb"
       @root_namespace = root_namespace

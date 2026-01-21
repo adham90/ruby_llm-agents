@@ -1,0 +1,110 @@
+# <%= @root_namespace %>::Image Upscalers
+
+This directory contains image upscaling services. All upscalers inherit from `ApplicationImageUpscaler`.
+
+## Creating a New Upscaler
+
+Use the generator:
+```bash
+rails generate ruby_llm_agents:image_upscaler UpscalerName
+rails generate ruby_llm_agents:image_upscaler Photo --scale 4
+```
+
+Or create manually:
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class PhotoUpscaler < ApplicationImageUpscaler
+      model "esrgan"
+      scale 4
+      denoise true
+    end
+  end
+end
+```
+
+## DSL Reference
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `model` | Upscaling model | `model "esrgan"` |
+| `scale` | Scale factor (2, 4, 8) | `scale 4` |
+| `denoise` | Apply noise reduction | `denoise true` |
+| `sharpen` | Apply sharpening | `sharpen true` |
+
+### Scale Factors
+- `2` - Double resolution (512x512 -> 1024x1024)
+- `4` - Quadruple resolution (512x512 -> 2048x2048)
+- `8` - 8x resolution (may be slow)
+
+## Using Upscalers
+
+```ruby
+result = <%= @root_namespace %>::Image::PhotoUpscaler.call(image: "small.jpg")
+
+result.url              # Upscaled image URL
+result.image_data       # Binary data
+result.original_size    # "512x512"
+result.upscaled_size    # "2048x2048"
+result.save("large.png")
+```
+
+### Override Scale
+
+```ruby
+result = <%= @root_namespace %>::Image::PhotoUpscaler.call(
+  image: "thumbnail.jpg",
+  scale: 2  # Just double it
+)
+```
+
+## Use Cases
+
+### Thumbnail Enhancement
+
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class ThumbnailUpscaler < ApplicationImageUpscaler
+      scale 4
+      denoise true
+      sharpen true
+    end
+  end
+end
+```
+
+### Print Preparation
+
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class PrintUpscaler < ApplicationImageUpscaler
+      scale 4
+      denoise false  # Preserve original detail
+    end
+  end
+end
+```
+
+### Avatar Enhancement
+
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class AvatarUpscaler < ApplicationImageUpscaler
+      scale 2  # Modest upscale
+      denoise true
+      sharpen true
+    end
+  end
+end
+```
+
+## Best Practices
+
+1. **Choose appropriate scale** - Don't over-upscale
+2. **Enable denoise for low-quality sources** - Helps with compression artifacts
+3. **Sharpen selectively** - Can introduce artifacts
+4. **Consider file size** - Larger images = larger files
+5. **Test with similar images** - Results vary by content type

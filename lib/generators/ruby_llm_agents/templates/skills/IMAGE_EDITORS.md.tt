@@ -1,0 +1,102 @@
+# <%= @root_namespace %>::Image Editors
+
+This directory contains image editing services (inpainting, masked edits). All editors inherit from `ApplicationImageEditor`.
+
+## Creating a New Editor
+
+Use the generator:
+```bash
+rails generate ruby_llm_agents:image_editor EditorName
+rails generate ruby_llm_agents:image_editor Background --model gpt-image-1
+```
+
+Or create manually:
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class BackgroundEditor < ApplicationImageEditor
+      model "gpt-image-1"
+      size "1024x1024"
+      content_policy :standard
+    end
+  end
+end
+```
+
+## DSL Reference
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `model` | Image editing model | `model "gpt-image-1"` |
+| `size` | Output size | `size "1024x1024"` |
+| `content_policy` | Content filtering | `content_policy :strict` |
+
+## Using Editors
+
+### Basic Edit with Mask
+
+```ruby
+result = <%= @root_namespace %>::Image::BackgroundEditor.call(
+  image: "photo.png",
+  mask: "mask.png",
+  prompt: "Beautiful sunset sky background"
+)
+
+result.url          # Edited image URL
+result.image_data   # Binary data
+result.save("edited.png")
+```
+
+### Edit Specific Area
+
+```ruby
+# Mask should be PNG with transparent areas indicating regions to edit
+result = <%= @root_namespace %>::Image::BackgroundEditor.call(
+  image: original_image,
+  mask: mask_with_transparent_areas,
+  prompt: "Modern city skyline"
+)
+```
+
+## Use Cases
+
+### Background Replacement
+
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class BackgroundReplacer < ApplicationImageEditor
+      model "gpt-image-1"
+      size "1024x1024"
+
+      def default_prompt
+        "Professional studio background, soft lighting"
+      end
+    end
+  end
+end
+```
+
+### Object Removal
+
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class ObjectRemover < ApplicationImageEditor
+      model "gpt-image-1"
+
+      # Mask covers the object to remove
+      def default_prompt
+        "Seamless continuation of the surrounding area"
+      end
+    end
+  end
+end
+```
+
+## Best Practices
+
+1. **Create accurate masks** - Transparent areas indicate edit regions
+2. **Match image sizes** - Mask and image should be same dimensions
+3. **Use descriptive prompts** - Be specific about desired result
+4. **PNG format** - Use PNG for mask transparency support

@@ -1,0 +1,255 @@
+# <%= @root_namespace %>::Text Embedders
+
+This directory contains text embedding services for vector search and semantic similarity. All embedders inherit from `ApplicationEmbedder`.
+
+## Creating a New Embedder
+
+Use the generator:
+```bash
+rails generate ruby_llm_agents:embedder EmbedderName
+rails generate ruby_llm_agents:embedder Document --model text-embedding-3-large
+rails generate ruby_llm_agents:embedder Search --dimensions 512 --batch_size 50
+```
+
+Or create manually:
+```ruby
+module <%= @root_namespace %>
+  module Text
+    class DocumentEmbedder < ApplicationEmbedder
+      model "text-embedding-3-small"
+      dimensions 1536
+      batch_size 100
+      cache_for 1.week
+    end
+  end
+end
+```
+
+## DSL Reference
+
+### Model Configuration
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `model` | Embedding model | `model "text-embedding-3-large"` |
+| `dimensions` | Vector dimensions | `dimensions 512` |
+| `batch_size` | Texts per API call | `batch_size 100` |
+
+### Available Models
+
+**OpenAI:**
+- `text-embedding-3-small` - 1536 dimensions, fastest, cheapest
+- `text-embedding-3-large` - 3072 dimensions, best quality
+- `text-embedding-ada-002` - 1536 dimensions, legacy
+
+**Dimension reduction:** You can reduce dimensions for storage efficiency:
+```ruby
+dimensions 256   # Reduce from default
+dimensions 512   # Good balance of quality/size
+dimensions 1024  # Higher quality
+```
+
+### Caching
+
+```ruby
+cache_for 1.week   # Cache embeddings
+cache_for 30.days  # Long-term caching
+```
+
+## Optional Methods
+
+### `preprocess(text)`
+Normalize text before embedding:
+
+```ruby
+def preprocess(text)
+  text
+    .strip
+    .downcase
+    .gsub(/\s+/, ' ')
+    .truncate(8000)  # Model token limit
+end
+```
+
+## Using Embedders
+
+### Single Text Embedding
+
+```ruby
+result = <%= @root_namespace %>::Text::DocumentEmbedder.call(text: "Hello world")
+
+result.embedding    # [0.123, -0.456, ...] vector array
+result.dimensions   # 1536
+result.model_id     # "text-embedding-3-small"
+result.total_cost   # Cost in USD
+```
+
+### Batch Embedding
+
+Process multiple texts efficiently:
+
+```ruby
+texts = ["Hello world", "Goodbye world", "Ruby programming"]
+result = <%= @root_namespace %>::Text::DocumentEmbedder.call(texts: texts)
+
+result.embeddings   # Array of embedding vectors
+result.count        # 3
+result.total_cost   # Combined cost
+```
+
+### Vector Storage
+
+Store embeddings in PostgreSQL with pgvector:
+
+```ruby
+# Migration
+add_column :documents, :embedding, :vector, limit: 1536
+
+# Model
+class Document < ApplicationRecord
+  has_neighbors :embedding
+end
+
+# Generate and store embedding
+document = Document.find(1)
+result = <%= @root_namespace %>::Text::DocumentEmbedder.call(text: document.content)
+document.update!(embedding: result.embedding)
+```
+
+### Semantic Search
+
+```ruby
+# Embed the query
+query_result = <%= @root_namespace %>::Text::SearchEmbedder.call(text: "ruby web framework")
+
+# Find similar documents
+similar = Document.nearest_neighbors(:embedding, query_result.embedding, distance: "cosine")
+                  .limit(10)
+```
+
+## Use Cases
+
+### Document Embedding
+
+```ruby
+module <%= @root_namespace %>
+  module Text
+    class DocumentEmbedder < ApplicationEmbedder
+      model "text-embedding-3-large"
+      dimensions 1024
+      batch_size 50
+      cache_for 30.days
+
+      def preprocess(text)
+        text
+          .strip
+          .gsub(/\s+/, ' ')
+          .truncate(8000)
+      end
+    end
+  end
+end
+```
+
+### Search Query Embedding
+
+```ruby
+module <%= @root_namespace %>
+  module Text
+    class SearchEmbedder < ApplicationEmbedder
+      model "text-embedding-3-small"
+      dimensions 512
+      cache_for 1.hour  # Queries may repeat
+
+      def preprocess(text)
+        text.strip.downcase
+      end
+    end
+  end
+end
+```
+
+### Code Embedding
+
+```ruby
+module <%= @root_namespace %>
+  module Text
+    class CodeEmbedder < ApplicationEmbedder
+      model "text-embedding-3-large"
+      cache_for 7.days
+
+      def preprocess(text)
+        # Remove comments, normalize whitespace
+        text
+          .gsub(/#.*$/, '')
+          .gsub(/\/\/.*$/, '')
+          .gsub(/\s+/, ' ')
+          .strip
+      end
+    end
+  end
+end
+```
+
+### Batch Processing
+
+```ruby
+# Embed all documents in batches
+Document.find_each(batch_size: 100) do |doc|
+  next if doc.embedding.present?
+
+  result = <%= @root_namespace %>::Text::DocumentEmbedder.call(text: doc.content)
+  doc.update!(embedding: result.embedding)
+end
+
+# Or batch multiple at once
+texts = Document.where(embedding: nil).limit(100).pluck(:id, :content)
+results = <%= @root_namespace %>::Text::DocumentEmbedder.call(texts: texts.map(&:last))
+
+texts.each_with_index do |(id, _), index|
+  Document.find(id).update!(embedding: results.embeddings[index])
+end
+```
+
+## Testing Embedders
+
+```ruby
+RSpec.describe <%= @root_namespace %>::Text::DocumentEmbedder do
+  describe ".call" do
+    it "returns embedding vector" do
+      result = described_class.call(text: "Hello world")
+
+      expect(result.embedding).to be_an(Array)
+      expect(result.dimensions).to eq(1536)
+    end
+
+    it "handles batch embedding" do
+      texts = ["Hello", "World"]
+      result = described_class.call(texts: texts)
+
+      expect(result.embeddings.length).to eq(2)
+    end
+  end
+
+  describe "#preprocess" do
+    it "normalizes text" do
+      embedder = described_class.new(text: "test")
+      text = "  Multiple   Spaces  "
+
+      result = embedder.preprocess(text)
+
+      expect(result).to eq("multiple spaces")
+    end
+  end
+end
+```
+
+## Best Practices
+
+1. **Use caching** - Same text always produces same embedding
+2. **Choose appropriate dimensions** - Lower for storage, higher for accuracy
+3. **Batch when possible** - More efficient than single calls
+4. **Preprocess consistently** - Same preprocessing for indexing and search
+5. **Match models** - Use same model for indexing and querying
+6. **Consider truncation** - Handle texts longer than model limits
+7. **Use smaller models for search** - Faster query embedding

@@ -38,6 +38,27 @@ module RubyLlmAgents
                  default: nil,
                  desc: "Root namespace (default: camelized root or config)"
 
+    def ensure_base_class_and_skill_file
+      @root_namespace = root_namespace
+      @audio_namespace = "#{root_namespace}::Audio"
+      speakers_dir = "app/#{root_directory}/audio/speakers"
+
+      # Create directory if needed
+      empty_directory speakers_dir
+
+      # Create base class if it doesn't exist
+      base_class_path = "#{speakers_dir}/application_speaker.rb"
+      unless File.exist?(File.join(destination_root, base_class_path))
+        template "application_speaker.rb.tt", base_class_path
+      end
+
+      # Create skill file if it doesn't exist
+      skill_file_path = "#{speakers_dir}/SPEAKERS.md"
+      unless File.exist?(File.join(destination_root, skill_file_path))
+        template "skills/SPEAKERS.md.tt", skill_file_path
+      end
+    end
+
     def create_speaker_file
       # Support nested paths: "article/narrator" -> "app/{root}/audio/speakers/article/narrator_speaker.rb"
       @root_namespace = root_namespace

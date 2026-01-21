@@ -38,6 +38,27 @@ module RubyLlmAgents
                  default: nil,
                  desc: "Root namespace (default: camelized root or config)"
 
+    def ensure_base_class_and_skill_file
+      @root_namespace = root_namespace
+      @image_namespace = "#{root_namespace}::Image"
+      generators_dir = "app/#{root_directory}/image/generators"
+
+      # Create directory if needed
+      empty_directory generators_dir
+
+      # Create base class if it doesn't exist
+      base_class_path = "#{generators_dir}/application_image_generator.rb"
+      unless File.exist?(File.join(destination_root, base_class_path))
+        template "application_image_generator.rb.tt", base_class_path
+      end
+
+      # Create skill file if it doesn't exist
+      skill_file_path = "#{generators_dir}/IMAGE_GENERATORS.md"
+      unless File.exist?(File.join(destination_root, skill_file_path))
+        template "skills/IMAGE_GENERATORS.md.tt", skill_file_path
+      end
+    end
+
     def create_image_generator_file
       # Support nested paths: "product/hero" -> "app/{root}/image/generators/product/hero_generator.rb"
       @root_namespace = root_namespace

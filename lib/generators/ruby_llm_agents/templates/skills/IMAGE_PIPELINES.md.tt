@@ -1,0 +1,228 @@
+# <%= @root_namespace %>::Image Pipelines
+
+This directory contains multi-step image processing pipelines. All pipelines inherit from `ApplicationImagePipeline`.
+
+## Creating a New Pipeline
+
+Use the generator:
+```bash
+rails generate ruby_llm_agents:image_pipeline PipelineName
+rails generate ruby_llm_agents:image_pipeline Product --steps generate,upscale,remove_background
+```
+
+Or create manually:
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class ProductPipeline < ApplicationImagePipeline
+      step :generate, generator: ProductGenerator
+      step :upscale, upscaler: PhotoUpscaler, scale: 2
+      step :remove_bg, remover: BackgroundRemover
+    end
+  end
+end
+```
+
+## DSL Reference
+
+### Step Definition
+
+```ruby
+step :name, generator: MyGenerator      # Text-to-image generation
+step :name, upscaler: MyUpscaler        # Resolution enhancement
+step :name, transformer: MyTransformer  # Style transfer / img2img
+step :name, editor: MyEditor            # Inpainting / editing
+step :name, variator: MyVariator        # Generate variations
+step :name, analyzer: MyAnalyzer        # Image analysis
+step :name, remover: MyRemover          # Background removal
+```
+
+### Conditional Steps
+
+```ruby
+step :upscale, upscaler: Upscaler, if: ->(ctx) { ctx[:high_quality] }
+step :remove_bg, remover: Remover, unless: ->(ctx) { ctx[:keep_background] }
+```
+
+### Step Options
+
+```ruby
+step :upscale, upscaler: PhotoUpscaler, scale: 4
+step :transform, transformer: StyleTransformer, strength: 0.8
+```
+
+### Callbacks
+
+```ruby
+before_pipeline :validate_inputs
+after_pipeline :add_watermark
+after_pipeline { |result| notify_completion(result) }
+```
+
+### Error Handling
+
+```ruby
+stop_on_error true   # Stop pipeline on first error (default)
+stop_on_error false  # Continue even if a step fails
+```
+
+### Caching
+
+```ruby
+cache_for 1.hour     # Cache pipeline results
+```
+
+## Using Pipelines
+
+### Basic Execution
+
+```ruby
+result = <%= @root_namespace %>::Image::ProductPipeline.call(prompt: "Laptop on desk")
+
+result.success?       # All steps succeeded
+result.final_image    # Final processed image
+result.url            # Final image URL
+result.total_cost     # Combined cost of all steps
+result.duration_ms    # Total pipeline duration
+```
+
+### Access Individual Steps
+
+```ruby
+result = <%= @root_namespace %>::Image::ProductPipeline.call(prompt: "Product photo")
+
+result.step(:generate)    # Generation step result
+result.step(:upscale)     # Upscale step result
+result.steps              # Array of all step results
+result.step_count         # Total number of steps
+```
+
+### Save Result
+
+```ruby
+result = <%= @root_namespace %>::Image::ProductPipeline.call(prompt: "...")
+result.save("final_output.png")
+```
+
+### Conditional Execution
+
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class SmartPipeline < ApplicationImagePipeline
+      step :generate, generator: ProductGenerator
+      step :upscale, upscaler: PhotoUpscaler, if: ->(ctx) { ctx[:hd] }
+      step :remove_bg, remover: BackgroundRemover, if: ->(ctx) { ctx[:transparent] }
+    end
+  end
+end
+
+# Call with options
+result = <%= @root_namespace %>::Image::SmartPipeline.call(
+  prompt: "Product photo",
+  hd: true,
+  transparent: false
+)
+```
+
+## Use Cases
+
+### E-commerce Product Pipeline
+
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class EcommercePipeline < ApplicationImagePipeline
+      description "Generate and process product images"
+      version "1.0"
+
+      step :generate, generator: ProductGenerator
+      step :upscale, upscaler: PhotoUpscaler, scale: 2
+      step :remove_bg, remover: BackgroundRemover
+      step :analyze, analyzer: ProductAnalyzer
+
+      cache_for 1.day
+
+      after_pipeline :log_completion
+
+      private
+
+      def log_completion(result)
+        Rails.logger.info("Pipeline completed: cost=#{result.total_cost}")
+      end
+    end
+  end
+end
+```
+
+### Marketing Asset Pipeline
+
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class MarketingPipeline < ApplicationImagePipeline
+      step :generate, generator: MarketingGenerator, quality: "hd"
+      step :transform, transformer: BrandStyleTransformer, strength: 0.3
+      step :variations, variator: DesignVariator, count: 4
+
+      stop_on_error false  # Continue even if transform fails
+    end
+  end
+end
+
+result = <%= @root_namespace %>::Image::MarketingPipeline.call(prompt: "Sale banner")
+result.step(:variations).images  # Get all variations
+```
+
+### Photo Enhancement Pipeline
+
+```ruby
+module <%= @root_namespace %>
+  module Image
+    class EnhancementPipeline < ApplicationImagePipeline
+      step :upscale, upscaler: PhotoUpscaler, scale: 2
+      step :enhance, transformer: EnhancementTransformer, strength: 0.2
+      step :analyze, analyzer: QualityAnalyzer
+
+      before_pipeline :validate_image_format
+
+      private
+
+      def validate_image_format
+        raise ArgumentError, "Image required" unless context[:image]
+      end
+    end
+  end
+end
+
+# Process existing image
+result = <%= @root_namespace %>::Image::EnhancementPipeline.call(image: "photo.jpg")
+```
+
+## Result Methods
+
+```ruby
+result.success?              # All steps succeeded
+result.partial?              # Some steps succeeded
+result.error?                # Pipeline failed
+
+result.final_image           # Final processed image
+result.url                   # Final image URL
+result.to_blob               # Binary data
+result.save("output.png")    # Save to file
+
+result.total_cost            # Combined cost
+result.duration_ms           # Total duration
+result.steps                 # All step results
+result.step(:name)           # Specific step result
+```
+
+## Best Practices
+
+1. **Order steps logically** - Generate before transform, upscale before final
+2. **Use conditional steps** - Skip unnecessary processing
+3. **Enable caching** - Especially for expensive pipelines
+4. **Add callbacks for monitoring** - Log completions, costs
+5. **Set appropriate stop_on_error** - Usually true for production
+6. **Version your pipelines** - Invalidate cache when steps change
+7. **Use analysis steps** - For quality assurance

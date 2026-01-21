@@ -1,0 +1,212 @@
+# <%= @root_namespace %>::Audio Speakers
+
+This directory contains text-to-speech (TTS) speakers. All speakers inherit from `ApplicationSpeaker`.
+
+## Creating a New Speaker
+
+Use the generator:
+```bash
+rails generate ruby_llm_agents:speaker SpeakerName
+rails generate ruby_llm_agents:speaker Narrator --provider openai --voice nova
+rails generate ruby_llm_agents:speaker Podcast --provider elevenlabs --voice Rachel
+```
+
+Or create manually:
+```ruby
+module <%= @root_namespace %>
+  module Audio
+    class NarratorSpeaker < ApplicationSpeaker
+      provider :openai
+      model "tts-1"
+      voice "nova"
+      speed 1.0
+      output_format :mp3
+    end
+  end
+end
+```
+
+## DSL Reference
+
+### Provider Configuration
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `provider` | TTS provider | `provider :openai` or `provider :elevenlabs` |
+| `model` | TTS model | `model "tts-1"` or `model "tts-1-hd"` |
+| `voice` | Voice to use | `voice "nova"` |
+| `speed` | Speech speed (0.25-4.0) | `speed 1.25` |
+| `output_format` | Audio format | `output_format :mp3` |
+
+### OpenAI Voices
+- `alloy` - Neutral, balanced
+- `echo` - Male, warm
+- `fable` - British, storytelling
+- `onyx` - Male, deep
+- `nova` - Female, friendly
+- `shimmer` - Female, soft
+
+### OpenAI Models
+- `tts-1` - Standard quality, faster
+- `tts-1-hd` - High definition, slower
+
+### ElevenLabs Configuration
+
+```ruby
+class PodcastSpeaker < ApplicationSpeaker
+  provider :elevenlabs
+  model "eleven_multilingual_v2"
+  voice "Rachel"
+
+  voice_settings do
+    stability 0.5
+    similarity_boost 0.75
+    style 0.5
+    speaker_boost true
+  end
+end
+```
+
+### Caching
+
+```ruby
+cache_for 7.days  # Cache audio output
+```
+
+### Custom Pronunciation
+
+```ruby
+lexicon do
+  pronounce 'API', 'A P I'
+  pronounce 'SQL', 'sequel'
+  pronounce 'PostgreSQL', 'post-gres-Q-L'
+  pronounce 'RubyLLM', 'ruby L L M'
+end
+```
+
+## Using Speakers
+
+### Generate Speech
+
+```ruby
+result = <%= @root_namespace %>::Audio::NarratorSpeaker.call(text: "Hello world")
+
+result.audio        # Binary audio data
+result.format       # :mp3
+result.duration     # Duration in seconds (if available)
+result.total_cost   # Cost in USD
+```
+
+### Save to File
+
+```ruby
+result = <%= @root_namespace %>::Audio::NarratorSpeaker.call(text: "Hello world")
+result.save_to("output.mp3")
+```
+
+### Stream Audio
+
+For long text, stream chunks as they're generated:
+
+```ruby
+<%= @root_namespace %>::Audio::NarratorSpeaker.stream(text: long_article) do |chunk|
+  audio_player.play(chunk.audio)
+end
+```
+
+### Override Settings at Runtime
+
+```ruby
+result = <%= @root_namespace %>::Audio::NarratorSpeaker.call(
+  text: "Speak slowly and clearly",
+  voice: "onyx",
+  speed: 0.8
+)
+```
+
+## Use Cases
+
+### Article Narration
+
+```ruby
+module <%= @root_namespace %>
+  module Audio
+    class ArticleNarratorSpeaker < ApplicationSpeaker
+      provider :openai
+      model "tts-1-hd"
+      voice "fable"
+      speed 0.9
+
+      cache_for 30.days
+
+      lexicon do
+        pronounce 'JavaScript', 'java-script'
+        pronounce 'TypeScript', 'type-script'
+      end
+    end
+  end
+end
+
+# Usage
+article = Article.find(params[:id])
+result = <%= @root_namespace %>::Audio::ArticleNarratorSpeaker.call(text: article.body)
+result.save_to("public/audio/articles/#{article.id}.mp3")
+```
+
+### Voice Announcements
+
+```ruby
+module <%= @root_namespace %>
+  module Audio
+    class AnnouncementSpeaker < ApplicationSpeaker
+      provider :openai
+      voice "nova"
+      speed 1.1
+      output_format :mp3
+    end
+  end
+end
+
+# Usage
+<%= @root_namespace %>::Audio::AnnouncementSpeaker.call(
+  text: "Your order has been shipped!"
+)
+```
+
+### Multilingual TTS
+
+```ruby
+module <%= @root_namespace %>
+  module Audio
+    class MultilingualSpeaker < ApplicationSpeaker
+      provider :elevenlabs
+      model "eleven_multilingual_v2"
+      voice "Rachel"
+    end
+  end
+end
+```
+
+## Testing Speakers
+
+```ruby
+RSpec.describe <%= @root_namespace %>::Audio::NarratorSpeaker do
+  describe ".call" do
+    it "generates audio from text" do
+      result = described_class.call(text: "Hello world")
+
+      expect(result.audio).to be_present
+      expect(result.format).to eq(:mp3)
+    end
+  end
+end
+```
+
+## Best Practices
+
+1. **Use caching** - Same text produces same audio
+2. **Choose appropriate voices** - Match voice to content type
+3. **Add pronunciation lexicon** - For technical terms and acronyms
+4. **Use HD models for quality** - When audio quality matters
+5. **Stream long content** - Don't wait for entire audio to generate
+6. **Consider file sizes** - MP3 is smaller, WAV is lossless
