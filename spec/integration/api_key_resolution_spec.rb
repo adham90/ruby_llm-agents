@@ -237,13 +237,12 @@ RSpec.describe "API Key Resolution Integration", type: :integration do
       allow(mock_client).to receive(:add_message).and_return(mock_client)
       allow(mock_client).to receive(:messages).and_return([])
 
-      mock_response = double("RubyLLM::Message",
+      mock_response = instance_double(RubyLLM::Message,
         content: "test response",
         input_tokens: 10,
         output_tokens: 20,
         model_id: "gpt-4",
-        usage: { input_tokens: 10, output_tokens: 20 },
-        finish_reason: "stop"
+        tool_calls: nil
       )
       allow(mock_client).to receive(:ask).and_return(mock_response)
       mock_client
@@ -404,13 +403,12 @@ RSpec.describe "API Key Resolution Integration", type: :integration do
         # For streaming, we need to mock the streaming response
         allow(mock_chat_client).to receive(:ask) do |&block|
           block&.call("chunk") if block
-          double("RubyLLM::Message",
+          instance_double(RubyLLM::Message,
             content: "test response",
             input_tokens: 10,
             output_tokens: 20,
             model_id: "gpt-4",
-            usage: { input_tokens: 10, output_tokens: 20 },
-            finish_reason: "stop"
+            tool_calls: nil
           )
         end
 

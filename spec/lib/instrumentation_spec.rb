@@ -23,21 +23,13 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
   let(:agent) { test_agent_class.new(query: "test") }
 
   # Helper to create a complete mock response
+  # Using instance_double to verify stubbed methods exist on RubyLLM::Message
   def mock_llm_response(content: "Test response", input_tokens: 100, output_tokens: 50, model_id: "gpt-4")
-    mock = double("RubyLLM::Message")
+    mock = instance_double(RubyLLM::Message)
     allow(mock).to receive(:content).and_return(content)
     allow(mock).to receive(:input_tokens).and_return(input_tokens)
     allow(mock).to receive(:output_tokens).and_return(output_tokens)
     allow(mock).to receive(:model_id).and_return(model_id)
-    allow(mock).to receive(:usage).and_return({
-      input_tokens: input_tokens,
-      output_tokens: output_tokens,
-      cache_creation_input_tokens: 0,
-      cache_read_input_tokens: 0
-    })
-    allow(mock).to receive(:finish_reason).and_return("stop")
-    allow(mock).to receive(:thinking).and_return(nil)
-    allow(mock).to receive(:thinking_content).and_return(nil)
     allow(mock).to receive(:tool_call?).and_return(false)
     allow(mock).to receive(:tool_calls).and_return([])
     mock

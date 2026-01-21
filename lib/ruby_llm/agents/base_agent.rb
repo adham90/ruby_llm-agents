@@ -540,7 +540,8 @@ module RubyLLM
         context.input_tokens = response.input_tokens
         context.output_tokens = response.output_tokens
         context.model_used = response.model_id || model
-        context.finish_reason = response.finish_reason
+        # finish_reason may not be available on all RubyLLM::Message versions
+        context.finish_reason = response.respond_to?(:finish_reason) ? response.finish_reason : nil
 
         calculate_costs(response, context) if context.input_tokens
       end

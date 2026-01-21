@@ -404,15 +404,13 @@ RSpec.describe RubyLLM::Agents::Base do
     end
 
     let(:mock_response) do
-      double(
-        "RubyLLM::Message",
+      instance_double(
+        RubyLLM::Message,
         content: "Cached response content",
         input_tokens: 100,
         output_tokens: 50,
         model_id: "gpt-4",
-        tool_calls: nil,
-        usage: { input_tokens: 100, output_tokens: 50 },
-        finish_reason: "stop"
+        tool_calls: nil
       )
     end
 
@@ -698,15 +696,13 @@ RSpec.describe RubyLLM::Agents::Base do
 
     describe "integration with agent execution" do
       let(:mock_response) do
-        double(
-          "RubyLLM::Message",
+        instance_double(
+          RubyLLM::Message,
           content: "Response with context",
           input_tokens: 100,
           output_tokens: 50,
           model_id: "gpt-4",
-          tool_calls: nil,
-          usage: { input_tokens: 100, output_tokens: 50 },
-          finish_reason: "stop"
+          tool_calls: nil
         )
       end
 

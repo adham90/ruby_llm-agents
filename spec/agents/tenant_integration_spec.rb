@@ -257,13 +257,12 @@ RSpec.describe "Agent tenant integration" do
         allow(mock_client).to receive(:add_message).and_return(mock_client)
         allow(mock_client).to receive(:messages).and_return([])
 
-        mock_response = double("RubyLLM::Message",
+        mock_response = instance_double(RubyLLM::Message,
           content: "test response",
           input_tokens: 10,
           output_tokens: 20,
           model_id: "gpt-4",
-          usage: { input_tokens: 10, output_tokens: 20 },
-          finish_reason: "stop"
+          tool_calls: nil
         )
         allow(mock_client).to receive(:ask).and_return(mock_response)
 
@@ -294,13 +293,12 @@ RSpec.describe "Agent tenant integration" do
         allow(mock_client).to receive(:add_message).and_return(mock_client)
         allow(mock_client).to receive(:messages).and_return([])
 
-        mock_response = double("RubyLLM::Message",
+        mock_response = instance_double(RubyLLM::Message,
           content: "test response",
           input_tokens: 10,
           output_tokens: 20,
           model_id: "gpt-4",
-          usage: { input_tokens: 10, output_tokens: 20 },
-          finish_reason: "stop"
+          tool_calls: nil
         )
         allow(mock_client).to receive(:ask).and_return(mock_response)
 
@@ -327,13 +325,12 @@ RSpec.describe "Agent tenant integration" do
         allow(mock_client).to receive(:add_message).and_return(mock_client)
         allow(mock_client).to receive(:messages).and_return([])
 
-        mock_response = double("RubyLLM::Message",
+        mock_response = instance_double(RubyLLM::Message,
           content: "test response",
           input_tokens: 10,
           output_tokens: 20,
           model_id: "gpt-4",
-          usage: { input_tokens: 10, output_tokens: 20 },
-          finish_reason: "stop"
+          tool_calls: nil
         )
         allow(mock_client).to receive(:ask).and_return(mock_response)
 
