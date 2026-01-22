@@ -511,6 +511,232 @@ end
 
 ---
 
+## Progress Tracking
+
+Real-time progress tracking for displaying workflow status in your application:
+
+### Progress Callbacks
+
+```ruby
+# Simple progress callback
+result = MyWorkflow.call(
+  order_id: "123",
+  on_progress: ->(progress) {
+    puts "[#{progress.percent}%] Step #{progress.step_index + 1}/#{progress.total_steps}: #{progress.step_name}"
+  }
+)
+
+# Progress object properties
+on_progress: ->(p) {
+  p.workflow_id     # => "wf_abc123"
+  p.step_name       # => :process
+  p.step_index      # => 2 (0-based)
+  p.total_steps     # => 5
+  p.percent         # => 40
+  p.status          # => :running, :completed, :failed, :skipped
+  p.completed_steps # => [:validate, :enrich]
+  p.pending_steps   # => [:notify, :finalize]
+  p.current_agent   # => "ProcessorAgent"
+  p.started_at      # => Time
+  p.elapsed_ms      # => 1250
+}
+```
+
+### Real-Time UI Updates (ActionCable/WebSocket)
+
+```ruby
+class OrderWorkflow < RubyLLM::Agents::Workflow
+  # Broadcast progress to connected clients
+  on_step_start do |step_name, input|
+    broadcast_progress(
+      step: step_name,
+      status: :in_progress,
+      message: "Processing #{step_name.to_s.humanize}..."
+    )
+  end
+
+  on_step_complete do |step_name, result, duration_ms|
+    broadcast_progress(
+      step: step_name,
+      status: :completed,
+      duration_ms: duration_ms
+    )
+  end
+
+  on_step_error do |step_name, error|
+    broadcast_progress(
+      step: step_name,
+      status: :failed,
+      error: error.message
+    )
+  end
+
+  step :validate, ValidatorAgent
+  step :process, ProcessorAgent
+  step :notify, NotifierAgent
+
+  private
+
+  def broadcast_progress(data)
+    ActionCable.server.broadcast(
+      "workflow_#{workflow_id}",
+      data.merge(
+        workflow_id: workflow_id,
+        progress: progress_info
+      )
+    )
+  end
+
+  def progress_info
+    {
+      completed: completed_steps.count,
+      total: total_steps,
+      percent: (completed_steps.count.to_f / total_steps * 100).round
+    }
+  end
+end
+```
+
+### Async Execution with Progress Polling
+
+```ruby
+# Start workflow asynchronously
+job = MyWorkflow.call_async(order_id: "123")
+
+# Poll for progress
+job.workflow_id     # => "wf_abc123"
+job.status          # => :running, :completed, :failed
+job.current_step    # => :process
+job.progress        # => { completed: 2, total: 5, percent: 40 }
+job.completed_steps # => [:validate, :enrich]
+job.pending_steps   # => [:process, :notify, :finalize]
+job.elapsed_ms      # => 2500
+
+# Wait for completion
+result = job.wait    # Blocks until done
+result = job.wait(timeout: 30.seconds)  # With timeout
+
+# Check if done
+job.completed?      # => false
+job.failed?         # => false
+
+# Get result when done
+job.result          # => Result object (nil if still running)
+```
+
+### Progress in Controllers/API
+
+```ruby
+# Rails controller example
+class WorkflowsController < ApplicationController
+  def create
+    job = OrderWorkflow.call_async(order_id: params[:order_id])
+    render json: { workflow_id: job.workflow_id }
+  end
+
+  def show
+    job = WorkflowJob.find(params[:id])
+    render json: {
+      workflow_id: job.workflow_id,
+      status: job.status,
+      current_step: job.current_step,
+      progress: job.progress,
+      completed_steps: job.completed_steps,
+      result: job.completed? ? job.result.content : nil
+    }
+  end
+end
+
+# Frontend polling
+# GET /workflows/wf_abc123
+# {
+#   "workflow_id": "wf_abc123",
+#   "status": "running",
+#   "current_step": "process",
+#   "progress": { "completed": 2, "total": 5, "percent": 40 },
+#   "completed_steps": ["validate", "enrich"],
+#   "result": null
+# }
+```
+
+### Step Descriptions for UI
+
+```ruby
+class OrderWorkflow < RubyLLM::Agents::Workflow
+  step :validate, ValidatorAgent,
+       desc: "Validating order details",
+       ui_label: "Validation"
+
+  step :process, ProcessorAgent,
+       desc: "Processing payment",
+       ui_label: "Payment"
+
+  step :shipping, ShippingAgent,
+       desc: "Calculating shipping options",
+       ui_label: "Shipping"
+
+  step :notify, NotifierAgent,
+       desc: "Sending confirmation email",
+       ui_label: "Confirmation"
+end
+
+# Access step metadata for UI
+OrderWorkflow.step_metadata
+# => [
+#   { name: :validate, ui_label: "Validation", desc: "Validating order details" },
+#   { name: :process, ui_label: "Payment", desc: "Processing payment" },
+#   { name: :shipping, ui_label: "Shipping", desc: "Calculating shipping options" },
+#   { name: :notify, ui_label: "Confirmation", desc: "Sending confirmation email" }
+# ]
+
+# In progress callback
+on_progress: ->(p) {
+  step_info = OrderWorkflow.step_metadata[p.step_index]
+  update_ui(
+    label: step_info[:ui_label],
+    description: step_info[:desc],
+    percent: p.percent
+  )
+}
+```
+
+### Server-Sent Events (SSE) Streaming
+
+```ruby
+# Rails controller with SSE
+class WorkflowsController < ApplicationController
+  include ActionController::Live
+
+  def stream
+    response.headers['Content-Type'] = 'text/event-stream'
+    response.headers['Cache-Control'] = 'no-cache'
+
+    OrderWorkflow.call(
+      order_id: params[:order_id],
+      on_progress: ->(progress) {
+        response.stream.write "data: #{progress.to_json}\n\n"
+      }
+    )
+
+    response.stream.write "data: {\"status\": \"completed\"}\n\n"
+  rescue => e
+    response.stream.write "data: {\"status\": \"error\", \"message\": \"#{e.message}\"}\n\n"
+  ensure
+    response.stream.close
+  end
+end
+
+# Frontend consumption
+const eventSource = new EventSource('/workflows/stream?order_id=123');
+eventSource.onmessage = (event) => {
+  const progress = JSON.parse(event.data);
+  updateProgressBar(progress.percent);
+  updateCurrentStep(progress.step_name);
+};
+```
+
+---
+
 ## Context & State Management
 
 Managing state across steps:
