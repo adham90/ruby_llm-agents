@@ -77,6 +77,182 @@ end
 
 ---
 
+## Step Parameter Reference
+
+Complete reference of all parameters a step can accept:
+
+```ruby
+step :process, ProcessorAgent, "Human-readable description",
+
+     # ─────────────────────────────────────────────────────────
+     # INPUT
+     # ─────────────────────────────────────────────────────────
+     input: -> { { order: validate.order, user: input.user_id } },
+     # OR
+     pick: [:order_id, :status],           # Pick fields from previous step
+     from: :validate,                       # Source step for pick (default: previous)
+
+     # ─────────────────────────────────────────────────────────
+     # CONDITIONS
+     # ─────────────────────────────────────────────────────────
+     if: :should_process?,                  # Symbol (predicate method)
+     # OR
+     if: -> { enrich.customer.active? },    # Lambda
+     unless: :skip_processing?,             # Negative condition
+
+     # ─────────────────────────────────────────────────────────
+     # TIMING
+     # ─────────────────────────────────────────────────────────
+     timeout: 2.minutes,
+
+     # ─────────────────────────────────────────────────────────
+     # RETRY
+     # ─────────────────────────────────────────────────────────
+     retry: 3,                              # Simple count (retries on any error)
+     # OR
+     retry: 3, on: Timeout::Error,          # Retry only on specific error
+     # OR
+     retry: 3, on: [Timeout::Error, ApiError],  # Multiple error types
+     # OR
+     retry: {                               # Full config
+       max: 3,
+       on: [Timeout::Error, ApiError],
+       backoff: :exponential,               # :none, :linear, :exponential
+       delay: 1.second                      # Base delay
+     },
+
+     # ─────────────────────────────────────────────────────────
+     # ERROR HANDLING
+     # ─────────────────────────────────────────────────────────
+     fallback: BackupAgent,                 # Single fallback
+     # OR
+     fallback: [BackupAgent, LastResortAgent],  # Fallback chain
+
+     on_error: :handle_error,               # Error handler method
+     # OR
+     on_error: -> (e) { { error: e.message, status: :failed } },
+
+     # ─────────────────────────────────────────────────────────
+     # BEHAVIOR
+     # ─────────────────────────────────────────────────────────
+     critical: true,                        # Workflow fails if step fails (default)
+     optional: true,                        # Workflow continues if step fails
+     default: { status: :skipped },         # Default value when optional step fails
+
+     # ─────────────────────────────────────────────────────────
+     # METADATA
+     # ─────────────────────────────────────────────────────────
+     desc: "Process the validated order",   # Description (for tracing/debugging)
+     tags: [:billing, :critical]            # Tags (for filtering/grouping)
+```
+
+### Routing Variant
+
+When step routes to different agents based on a value:
+
+```ruby
+step :process,
+     desc: "Route to appropriate processor",
+     timeout: 2.minutes,
+     critical: true,
+     on: -> { enrich.customer.tier } do |route|
+       route.premium  PremiumAgent,  input: -> { { vip: true } }
+       route.standard StandardAgent
+       route.basic    BasicAgent,    timeout: 5.minutes
+       route.default  DefaultAgent
+     end
+```
+
+### Block Variant
+
+When step needs custom logic:
+
+```ruby
+step :process,
+     desc: "Custom processing logic",
+     timeout: 2.minutes,
+     retry: 3, on: Timeout::Error,
+     critical: true do
+
+  skip! "Already processed" if already_done?
+  fail! "Invalid state" if invalid?
+
+  result = agent ProcessorAgent, order: validate.order
+
+  # Transform result
+  {
+    processed: true,
+    data: result.data,
+    processed_at: Time.current
+  }
+end
+```
+
+### Quick Reference Table
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `agent` | Class | (required)* | Agent class to execute |
+| `desc` | String | nil | Human-readable description |
+| `input` | Lambda | auto | Input data for agent |
+| `pick` | Array | nil | Fields to pick from previous step |
+| `from` | Symbol | previous | Source step for `pick` |
+| `if` | Symbol/Lambda | nil | Execute only if truthy |
+| `unless` | Symbol/Lambda | nil | Execute only if falsy |
+| `timeout` | Duration | nil | Max execution time |
+| `retry` | Integer/Hash | 0 | Retry configuration |
+| `on` | Class/Array | StandardError | Error types to retry/route on |
+| `fallback` | Class/Array | nil | Fallback agent(s) |
+| `on_error` | Symbol/Lambda | nil | Error handler |
+| `critical` | Boolean | true | Fail workflow on error |
+| `optional` | Boolean | false | Continue workflow on error |
+| `default` | Any | nil | Default value for optional steps |
+| `tags` | Array | [] | Metadata tags |
+
+*Agent is not required when using a block with custom logic.
+
+### Usage Patterns
+
+```ruby
+# Minimal
+step :validate, ValidatorAgent
+
+# With timeout
+step :fetch, FetcherAgent, timeout: 30.seconds
+
+# With retry
+step :api_call, ApiAgent, retry: 3, on: Timeout::Error
+
+# Conditional
+step :premium, PremiumAgent, if: :premium_customer?
+
+# Optional with default
+step :enrich, EnricherAgent, optional: true, default: {}
+
+# Full options
+step :process, ProcessorAgent, "Main processing",
+     input: -> { { order: validate.order } },
+     timeout: 2.minutes,
+     retry: 3, on: [Timeout::Error, ApiError],
+     fallback: BackupAgent,
+     critical: true
+
+# Routing
+step :route, on: -> { classify.type } do |r|
+  r.typeA AgentA
+  r.typeB AgentB
+  r.default DefaultAgent
+end
+
+# Custom block
+step :custom do
+  skip! "No data" if input.data.empty?
+  agent CustomAgent, data: transform(input.data)
+end
+```
+
+---
+
 ## Feature Reference
 
 ### 1. Basic Step Declaration
