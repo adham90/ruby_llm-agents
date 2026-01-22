@@ -737,6 +737,373 @@ eventSource.onmessage = (event) => {
 
 ---
 
+## Step Inspection & Execution History
+
+Dashboard-friendly inspection of step inputs, outputs, and errors:
+
+```ruby
+# ═══════════════════════════════════════════════════════════════
+# Per-Step Inspection (from Result object)
+# ═══════════════════════════════════════════════════════════════
+
+result = OrderWorkflow.call(order_id: "ORD-123")
+
+# Access individual step details
+step_result = result.steps[:process]
+
+step_result.name           # => :process
+step_result.status         # => :success, :failed, :skipped, :pending
+step_result.input          # => { order: { id: "ORD-123", ... } }
+step_result.output         # => { processed: true, tracking: "TRK-456" }
+step_result.content        # => alias for output
+
+# Error details (when step failed)
+step_result.error          # => {
+                           #      class: "Timeout::Error",
+                           #      message: "Request timed out after 30s",
+                           #      backtrace: ["app/agents/...", ...],
+                           #      occurred_at: Time
+                           #    }
+
+# Step metrics
+step_result.started_at     # => Time
+step_result.completed_at   # => Time
+step_result.duration_ms    # => 245
+step_result.input_tokens   # => 150
+step_result.output_tokens  # => 80
+step_result.cost           # => 0.0012
+step_result.retries        # => 2 (number of retry attempts)
+step_result.agent_class    # => "ProcessorAgent"
+
+# ═══════════════════════════════════════════════════════════════
+# Execution History (Persistent Storage)
+# ═══════════════════════════════════════════════════════════════
+
+# Enable execution history
+RubyLLM::Agents::Workflow.configure do |config|
+  config.store_executions = true
+  config.execution_store = :active_record  # or :redis, :custom
+  config.execution_retention = 30.days
+end
+
+# Query past executions
+execution = WorkflowExecution.find("wf_abc123")
+execution = WorkflowExecution.find_by(order_id: "ORD-123")
+
+# Execution metadata
+execution.workflow_id      # => "wf_abc123"
+execution.workflow_class   # => "OrderWorkflow"
+execution.status           # => :completed, :failed, :running, :paused
+execution.input            # => { order_id: "ORD-123", priority: "high" }
+execution.output           # => { status: "success", ... }
+execution.started_at       # => Time
+execution.completed_at     # => Time
+execution.duration_ms      # => 2450
+execution.total_cost       # => 0.0089
+
+# Iterate over steps
+execution.steps.each do |step|
+  step.name                # => :validate
+  step.status              # => :success
+  step.input               # => { order_id: "ORD-123" }
+  step.output              # => { valid: true, customer_id: 456 }
+  step.error               # => nil or { class: "...", message: "...", backtrace: [...] }
+  step.started_at          # => Time
+  step.completed_at        # => Time
+  step.duration_ms         # => 45
+  step.input_tokens        # => 120
+  step.output_tokens       # => 60
+  step.cost                # => 0.0008
+  step.agent_class         # => "ValidatorAgent"
+  step.retry_count         # => 0
+end
+
+# Filter executions
+WorkflowExecution.where(workflow_class: "OrderWorkflow")
+                 .where(status: :failed)
+                 .where("started_at > ?", 1.day.ago)
+                 .order(started_at: :desc)
+
+# ═══════════════════════════════════════════════════════════════
+# Dashboard API Example
+# ═══════════════════════════════════════════════════════════════
+
+class WorkflowExecutionsController < ApplicationController
+  # GET /executions/:id
+  def show
+    execution = WorkflowExecution.find(params[:id])
+
+    render json: {
+      workflow_id: execution.workflow_id,
+      workflow_class: execution.workflow_class,
+      status: execution.status,
+      input: execution.input,
+      output: execution.output,
+      started_at: execution.started_at,
+      completed_at: execution.completed_at,
+      duration_ms: execution.duration_ms,
+      total_cost: execution.total_cost,
+      steps: execution.steps.map do |step|
+        {
+          name: step.name,
+          status: step.status,
+          agent: step.agent_class,
+          input: step.input,
+          output: step.output,
+          error: step.error,
+          started_at: step.started_at,
+          completed_at: step.completed_at,
+          duration_ms: step.duration_ms,
+          tokens: { input: step.input_tokens, output: step.output_tokens },
+          cost: step.cost
+        }
+      end
+    }
+  end
+
+  # GET /executions
+  def index
+    executions = WorkflowExecution
+      .where(workflow_class: params[:workflow_class])
+      .where(status: params[:status])
+      .order(started_at: :desc)
+      .page(params[:page])
+
+    render json: executions.map { |e| execution_summary(e) }
+  end
+end
+
+# ═══════════════════════════════════════════════════════════════
+# Custom Execution Store
+# ═══════════════════════════════════════════════════════════════
+
+class CustomExecutionStore
+  def save(execution)
+    # Save to your preferred storage
+  end
+
+  def find(workflow_id)
+    # Retrieve from storage
+  end
+
+  def update_step(workflow_id, step_name, data)
+    # Update step in real-time
+  end
+end
+
+RubyLLM::Agents::Workflow.configure do |config|
+  config.execution_store = CustomExecutionStore.new
+end
+```
+
+---
+
+## Resumable Workflows
+
+Resume failed or paused workflows from where they stopped:
+
+```ruby
+# ═══════════════════════════════════════════════════════════════
+# Basic Resume
+# ═══════════════════════════════════════════════════════════════
+
+# Original execution fails at step :process
+result = OrderWorkflow.call(order_id: "ORD-123")
+result.status        # => :failed
+result.failed_step   # => :process
+result.resumable?    # => true
+result.workflow_id   # => "wf_abc123"
+
+# Resume from the failed step
+resumed_result = OrderWorkflow.resume(result.workflow_id)
+# OR
+resumed_result = OrderWorkflow.resume(result)
+
+# Resume skips completed steps, continues from :process
+resumed_result.status           # => :success
+resumed_result.resumed_from     # => :process
+resumed_result.original_run_id  # => "wf_abc123"
+
+# ═══════════════════════════════════════════════════════════════
+# Resume with Modified Input
+# ═══════════════════════════════════════════════════════════════
+
+# Override input for the resumed step
+resumed_result = OrderWorkflow.resume(
+  result.workflow_id,
+  step_input: { process: { retry_payment: true } }
+)
+
+# Or override workflow-level input
+resumed_result = OrderWorkflow.resume(
+  result.workflow_id,
+  input: { order_id: "ORD-123", priority: "urgent" }
+)
+
+# ═══════════════════════════════════════════════════════════════
+# Resume from Specific Step
+# ═══════════════════════════════════════════════════════════════
+
+# Re-run from a specific step (even if it succeeded)
+resumed_result = OrderWorkflow.resume(
+  result.workflow_id,
+  from_step: :enrich  # Re-run :enrich and all subsequent steps
+)
+
+# Skip certain steps on resume
+resumed_result = OrderWorkflow.resume(
+  result.workflow_id,
+  skip_steps: [:notify]  # Skip notification on retry
+)
+
+# ═══════════════════════════════════════════════════════════════
+# Pause & Resume
+# ═══════════════════════════════════════════════════════════════
+
+class ApprovalWorkflow < RubyLLM::Agents::Workflow
+  step :validate, ValidatorAgent
+  step :analyze, AnalyzerAgent
+
+  # Pause for human approval
+  step :approval, wait_for: :human_approval
+
+  step :execute, ExecutorAgent
+  step :notify, NotifierAgent
+end
+
+# Workflow pauses at :approval step
+result = ApprovalWorkflow.call(request_id: "REQ-123")
+result.status       # => :paused
+result.paused_at    # => :approval
+result.resumable?   # => true
+
+# Later, after human approval
+resumed_result = ApprovalWorkflow.resume(
+  result.workflow_id,
+  approval_data: { approved: true, approver_id: 42 }
+)
+
+# ═══════════════════════════════════════════════════════════════
+# Programmatic Pause
+# ═══════════════════════════════════════════════════════════════
+
+class LongRunningWorkflow < RubyLLM::Agents::Workflow
+  step :fetch, FetcherAgent
+
+  step :process do
+    # Pause if processing will take too long
+    pause! reason: "Large dataset requires batch processing" if large_dataset?
+
+    agent ProcessorAgent, data: fetch.data
+  end
+
+  step :finalize, FinalizerAgent
+end
+
+# In controller - check for pause and handle
+result = LongRunningWorkflow.call(dataset_id: "DS-123")
+
+if result.paused?
+  # Queue for background processing
+  LongRunningWorkflowJob.perform_later(result.workflow_id)
+end
+
+# ═══════════════════════════════════════════════════════════════
+# Checkpoint-Based Resume
+# ═══════════════════════════════════════════════════════════════
+
+class ExpensiveWorkflow < RubyLLM::Agents::Workflow
+  # Auto-checkpoint after each step
+  checkpoint_strategy :after_each_step
+
+  # Or checkpoint at specific steps
+  step :expensive_analysis, AnalysisAgent, checkpoint: true
+
+  step :transform, TransformAgent
+  step :load, LoadAgent, checkpoint: true
+end
+
+# Workflow automatically saves state after checkpointed steps
+# If it fails, resume picks up from last checkpoint
+
+# ═══════════════════════════════════════════════════════════════
+# Resume Hooks
+# ═══════════════════════════════════════════════════════════════
+
+class OrderWorkflow < RubyLLM::Agents::Workflow
+  # Called before resuming
+  before_resume do |context|
+    Rails.logger.info "Resuming workflow #{workflow_id} from #{context.resume_step}"
+    # Reload any stale data
+    @order = Order.find(input.order_id).reload
+  end
+
+  # Called after successful resume
+  after_resume do |result|
+    notify_admin("Workflow #{workflow_id} resumed successfully")
+  end
+
+  # Called when resume fails
+  on_resume_failure do |error, context|
+    notify_admin("Workflow #{workflow_id} resume failed: #{error.message}")
+  end
+
+  step :validate, ValidatorAgent
+  step :process, ProcessorAgent
+  step :notify, NotifierAgent
+end
+
+# ═══════════════════════════════════════════════════════════════
+# Resume State Management
+# ═══════════════════════════════════════════════════════════════
+
+# Check if workflow can be resumed
+execution = WorkflowExecution.find("wf_abc123")
+execution.resumable?          # => true
+execution.resume_point        # => :process
+execution.completed_steps     # => [:validate, :enrich]
+execution.pending_steps       # => [:process, :notify, :finalize]
+
+# Resume reasons
+execution.pause_reason        # => "Awaiting human approval"
+execution.failure_reason      # => "Timeout::Error: Request timed out"
+
+# Time-based expiry
+execution.expires_at          # => Time (when resume is no longer allowed)
+execution.expired?            # => false
+
+# Configure resume expiry
+RubyLLM::Agents::Workflow.configure do |config|
+  config.resume_expiry = 7.days  # Workflows can be resumed within 7 days
+end
+
+# ═══════════════════════════════════════════════════════════════
+# Dashboard Integration
+# ═══════════════════════════════════════════════════════════════
+
+class WorkflowExecutionsController < ApplicationController
+  # POST /executions/:id/resume
+  def resume
+    execution = WorkflowExecution.find(params[:id])
+
+    unless execution.resumable?
+      return render json: { error: "Workflow cannot be resumed" }, status: 422
+    end
+
+    # Queue resume job
+    ResumeWorkflowJob.perform_later(
+      execution.workflow_id,
+      step_input: params[:step_input],
+      resumed_by: current_user.id
+    )
+
+    render json: { status: "resume_queued", workflow_id: execution.workflow_id }
+  end
+end
+```
+
+---
+
 ## Context & State Management
 
 Managing state across steps:
