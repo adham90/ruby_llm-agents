@@ -253,6 +253,480 @@ end
 
 ---
 
+## Output Schema
+
+Define the expected output structure and finalization logic:
+
+```ruby
+output do
+  required :status, String, in: %w[success failed]
+  required :order_id, String
+  optional :tracking_number, String
+  optional :error, String
+end
+
+def finalize
+  { status: "success", order_id: input.order_id, tracking_number: store.tracking }
+end
+
+def on_failure(error, failed_step)
+  { status: "failed", order_id: input.order_id, error: "#{failed_step}: #{error.message}" }
+end
+```
+
+---
+
+## Lifecycle Hooks
+
+Workflow and step lifecycle hooks for cross-cutting concerns:
+
+```ruby
+class OrderWorkflow < RubyLLM::Agents::Workflow
+  # Workflow-level hooks
+  before_workflow :load_context
+  after_workflow :cleanup
+  around_workflow :with_transaction
+
+  # Step-level hooks (all steps)
+  before_step :log_start
+  after_step :log_complete
+
+  # Targeted step hooks
+  before_step :process, :prepare_processing
+  after_step :process, :cache_result
+
+  # Error hooks
+  on_step_failure :handle_failure
+  on_step_failure :process, :handle_process_failure
+
+  step :validate, ValidatorAgent
+  step :process, ProcessorAgent
+
+  private
+
+  def load_context
+    @order = Order.find(input.order_id)
+  end
+
+  def handle_failure(step_name, error, context)
+    notify_admin(error)
+    :skip  # or :abort, or return a Result
+  end
+end
+```
+
+---
+
+## Result Object
+
+The result object provides comprehensive information about workflow execution:
+
+```ruby
+result = OrderWorkflow.call(order_id: "ORD-123")
+
+# Status
+result.success?        # => true/false
+result.error?          # => true/false
+result.partial?        # => true/false (some optional steps failed)
+result.status          # => "success", "partial", "error", "timeout"
+
+# Content
+result.content         # => { status: "success", order_id: "ORD-123", ... }
+
+# Step Results
+result.steps                    # => { validate: Result, process: Result, ... }
+result.steps[:validate].content # => { valid: true, ... }
+
+# Metrics (aggregated across all steps)
+result.input_tokens    # => 1500
+result.output_tokens   # => 800
+result.total_tokens    # => 2300
+result.total_cost      # => 0.0045
+result.duration_ms     # => 2340
+
+# Error Details
+result.error_class     # => "Timeout::Error"
+result.error_message   # => "Step :process timed out after 30s"
+result.errors          # => { process: { class: "...", message: "..." } }
+
+# Step Analysis
+result.failed_steps    # => [:notify]
+result.skipped_steps   # => [:enrich]
+result.all_steps_successful?  # => false
+
+# Workflow Metadata
+result.workflow_id     # => "wf_abc123"
+result.workflow_type   # => "pipeline"
+result.started_at      # => Time
+result.completed_at    # => Time
+```
+
+---
+
+## Error Types
+
+Structured error hierarchy for precise error handling:
+
+```ruby
+module RubyLLM::Agents
+  class Error < StandardError; end
+
+  # Workflow Errors
+  class WorkflowError < Error; end
+  class StepFailedError < WorkflowError; end
+  class WorkflowHaltedError < WorkflowError; end
+  class NoRouteError < WorkflowError; end
+
+  # Validation Errors
+  class InputValidationError < WorkflowError
+    attr_reader :errors
+  end
+  class OutputValidationError < WorkflowError
+    attr_reader :errors
+  end
+
+  # Execution Errors
+  class WorkflowTimeoutError < WorkflowError
+    attr_reader :step_name, :timeout
+  end
+  class WorkflowCostExceededError < WorkflowError
+    attr_reader :accumulated_cost, :max_cost
+  end
+
+  # Retry Errors
+  class RetryableError < Error; end
+  class AllRetriesExhaustedError < WorkflowError; end
+end
+
+# Usage in workflows:
+step :process do
+  fail! "Invalid state"  # Raises StepFailedError
+end
+
+# Rescue specific errors:
+begin
+  result = MyWorkflow.call(order_id: "123")
+rescue InputValidationError => e
+  puts "Invalid input: #{e.errors.join(', ')}"
+rescue WorkflowTimeoutError => e
+  puts "Timed out at step :#{e.step_name}"
+end
+```
+
+---
+
+## Sub-Workflows
+
+Compose workflows by using them as steps:
+
+```ruby
+# Sub-workflows are just workflows used as steps
+class ShippingWorkflow < RubyLLM::Agents::Workflow
+  step :calculate, ShippingCalculatorAgent
+  step :reserve, ShippingReserveAgent
+end
+
+class OrderWorkflow < RubyLLM::Agents::Workflow
+  step :validate, ValidatorAgent
+  step :process, ProcessorAgent
+
+  # Use workflow as a step (same syntax as agent)
+  step :shipping, ShippingWorkflow,
+       input: -> { { address: process.shipping_address, items: process.items } }
+
+  step :finalize, FinalizerAgent,
+       input: -> { { shipping: shipping.content } }
+end
+
+# Sub-workflow results are nested:
+result = OrderWorkflow.call(order_id: "123")
+result.steps[:shipping].steps[:calculate]  # => nested Result
+result.steps[:shipping].content            # => final sub-workflow output
+
+# Sub-workflows respect parent:
+# - Timeout budget
+# - Cost budget
+# - Tracing/instrumentation
+```
+
+---
+
+## Debugging & Tracing
+
+Tools for understanding workflow execution:
+
+```ruby
+# Enable debug mode
+class MyWorkflow < RubyLLM::Agents::Workflow
+  debug_mode true  # Or: debug_mode Rails.env.development?
+end
+
+# Or per-call
+result = MyWorkflow.call(order_id: "123", __debug: true)
+
+# Execution Trace
+result.trace
+# => [
+#   { step: :validate, status: :success, duration_ms: 45, agent: "ValidatorAgent" },
+#   { step: :enrich, status: :skipped, reason: "cached", duration_ms: 1 },
+#   { step: :process, status: :success, duration_ms: 230, agent: "ProcessorAgent" },
+# ]
+
+# Visual Timeline
+puts result.timeline
+# ┌─────────────────────────────────────────────────────────────────┐
+# │ OrderWorkflow #wf_abc123 (276ms total)                          │
+# ├─────────────────────────────────────────────────────────────────┤
+# │ :validate    ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  45ms ✓        │
+# │ :enrich      ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   1ms ⊘ cached │
+# │ :process     ░░░░████████████████████░░░░░░░░░░ 230ms ✓        │
+# └─────────────────────────────────────────────────────────────────┘
+
+# Dry Run (validate without executing)
+result = MyWorkflow.dry_run(order_id: "123")
+# => {
+#   valid: true,
+#   input_errors: [],
+#   steps: [:validate, :enrich, :process],
+#   agents: ["ValidatorAgent", "EnricherAgent", "ProcessorAgent"],
+#   parallel_groups: [],
+#   warnings: ["Step :notify has no agent defined"]
+# }
+
+# Debug Hooks
+class MyWorkflow < RubyLLM::Agents::Workflow
+  on_step_start do |step_name, input|
+    Rails.logger.debug "[#{workflow_id}] Starting :#{step_name}"
+  end
+
+  on_step_complete do |step_name, result, duration_ms|
+    Rails.logger.debug "[#{workflow_id}] Completed :#{step_name} in #{duration_ms}ms"
+  end
+
+  on_step_error do |step_name, error|
+    Sentry.capture_exception(error, extra: { step: step_name, workflow_id: workflow_id })
+  end
+end
+```
+
+---
+
+## Context & State Management
+
+Managing state across steps:
+
+```ruby
+class OrderWorkflow < RubyLLM::Agents::Workflow
+  step :validate, ValidatorAgent
+  step :process, ProcessorAgent
+
+  private
+
+  # Instance variables persist across steps
+  def load_order
+    @order ||= Order.find(input.order_id)
+  end
+
+  # Available in steps via methods
+  step :enrich do
+    agent EnricherAgent, order: load_order, customer: load_order.customer
+  end
+
+  # Context hash for cross-step data
+  step :calculate do
+    context[:discount] = calculate_discount(load_order)
+    agent CalculatorAgent, discount: context[:discount]
+  end
+
+  step :finalize do
+    agent FinalizerAgent, discount: context[:discount]
+  end
+end
+
+# Context is also available in hooks
+before_step :process do
+  context[:started_processing_at] = Time.current
+end
+```
+
+---
+
+## Configuration
+
+Global and per-workflow configuration options:
+
+```ruby
+# Global configuration
+RubyLLM::Agents::Workflow.configure do |config|
+  # Defaults
+  config.default_timeout = 30.seconds
+  config.default_retry = 0
+
+  # Limits
+  config.max_cost = 1.0  # USD
+  config.max_steps = 50
+
+  # Logging
+  config.logger = Rails.logger
+  config.log_level = :debug
+
+  # Instrumentation
+  config.instrument = true
+  config.on_complete = ->(result) { StatsD.timing("workflow", result.duration_ms) }
+end
+
+# Per-workflow overrides
+class ExpensiveWorkflow < RubyLLM::Agents::Workflow
+  max_cost 10.0
+  timeout 5.minutes
+
+  step :expensive, ExpensiveAgent
+end
+
+# Per-call overrides
+MyWorkflow.call(
+  order_id: "123",
+  __timeout: 1.minute,
+  __max_cost: 0.50
+)
+```
+
+---
+
+## Testing
+
+Comprehensive testing patterns and helpers:
+
+```ruby
+RSpec.describe OrderWorkflow do
+  include RubyLLM::Agents::WorkflowTestHelpers
+
+  let(:valid_input) { { order_id: "ORD-123", user_id: 1 } }
+  let(:workflow) { described_class.new(**valid_input) }
+
+  # ─────────────────────────────────────────────────────────────
+  # Input Validation
+  # ─────────────────────────────────────────────────────────────
+
+  describe "input validation" do
+    it "requires order_id" do
+      expect { described_class.new(user_id: 1) }
+        .to raise_error(InputValidationError, /order_id is required/)
+    end
+  end
+
+  # ─────────────────────────────────────────────────────────────
+  # Individual Step Tests
+  # ─────────────────────────────────────────────────────────────
+
+  describe "step :validate" do
+    it "calls ValidatorAgent" do
+      stub_agent(ValidatorAgent).to_return(valid: true)
+
+      result = workflow.run_step(:validate)
+
+      expect(result.content[:valid]).to be true
+    end
+  end
+
+  describe "step :process" do
+    before do
+      stub_results(workflow,
+        validate: { valid: true },
+        enrich: { customer: { tier: "premium" } }
+      )
+    end
+
+    it "routes premium to PremiumAgent" do
+      expect(PremiumAgent).to receive(:call)
+      workflow.run_step(:process)
+    end
+  end
+
+  # ─────────────────────────────────────────────────────────────
+  # Predicate Tests
+  # ─────────────────────────────────────────────────────────────
+
+  describe "#premium_customer?" do
+    it "returns true for premium tier" do
+      stub_results(workflow, enrich: { customer: { tier: "premium" } })
+      expect(workflow.send(:premium_customer?)).to be true
+    end
+  end
+
+  # ─────────────────────────────────────────────────────────────
+  # Full Workflow Tests
+  # ─────────────────────────────────────────────────────────────
+
+  describe "full workflow" do
+    before { stub_all_agents(workflow) }
+
+    it "executes all steps" do
+      result = workflow.call
+
+      expect(result).to be_success
+      expect(result.steps.keys).to eq([:validate, :enrich, :process, :notify])
+    end
+
+    it "handles errors gracefully" do
+      stub_agent(ProcessorAgent).to_raise(Timeout::Error)
+
+      result = workflow.call
+
+      expect(result).to be_error
+      expect(result.failed_steps).to eq([:process])
+    end
+  end
+
+  # ─────────────────────────────────────────────────────────────
+  # Partial Execution
+  # ─────────────────────────────────────────────────────────────
+
+  describe "partial execution" do
+    it "runs until specified step" do
+      stub_all_agents(workflow)
+
+      result = workflow.call(__until: :enrich)
+
+      expect(result.steps.keys).to eq([:validate, :enrich])
+    end
+  end
+end
+
+# ═══════════════════════════════════════════════════════════════
+# Test Helpers
+# ═══════════════════════════════════════════════════════════════
+
+module RubyLLM::Agents::WorkflowTestHelpers
+  # Stub prior results for isolated testing
+  def stub_results(workflow, results_hash)
+    # ...
+  end
+
+  # Stub an agent to return specific content
+  def stub_agent(agent_class)
+    AgentStub.new(agent_class)
+  end
+
+  # Stub all agents in workflow
+  def stub_all_agents(workflow, default: {})
+    # ...
+  end
+
+  # Run single step with context
+  def run_step(workflow, step_name, context: {})
+    # ...
+  end
+
+  # Create mock result
+  def mock_result(content, success: true)
+    # ...
+  end
+end
+```
+
+---
+
 ## Feature Reference
 
 ### 1. Basic Step Declaration
@@ -710,6 +1184,39 @@ end
 step :important, ImportantAgent do
   before { Rails.logger.info "Starting important step" }
   after { |result| cache_result(result) }
+end
+```
+
+**Agent Call Syntax:**
+
+Inside blocks, use the `agent` helper to invoke agents:
+
+```ruby
+# Inside blocks, use the `agent` helper:
+step :process do
+  result = agent ProcessorAgent, order: validate.order
+  # `agent` returns the Result object
+
+  # Transform and return
+  { processed: true, data: result.content }
+end
+
+# The `agent` helper:
+# - Instantiates the agent with given params
+# - Calls it and returns the Result
+# - Tracks metrics for aggregation
+# - Respects workflow timeout/budget
+
+# You can also call agents conditionally:
+step :route do
+  case enrich.tier
+  when "premium"
+    agent PremiumAgent, data: enrich
+  when "standard"
+    agent StandardAgent, data: enrich
+  else
+    agent DefaultAgent, data: enrich
+  end
 end
 ```
 
@@ -1209,3 +1716,15 @@ lib/ruby_llm/agents/
 4. **Testable** - Each feature easily unit tested
 5. **Documented** - Clear examples for every feature
 6. **Performant** - No overhead vs current implementation
+
+---
+
+## Verification
+
+After implementing changes, verify:
+
+1. **Code Examples** - All Ruby code examples are syntactically valid
+2. **Section Ordering** - Logical flow from basic to advanced concepts
+3. **No Duplicates** - No redundant content across sections
+4. **Cross-References** - Internal links work correctly
+5. **Completeness** - All DSL features are documented with examples
