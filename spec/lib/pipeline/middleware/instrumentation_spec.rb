@@ -93,6 +93,13 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     end
 
     context "when tracking is enabled" do
+      let(:mock_execution) do
+        instance_double("RubyLLM::Agents::Execution",
+                        id: 123,
+                        status: "running",
+                        class: RubyLLM::Agents::Execution)
+      end
+
       before do
         allow(config).to receive(:track_embeddings).and_return(true)
         allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
@@ -100,43 +107,168 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         stub_const("RubyLLM::Agents::Execution", Class.new)
       end
 
-      it "records successful execution" do
-        context = build_context
-        context.input_tokens = 100
-        context.output_tokens = 50
-        context.total_cost = 0.001
+      describe "running execution pattern" do
+        it "creates a running record at the start" do
+          context = build_context
 
-        allow(app).to receive(:call) do |ctx|
-          ctx.output = "result"
-          ctx
+          allow(app).to receive(:call) do |ctx|
+            ctx.output = "result"
+            ctx
+          end
+
+          # Expect create! to be called with status: "running" first
+          expect(RubyLLM::Agents::Execution).to receive(:create!).with(
+            hash_including(
+              agent_type: "TestAgent",
+              model_id: "test-model",
+              status: "running"
+            )
+          ).and_return(mock_execution)
+
+          # Then expect update! to be called with final status
+          expect(mock_execution).to receive(:update!).with(
+            hash_including(status: "success")
+          )
+
+          middleware.call(context)
         end
 
-        expect(RubyLLM::Agents::Execution).to receive(:create!).with(
-          hash_including(
-            agent_type: "TestAgent",
-            model_id: "test-model",
-            status: "success"
+        it "stores execution_id on the context" do
+          context = build_context
+
+          allow(app).to receive(:call) do |ctx|
+            ctx.output = "result"
+            ctx
+          end
+
+          allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+          allow(mock_execution).to receive(:update!)
+
+          middleware.call(context)
+
+          expect(context.execution_id).to eq(123)
+        end
+
+        it "updates record on successful completion" do
+          context = build_context
+          context.input_tokens = 100
+          context.output_tokens = 50
+          context.total_cost = 0.001
+
+          allow(app).to receive(:call) do |ctx|
+            ctx.output = "result"
+            ctx
+          end
+
+          allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+
+          expect(mock_execution).to receive(:update!).with(
+            hash_including(
+              status: "success",
+              input_tokens: 100,
+              output_tokens: 50,
+              total_cost: 0.001
+            )
           )
-        )
 
-        middleware.call(context)
-      end
+          middleware.call(context)
+        end
 
-      it "records failed execution" do
-        context = build_context
-        error = StandardError.new("Execution failed")
+        it "updates record on failure with error details" do
+          context = build_context
+          error = StandardError.new("Execution failed")
 
-        allow(app).to receive(:call).and_raise(error)
+          allow(app).to receive(:call).and_raise(error)
+          allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
 
-        expect(RubyLLM::Agents::Execution).to receive(:create!).with(
-          hash_including(
-            status: "error",
-            error_class: "StandardError",
-            error_message: "Execution failed"
+          expect(mock_execution).to receive(:update!).with(
+            hash_including(
+              status: "error",
+              error_class: "StandardError",
+              error_message: "Execution failed"
+            )
           )
-        )
 
-        expect { middleware.call(context) }.to raise_error(StandardError)
+          expect { middleware.call(context) }.to raise_error(StandardError)
+        end
+
+        it "marks timeout errors with timeout status" do
+          context = build_context
+          error = Timeout::Error.new("Request timed out")
+
+          allow(app).to receive(:call).and_raise(error)
+          allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+
+          expect(mock_execution).to receive(:update!).with(
+            hash_including(status: "timeout")
+          )
+
+          expect { middleware.call(context) }.to raise_error(Timeout::Error)
+        end
+
+        it "proceeds even if initial creation fails" do
+          context = build_context
+
+          allow(app).to receive(:call) do |ctx|
+            ctx.output = "result"
+            ctx
+          end
+
+          # Simulate failure to create initial record
+          allow(RubyLLM::Agents::Execution).to receive(:create!).and_raise(StandardError.new("DB error"))
+
+          # Should not raise, execution should proceed
+          result = middleware.call(context)
+          expect(result.output).to eq("result")
+          expect(context.execution_id).to be_nil
+        end
+
+        it "falls back to creating new record if running record is nil" do
+          context = build_context
+          context.input_tokens = 100
+
+          allow(app).to receive(:call) do |ctx|
+            ctx.output = "result"
+            ctx
+          end
+
+          # First create! fails (returns nil through rescue)
+          allow(RubyLLM::Agents::Execution).to receive(:create!)
+            .and_raise(StandardError.new("DB error"))
+
+          # The middleware should still work
+          result = middleware.call(context)
+          expect(result.output).to eq("result")
+        end
+
+        it "uses mark_execution_failed! if update fails" do
+          context = build_context
+          execution_class = class_double("RubyLLM::Agents::Execution")
+          stub_const("RubyLLM::Agents::Execution", execution_class)
+
+          running_execution = instance_double("RubyLLM::Agents::Execution",
+                                              id: 456,
+                                              status: "running",
+                                              class: execution_class)
+
+          allow(app).to receive(:call) do |ctx|
+            ctx.output = "result"
+            ctx
+          end
+
+          allow(execution_class).to receive(:create!).and_return(running_execution)
+
+          # Simulate update! failing
+          allow(running_execution).to receive(:update!).and_raise(StandardError.new("Update failed"))
+
+          # Expect emergency update_all to be called
+          expect(execution_class).to receive(:where).with(id: 456, status: "running").and_return(execution_class)
+          expect(execution_class).to receive(:update_all).with(
+            hash_including(status: "error")
+          )
+
+          middleware.call(context)
+        end
       end
 
       it "truncates long error messages" do
@@ -145,8 +277,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         error = StandardError.new(long_message)
 
         allow(app).to receive(:call).and_raise(error)
+        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
 
-        expect(RubyLLM::Agents::Execution).to receive(:create!).with(
+        expect(mock_execution).to receive(:update!).with(
           hash_including(
             error_message: a_string_matching(/\Ax{1,1000}/)
           )
@@ -162,8 +295,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         context.total_cost = 0.0035
 
         allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
 
-        expect(RubyLLM::Agents::Execution).to receive(:create!).with(
+        expect(mock_execution).to receive(:update!).with(
           hash_including(
             input_tokens: 500,
             output_tokens: 200,
@@ -196,6 +330,13 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     end
 
     context "when result is cached" do
+      let(:mock_execution) do
+        instance_double("RubyLLM::Agents::Execution",
+                        id: 123,
+                        status: "running",
+                        class: RubyLLM::Agents::Execution)
+      end
+
       before do
         allow(config).to receive(:track_embeddings).and_return(true)
         allow(config).to receive(:respond_to?).with(:track_cache_hits).and_return(true)
@@ -224,6 +365,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         allow(app).to receive(:call) { |ctx| ctx.output = "cached_result"; ctx }
 
         expect(RubyLLM::Agents::Execution).to receive(:create!).with(
+          hash_including(status: "running")
+        ).and_return(mock_execution)
+
+        expect(mock_execution).to receive(:update!).with(
           hash_including(cache_hit: true)
         )
 
@@ -232,26 +377,21 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     end
 
     context "async logging" do
+      let(:mock_execution) do
+        instance_double("RubyLLM::Agents::Execution",
+                        id: 123,
+                        status: "running",
+                        class: RubyLLM::Agents::Execution)
+      end
+
       before do
         allow(config).to receive(:track_embeddings).and_return(true)
         allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
         stub_const("RubyLLM::Agents::Execution", Class.new)
       end
 
-      it "uses async logging when enabled and ExecutionLoggerJob is defined" do
+      it "creates running record synchronously even when async_logging is enabled" do
         allow(config).to receive(:async_logging).and_return(true)
-
-        # Stub the ExecutionLoggerJob to be defined
-        job_class = Class.new do
-          def self.perform_later(data)
-            # No-op for test
-          end
-        end
-        stub_const("RubyLLM::Agents::Infrastructure::ExecutionLoggerJob", job_class)
-
-        # Re-evaluate the middleware's async_logging? check
-        # by allowing it to see the stubbed constant
-        allow(middleware).to receive(:async_logging?).and_return(true)
 
         context = build_context
         context.input_tokens = 100
@@ -262,11 +402,17 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           ctx
         end
 
-        expect(RubyLLM::Agents::Infrastructure::ExecutionLoggerJob).to receive(:perform_later).with(
+        # Running record is always created synchronously
+        expect(RubyLLM::Agents::Execution).to receive(:create!).with(
           hash_including(
             agent_type: "TestAgent",
-            status: "success"
+            status: "running"
           )
+        ).and_return(mock_execution)
+
+        # Update is also called (synchronously for now to ensure dashboard correctness)
+        expect(mock_execution).to receive(:update!).with(
+          hash_including(status: "success")
         )
 
         middleware.call(context)
@@ -287,17 +433,19 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         expect(RubyLLM::Agents::Execution).to receive(:create!).with(
           hash_including(
             agent_type: "TestAgent",
-            status: "success"
+            status: "running"
           )
+        ).and_return(mock_execution)
+
+        expect(mock_execution).to receive(:update!).with(
+          hash_including(status: "success")
         )
 
         middleware.call(context)
       end
 
-      it "falls back to sync when ExecutionLoggerJob is not defined" do
-        allow(config).to receive(:async_logging).and_return(true)
-        # Don't stub ExecutionLoggerJob - it should be undefined
-        # The middleware checks defined?(ExecutionLoggerJob)
+      it "falls back to legacy create when running record creation fails" do
+        allow(config).to receive(:async_logging).and_return(false)
 
         context = build_context
         context.input_tokens = 100
@@ -308,16 +456,13 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           ctx
         end
 
-        # With async_logging true but no job defined, should fall back to sync
-        # The actual middleware checks defined?(ExecutionLoggerJob) which will be false
-        expect(RubyLLM::Agents::Execution).to receive(:create!).with(
-          hash_including(
-            agent_type: "TestAgent",
-            status: "success"
-          )
-        )
+        # First create! fails
+        allow(RubyLLM::Agents::Execution).to receive(:create!)
+          .and_raise(StandardError.new("DB error"))
 
-        middleware.call(context)
+        # Should still work without crashing
+        result = middleware.call(context)
+        expect(result.output).to eq("result")
       end
     end
   end
@@ -333,6 +478,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       allow(config).to receive(:track_moderation).and_return(true)
       allow(config).to receive(:track_image_generation).and_return(true)
       allow(config).to receive(:track_audio).and_return(true)
+      allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
     end
 
     it "checks track_embeddings for embedding agents" do

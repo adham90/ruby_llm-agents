@@ -32,20 +32,46 @@ module RubyLLM
         class Instrumentation < Base
           # Process instrumentation
           #
+          # Creates a "running" execution record at the start so executions
+          # appear on the dashboard immediately, then updates it when complete.
+          #
           # @param context [Context] The execution context
           # @return [Context] The context with timing info
           def call(context)
             context.started_at = Time.current
 
+            # Create "running" record immediately (SYNC - must appear on dashboard)
+            execution = create_running_execution(context)
+            context.execution_id = execution&.id
+            status_update_completed = false
+            raised_exception = nil
+
             begin
               @app.call(context)
               context.completed_at = Time.current
-              record_success(context)
+
+              begin
+                complete_execution(execution, context, status: "success")
+                status_update_completed = true
+              rescue StandardError
+                # Let ensure block handle via mark_execution_failed!
+              end
             rescue StandardError => e
               context.completed_at = Time.current
               context.error = e
-              record_failure(context)
+              raised_exception = e
+
+              begin
+                complete_execution(execution, context, status: determine_error_status(e))
+                status_update_completed = true
+              rescue StandardError
+                # Let ensure block handle via mark_execution_failed!
+              end
+
               raise
+            ensure
+              # Emergency fallback if update failed
+              mark_execution_failed!(execution, error: raised_exception || $!) unless status_update_completed
             end
 
             context
@@ -53,26 +79,159 @@ module RubyLLM
 
           private
 
-          # Records a successful execution
+          # Creates initial execution record with 'running' status
+          #
+          # Creates the record synchronously so it appears on the dashboard immediately.
+          # Returns nil on failure to avoid breaking the actual execution.
           #
           # @param context [Context] The execution context
-          def record_success(context)
+          # @return [Execution, nil] The created record, or nil on failure
+          def create_running_execution(context)
+            return nil unless tracking_enabled?(context)
+            return nil unless execution_model_available?
+            return nil if context.cached? && !track_cache_hits?
+
+            data = build_running_execution_data(context)
+            Execution.create!(data)
+          rescue StandardError => e
+            error("Failed to create running execution record: #{e.message}")
+            nil
+          end
+
+          # Updates execution record with completion data
+          #
+          # Updates the existing record with final status, duration, and metrics.
+          # Falls back to creating a new record if the initial record is nil.
+          # Errors are re-raised to allow the ensure block to handle them.
+          #
+          # @param execution [Execution, nil] The execution record to update
+          # @param context [Context] The execution context
+          # @param status [String] Final status ("success", "error", "timeout")
+          # @raise [StandardError] Re-raises any errors for ensure block to handle
+          def complete_execution(execution, context, status:)
             return unless tracking_enabled?(context)
             return if context.cached? && !track_cache_hits?
+            return unless execution_model_available?
 
-            persist_execution(context, status: "success")
+            # Fall back to legacy create if no execution record exists
+            unless execution
+              persist_execution(context, status: status)
+              return
+            end
+
+            update_data = build_completion_data(context, status)
+
+            if async_logging?
+              # For async updates, use a job (if update support exists)
+              # For now, update synchronously to ensure dashboard shows correct status
+              execution.update!(update_data)
+            else
+              execution.update!(update_data)
+            end
+          rescue StandardError => e
+            error("Failed to complete execution record: #{e.message}")
+            raise # Re-raise for ensure block to handle via mark_execution_failed!
           end
 
-          # Records a failed execution
+          # Emergency fallback to mark execution as failed
+          #
+          # Uses update_all to bypass ActiveRecord callbacks and validations,
+          # ensuring the status is updated even if the model is in an invalid state.
+          # Only updates records that are still in 'running' status.
+          #
+          # @param execution [Execution, nil] The execution record
+          # @param error [Exception, nil] The exception that caused the failure
+          def mark_execution_failed!(execution, error: nil)
+            return unless execution&.id
+            return unless execution.status == "running"
+
+            error_message = error ? "#{error.class}: #{error.message}".truncate(1000) : "Unknown error"
+
+            update_data = {
+              status: "error",
+              completed_at: Time.current,
+              error_class: error&.class&.name || "UnknownError",
+              error_message: error_message
+            }
+
+            execution.class.where(id: execution.id, status: "running").update_all(update_data)
+          rescue StandardError => e
+            error("CRITICAL: Failed emergency status update for execution #{execution&.id}: #{e.message}")
+          end
+
+          # Determines the status based on error type
+          #
+          # @param error [Exception] The exception that occurred
+          # @return [String] The determined status ("timeout" or "error")
+          def determine_error_status(error)
+            error.is_a?(Timeout::Error) ? "timeout" : "error"
+          end
+
+          # Builds data for initial running execution record
           #
           # @param context [Context] The execution context
-          def record_failure(context)
-            return unless tracking_enabled?(context)
+          # @return [Hash] Execution data for creating running record
+          def build_running_execution_data(context)
+            data = {
+              agent_type: context.agent_class&.name,
+              agent_version: config(:version, "1.0"),
+              model_id: context.model,
+              status: "running",
+              started_at: context.started_at,
+              input_tokens: 0,
+              output_tokens: 0,
+              total_cost: 0,
+              attempts_count: context.attempts_made
+            }
 
-            persist_execution(context, status: "error")
+            # Add tenant_id only if multi-tenancy is enabled and tenant is set
+            if global_config.multi_tenancy_enabled? && context.tenant_id.present?
+              data[:tenant_id] = context.tenant_id
+            end
+
+            # Add sanitized parameters
+            data[:parameters] = sanitize_parameters(context)
+
+            data
           end
 
-          # Persists execution data to database
+          # Builds data for completing an execution record
+          #
+          # @param context [Context] The execution context
+          # @param status [String] Final status ("success", "error", "timeout")
+          # @return [Hash] Update data for completing the record
+          def build_completion_data(context, status)
+            data = {
+              status: status,
+              completed_at: context.completed_at,
+              duration_ms: context.duration_ms,
+              cache_hit: context.cached?,
+              input_tokens: context.input_tokens || 0,
+              output_tokens: context.output_tokens || 0,
+              total_cost: context.total_cost || 0,
+              attempts_count: context.attempts_made
+            }
+
+            # Add cache key for cache hit executions
+            if context.cached? && context[:cache_key]
+              data[:response_cache_key] = context[:cache_key]
+            end
+
+            # Add error details if present
+            if context.error
+              data[:error_class] = context.error.class.name
+              data[:error_message] = truncate_error_message(context.error.message)
+            end
+
+            # Add custom metadata
+            data[:metadata] = context.metadata if context.metadata.any?
+
+            data
+          end
+
+          # Persists execution data to database (legacy fallback)
+          #
+          # Used when initial running record creation failed.
           #
           # @param context [Context] The execution context
           # @param status [String] "success" or "error"

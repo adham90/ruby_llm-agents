@@ -32,7 +32,7 @@ module RubyLLM
         attr_accessor :tenant_id, :tenant_object, :tenant_config
 
         # Execution tracking (set by Instrumentation middleware)
-        attr_accessor :started_at, :completed_at, :attempt, :attempts_made
+        attr_accessor :started_at, :completed_at, :attempt, :attempts_made, :execution_id
 
         # Result data (set by core execute method)
         attr_accessor :output, :error, :cached
