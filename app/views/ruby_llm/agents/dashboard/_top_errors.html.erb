@@ -17,14 +17,25 @@
           <% top_errors.first(5).each do |error| %>
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
               <td class="px-4 py-2">
-                <span class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate block max-w-[180px]" title="<%= error[:error_class] %>">
-                  <%= error[:error_class].to_s.split("::").last %>
-                </span>
+                <div>
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate block max-w-[180px]" title="<%= error[:error_class] %>">
+                    <%= error[:error_class].to_s.split("::").last %>
+                  </span>
+                  <!-- Progress bar showing error distribution -->
+                  <div class="mt-1 w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div class="h-full bg-red-500 rounded-full transition-all duration-300" style="width: <%= error[:percentage] %>%"></div>
+                  </div>
+                </div>
               </td>
               <td class="px-4 py-2 text-right">
-                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300">
-                  <%= number_with_delimiter(error[:count]) %>
-                </span>
+                <div class="flex items-center justify-end gap-1">
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300">
+                    <%= number_with_delimiter(error[:count]) %>
+                  </span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">
+                    (<%= error[:percentage] %>%)
+                  </span>
+                </div>
               </td>
               <td class="px-4 py-2 text-right text-xs text-gray-500 dark:text-gray-400">
                 <% if error[:last_seen] %>

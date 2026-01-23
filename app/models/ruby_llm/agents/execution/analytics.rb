@@ -170,14 +170,15 @@ module RubyLLM
           # Format: { categories: [...], series: [...], range: ... }
           #
           # @param range [String] Time range: "today" (hourly), "7d" or "30d" (daily)
-          def activity_chart_json(range: "today")
+          # @param offset_days [Integer, nil] Optional offset for comparison data (shifts time window back)
+          def activity_chart_json(range: "today", offset_days: nil)
             case range
             when "7d"
-              build_daily_chart_data(7)
+              build_daily_chart_data(7, offset_days: offset_days)
             when "30d"
-              build_daily_chart_data(30)
+              build_daily_chart_data(30, offset_days: offset_days)
             else
-              build_hourly_chart_data
+              build_hourly_chart_data(offset_days: offset_days)
             end
           end
 
@@ -191,8 +192,11 @@ module RubyLLM
           # Builds hourly chart data for last 24 hours
           # Optimized: Single GROUP BY query instead of 72 individual queries
           # Database-agnostic: works with both PostgreSQL and SQLite
-          def build_hourly_chart_data
-            reference_time = Time.current.beginning_of_hour
+          #
+          # @param offset_days [Integer, nil] Optional offset for comparison data
+          def build_hourly_chart_data(offset_days: nil)
+            offset = offset_days ? offset_days.days : 0.days
+            reference_time = (Time.current - offset).beginning_of_hour
             start_time = reference_time - 23.hours
 
             # Use database-agnostic aggregation with Ruby post-processing
@@ -239,9 +243,13 @@ module RubyLLM
           # Builds daily chart data for specified number of days
           # Optimized: Single query instead of 3*days individual queries
           # Database-agnostic: works with both PostgreSQL and SQLite
-          def build_daily_chart_data(days)
-            end_date = Date.current
-            start_date = (days - 1).days.ago.to_date
+          #
+          # @param days [Integer] Number of days to include
+          # @param offset_days [Integer, nil] Optional offset for comparison data
+          def build_daily_chart_data(days, offset_days: nil)
+            offset = offset_days || 0
+            end_date = Date.current - offset.days
+            start_date = end_date - (days - 1).days
 
             # Use database-agnostic aggregation with Ruby post-processing
             results = where(created_at: start_date.beginning_of_day..end_date.end_of_day)
@@ -256,8 +264,8 @@ module RubyLLM
             total_failed = 0
             total_cost = 0.0
 
-            (days - 1).downto(0).each do |days_ago|
-              date = days_ago.days.ago.to_date
+            (days - 1).downto(0).each do |i|
+              date = end_date - i.days
               rows = results[date] || []
 
               s = rows.count { |r| r.status == "success" }

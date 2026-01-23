@@ -1,5 +1,5 @@
 <div class="mb-6">
-  <div class="flex items-center justify-end mb-3">
+  <div class="flex items-center justify-end mb-4">
     <div class="flex space-x-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
       <%= link_to "Today", ruby_llm_agents.root_path(range: "today"),
           class: "px-3 py-1 text-xs font-medium rounded-md transition-colors #{@selected_range == 'today' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}" %>
@@ -10,75 +10,50 @@
     </div>
   </div>
 
-  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-    <!-- Running -->
-    <div class="flex items-center bg-white dark:bg-gray-800 rounded-lg px-4 py-3 shadow-sm border border-gray-100 dark:border-gray-700">
-      <div class="flex-shrink-0 w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mr-3">
-        <span class="w-2.5 h-2.5 bg-blue-500 rounded-full animate-pulse"></span>
-      </div>
-      <div>
-        <p class="text-lg font-bold text-gray-900 dark:text-gray-100"><%= now_strip[:running] %></p>
-        <p class="text-xs text-gray-500 dark:text-gray-400">Running</p>
-      </div>
-    </div>
-
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
     <!-- Success -->
-    <div class="flex items-center bg-white dark:bg-gray-800 rounded-lg px-4 py-3 shadow-sm border border-gray-100 dark:border-gray-700">
-      <div class="flex-shrink-0 w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mr-3">
-        <span class="w-2.5 h-2.5 bg-green-500 rounded-full"></span>
-      </div>
-      <div>
-        <p class="text-lg font-bold text-green-600 dark:text-green-400"><%= now_strip[:success_today] %></p>
-        <p class="text-xs text-gray-500 dark:text-gray-400">Success</p>
-      </div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-5 shadow-sm border-t-2 border-green-500">
+      <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+        <%= now_strip[:success_today] %>
+        <%= comparison_indicator(now_strip.dig(:comparisons, :success_change), metric_type: :success) %>
+      </p>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Success</p>
     </div>
 
     <!-- Errors -->
-    <div class="flex items-center bg-white dark:bg-gray-800 rounded-lg px-4 py-3 shadow-sm border border-gray-100 dark:border-gray-700">
-      <div class="flex-shrink-0 w-8 h-8 <%= now_strip[:errors_today] > 0 ? 'bg-red-100 dark:bg-red-900' : 'bg-gray-100 dark:bg-gray-700' %> rounded-full flex items-center justify-center mr-3">
-        <span class="w-2.5 h-2.5 <%= now_strip[:errors_today] > 0 ? 'bg-red-500' : 'bg-gray-400' %> rounded-full"></span>
-      </div>
-      <div>
-        <p class="text-lg font-bold <%= now_strip[:errors_today] > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100' %>"><%= now_strip[:errors_today] %></p>
-        <p class="text-xs text-gray-500 dark:text-gray-400">Errors</p>
-      </div>
-    </div>
-
-    <!-- Timeouts -->
-    <div class="flex items-center bg-white dark:bg-gray-800 rounded-lg px-4 py-3 shadow-sm border border-gray-100 dark:border-gray-700">
-      <div class="flex-shrink-0 w-8 h-8 <%= now_strip[:timeouts_today] > 0 ? 'bg-yellow-100 dark:bg-yellow-900' : 'bg-gray-100 dark:bg-gray-700' %> rounded-full flex items-center justify-center mr-3">
-        <span class="w-2.5 h-2.5 <%= now_strip[:timeouts_today] > 0 ? 'bg-yellow-500' : 'bg-gray-400' %> rounded-full"></span>
-      </div>
-      <div>
-        <p class="text-lg font-bold <%= now_strip[:timeouts_today] > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-900 dark:text-gray-100' %>"><%= now_strip[:timeouts_today] %></p>
-        <p class="text-xs text-gray-500 dark:text-gray-400">Timeouts</p>
-      </div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-5 shadow-sm border-t-2 border-red-500">
+      <p class="text-2xl font-bold <%= now_strip[:errors_today] > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100' %>">
+        <%= now_strip[:errors_today] %>
+        <%= comparison_indicator(now_strip.dig(:comparisons, :errors_change), metric_type: :errors) %>
+      </p>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Errors</p>
     </div>
 
     <!-- Cost -->
-    <div class="flex items-center bg-white dark:bg-gray-800 rounded-lg px-4 py-3 shadow-sm border border-gray-100 dark:border-gray-700">
-      <div class="flex-shrink-0 w-8 h-8 bg-amber-100 dark:bg-amber-900 rounded-full flex items-center justify-center mr-3">
-        <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-      </div>
-      <div>
-        <p class="text-lg font-bold text-gray-900 dark:text-gray-100">$<%= number_with_precision(now_strip[:cost_today], precision: 4) %></p>
-        <p class="text-xs text-gray-500 dark:text-gray-400">Cost</p>
-      </div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-5 shadow-sm border-t-2 border-amber-500">
+      <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+        $<%= number_with_precision(now_strip[:cost_today], precision: 4) %>
+        <%= comparison_indicator(now_strip.dig(:comparisons, :cost_change), metric_type: :cost) %>
+      </p>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Cost</p>
     </div>
 
-    <!-- Success Rate -->
-    <div class="flex items-center bg-white dark:bg-gray-800 rounded-lg px-4 py-3 shadow-sm border border-gray-100 dark:border-gray-700">
-      <div class="flex-shrink-0 w-8 h-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mr-3">
-        <svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-      </div>
-      <div>
-        <p class="text-lg font-bold text-gray-900 dark:text-gray-100"><%= now_strip[:success_rate] %>%</p>
-        <p class="text-xs text-gray-500 dark:text-gray-400">Success Rate</p>
-      </div>
+    <!-- Avg Duration -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-5 shadow-sm border-t-2 border-purple-500">
+      <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+        <%= format_duration_ms(now_strip[:avg_duration_ms]) %>
+        <%= comparison_indicator(now_strip.dig(:comparisons, :duration_change), metric_type: :duration) %>
+      </p>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Avg Duration</p>
+    </div>
+
+    <!-- Tokens -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-5 shadow-sm border-t-2 border-indigo-500">
+      <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+        <%= number_to_human_short(now_strip[:total_tokens]) %>
+        <%= comparison_indicator(now_strip.dig(:comparisons, :tokens_change), metric_type: :tokens) %>
+      </p>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Tokens</p>
     </div>
   </div>
 </div>

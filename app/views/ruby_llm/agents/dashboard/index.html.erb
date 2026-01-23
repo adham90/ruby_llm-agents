@@ -41,7 +41,7 @@
         return num.toLocaleString();
       }
 
-      function initChart() {
+      function loadChart() {
         fetch(chartUrl)
           .then(res => res.json())
           .then(data => {
@@ -50,11 +50,10 @@
             const failedData = convertToDatetimePoints(data.series[1].data, range);
             const costData = convertToDatetimePoints(data.series[2].data, range);
 
-            // Update totals in header
             const totals = data.totals;
             const totalExecs = totals.success + totals.failed;
             document.getElementById('chart-totals').textContent =
-              formatNumber(totalExecs) + ' executions • $' + totals.cost.toFixed(2);
+              formatNumber(totalExecs) + ' executions \u2022 $' + totals.cost.toFixed(2);
 
             const timeRange = range === 'today' ? dayMs : (range === '7d' ? 7 * dayMs : 30 * dayMs);
             const dateFormat = range === 'today' ? '%H:%M' : '%b %d';
@@ -119,9 +118,9 @@
       }
 
       if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initChart);
+        document.addEventListener('DOMContentLoaded', loadChart);
       } else {
-        initChart();
+        loadChart();
       }
     })();
   </script>

@@ -32,10 +32,23 @@ module RubyLLM
       # Returns chart data as JSON for live updates
       #
       # @param range [String] Time range: "today", "7d", or "30d"
-      # @return [JSON] Chart data with series
+      # @param compare [String] If "true", include comparison data from previous period
+      # @return [JSON] Chart data with series (and optional comparison series)
       def chart_data
         range = params[:range].presence || "today"
-        render json: tenant_scoped_executions.activity_chart_json(range: range)
+        compare = params[:compare] == "true"
+
+        data = tenant_scoped_executions.activity_chart_json(range: range)
+
+        if compare
+          offset_days = range_to_days(range)
+          data[:comparison] = tenant_scoped_executions.activity_chart_json(
+            range: range,
+            offset_days: offset_days
+          )
+        end
+
+        render json: data
       end
 
       private

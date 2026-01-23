@@ -250,6 +250,43 @@ module RubyLLM
         end
       end
 
+      # Compact comparison indicator with arrow for now strip metrics
+      #
+      # Shows a colored arrow indicator showing percentage change vs previous period.
+      # For errors/cost/duration: decrease is good (green). For success/tokens: increase is good.
+      #
+      # @param change_pct [Float, nil] Percentage change from previous period
+      # @param metric_type [Symbol] Type of metric (:success, :errors, :cost, :duration, :tokens)
+      # @return [ActiveSupport::SafeBuffer, String] HTML span with indicator or empty string
+      def comparison_indicator(change_pct, metric_type: :count)
+        return "".html_safe if change_pct.nil?
+
+        # For errors/cost/duration, decrease is good. For success/tokens, increase is good.
+        positive_is_good = metric_type.in?(%i[success tokens count])
+        is_improvement = positive_is_good ? change_pct > 0 : change_pct < 0
+
+        arrow = change_pct > 0 ? "\u2191" : "\u2193"
+        color = is_improvement ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+
+        content_tag(:span, "#{arrow}#{change_pct.abs}%", class: "text-xs font-medium #{color} ml-1")
+      end
+
+      # Formats milliseconds to human-readable duration
+      #
+      # @param ms [Numeric, nil] Duration in milliseconds
+      # @return [String] Human-readable duration (e.g., "150ms", "2.5s", "1.2m")
+      def format_duration_ms(ms)
+        return "0ms" if ms.nil? || ms.zero?
+
+        if ms < 1000
+          "#{ms.round}ms"
+        elsif ms < 60_000
+          "#{(ms / 1000.0).round(1)}s"
+        else
+          "#{(ms / 60_000.0).round(1)}m"
+        end
+      end
+
       # Returns the appropriate row background class based on change significance
       #
       # @param change_pct [Float] Percentage change
