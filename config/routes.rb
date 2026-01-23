@@ -5,7 +5,7 @@ RubyLLM::Agents::Engine.routes.draw do
   get "chart_data", to: "dashboard#chart_data"
 
   resources :agents, only: [:index, :show]
-  resources :workflows, only: [:show]
+  resources :workflows, only: [:index, :show]
 
   resources :executions, only: [:index, :show] do
     collection do

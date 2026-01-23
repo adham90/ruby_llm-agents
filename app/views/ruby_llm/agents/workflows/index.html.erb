@@ -1,0 +1,56 @@
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Workflows</h1>
+  <p class="text-gray-500 dark:text-gray-400 mt-1">Orchestrated multi-agent workflows with execution statistics</p>
+</div>
+
+<div x-data="{
+  activeSubTab: <%= params[:subtab].present? ? "'#{params[:subtab]}'" : 'null' %>,
+  updateUrl() {
+    const url = new URL(window.location);
+    if (this.activeSubTab) {
+      url.searchParams.set('subtab', this.activeSubTab);
+    } else {
+      url.searchParams.delete('subtab');
+    }
+    history.replaceState({}, '', url);
+  }
+}">
+  <!-- Workflow Sub-tabs -->
+  <div class="mb-4">
+    <div class="flex flex-wrap gap-2">
+      <button type="button" @click="activeSubTab = null; updateUrl()"
+              :class="activeSubTab === null ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
+              class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
+        All (<%= @workflow_count %>)
+      </button>
+      <button type="button" @click="activeSubTab = 'pipeline'; updateUrl()"
+              :class="activeSubTab === 'pipeline' ? 'bg-indigo-600 text-white' : 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-800'"
+              class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors inline-flex items-center gap-1.5">
+        <span aria-hidden="true">-></span> Pipeline (<%= @workflows_by_type[:pipeline].size %>)
+      </button>
+      <button type="button" @click="activeSubTab = 'parallel'; updateUrl()"
+              :class="activeSubTab === 'parallel' ? 'bg-cyan-600 text-white' : 'bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-200 dark:hover:bg-cyan-800'"
+              class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors inline-flex items-center gap-1.5">
+        <span aria-hidden="true">//</span> Parallel (<%= @workflows_by_type[:parallel].size %>)
+      </button>
+      <button type="button" @click="activeSubTab = 'router'; updateUrl()"
+              :class="activeSubTab === 'router' ? 'bg-amber-600 text-white' : 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800'"
+              class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors inline-flex items-center gap-1.5">
+        <span aria-hidden="true">&lt;&gt;</span> Router (<%= @workflows_by_type[:router].size %>)
+      </button>
+    </div>
+  </div>
+
+  <!-- Workflows Content -->
+  <% if @workflows.empty? %>
+    <%= render "ruby_llm/agents/agents/empty_state", type: "workflows" %>
+  <% else %>
+    <div class="space-y-3 sm:space-y-4">
+      <% @workflows.each do |workflow| %>
+        <div x-show="activeSubTab === null || activeSubTab === '<%= workflow[:workflow_type] %>'">
+          <%= render partial: "ruby_llm/agents/agents/workflow", locals: { workflow: workflow, current_subtab: params[:subtab] } %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

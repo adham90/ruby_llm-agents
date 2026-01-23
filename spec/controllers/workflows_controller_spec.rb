@@ -7,9 +7,65 @@ RSpec.describe RubyLLM::Agents::WorkflowsController, type: :controller do
 
   # Define custom render to capture assigns without needing templates
   controller do
+    def index
+      super
+      head :ok unless performed?
+    end
+
     def show
       super
       head :ok unless performed?
+    end
+  end
+
+  describe "GET #index" do
+    before do
+      # Mock AgentRegistry to return test workflows
+      allow(RubyLLM::Agents::AgentRegistry).to receive(:all_with_details).and_return([
+        { name: "TestPipeline", is_workflow: true, workflow_type: "pipeline", active: true },
+        { name: "TestParallel", is_workflow: true, workflow_type: "parallel", active: true },
+        { name: "TestRouter", is_workflow: true, workflow_type: "router", active: true },
+        { name: "TestAgent", is_workflow: false, agent_type: "agent", active: true }
+      ])
+    end
+
+    it "returns http success" do
+      get :index
+      expect(response).to have_http_status(:success)
+    end
+
+    it "assigns @workflows with only workflows" do
+      get :index
+      expect(assigns(:workflows).size).to eq(3)
+      expect(assigns(:workflows).all? { |w| w[:is_workflow] }).to be true
+    end
+
+    it "assigns @workflows_by_type" do
+      get :index
+      workflows_by_type = assigns(:workflows_by_type)
+      expect(workflows_by_type[:pipeline].size).to eq(1)
+      expect(workflows_by_type[:parallel].size).to eq(1)
+      expect(workflows_by_type[:router].size).to eq(1)
+    end
+
+    it "assigns @workflow_count" do
+      get :index
+      expect(assigns(:workflow_count)).to eq(3)
+    end
+
+    context "when an error occurs" do
+      before do
+        allow(RubyLLM::Agents::AgentRegistry).to receive(:all_with_details)
+          .and_raise(StandardError.new("Test error"))
+      end
+
+      it "sets empty arrays and flash alert" do
+        get :index
+        expect(assigns(:workflows)).to eq([])
+        expect(assigns(:workflows_by_type)).to eq({ pipeline: [], parallel: [], router: [] })
+        expect(assigns(:workflow_count)).to eq(0)
+        expect(flash[:alert]).to eq("Error loading workflows list")
+      end
     end
   end
 
@@ -199,7 +255,7 @@ RSpec.describe RubyLLM::Agents::WorkflowsController, type: :controller do
 
       it "redirects with error message" do
         get :show, params: { id: "TestPipelineWorkflow" }
-        expect(response).to redirect_to(controller.ruby_llm_agents.agents_path)
+        expect(response).to redirect_to(controller.ruby_llm_agents.workflows_path)
         expect(flash[:alert]).to eq("Error loading workflow details")
       end
     end

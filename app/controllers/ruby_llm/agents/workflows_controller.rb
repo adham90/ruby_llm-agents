@@ -16,6 +16,32 @@ module RubyLLM
       include Paginatable
       include Filterable
 
+      # Lists all registered workflows with their details
+      #
+      # Uses AgentRegistry to discover workflows from both file system
+      # and execution history. Separates workflows by type for sub-tabs.
+      #
+      # @return [void]
+      def index
+        all_items = AgentRegistry.all_with_details
+        @workflows = all_items.select { |a| a[:is_workflow] }
+
+        # Group workflows by type for sub-tabs
+        @workflows_by_type = {
+          pipeline: @workflows.select { |w| w[:workflow_type] == "pipeline" },
+          parallel: @workflows.select { |w| w[:workflow_type] == "parallel" },
+          router: @workflows.select { |w| w[:workflow_type] == "router" }
+        }
+
+        @workflow_count = @workflows.size
+      rescue StandardError => e
+        Rails.logger.error("[RubyLLM::Agents] Error loading workflows: #{e.message}")
+        @workflows = []
+        @workflows_by_type = { pipeline: [], parallel: [], router: [] }
+        @workflow_count = 0
+        flash.now[:alert] = "Error loading workflows list"
+      end
+
       # Shows detailed view for a specific workflow
       #
       # Loads workflow configuration (if class exists), statistics,
@@ -42,7 +68,7 @@ module RubyLLM
         end
       rescue StandardError => e
         Rails.logger.error("[RubyLLM::Agents] Error loading workflow #{@workflow_type}: #{e.message}")
-        redirect_to ruby_llm_agents.agents_path, alert: "Error loading workflow details"
+        redirect_to ruby_llm_agents.workflows_path, alert: "Error loading workflow details"
       end
 
       private

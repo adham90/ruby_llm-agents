@@ -26,9 +26,8 @@ module RubyLLM
       def index
         all_items = AgentRegistry.all_with_details
 
-        # Separate agents and workflows
+        # Filter to only agents (not workflows)
         @agents = all_items.reject { |a| a[:is_workflow] }
-        @workflows = all_items.select { |a| a[:is_workflow] }
 
         # Group agents by type for sub-tabs
         @agents_by_type = {
@@ -40,24 +39,12 @@ module RubyLLM
           image_generator: @agents.select { |a| a[:agent_type] == "image_generator" }
         }
 
-        # Group workflows by type for sub-tabs
-        @workflows_by_type = {
-          pipeline: @workflows.select { |w| w[:workflow_type] == "pipeline" },
-          parallel: @workflows.select { |w| w[:workflow_type] == "parallel" },
-          router: @workflows.select { |w| w[:workflow_type] == "router" }
-        }
-
-        # Counts for tab badges
         @agent_count = @agents.size
-        @workflow_count = @workflows.size
       rescue StandardError => e
         Rails.logger.error("[RubyLLM::Agents] Error loading agents: #{e.message}")
         @agents = []
-        @workflows = []
         @agents_by_type = { agent: [], embedder: [], moderator: [], speaker: [], transcriber: [], image_generator: [] }
-        @workflows_by_type = { pipeline: [], parallel: [], router: [] }
         @agent_count = 0
-        @workflow_count = 0
         flash.now[:alert] = "Error loading agents list"
       end
 
