@@ -856,11 +856,12 @@ module RubyLLM
       #   path_for(:image, "generators") #=> "app/llm/image/generators"
       #   path_for(nil, "agents")        #=> "app/llm/agents"
       def path_for(category, type)
+        base = root_directory.present? ? "app/#{root_directory}" : "app"
         case category
-        when :audio then "app/#{root_directory}/audio/#{type}"
-        when :image then "app/#{root_directory}/image/#{type}"
-        when :text then "app/#{root_directory}/text/#{type}"
-        else "app/#{root_directory}/#{type}"
+        when :audio then "#{base}/audio/#{type}"
+        when :image then "#{base}/image/#{type}"
+        when :text then "#{base}/text/#{type}"
+        else "#{base}/#{type}"
         end
       end
 

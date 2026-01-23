@@ -90,10 +90,13 @@ module RubyLLM
 
         # Eager loads all agent and workflow files to register descendants
         #
+        # Uses the configured autoload paths from RubyLLM::Agents.configuration
+        # to ensure agents are discovered in the correct directories.
+        #
         # @return [void]
         def eager_load_agents!
-          %w[agents workflows embedders moderators speakers transcribers image_generators].each do |dir|
-            path = Rails.root.join("app", dir)
+          RubyLLM::Agents.configuration.all_autoload_paths.each do |relative_path|
+            path = Rails.root.join(relative_path)
             next unless path.exist?
 
             Dir.glob(path.join("**", "*.rb")).each do |file|
