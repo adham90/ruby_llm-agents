@@ -87,7 +87,7 @@
   <% else %>
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-900">
             <tr>
               <%= render "ruby_llm/agents/agents/sortable_header",
@@ -104,7 +104,8 @@
 
               <%= render "ruby_llm/agents/agents/sortable_header",
                   column: "model", label: "Model",
-                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
+                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction],
+                  th_class: "hidden lg:table-cell" %>
 
               <%= render "ruby_llm/agents/agents/sortable_header",
                   column: "execution_count", label: "Executions",
@@ -112,7 +113,8 @@
 
               <%= render "ruby_llm/agents/agents/sortable_header",
                   column: "total_cost", label: "Cost",
-                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction], align: "right" %>
+                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction], align: "right",
+                  th_class: "hidden md:table-cell" %>
 
               <%= render "ruby_llm/agents/agents/sortable_header",
                   column: "success_rate", label: "Success",
@@ -142,7 +144,7 @@
                 onclick="window.location='<%= ruby_llm_agents.agent_path(ERB::Util.url_encode(agent[:name]), subtab: params[:subtab]) %>'"
               >
                 <!-- Name -->
-                <td class="px-4 py-3 whitespace-nowrap">
+                <td class="px-4 py-3">
                   <div class="flex items-center gap-2">
                     <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
                       <%= agent[:name].split('::').last.gsub(/Agent$/, '') %>
@@ -150,7 +152,7 @@
                     <span class="hidden lg:inline text-xs text-gray-400 dark:text-gray-500">v<%= agent[:version] %></span>
                   </div>
                   <% if agent[:description].present? %>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs mt-0.5" title="<%= agent[:description] %>">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-64 mt-0.5" title="<%= agent[:description] %>">
                       <%= agent[:description] %>
                     </p>
                   <% end %>
@@ -185,7 +187,7 @@
                 </td>
 
                 <!-- Model -->
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 hidden lg:table-cell">
                   <span title="<%= agent[:model] %>">
                     <%= agent[:model]&.split("/")&.last || agent[:model] || "-" %>
                   </span>
@@ -197,7 +199,7 @@
                 </td>
 
                 <!-- Cost -->
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right font-mono">
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right font-mono hidden md:table-cell">
                   $<%= number_with_precision(agent[:total_cost] || 0, precision: 4) %>
                 </td>
 
@@ -240,7 +242,7 @@
                 onclick="window.location='<%= ruby_llm_agents.agent_path(ERB::Util.url_encode(agent[:name]), subtab: params[:subtab]) %>'"
               >
                 <!-- Name -->
-                <td class="px-4 py-3 whitespace-nowrap">
+                <td class="px-4 py-3">
                   <div class="flex items-center gap-2">
                     <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
                       <%= agent[:name].split('::').last.gsub(/Agent$/, '') %>
@@ -248,7 +250,7 @@
                     <span class="hidden lg:inline text-xs text-gray-400 dark:text-gray-500">v<%= agent[:version] %></span>
                   </div>
                   <% if agent[:description].present? %>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs mt-0.5" title="<%= agent[:description] %>">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-48 mt-0.5" title="<%= agent[:description] %>">
                       <%= agent[:description] %>
                     </p>
                   <% end %>
@@ -277,7 +279,7 @@
                 </td>
 
                 <!-- Model -->
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 hidden lg:table-cell">
                   <span title="<%= agent[:model] %>">
                     <%= agent[:model]&.split("/")&.last || agent[:model] || "-" %>
                   </span>
@@ -289,7 +291,7 @@
                 </td>
 
                 <!-- Cost -->
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right font-mono">
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right font-mono hidden md:table-cell">
                   $<%= number_with_precision(agent[:total_cost] || 0, precision: 4) %>
                 </td>
 

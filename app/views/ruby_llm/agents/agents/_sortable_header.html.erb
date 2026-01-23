@@ -10,7 +10,8 @@
       label: "Name",
       current_sort: @sort_params[:column],
       current_direction: @sort_params[:direction],
-      align: "right"
+      align: "right",
+      th_class: "hidden lg:table-cell"
 
   Parameters:
     column           - (String) The column name used in sort URL parameter
@@ -18,9 +19,11 @@
     current_sort     - (String) Currently active sort column
     current_direction - (String) Current sort direction ('asc' or 'desc')
     align            - (String) Text alignment: 'left' (default), 'center', or 'right'
+    th_class         - (String) Additional CSS classes for the th element (e.g., responsive hiding)
 %>
 <%
   align = local_assigns[:align] || "left"
+  th_class = local_assigns[:th_class] || ""
   is_active = column == current_sort
   next_direction = is_active && current_direction == "asc" ? "desc" : "asc"
   sort_url = url_for(request.query_parameters.merge(sort: column, direction: next_direction))
@@ -31,7 +34,7 @@
                 else "text-left justify-start"
                 end
 %>
-<th scope="col" class="px-4 py-3">
+<th scope="col" class="px-4 py-3 <%= th_class %>">
   <a href="<%= sort_url %>"
      class="group inline-flex items-center gap-1 <%= align_class %> w-full
             text-xs font-semibold uppercase tracking-wider
