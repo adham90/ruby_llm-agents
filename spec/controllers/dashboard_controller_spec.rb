@@ -39,5 +39,10 @@ RSpec.describe RubyLLM::Agents::DashboardController, type: :controller do
       get :index
       expect(assigns(:critical_alerts)).to be_an(Array)
     end
+
+    it "assigns @model_stats" do
+      get :index
+      expect(assigns(:model_stats)).to be_an(Array)
+    end
   end
 end

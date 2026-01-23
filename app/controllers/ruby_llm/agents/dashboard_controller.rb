@@ -27,6 +27,7 @@ module RubyLLM
         @agent_stats = build_agent_comparison(base_scope)
         @top_errors = build_top_errors(base_scope)
         @tenant_budget = load_tenant_budget(base_scope)
+        @model_stats = build_model_stats(base_scope)
       end
 
       # Returns chart data as JSON for live updates
@@ -186,6 +187,42 @@ module RubyLLM
         elsif ancestors.include?("RubyLLM::Agents::Workflow::Router")
           "router"
         end
+      end
+
+      # Builds per-model statistics for model comparison and cost breakdown
+      #
+      # @param base_scope [ActiveRecord::Relation] Base scope to filter from
+      # @return [Array<Hash>] Array of model stats sorted by total cost descending
+      def build_model_stats(base_scope = Execution)
+        scope = base_scope.last_n_days(@days).where.not(model_id: nil)
+
+        # Batch fetch stats grouped by model
+        counts = scope.group(:model_id).count
+        costs = scope.group(:model_id).sum(:total_cost)
+        tokens = scope.group(:model_id).sum(:total_tokens)
+        durations = scope.group(:model_id).average(:duration_ms)
+        success_counts = scope.successful.group(:model_id).count
+
+        total_cost = costs.values.sum
+
+        model_ids = counts.keys
+        model_ids.map do |model_id|
+          count = counts[model_id] || 0
+          model_cost = costs[model_id] || 0
+          model_tokens = tokens[model_id] || 0
+          successful = success_counts[model_id] || 0
+
+          {
+            model_id: model_id,
+            executions: count,
+            total_cost: model_cost,
+            total_tokens: model_tokens,
+            avg_duration_ms: durations[model_id]&.round || 0,
+            success_rate: count > 0 ? (successful.to_f / count * 100).round(1) : 0,
+            cost_per_1k_tokens: model_tokens > 0 ? (model_cost / model_tokens * 1000).round(4) : 0,
+            cost_percentage: total_cost > 0 ? (model_cost / total_cost * 100).round(1) : 0
+          }
+        end.sort_by { |m| -(m[:total_cost] || 0) }
       end
 
       # Builds top errors list
