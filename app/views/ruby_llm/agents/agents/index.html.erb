@@ -145,11 +145,7 @@
                 <td class="px-4 py-3 whitespace-nowrap">
                   <div class="flex items-center gap-2">
                     <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      <% name_parts = agent[:name].gsub(/Agent$/, '').split('::') %>
-                      <% if name_parts.length > 1 %>
-                        <span class="text-gray-400 dark:text-gray-500 font-normal"><%= name_parts[0..-2].join('::') %>::</span>
-                      <% end %>
-                      <%= name_parts.last %>
+                      <%= agent[:name].split('::').last.gsub(/Agent$/, '') %>
                     </span>
                     <span class="hidden lg:inline text-xs text-gray-400 dark:text-gray-500">v<%= agent[:version] %></span>
                   </div>
@@ -247,11 +243,7 @@
                 <td class="px-4 py-3 whitespace-nowrap">
                   <div class="flex items-center gap-2">
                     <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      <% name_parts = agent[:name].gsub(/Agent$/, '').split('::') %>
-                      <% if name_parts.length > 1 %>
-                        <span class="text-gray-400 dark:text-gray-500 font-normal"><%= name_parts[0..-2].join('::') %>::</span>
-                      <% end %>
-                      <%= name_parts.last %>
+                      <%= agent[:name].split('::').last.gsub(/Agent$/, '') %>
                     </span>
                     <span class="hidden lg:inline text-xs text-gray-400 dark:text-gray-500">v<%= agent[:version] %></span>
                   </div>
