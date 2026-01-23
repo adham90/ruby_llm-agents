@@ -138,6 +138,63 @@ RSpec.describe RubyLLM::Agents::ExecutionsController, type: :controller do
       end
     end
 
+    context "with sorting" do
+      before do
+        create(:execution, agent_type: "AgentA", duration_ms: 1000, created_at: 1.day.ago)
+        create(:execution, agent_type: "AgentB", duration_ms: 500, created_at: 2.days.ago)
+        create(:execution, agent_type: "AgentC", duration_ms: 2000, created_at: Time.current)
+      end
+
+      it "assigns @sort_params" do
+        get :index
+        expect(assigns(:sort_params)).to include(:column, :direction)
+      end
+
+      it "defaults to created_at desc" do
+        get :index
+        expect(assigns(:sort_params)[:column]).to eq("created_at")
+        expect(assigns(:sort_params)[:direction]).to eq("desc")
+        # Most recent execution should be first
+        expect(assigns(:executions).first.agent_type).to eq("AgentC")
+      end
+
+      it "sorts by specified column ascending" do
+        get :index, params: { sort: "duration_ms", direction: "asc" }
+        expect(assigns(:sort_params)[:column]).to eq("duration_ms")
+        expect(assigns(:sort_params)[:direction]).to eq("asc")
+        # Shortest duration should be first
+        expect(assigns(:executions).first.duration_ms).to eq(500)
+      end
+
+      it "sorts by specified column descending" do
+        get :index, params: { sort: "duration_ms", direction: "desc" }
+        expect(assigns(:sort_params)[:column]).to eq("duration_ms")
+        expect(assigns(:sort_params)[:direction]).to eq("desc")
+        # Longest duration should be first
+        expect(assigns(:executions).first.duration_ms).to eq(2000)
+      end
+
+      it "sorts by agent_type" do
+        get :index, params: { sort: "agent_type", direction: "asc" }
+        expect(assigns(:executions).pluck(:agent_type)).to eq(%w[AgentA AgentB AgentC])
+      end
+
+      it "falls back to default for invalid sort column" do
+        get :index, params: { sort: "invalid_column" }
+        expect(assigns(:sort_params)[:column]).to eq("created_at")
+      end
+
+      it "falls back to default for invalid direction" do
+        get :index, params: { sort: "duration_ms", direction: "invalid" }
+        expect(assigns(:sort_params)[:direction]).to eq("desc")
+      end
+
+      it "rejects SQL injection attempts" do
+        get :index, params: { sort: "duration_ms; DROP TABLE executions" }
+        expect(assigns(:sort_params)[:column]).to eq("created_at")
+      end
+    end
+
   end
 
   describe "GET #show" do

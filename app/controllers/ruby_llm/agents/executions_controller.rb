@@ -14,6 +14,7 @@ module RubyLLM
     class ExecutionsController < ApplicationController
       include Paginatable
       include Filterable
+      include Sortable
 
       CSV_COLUMNS = %w[id agent_type agent_version status model_id total_tokens total_cost
                        duration_ms created_at error_class error_message].freeze
@@ -206,12 +207,13 @@ module RubyLLM
 
       # Loads paginated executions and associated statistics
       #
-      # Sets @executions, @pagination, and @filter_stats instance variables
+      # Sets @executions, @pagination, @sort_params, and @filter_stats instance variables
       # for use in views.
       #
       # @return [void]
       def load_executions_with_stats
-        result = paginate(filtered_executions)
+        @sort_params = parse_sort_params
+        result = paginate(filtered_executions, sort_params: @sort_params)
         @executions = result[:records]
         @pagination = result[:pagination]
         load_filter_stats

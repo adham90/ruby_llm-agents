@@ -1,0 +1,53 @@
+<%#
+  Sortable column header component
+
+  Creates a clickable table header that toggles sort direction and
+  displays visual feedback for the current sort state.
+
+  Usage:
+    render "ruby_llm/agents/shared/sortable_header",
+      column: "created_at",
+      label: "Time",
+      current_sort: @sort_params[:column],
+      current_direction: @sort_params[:direction],
+      align: "right"
+
+  Parameters:
+    column           - (String) The column name used in sort URL parameter
+    label            - (String) Display text for the header
+    current_sort     - (String) Currently active sort column
+    current_direction - (String) Current sort direction ('asc' or 'desc')
+    align            - (String) Text alignment: 'left' (default), 'center', or 'right'
+%>
+<%
+  align = local_assigns[:align] || "left"
+  is_active = column == current_sort
+  next_direction = is_active && current_direction == "asc" ? "desc" : "asc"
+  sort_url = url_for(request.query_parameters.merge(sort: column, direction: next_direction, page: 1))
+
+  align_class = case align
+                when "right" then "text-right justify-end"
+                when "center" then "text-center justify-center"
+                else "text-left justify-start"
+                end
+%>
+<th scope="col" class="px-4 py-3">
+  <a href="<%= sort_url %>"
+     class="group inline-flex items-center gap-1 <%= align_class %> w-full
+            text-xs font-medium uppercase tracking-wider
+            <%= is_active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400' %>
+            hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+    <span><%= label %></span>
+    <span class="<%= is_active ? 'opacity-100' : 'opacity-0 group-hover:opacity-50' %> transition-opacity">
+      <% if is_active && current_direction == "asc" %>
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+        </svg>
+      <% else %>
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+        </svg>
+      <% end %>
+    </span>
+  </a>
+</th>

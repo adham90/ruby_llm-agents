@@ -10,85 +10,38 @@
         <thead class="bg-gray-50 dark:bg-gray-900">
           <tr>
             <th scope="col" class="px-2 py-3 w-8"></th>
-            <th
-              scope="col"
-              class="
-                px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400
-                uppercase tracking-wider
-              "
-            >
-              Agent
-            </th>
 
-            <th
-              scope="col"
-              class="
-                px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400
-                uppercase tracking-wider
-              "
-            >
-              Status
-            </th>
+            <%= render "ruby_llm/agents/shared/sortable_header",
+                column: "agent_type", label: "Agent",
+                current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
 
-            <th
-              scope="col"
-              class="
-                px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400
-                uppercase tracking-wider
-              "
-            >
-              Version
-            </th>
+            <%= render "ruby_llm/agents/shared/sortable_header",
+                column: "status", label: "Status",
+                current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
 
-            <th
-              scope="col"
-              class="
-                px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400
-                uppercase tracking-wider
-              "
-            >
+            <%= render "ruby_llm/agents/shared/sortable_header",
+                column: "agent_version", label: "Version",
+                current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
+
+            <th scope="col" class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Attempts
             </th>
 
-            <th
-              scope="col"
-              class="
-                px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400
-                uppercase tracking-wider
-              "
-            >
-              Tokens
-            </th>
+            <%= render "ruby_llm/agents/shared/sortable_header",
+                column: "total_tokens", label: "Tokens",
+                current_sort: @sort_params[:column], current_direction: @sort_params[:direction], align: "right" %>
 
-            <th
-              scope="col"
-              class="
-                px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400
-                uppercase tracking-wider
-              "
-            >
-              Cost
-            </th>
+            <%= render "ruby_llm/agents/shared/sortable_header",
+                column: "total_cost", label: "Cost",
+                current_sort: @sort_params[:column], current_direction: @sort_params[:direction], align: "right" %>
 
-            <th
-              scope="col"
-              class="
-                px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400
-                uppercase tracking-wider
-              "
-            >
-              Duration
-            </th>
+            <%= render "ruby_llm/agents/shared/sortable_header",
+                column: "duration_ms", label: "Duration",
+                current_sort: @sort_params[:column], current_direction: @sort_params[:direction], align: "right" %>
 
-            <th
-              scope="col"
-              class="
-                px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400
-                uppercase tracking-wider
-              "
-            >
-              Time
-            </th>
+            <%= render "ruby_llm/agents/shared/sortable_header",
+                column: "created_at", label: "Time",
+                current_sort: @sort_params[:column], current_direction: @sort_params[:direction], align: "right" %>
           </tr>
         </thead>
 
@@ -267,7 +220,7 @@
 
         <nav class="flex items-center space-x-1">
           <% if current_page > 1 %>
-            <%= link_to "Previous", url_for(page: current_page - 1), class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
+            <%= link_to "Previous", url_for(request.query_parameters.merge(page: current_page - 1)), class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
           <% else %>
             <span
               class="
@@ -307,12 +260,12 @@
                 <%= page %>
               </span>
             <% else %>
-              <%= link_to page, url_for(page: page), class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
+              <%= link_to page, url_for(request.query_parameters.merge(page: page)), class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
             <% end %>
           <% end %>
 
           <% if current_page < total_pages %>
-            <%= link_to "Next", url_for(page: current_page + 1), class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
+            <%= link_to "Next", url_for(request.query_parameters.merge(page: current_page + 1)), class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
           <% else %>
             <span
               class="

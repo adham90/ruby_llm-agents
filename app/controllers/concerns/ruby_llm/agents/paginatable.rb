@@ -21,6 +21,7 @@ module RubyLLM
       #
       # @param scope [ActiveRecord::Relation] The scope to paginate
       # @param ordered [Boolean] Whether to apply default descending order (default: true)
+      # @param sort_params [Hash, nil] Optional custom sort parameters with :column and :direction
       # @return [Hash] Contains :records and :pagination keys
       # @option return [ActiveRecord::Relation] :records Paginated records
       # @option return [Hash] :pagination Pagination metadata
@@ -28,13 +29,18 @@ module RubyLLM
       #   - :per_page [Integer] Records per page
       #   - :total_count [Integer] Total record count
       #   - :total_pages [Integer] Total page count
-      def paginate(scope, ordered: true)
+      def paginate(scope, ordered: true, sort_params: nil)
         page = [(params[:page] || 1).to_i, 1].max
         per_page = RubyLLM::Agents.configuration.per_page
         offset = (page - 1) * per_page
 
-        # Qualify column name to avoid ambiguity when joins are present
-        scope = scope.order("#{scope.model.table_name}.created_at DESC") if ordered
+        # Apply sorting - use custom sort_params if provided, otherwise default
+        table_name = scope.model.table_name
+        if sort_params.present?
+          scope = scope.order("#{table_name}.#{sort_params[:column]} #{sort_params[:direction].upcase}")
+        elsif ordered
+          scope = scope.order("#{table_name}.created_at DESC")
+        end
         total_count = scope.count
 
         {
