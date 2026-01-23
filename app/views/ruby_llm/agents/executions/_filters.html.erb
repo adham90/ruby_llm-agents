@@ -5,13 +5,14 @@
   selected_models = params[:model_ids].present? ? (params[:model_ids].is_a?(Array) ? params[:model_ids] : params[:model_ids].split(",")) : []
   selected_workflows = params[:workflow_types].present? ? (params[:workflow_types].is_a?(Array) ? params[:workflow_types] : params[:workflow_types].split(",")) : []
 
-  has_filters = selected_agents.any? || selected_statuses.any? || params[:days].present? || selected_models.any? || selected_workflows.any?
+  has_filters = selected_agents.any? || selected_statuses.any? || params[:days].present? || selected_models.any? || selected_workflows.any? || params[:tenant_id].present?
   active_filter_count = [
     selected_agents.any? ? 1 : 0,
     selected_statuses.any? ? 1 : 0,
     params[:days].present? ? 1 : 0,
     selected_models.any? ? 1 : 0,
-    selected_workflows.any? ? 1 : 0
+    selected_workflows.any? ? 1 : 0,
+    params[:tenant_id].present? ? 1 : 0
   ].sum
 
   status_options = [
@@ -95,6 +96,20 @@
               width: "w-44",
               full_width: true %>
         </div>
+
+        <%# Tenant Filter %>
+        <% if tenant_filter_enabled? && available_tenants.any? %>
+          <div class="md:w-auto">
+            <%= render "ruby_llm/agents/shared/select_dropdown",
+                name: "tenant_id",
+                filter_id: "tenant_id",
+                options: [{ value: "", label: "All Tenants" }] + available_tenants.map { |t| { value: t, label: t.truncate(15) } },
+                selected: params[:tenant_id],
+                icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4",
+                width: "w-40",
+                full_width: true %>
+          </div>
+        <% end %>
 
         <%# Time Range Filter %>
         <div class="md:w-auto">
@@ -182,7 +197,7 @@
               <span class="md:hidden">Clear</span>
             <% end %>
           <% end %>
-          <%= link_to ruby_llm_agents.export_executions_path(agent_types: selected_agents.presence, statuses: selected_statuses.presence, days: params[:days].presence, model_ids: selected_models.presence, workflow_types: selected_workflows.presence),
+          <%= link_to ruby_llm_agents.export_executions_path(agent_types: selected_agents.presence, statuses: selected_statuses.presence, days: params[:days].presence, model_ids: selected_models.presence, workflow_types: selected_workflows.presence, tenant_id: params[:tenant_id].presence),
               class: "flex-1 md:flex-initial flex items-center justify-center gap-2 px-3 py-2 md:p-2 text-sm md:text-base text-gray-600 md:text-gray-400 dark:text-gray-300 md:dark:text-gray-400 bg-gray-50 md:bg-transparent dark:bg-gray-700 md:dark:bg-transparent hover:text-gray-600 md:hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 md:dark:hover:bg-gray-700 rounded-lg transition-colors",
               title: "Export CSV" do %>
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
