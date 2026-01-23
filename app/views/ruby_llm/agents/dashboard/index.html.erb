@@ -20,7 +20,7 @@
 
   <!-- Metric Row (Plausible-style: simple text, no cards) -->
   <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-    <div class="flex flex-wrap items-baseline gap-x-8 gap-y-2">
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
       <% metrics = [
         { key: "success", label: "SUCCESS", value: @now_strip[:success_today], change: @now_strip.dig(:comparisons, :success_change) },
         { key: "errors", label: "ERRORS", value: @now_strip[:errors_today], change: @now_strip.dig(:comparisons, :errors_change), is_error: @now_strip[:errors_today] > 0 },
@@ -33,7 +33,7 @@
         <button type="button"
                 data-metric="<%= metric[:key] %>"
                 data-index="<%= i %>"
-                class="metric-btn group text-left transition-all <%= i == 0 ? 'border-b-2 border-indigo-500' : 'border-b-2 border-transparent hover:border-gray-300 dark:hover:border-gray-600' %>">
+                class="metric-btn group text-left transition-all pb-2 <%= i == 0 ? 'border-b-2 border-indigo-500' : 'border-b-2 border-transparent hover:border-gray-300 dark:hover:border-gray-600' %>">
           <span class="text-xs font-medium tracking-wide text-gray-500 dark:text-gray-400 uppercase"><%= metric[:label] %></span>
           <div class="flex items-baseline gap-1">
             <span class="text-2xl font-bold <%= metric[:is_error] ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100' %>"><%= metric[:value] %></span>
@@ -49,8 +49,8 @@
   </div>
 
   <!-- Chart -->
-  <div id="activity-chart-container" class="px-4 py-2 h-[250px]">
-    <div id="activity-chart" style="width: 100%; height: 100%;"></div>
+  <div id="activity-chart-container" class="px-4 pt-4 pb-6">
+    <div id="activity-chart" style="width: 100%; height: 220px;"></div>
   </div>
 
   <script>
