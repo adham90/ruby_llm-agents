@@ -27,19 +27,19 @@
 
             <%= render "ruby_llm/agents/shared/sortable_header",
                 column: "total_tokens", label: "Tokens",
-                current_sort: @sort_params[:column], current_direction: @sort_params[:direction], align: "right" %>
+                current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
 
             <%= render "ruby_llm/agents/shared/sortable_header",
                 column: "total_cost", label: "Cost",
-                current_sort: @sort_params[:column], current_direction: @sort_params[:direction], align: "right" %>
+                current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
 
             <%= render "ruby_llm/agents/shared/sortable_header",
                 column: "duration_ms", label: "Duration",
-                current_sort: @sort_params[:column], current_direction: @sort_params[:direction], align: "right" %>
+                current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
 
             <%= render "ruby_llm/agents/shared/sortable_header",
                 column: "created_at", label: "Time",
-                current_sort: @sort_params[:column], current_direction: @sort_params[:direction], align: "right" %>
+                current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
           </tr>
         </thead>
 
@@ -89,19 +89,19 @@
                 v<%= execution.agent_version %>
               </td>
 
-              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right font-mono">
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-mono">
                 <%= number_to_human_short(execution.total_tokens || 0) %>
               </td>
 
-              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right font-mono">
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-mono">
                 <%= number_to_human_short(execution.total_cost || 0, prefix: "$", precision: 2) %>
               </td>
 
-              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right font-mono">
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-mono">
                 <%= number_with_delimiter(execution.duration_ms || 0) %>ms
               </td>
 
-              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                 <%= time_ago_in_words(execution.created_at) %> ago
               </td>
             </tr>
