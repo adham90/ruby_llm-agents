@@ -45,9 +45,9 @@ RSpec.describe RubyLLM::Agents::AgentsController, type: :controller do
     context "with sorting" do
       before do
         allow(RubyLLM::Agents::AgentRegistry).to receive(:all_with_details).and_return([
-          { name: "BAgent", agent_type: "agent", is_workflow: false, execution_count: 10, total_cost: 1.5 },
-          { name: "AAgent", agent_type: "agent", is_workflow: false, execution_count: 5, total_cost: 2.0 },
-          { name: "CAgent", agent_type: "embedder", is_workflow: false, execution_count: 20, total_cost: 0.5 }
+          { name: "BAgent", agent_type: "agent", is_workflow: false, active: true, execution_count: 10, total_cost: 1.5 },
+          { name: "AAgent", agent_type: "agent", is_workflow: false, active: true, execution_count: 5, total_cost: 2.0 },
+          { name: "CAgent", agent_type: "embedder", is_workflow: false, active: true, execution_count: 20, total_cost: 0.5 }
         ])
       end
 
@@ -86,6 +86,47 @@ RSpec.describe RubyLLM::Agents::AgentsController, type: :controller do
       it "assigns sort_params" do
         get :index, params: { sort: "execution_count", direction: "desc" }
         expect(assigns(:sort_params)).to eq({ column: "execution_count", direction: "desc" })
+      end
+    end
+
+    context "with deleted agents" do
+      before do
+        allow(RubyLLM::Agents::AgentRegistry).to receive(:all_with_details).and_return([
+          { name: "ActiveAgent", agent_type: "agent", is_workflow: false, active: true, execution_count: 10 },
+          { name: "DeletedAgent", agent_type: "agent", is_workflow: false, active: false, execution_count: 5 },
+          { name: "ActiveEmbedder", agent_type: "embedder", is_workflow: false, active: true, execution_count: 15 }
+        ])
+      end
+
+      it "separates active and deleted agents" do
+        get :index
+        expect(assigns(:agents).map { |a| a[:name] }).to eq(%w[ActiveAgent ActiveEmbedder])
+        expect(assigns(:deleted_agents).map { |a| a[:name] }).to eq(%w[DeletedAgent])
+      end
+
+      it "assigns correct agent count (only active)" do
+        get :index
+        expect(assigns(:agent_count)).to eq(2)
+      end
+
+      it "assigns correct deleted count" do
+        get :index
+        expect(assigns(:deleted_count)).to eq(1)
+      end
+
+      it "groups only active agents by type" do
+        get :index
+        expect(assigns(:agents_by_type)[:agent].size).to eq(1)
+        expect(assigns(:agents_by_type)[:embedder].size).to eq(1)
+      end
+
+      it "sorts deleted agents" do
+        allow(RubyLLM::Agents::AgentRegistry).to receive(:all_with_details).and_return([
+          { name: "DeletedB", agent_type: "agent", is_workflow: false, active: false },
+          { name: "DeletedA", agent_type: "agent", is_workflow: false, active: false }
+        ])
+        get :index
+        expect(assigns(:deleted_agents).map { |a| a[:name] }).to eq(%w[DeletedA DeletedB])
       end
     end
   end

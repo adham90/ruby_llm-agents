@@ -3,8 +3,27 @@
   <p class="text-gray-500 dark:text-gray-400 mt-1">All available agents with execution statistics</p>
 </div>
 
+<%
+  audio_count = @agents_by_type[:speaker].size + @agents_by_type[:transcriber].size
+%>
 <div x-data="{
   activeSubTab: <%= params[:subtab].present? ? "'#{params[:subtab]}'" : 'null' %>,
+  counts: {
+    all: <%= @agent_count %>,
+    agent: <%= @agents_by_type[:agent].size %>,
+    embedder: <%= @agents_by_type[:embedder].size %>,
+    moderator: <%= @agents_by_type[:moderator].size %>,
+    speaker: <%= @agents_by_type[:speaker].size %>,
+    transcriber: <%= @agents_by_type[:transcriber].size %>,
+    audio: <%= audio_count %>,
+    image_generator: <%= @agents_by_type[:image_generator].size %>,
+    deleted: <%= @deleted_count %>
+  },
+  get currentCount() {
+    if (this.activeSubTab === null) return this.counts.all;
+    if (this.activeSubTab === 'audio') return this.counts.audio;
+    return this.counts[this.activeSubTab] || 0;
+  },
   updateUrl() {
     const url = new URL(window.location);
     if (this.activeSubTab) {
@@ -38,7 +57,6 @@
               class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
         Moderators (<%= @agents_by_type[:moderator].size %>)
       </button>
-      <% audio_count = @agents_by_type[:speaker].size + @agents_by_type[:transcriber].size %>
       <% if audio_count > 0 %>
         <button type="button" @click="activeSubTab = 'audio'; updateUrl()"
                 :class="activeSubTab === 'audio' ? 'bg-pink-600 text-white' : 'bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-300 hover:bg-pink-200 dark:hover:bg-pink-800'"
@@ -53,11 +71,18 @@
           Image Generators (<%= @agents_by_type[:image_generator].size %>)
         </button>
       <% end %>
+      <% if @deleted_count > 0 %>
+        <button type="button" @click="activeSubTab = 'deleted'; updateUrl()"
+                :class="activeSubTab === 'deleted' ? 'bg-gray-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'"
+                class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
+          Deleted (<%= @deleted_count %>)
+        </button>
+      <% end %>
     </div>
   </div>
 
   <!-- Agents Table -->
-  <% if @agents.empty? %>
+  <% if @agents.empty? && @deleted_agents.empty? %>
     <%= render "ruby_llm/agents/agents/empty_state", type: "agents" %>
   <% else %>
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
@@ -102,11 +127,11 @@
           <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-100/50 dark:divide-gray-700/50">
             <% @agents.each_with_index do |agent, index| %>
               <%
-                # Determine if this agent should be shown based on sub-tab
+                # Determine if this agent should be shown based on sub-tab (exclude deleted tab)
                 show_condition = if agent[:agent_type] == 'speaker' || agent[:agent_type] == 'transcriber'
-                  "activeSubTab === null || activeSubTab === 'audio' || activeSubTab === '#{agent[:agent_type]}'"
+                  "activeSubTab !== 'deleted' && (activeSubTab === null || activeSubTab === 'audio' || activeSubTab === '#{agent[:agent_type]}')"
                 else
-                  "activeSubTab === null || activeSubTab === '#{agent[:agent_type]}'"
+                  "activeSubTab !== 'deleted' && (activeSubTab === null || activeSubTab === '#{agent[:agent_type]}')"
                 end
                 row_bg = index.even? ? '' : 'bg-gray-50/50 dark:bg-gray-900/30'
                 success_rate = agent[:success_rate] || 0
@@ -206,6 +231,115 @@
                 </td>
               </tr>
             <% end %>
+
+            <!-- Deleted Agents -->
+            <% @deleted_agents.each_with_index do |agent, index| %>
+              <%
+                row_bg = index.even? ? '' : 'bg-gray-50/50 dark:bg-gray-900/30'
+                success_rate = agent[:success_rate] || 0
+              %>
+              <tr
+                x-show="activeSubTab === 'deleted'"
+                class="<%= row_bg %> hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-colors cursor-pointer"
+                onclick="window.location='<%= ruby_llm_agents.agent_path(ERB::Util.url_encode(agent[:name]), subtab: params[:subtab]) %>'"
+              >
+                <!-- Name -->
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <% name_parts = agent[:name].gsub(/Agent$/, '').split('::') %>
+                      <% if name_parts.length > 1 %>
+                        <span class="text-gray-400 dark:text-gray-500 font-normal"><%= name_parts[0..-2].join('::') %>::</span>
+                      <% end %>
+                      <%= name_parts.last %>
+                    </span>
+                    <span class="hidden lg:inline text-xs text-gray-400 dark:text-gray-500">v<%= agent[:version] %></span>
+                  </div>
+                  <% if agent[:description].present? %>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs mt-0.5" title="<%= agent[:description] %>">
+                      <%= agent[:description] %>
+                    </p>
+                  <% end %>
+                </td>
+
+                <!-- Type -->
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <% type_colors = {
+                    'agent' => 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300',
+                    'embedder' => 'bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300',
+                    'moderator' => 'bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-300',
+                    'speaker' => 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300',
+                    'transcriber' => 'bg-pink-100 dark:bg-pink-900/50 text-pink-800 dark:text-pink-300',
+                    'image_generator' => 'bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-300'
+                  } %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= type_colors[agent[:agent_type]] || 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300' %>">
+                    <%= agent[:agent_type]&.titleize || 'Agent' %>
+                  </span>
+                </td>
+
+                <!-- Status -->
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+                    Deleted
+                  </span>
+                </td>
+
+                <!-- Model -->
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                  <span title="<%= agent[:model] %>">
+                    <%= agent[:model]&.split("/")&.last || agent[:model] || "-" %>
+                  </span>
+                </td>
+
+                <!-- Executions -->
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right font-mono">
+                  <%= number_with_delimiter(agent[:execution_count] || 0) %>
+                </td>
+
+                <!-- Cost -->
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right font-mono">
+                  $<%= number_with_precision(agent[:total_cost] || 0, precision: 4) %>
+                </td>
+
+                <!-- Success Rate -->
+                <td class="px-4 py-3 whitespace-nowrap text-right">
+                  <div class="flex items-center justify-end gap-1.5">
+                    <% if success_rate >= 95 %>
+                      <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                      <span class="text-sm text-green-600 dark:text-green-400"><%= success_rate %>%</span>
+                    <% elsif success_rate >= 80 %>
+                      <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+                      <span class="text-sm text-yellow-600 dark:text-yellow-400"><%= success_rate %>%</span>
+                    <% else %>
+                      <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                      <span class="text-sm text-red-600 dark:text-red-400"><%= success_rate %>%</span>
+                    <% end %>
+                  </div>
+                </td>
+
+                <!-- Last Executed -->
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
+                  <% if agent[:last_executed] %>
+                    <%= time_ago_in_words(agent[:last_executed]) %> ago
+                  <% else %>
+                    <span class="text-gray-400 dark:text-gray-500">Never</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+
+            <!-- Empty State -->
+            <tr x-show="currentCount === 0" x-cloak>
+              <td colspan="8" class="px-6 py-12 text-center">
+                <div class="text-gray-400 dark:text-gray-500">
+                  <svg class="mx-auto h-12 w-12 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  <p class="text-lg font-medium text-gray-500 dark:text-gray-400">No agents in this category</p>
+                  <p class="text-sm mt-1">Try selecting a different filter</p>
+                </div>
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>

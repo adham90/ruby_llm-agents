@@ -26,19 +26,25 @@ module RubyLLM
       # Uses AgentRegistry to discover agents from both file system
       # and execution history, ensuring deleted agents with history
       # are still visible. Separates agents and workflows for tabbed display.
+      # Deleted agents are shown in a separate tab.
       #
       # @return [void]
       def index
         all_items = AgentRegistry.all_with_details
 
         # Filter to only agents (not workflows)
-        @agents = all_items.reject { |a| a[:is_workflow] }
+        all_agents = all_items.reject { |a| a[:is_workflow] }
 
-        # Parse and apply sorting
+        # Separate active and deleted agents
+        @agents = all_agents.select { |a| a[:active] }
+        @deleted_agents = all_agents.reject { |a| a[:active] }
+
+        # Parse and apply sorting to both lists
         @sort_params = parse_agent_sort_params
         @agents = sort_agents(@agents)
+        @deleted_agents = sort_agents(@deleted_agents)
 
-        # Group agents by type for sub-tabs
+        # Group active agents by type for sub-tabs
         @agents_by_type = {
           agent: @agents.select { |a| a[:agent_type] == "agent" },
           embedder: @agents.select { |a| a[:agent_type] == "embedder" },
@@ -49,11 +55,14 @@ module RubyLLM
         }
 
         @agent_count = @agents.size
+        @deleted_count = @deleted_agents.size
       rescue StandardError => e
         Rails.logger.error("[RubyLLM::Agents] Error loading agents: #{e.message}")
         @agents = []
+        @deleted_agents = []
         @agents_by_type = { agent: [], embedder: [], moderator: [], speaker: [], transcriber: [], image_generator: [] }
         @agent_count = 0
+        @deleted_count = 0
         @sort_params = { column: DEFAULT_AGENT_SORT_COLUMN, direction: DEFAULT_AGENT_SORT_DIRECTION }
         flash.now[:alert] = "Error loading agents list"
       end
