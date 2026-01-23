@@ -160,15 +160,7 @@
 
                 <!-- Type -->
                 <td class="px-4 py-3 whitespace-nowrap">
-                  <% type_colors = {
-                    'agent' => 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300',
-                    'embedder' => 'bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300',
-                    'moderator' => 'bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-300',
-                    'speaker' => 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300',
-                    'transcriber' => 'bg-pink-100 dark:bg-pink-900/50 text-pink-800 dark:text-pink-300',
-                    'image_generator' => 'bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-300'
-                  } %>
-                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= type_colors[agent[:agent_type]] || 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300' %>">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">
                     <%= agent[:agent_type]&.titleize || 'Agent' %>
                   </span>
                 </td>
@@ -258,15 +250,7 @@
 
                 <!-- Type -->
                 <td class="px-4 py-3 whitespace-nowrap">
-                  <% type_colors = {
-                    'agent' => 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300',
-                    'embedder' => 'bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300',
-                    'moderator' => 'bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-300',
-                    'speaker' => 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300',
-                    'transcriber' => 'bg-pink-100 dark:bg-pink-900/50 text-pink-800 dark:text-pink-300',
-                    'image_generator' => 'bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-300'
-                  } %>
-                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= type_colors[agent[:agent_type]] || 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300' %>">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">
                     <%= agent[:agent_type]&.titleize || 'Agent' %>
                   </span>
                 </td>

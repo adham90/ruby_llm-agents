@@ -85,7 +85,8 @@
       { badge: "px-2 py-0.5", icon: "text-xs", text: "text-xs" }
     end
 %>
-<span class="inline-flex items-center gap-1 rounded-md font-medium <%= config[:bg] %> <%= config[:text] %> <%= size_classes[:badge] %>">
+<span class="inline-flex items-center gap-1 rounded-md font-medium <%= config[:bg] %> <%= config[:text] %> <%= size_classes[:badge] %>"
+      title="<%= config[:label] %>">
   <span class="<%= size_classes[:icon] %>" aria-hidden="true"><%= config[:icon_char] %></span>
   <% if show_label %>
     <span class="<%= size_classes[:text] %>"><%= config[:label] %></span>
