@@ -121,7 +121,7 @@ module RubyLlmAgents
         namespace = config.namespace_for(mapping[:category])
 
         Dir.glob("#{directory_path}/**/*.rb").each do |file|
-          update_file_namespace(file, namespace)
+          update_file_namespace(file, namespace) if namespace
         end
       end
     end

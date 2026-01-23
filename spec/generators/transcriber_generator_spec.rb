@@ -8,22 +8,21 @@ RSpec.describe RubyLlmAgents::TranscriberGenerator, type: :generator do
     before { run_generator ["Meeting"] }
 
     it "creates the transcriber file with correct name" do
-      expect(file_exists?("app/llm/audio/transcribers/meeting_transcriber.rb")).to be true
+      expect(file_exists?("app/agents/audio/meeting_transcriber.rb")).to be true
     end
 
     it "creates a class that inherits from ApplicationTranscriber" do
-      content = file_content("app/llm/audio/transcribers/meeting_transcriber.rb")
+      content = file_content("app/agents/audio/meeting_transcriber.rb")
       expect(content).to include("class MeetingTranscriber < ApplicationTranscriber")
     end
 
-    it "wraps the class in LLM::Audio namespace" do
-      content = file_content("app/llm/audio/transcribers/meeting_transcriber.rb")
-      expect(content).to include("module LLM")
+    it "wraps the class in Audio namespace" do
+      content = file_content("app/agents/audio/meeting_transcriber.rb")
       expect(content).to include("module Audio")
     end
 
     it "includes default model configuration" do
-      content = file_content("app/llm/audio/transcribers/meeting_transcriber.rb")
+      content = file_content("app/agents/audio/meeting_transcriber.rb")
       expect(content).to include('model "whisper-1"')
     end
   end
@@ -32,7 +31,7 @@ RSpec.describe RubyLlmAgents::TranscriberGenerator, type: :generator do
     before { run_generator ["Meeting", "--model=gpt-4o-transcribe"] }
 
     it "uses the specified model" do
-      content = file_content("app/llm/audio/transcribers/meeting_transcriber.rb")
+      content = file_content("app/agents/audio/meeting_transcriber.rb")
       expect(content).to include('model "gpt-4o-transcribe"')
     end
   end
@@ -41,7 +40,7 @@ RSpec.describe RubyLlmAgents::TranscriberGenerator, type: :generator do
     before { run_generator ["Meeting", "--language=es"] }
 
     it "includes language configuration" do
-      content = file_content("app/llm/audio/transcribers/meeting_transcriber.rb")
+      content = file_content("app/agents/audio/meeting_transcriber.rb")
       expect(content).to include('language "es"')
     end
   end
@@ -50,7 +49,7 @@ RSpec.describe RubyLlmAgents::TranscriberGenerator, type: :generator do
     before { run_generator ["Meeting"] }
 
     it "does not include language (auto-detect)" do
-      content = file_content("app/llm/audio/transcribers/meeting_transcriber.rb")
+      content = file_content("app/agents/audio/meeting_transcriber.rb")
       expect(content).not_to include("language")
     end
   end
@@ -59,7 +58,7 @@ RSpec.describe RubyLlmAgents::TranscriberGenerator, type: :generator do
     before { run_generator ["Meeting", "--output-format=json"] }
 
     it "includes output_format configuration" do
-      content = file_content("app/llm/audio/transcribers/meeting_transcriber.rb")
+      content = file_content("app/agents/audio/meeting_transcriber.rb")
       expect(content).to include("output_format :json")
     end
   end
@@ -68,7 +67,7 @@ RSpec.describe RubyLlmAgents::TranscriberGenerator, type: :generator do
     before { run_generator ["Meeting"] }
 
     it "does not include output_format (uses default)" do
-      content = file_content("app/llm/audio/transcribers/meeting_transcriber.rb")
+      content = file_content("app/agents/audio/meeting_transcriber.rb")
       expect(content).not_to include("output_format")
     end
   end
@@ -77,7 +76,7 @@ RSpec.describe RubyLlmAgents::TranscriberGenerator, type: :generator do
     before { run_generator ["Meeting", "--cache=30.days"] }
 
     it "includes cache configuration" do
-      content = file_content("app/llm/audio/transcribers/meeting_transcriber.rb")
+      content = file_content("app/agents/audio/meeting_transcriber.rb")
       expect(content).to include("cache_for 30.days")
     end
   end
@@ -86,7 +85,7 @@ RSpec.describe RubyLlmAgents::TranscriberGenerator, type: :generator do
     before { run_generator ["Meeting"] }
 
     it "does not include caching by default" do
-      content = file_content("app/llm/audio/transcribers/meeting_transcriber.rb")
+      content = file_content("app/agents/audio/meeting_transcriber.rb")
       expect(content).not_to include("cache_for")
     end
   end
@@ -103,11 +102,11 @@ RSpec.describe RubyLlmAgents::TranscriberGenerator, type: :generator do
     end
 
     it "creates the transcriber file" do
-      expect(file_exists?("app/llm/audio/transcribers/interview_transcriber.rb")).to be true
+      expect(file_exists?("app/agents/audio/interview_transcriber.rb")).to be true
     end
 
     it "applies all options correctly" do
-      content = file_content("app/llm/audio/transcribers/interview_transcriber.rb")
+      content = file_content("app/agents/audio/interview_transcriber.rb")
       expect(content).to include("class InterviewTranscriber < ApplicationTranscriber")
       expect(content).to include('model "gpt-4o-transcribe"')
       expect(content).to include('language "en"')
@@ -120,11 +119,11 @@ RSpec.describe RubyLlmAgents::TranscriberGenerator, type: :generator do
     before { run_generator ["PodcastEpisode"] }
 
     it "creates file with underscored name" do
-      expect(file_exists?("app/llm/audio/transcribers/podcast_episode_transcriber.rb")).to be true
+      expect(file_exists?("app/agents/audio/podcast_episode_transcriber.rb")).to be true
     end
 
     it "uses the correct class name" do
-      content = file_content("app/llm/audio/transcribers/podcast_episode_transcriber.rb")
+      content = file_content("app/agents/audio/podcast_episode_transcriber.rb")
       expect(content).to include("class PodcastEpisodeTranscriber < ApplicationTranscriber")
     end
   end
@@ -133,11 +132,11 @@ RSpec.describe RubyLlmAgents::TranscriberGenerator, type: :generator do
     before { run_generator ["voice_memo"] }
 
     it "creates file with correct name" do
-      expect(file_exists?("app/llm/audio/transcribers/voice_memo_transcriber.rb")).to be true
+      expect(file_exists?("app/agents/audio/voice_memo_transcriber.rb")).to be true
     end
 
     it "uses the correct class name" do
-      content = file_content("app/llm/audio/transcribers/voice_memo_transcriber.rb")
+      content = file_content("app/agents/audio/voice_memo_transcriber.rb")
       expect(content).to include("class VoiceMemoTranscriber < ApplicationTranscriber")
     end
   end
@@ -146,11 +145,11 @@ RSpec.describe RubyLlmAgents::TranscriberGenerator, type: :generator do
     before { run_generator ["media/podcast"] }
 
     it "creates file in nested directory" do
-      expect(file_exists?("app/llm/audio/transcribers/media/podcast_transcriber.rb")).to be true
+      expect(file_exists?("app/agents/audio/media/podcast_transcriber.rb")).to be true
     end
 
     it "uses namespaced class name" do
-      content = file_content("app/llm/audio/transcribers/media/podcast_transcriber.rb")
+      content = file_content("app/agents/audio/media/podcast_transcriber.rb")
       expect(content).to include("module Media")
       expect(content).to include("class PodcastTranscriber < ApplicationTranscriber")
     end
@@ -160,7 +159,7 @@ RSpec.describe RubyLlmAgents::TranscriberGenerator, type: :generator do
     before { run_generator ["Meeting"] }
 
     it "includes commented prompt method" do
-      content = file_content("app/llm/audio/transcribers/meeting_transcriber.rb")
+      content = file_content("app/agents/audio/meeting_transcriber.rb")
       expect(content).to include("# def prompt")
     end
   end
@@ -169,22 +168,8 @@ RSpec.describe RubyLlmAgents::TranscriberGenerator, type: :generator do
     before { run_generator ["Meeting"] }
 
     it "includes commented postprocess_text method" do
-      content = file_content("app/llm/audio/transcribers/meeting_transcriber.rb")
+      content = file_content("app/agents/audio/meeting_transcriber.rb")
       expect(content).to include("# def postprocess_text(text)")
-    end
-  end
-
-  describe "--root option" do
-    before { run_generator ["Meeting", "--root=ai"] }
-
-    it "creates the transcriber in the ai directory" do
-      expect(file_exists?("app/ai/audio/transcribers/meeting_transcriber.rb")).to be true
-    end
-
-    it "uses the AI::Audio namespace" do
-      content = file_content("app/ai/audio/transcribers/meeting_transcriber.rb")
-      expect(content).to include("module AI")
-      expect(content).to include("module Audio")
     end
   end
 end

@@ -10,6 +10,9 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
   # Stub Rails.root for file migration tests
   before do
     allow(Rails).to receive(:root).and_return(Pathname.new(destination_root))
+    # Stub configuration to use "llm" as root_directory for migration tests
+    allow(RubyLLM::Agents.configuration).to receive(:root_directory).and_return("llm")
+    allow(RubyLLM::Agents.configuration).to receive(:root_namespace).and_return("Llm")
   end
 
   describe "when table does not exist" do
