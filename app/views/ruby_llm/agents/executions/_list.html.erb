@@ -43,11 +43,12 @@
           </tr>
         </thead>
 
-        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
-          <% executions.each do |execution| %>
+        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-100/50 dark:divide-gray-700/50">
+          <% executions.each_with_index do |execution, index| %>
             <% attempts_count = (execution.respond_to?(:attempts_count) && execution.attempts_count) || (execution.respond_to?(:attempts) && execution.attempts&.size) || 1 %>
+            <% row_bg = index.even? ? '' : 'bg-gray-50/50 dark:bg-gray-900/30' %>
             <tr
-              class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+              class="<%= row_bg %> hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-colors cursor-pointer"
               id="execution-row-<%= execution.id %>"
               onclick="window.location='<%= ruby_llm_agents.execution_path(execution) %>'"
             >
@@ -88,30 +89,15 @@
                 v<%= execution.agent_version %>
               </td>
 
-              <td
-                class="
-                  px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100
-                  text-right font-medium
-                "
-              >
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right font-mono">
                 <%= number_to_human_short(execution.total_tokens || 0) %>
               </td>
 
-              <td
-                class="
-                  px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100
-                  text-right font-medium
-                "
-              >
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right font-mono">
                 <%= number_to_human_short(execution.total_cost || 0, prefix: "$", precision: 2) %>
               </td>
 
-              <td
-                class="
-                  px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100
-                  text-right font-medium
-                "
-              >
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right font-mono">
                 <%= number_with_delimiter(execution.duration_ms || 0) %>ms
               </td>
 

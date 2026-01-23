@@ -45,7 +45,7 @@
     class="<%= full_width ? 'w-full md:w-auto justify-between md:justify-start' : '' %> flex items-center gap-2 px-3 py-2 text-sm
            bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg
            hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors
-           <%= has_selection ? 'ring-2 ring-blue-500 dark:ring-offset-gray-900' : '' %>">
+           <%= has_selection ? 'border-blue-300 dark:border-blue-600' : '' %>">
     <div class="flex items-center gap-2">
       <% if current_color.present? %>
         <span class="w-2 h-2 rounded-full <%= current_color %> <%= current_color.include?('blue') && selected.first == 'running' ? 'animate-pulse' : '' %>"></span>
