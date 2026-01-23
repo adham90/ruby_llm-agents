@@ -169,7 +169,7 @@ module RubyLLM
           # Returns chart data as arrays for Highcharts live updates
           # Format: { categories: [...], series: [...], range: ... }
           #
-          # @param range [String] Time range: "today" (hourly), "7d" or "30d" (daily)
+          # @param range [String] Time range: "today" (hourly), "7d", "30d", "60d", or "90d" (daily)
           # @param offset_days [Integer, nil] Optional offset for comparison data (shifts time window back)
           def activity_chart_json(range: "today", offset_days: nil)
             case range
@@ -177,9 +177,23 @@ module RubyLLM
               build_daily_chart_data(7, offset_days: offset_days)
             when "30d"
               build_daily_chart_data(30, offset_days: offset_days)
+            when "60d"
+              build_daily_chart_data(60, offset_days: offset_days)
+            when "90d"
+              build_daily_chart_data(90, offset_days: offset_days)
             else
               build_hourly_chart_data(offset_days: offset_days)
             end
+          end
+
+          # Returns chart data for a custom date range
+          # Format: { categories: [...], series: [...], range: ... }
+          #
+          # @param from [Date] Start date (inclusive)
+          # @param to [Date] End date (inclusive)
+          # @return [Hash] Chart data with series arrays
+          def activity_chart_json_for_dates(from:, to:)
+            build_daily_chart_data_for_dates(from, to)
           end
 
           # Alias for backwards compatibility
@@ -326,6 +340,84 @@ module RubyLLM
             {
               range: "#{days}d",
               days: days,
+              totals: {
+                success: total_success,
+                failed: total_failed,
+                cost: total_cost.round(4),
+                duration_ms: avg_duration_ms,
+                tokens: total_tokens
+              },
+              series: [
+                { name: "Success", data: success_data },
+                { name: "Errors", data: failed_data },
+                { name: "Cost", data: cost_data },
+                { name: "Duration", data: duration_data },
+                { name: "Tokens", data: tokens_data }
+              ]
+            }
+          end
+
+          # Builds daily chart data for a custom date range
+          # Database-agnostic: works with both PostgreSQL and SQLite
+          #
+          # @param from_date [Date] Start date (inclusive)
+          # @param to_date [Date] End date (inclusive)
+          # @return [Hash] Chart data with series arrays
+          def build_daily_chart_data_for_dates(from_date, to_date)
+            days = (to_date - from_date).to_i + 1
+
+            # Use database-agnostic aggregation with Ruby post-processing
+            results = where(created_at: from_date.beginning_of_day..to_date.end_of_day)
+              .select(:status, :total_cost, :duration_ms, :input_tokens, :output_tokens, :created_at)
+              .group_by { |r| r.created_at.to_date }
+
+            # Build arrays for all days (fill missing with zeros)
+            success_data = []
+            failed_data = []
+            cost_data = []
+            duration_data = []
+            tokens_data = []
+            total_success = 0
+            total_failed = 0
+            total_cost = 0.0
+            total_duration_sum = 0
+            total_duration_count = 0
+            total_tokens = 0
+
+            (0...days).each do |i|
+              date = from_date + i.days
+              rows = results[date] || []
+
+              s = rows.count { |r| r.status == "success" }
+              f = rows.count { |r| r.status.in?(%w[error timeout]) }
+              c = rows.sum { |r| r.total_cost.to_f }
+              t = rows.sum { |r| (r.input_tokens || 0) + (r.output_tokens || 0) }
+
+              # Average duration for this bucket
+              duration_rows = rows.select { |r| r.duration_ms.to_i > 0 }
+              d = duration_rows.any? ? (duration_rows.sum { |r| r.duration_ms.to_i } / duration_rows.count) : 0
+
+              success_data << s
+              failed_data << f
+              cost_data << c.round(4)
+              duration_data << d.round
+              tokens_data << t
+
+              total_success += s
+              total_failed += f
+              total_cost += c
+              total_tokens += t
+              total_duration_sum += duration_rows.sum { |r| r.duration_ms.to_i }
+              total_duration_count += duration_rows.count
+            end
+
+            avg_duration_ms = total_duration_count > 0 ? (total_duration_sum / total_duration_count).round : 0
+
+            {
+              range: "custom",
+              days: days,
+              from: from_date.to_s,
+              to: to_date.to_s,
               totals: {
                 success: total_success,
                 failed: total_failed,

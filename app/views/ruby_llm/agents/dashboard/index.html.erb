@@ -7,13 +7,49 @@
   <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
     <div class="flex items-center justify-between">
       <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Activity</h3>
-      <div class="flex space-x-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-        <%= link_to "Today", ruby_llm_agents.root_path(range: "today"),
-            class: "px-3 py-1 text-xs font-medium rounded-md transition-colors #{@selected_range == 'today' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}" %>
-        <%= link_to "7 Days", ruby_llm_agents.root_path(range: "7d"),
-            class: "px-3 py-1 text-xs font-medium rounded-md transition-colors #{@selected_range == '7d' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}" %>
-        <%= link_to "30 Days", ruby_llm_agents.root_path(range: "30d"),
-            class: "px-3 py-1 text-xs font-medium rounded-md transition-colors #{@selected_range == '30d' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}" %>
+      <div class="relative range-dropdown-container">
+        <button type="button"
+                data-range-dropdown
+                class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+          <span><%= range_display_name(@selected_range) %></span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </button>
+        <div class="range-dropdown-menu hidden absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
+          <div class="py-1">
+            <%= link_to "Today", ruby_llm_agents.root_path(range: "today"), class: "block px-4 py-2 text-sm #{@selected_range == 'today' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}" %>
+            <%= link_to "Last 7 Days", ruby_llm_agents.root_path(range: "7d"), class: "block px-4 py-2 text-sm #{@selected_range == '7d' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}" %>
+            <%= link_to "Last 30 Days", ruby_llm_agents.root_path(range: "30d"), class: "block px-4 py-2 text-sm #{@selected_range == '30d' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}" %>
+            <%= link_to "Last 60 Days", ruby_llm_agents.root_path(range: "60d"), class: "block px-4 py-2 text-sm #{@selected_range == '60d' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}" %>
+            <%= link_to "Last 90 Days", ruby_llm_agents.root_path(range: "90d"), class: "block px-4 py-2 text-sm #{@selected_range == '90d' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}" %>
+            <hr class="border-gray-200 dark:border-gray-700 my-1">
+            <button type="button" data-custom-range-toggle class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+              Custom Range...
+            </button>
+          </div>
+          <div data-custom-range-form class="hidden border-t border-gray-200 dark:border-gray-700 p-3">
+            <div class="space-y-3">
+              <div>
+                <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">From</label>
+                <input type="date"
+                       name="range_from"
+                       class="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">To</label>
+                <input type="date"
+                       name="range_to"
+                       class="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+              </div>
+              <button type="button"
+                      data-apply-custom-range
+                      class="w-full px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors">
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -50,7 +86,7 @@
 
   <!-- Chart -->
   <div id="activity-chart-container" class="px-4 pt-4 pb-6">
-    <div id="activity-chart" style="width: 100%; height: 220px;"></div>
+    <div id="activity-chart" style="width: 100%; height: 280px;"></div>
   </div>
 
   <script>
@@ -71,6 +107,23 @@
         { name: 'Duration', color: '#6366F1', isDuration: true },
         { name: 'Tokens', color: '#6366F1' }
       ];
+
+      // Calculate time range in milliseconds based on range string
+      function getTimeRangeMs(range) {
+        if (range === 'today') return dayMs;
+        if (range === '7d') return 7 * dayMs;
+        if (range === '30d') return 30 * dayMs;
+        if (range === '60d') return 60 * dayMs;
+        if (range === '90d') return 90 * dayMs;
+        // Custom range: calculate from dates
+        if (range.includes('_')) {
+          const [from, to] = range.split('_');
+          const fromDate = new Date(from);
+          const toDate = new Date(to);
+          return toDate - fromDate + dayMs;
+        }
+        return dayMs;
+      }
 
       function convertToDatetimePoints(data, range) {
         const now = Date.now();
@@ -143,7 +196,7 @@
           .then(data => {
             chartData = data;
             const config = metricConfig[0];
-            const timeRange = range === 'today' ? dayMs : (range === '7d' ? 7 * dayMs : 30 * dayMs);
+            const timeRange = getTimeRangeMs(range);
             const dateFormat = range === 'today' ? '%H:%M' : '%b %d';
             const now = Date.now();
 
@@ -205,10 +258,61 @@
         });
       }
 
+      // Dropdown toggle functionality
+      function initDropdown() {
+        const dropdownBtn = document.querySelector('[data-range-dropdown]');
+        const dropdownMenu = document.querySelector('.range-dropdown-menu');
+        const customRangeToggle = document.querySelector('[data-custom-range-toggle]');
+        const customRangeForm = document.querySelector('[data-custom-range-form]');
+        const applyBtn = document.querySelector('[data-apply-custom-range]');
+
+        if (dropdownBtn && dropdownMenu) {
+          // Toggle dropdown on button click
+          dropdownBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('hidden');
+          });
+
+          // Close dropdown when clicking outside
+          document.addEventListener('click', function(e) {
+            if (!e.target.closest('.range-dropdown-container')) {
+              dropdownMenu.classList.add('hidden');
+              if (customRangeForm) customRangeForm.classList.add('hidden');
+            }
+          });
+        }
+
+        // Toggle custom range form
+        if (customRangeToggle && customRangeForm) {
+          customRangeToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            customRangeForm.classList.toggle('hidden');
+          });
+        }
+
+        // Apply custom range
+        if (applyBtn) {
+          applyBtn.addEventListener('click', function() {
+            const fromInput = document.querySelector('[name="range_from"]');
+            const toInput = document.querySelector('[name="range_to"]');
+            const from = fromInput ? fromInput.value : '';
+            const to = toInput ? toInput.value : '';
+
+            if (from && to) {
+              window.location.href = '?range=' + from + '_' + to;
+            }
+          });
+        }
+      }
+
       if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initChart);
+        document.addEventListener('DOMContentLoaded', function() {
+          initChart();
+          initDropdown();
+        });
       } else {
         initChart();
+        initDropdown();
       }
     })();
   </script>

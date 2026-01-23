@@ -303,8 +303,10 @@ module RubyLlmAgents
       # Try to get from configuration
       if defined?(RubyLLM::Agents) && RubyLLM::Agents.respond_to?(:configuration)
         config_root = RubyLLM::Agents.configuration.root_directory
-        path = Rails.root.join("app", config_root)
-        return config_root if File.directory?(path)
+        if config_root.present?
+          path = Rails.root.join("app", config_root)
+          return config_root if File.directory?(path)
+        end
       end
 
       # Auto-detect common root directories

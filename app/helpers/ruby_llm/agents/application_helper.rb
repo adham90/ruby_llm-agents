@@ -271,6 +271,36 @@ module RubyLLM
         content_tag(:span, "#{arrow}#{change_pct.abs}%", class: "text-xs font-medium #{color} ml-1")
       end
 
+      # Returns human-readable display name for time range
+      #
+      # @param range [String] Range parameter (today, 7d, 30d, 60d, 90d, or custom YYYY-MM-DD_YYYY-MM-DD)
+      # @return [String] Human-readable range name
+      # @example
+      #   range_display_name("7d") #=> "Last 7 Days"
+      #   range_display_name("2024-01-01_2024-01-15") #=> "Jan 1 - Jan 15"
+      def range_display_name(range)
+        case range
+        when "today" then "Today"
+        when "7d" then "Last 7 Days"
+        when "30d" then "Last 30 Days"
+        when "60d" then "Last 60 Days"
+        when "90d" then "Last 90 Days"
+        else
+          if range&.include?("_")
+            from_str, to_str = range.split("_")
+            from_date = Date.parse(from_str) rescue nil
+            to_date = Date.parse(to_str) rescue nil
+            if from_date && to_date
+              "#{from_date.strftime('%b %-d')} - #{to_date.strftime('%b %-d')}"
+            else
+              "Custom Range"
+            end
+          else
+            "Today"
+          end
+        end
+      end
+
       # Formats milliseconds to human-readable duration
       #
       # @param ms [Numeric, nil] Duration in milliseconds
