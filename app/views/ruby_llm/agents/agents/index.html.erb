@@ -56,25 +56,159 @@
     </div>
   </div>
 
-  <!-- Agents Content -->
+  <!-- Agents Table -->
   <% if @agents.empty? %>
     <%= render "ruby_llm/agents/agents/empty_state", type: "agents" %>
   <% else %>
-    <div class="space-y-3 sm:space-y-4">
-      <% @agents.each do |agent| %>
-        <%
-          # Determine if this agent should be shown based on sub-tab
-          # 'audio' sub-tab shows both speakers and transcribers
-          show_condition = if agent[:agent_type] == 'speaker' || agent[:agent_type] == 'transcriber'
-            "activeSubTab === null || activeSubTab === 'audio' || activeSubTab === '#{agent[:agent_type]}'"
-          else
-            "activeSubTab === null || activeSubTab === '#{agent[:agent_type]}'"
-          end
-        %>
-        <div x-show="<%= show_condition %>">
-          <%= render partial: "ruby_llm/agents/agents/agent", locals: { agent: agent, current_subtab: params[:subtab] } %>
-        </div>
-      <% end %>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead class="bg-gray-50 dark:bg-gray-900">
+            <tr>
+              <%= render "ruby_llm/agents/agents/sortable_header",
+                  column: "name", label: "Name",
+                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
+
+              <%= render "ruby_llm/agents/agents/sortable_header",
+                  column: "agent_type", label: "Type",
+                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
+
+              <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                Status
+              </th>
+
+              <%= render "ruby_llm/agents/agents/sortable_header",
+                  column: "model", label: "Model",
+                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
+
+              <%= render "ruby_llm/agents/agents/sortable_header",
+                  column: "execution_count", label: "Executions",
+                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction], align: "right" %>
+
+              <%= render "ruby_llm/agents/agents/sortable_header",
+                  column: "total_cost", label: "Cost",
+                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction], align: "right" %>
+
+              <%= render "ruby_llm/agents/agents/sortable_header",
+                  column: "success_rate", label: "Success",
+                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction], align: "right" %>
+
+              <%= render "ruby_llm/agents/agents/sortable_header",
+                  column: "last_executed", label: "Last Run",
+                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction], align: "right" %>
+            </tr>
+          </thead>
+
+          <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-100/50 dark:divide-gray-700/50">
+            <% @agents.each_with_index do |agent, index| %>
+              <%
+                # Determine if this agent should be shown based on sub-tab
+                show_condition = if agent[:agent_type] == 'speaker' || agent[:agent_type] == 'transcriber'
+                  "activeSubTab === null || activeSubTab === 'audio' || activeSubTab === '#{agent[:agent_type]}'"
+                else
+                  "activeSubTab === null || activeSubTab === '#{agent[:agent_type]}'"
+                end
+                row_bg = index.even? ? '' : 'bg-gray-50/50 dark:bg-gray-900/30'
+                success_rate = agent[:success_rate] || 0
+              %>
+              <tr
+                x-show="<%= show_condition %>"
+                class="<%= row_bg %> hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-colors cursor-pointer"
+                onclick="window.location='<%= ruby_llm_agents.agent_path(ERB::Util.url_encode(agent[:name]), subtab: params[:subtab]) %>'"
+              >
+                <!-- Name -->
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <% name_parts = agent[:name].gsub(/Agent$/, '').split('::') %>
+                      <% if name_parts.length > 1 %>
+                        <span class="text-gray-400 dark:text-gray-500 font-normal"><%= name_parts[0..-2].join('::') %>::</span>
+                      <% end %>
+                      <%= name_parts.last %>
+                    </span>
+                    <span class="hidden lg:inline text-xs text-gray-400 dark:text-gray-500">v<%= agent[:version] %></span>
+                  </div>
+                  <% if agent[:description].present? %>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs mt-0.5" title="<%= agent[:description] %>">
+                      <%= agent[:description] %>
+                    </p>
+                  <% end %>
+                </td>
+
+                <!-- Type -->
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <% type_colors = {
+                    'agent' => 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300',
+                    'embedder' => 'bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300',
+                    'moderator' => 'bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-300',
+                    'speaker' => 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300',
+                    'transcriber' => 'bg-pink-100 dark:bg-pink-900/50 text-pink-800 dark:text-pink-300',
+                    'image_generator' => 'bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-300'
+                  } %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= type_colors[agent[:agent_type]] || 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300' %>">
+                    <%= agent[:agent_type]&.titleize || 'Agent' %>
+                  </span>
+                </td>
+
+                <!-- Status -->
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <% if agent[:active] %>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300">
+                      Active
+                    </span>
+                  <% else %>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+                      Deleted
+                    </span>
+                  <% end %>
+                </td>
+
+                <!-- Model -->
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                  <span title="<%= agent[:model] %>">
+                    <%= agent[:model]&.split("/")&.last || agent[:model] || "-" %>
+                  </span>
+                </td>
+
+                <!-- Executions -->
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right font-mono">
+                  <%= number_with_delimiter(agent[:execution_count] || 0) %>
+                </td>
+
+                <!-- Cost -->
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right font-mono">
+                  $<%= number_with_precision(agent[:total_cost] || 0, precision: 4) %>
+                </td>
+
+                <!-- Success Rate -->
+                <td class="px-4 py-3 whitespace-nowrap text-right">
+                  <div class="flex items-center justify-end gap-1.5">
+                    <% if success_rate >= 95 %>
+                      <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                      <span class="text-sm text-green-600 dark:text-green-400"><%= success_rate %>%</span>
+                    <% elsif success_rate >= 80 %>
+                      <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+                      <span class="text-sm text-yellow-600 dark:text-yellow-400"><%= success_rate %>%</span>
+                    <% else %>
+                      <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                      <span class="text-sm text-red-600 dark:text-red-400"><%= success_rate %>%</span>
+                    <% end %>
+                  </div>
+                </td>
+
+                <!-- Last Executed -->
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
+                  <% if agent[:last_executed] %>
+                    <%= time_ago_in_words(agent[:last_executed]) %> ago
+                  <% else %>
+                    <span class="text-gray-400 dark:text-gray-500">Never</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
     </div>
   <% end %>
 </div>

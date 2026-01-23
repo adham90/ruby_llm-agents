@@ -16,6 +16,11 @@ module RubyLLM
       include Paginatable
       include Filterable
 
+      # Allowed sort columns for the agents list (in-memory sorting)
+      AGENT_SORTABLE_COLUMNS = %w[name agent_type model execution_count total_cost success_rate last_executed].freeze
+      DEFAULT_AGENT_SORT_COLUMN = "name"
+      DEFAULT_AGENT_SORT_DIRECTION = "asc"
+
       # Lists all registered agents with their details
       #
       # Uses AgentRegistry to discover agents from both file system
@@ -28,6 +33,10 @@ module RubyLLM
 
         # Filter to only agents (not workflows)
         @agents = all_items.reject { |a| a[:is_workflow] }
+
+        # Parse and apply sorting
+        @sort_params = parse_agent_sort_params
+        @agents = sort_agents(@agents)
 
         # Group agents by type for sub-tabs
         @agents_by_type = {
@@ -45,6 +54,7 @@ module RubyLLM
         @agents = []
         @agents_by_type = { agent: [], embedder: [], moderator: [], speaker: [], transcriber: [], image_generator: [] }
         @agent_count = 0
+        @sort_params = { column: DEFAULT_AGENT_SORT_COLUMN, direction: DEFAULT_AGENT_SORT_DIRECTION }
         flash.now[:alert] = "Error loading agents list"
       end
 
@@ -390,6 +400,43 @@ module RubyLLM
       rescue StandardError => e
         Rails.logger.debug("[RubyLLM::Agents] Could not load circuit breaker status: #{e.message}")
         @circuit_breaker_status = {}
+      end
+
+      # Parses and validates sort parameters for agents list
+      #
+      # @return [Hash] Contains :column and :direction keys
+      def parse_agent_sort_params
+        column = params[:sort].to_s
+        direction = params[:direction].to_s.downcase
+
+        {
+          column: AGENT_SORTABLE_COLUMNS.include?(column) ? column : DEFAULT_AGENT_SORT_COLUMN,
+          direction: %w[asc desc].include?(direction) ? direction : DEFAULT_AGENT_SORT_DIRECTION
+        }
+      end
+
+      # Sorts agents array based on sort params
+      #
+      # @param agents [Array<Hash>] Array of agent hashes
+      # @return [Array<Hash>] Sorted array
+      def sort_agents(agents)
+        column = @sort_params[:column].to_sym
+        direction = @sort_params[:direction]
+
+        sorted = agents.sort_by do |agent|
+          value = agent[column]
+          # Handle nil values - put them at the end
+          case column
+          when :last_executed
+            value || Time.at(0)
+          when :execution_count, :total_cost, :success_rate
+            value || 0
+          else
+            value.to_s.downcase
+          end
+        end
+
+        direction == "desc" ? sorted.reverse : sorted
       end
     end
   end

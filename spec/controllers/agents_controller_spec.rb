@@ -41,6 +41,53 @@ RSpec.describe RubyLLM::Agents::AgentsController, type: :controller do
         expect(flash.now[:alert]).to eq("Error loading agents list")
       end
     end
+
+    context "with sorting" do
+      before do
+        allow(RubyLLM::Agents::AgentRegistry).to receive(:all_with_details).and_return([
+          { name: "BAgent", agent_type: "agent", is_workflow: false, execution_count: 10, total_cost: 1.5 },
+          { name: "AAgent", agent_type: "agent", is_workflow: false, execution_count: 5, total_cost: 2.0 },
+          { name: "CAgent", agent_type: "embedder", is_workflow: false, execution_count: 20, total_cost: 0.5 }
+        ])
+      end
+
+      it "sorts by name ascending by default" do
+        get :index
+        expect(assigns(:agents).map { |a| a[:name] }).to eq(%w[AAgent BAgent CAgent])
+      end
+
+      it "sorts by name descending when specified" do
+        get :index, params: { sort: "name", direction: "desc" }
+        expect(assigns(:agents).map { |a| a[:name] }).to eq(%w[CAgent BAgent AAgent])
+      end
+
+      it "sorts by execution_count" do
+        get :index, params: { sort: "execution_count", direction: "desc" }
+        expect(assigns(:agents).map { |a| a[:execution_count] }).to eq([20, 10, 5])
+      end
+
+      it "sorts by total_cost" do
+        get :index, params: { sort: "total_cost", direction: "asc" }
+        expect(assigns(:agents).map { |a| a[:total_cost] }).to eq([0.5, 1.5, 2.0])
+      end
+
+      it "ignores invalid sort columns" do
+        get :index, params: { sort: "invalid_column" }
+        # Should fall back to default (name asc)
+        expect(assigns(:agents).map { |a| a[:name] }).to eq(%w[AAgent BAgent CAgent])
+      end
+
+      it "ignores invalid sort directions" do
+        get :index, params: { sort: "name", direction: "invalid" }
+        # Should fall back to default direction (asc)
+        expect(assigns(:agents).map { |a| a[:name] }).to eq(%w[AAgent BAgent CAgent])
+      end
+
+      it "assigns sort_params" do
+        get :index, params: { sort: "execution_count", direction: "desc" }
+        expect(assigns(:sort_params)).to eq({ column: "execution_count", direction: "desc" })
+      end
+    end
   end
 
   describe "GET #show" do
