@@ -12,7 +12,7 @@
 #   result.tags                   # ["landscape", "nature", "peaceful"]
 #
 module Llm
-  module Image
+  module Images
     class ContentAnalyzer < ApplicationImageAnalyzer
       model "gpt-4o"
       analysis_type :all

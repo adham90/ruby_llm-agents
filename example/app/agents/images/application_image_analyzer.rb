@@ -88,7 +88,7 @@
 #   - scene_analyzer.rb            - Scene understanding
 #
 module Llm
-  module Image
+  module Images
     class ApplicationImageAnalyzer < RubyLLM::Agents::ImageAnalyzer
       # ============================================
       # Shared Model Configuration

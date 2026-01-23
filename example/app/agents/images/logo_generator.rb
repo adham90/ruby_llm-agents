@@ -28,7 +28,7 @@
 #   )
 #
 module Llm
-  module Image
+  module Images
     class LogoGenerator < ApplicationImageGenerator
       description "Generates company logos and branding concepts"
       version "1.0"

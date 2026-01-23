@@ -17,7 +17,7 @@
 #   )
 #
 module Llm
-  module Image
+  module Images
     class ProductBackgroundRemover < ApplicationBackgroundRemover
       model "segment-anything"
       output_format :png

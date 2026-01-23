@@ -28,7 +28,7 @@
 #   )
 #
 module Llm
-  module Image
+  module Images
     class AvatarGenerator < ApplicationImageGenerator
       description "Generates unique profile avatars and character illustrations"
       version "1.0"

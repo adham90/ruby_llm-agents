@@ -21,7 +21,7 @@
 #   result.total_cost  # Track costs per organization
 #
 module Llm
-  module Image
+  module Images
     class MarketingAssetPipeline < ApplicationImagePipeline
       # Step 1: Generate the marketing image
       step :generate, generator: MarketingGenerator

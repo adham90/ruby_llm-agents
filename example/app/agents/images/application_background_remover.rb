@@ -81,7 +81,7 @@
 #   - simple_background_remover.rb    - Fast simple removal
 #
 module Llm
-  module Image
+  module Images
     class ApplicationBackgroundRemover < RubyLLM::Agents::BackgroundRemover
       # ============================================
       # Shared Model Configuration

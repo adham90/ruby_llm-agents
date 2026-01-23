@@ -12,7 +12,7 @@
 #   result.tags         # ["beach", "sunset", "tropical", "vacation"]
 #
 module Llm
-  module Image
+  module Images
     class SceneAnalyzer < ApplicationImageAnalyzer
       model "gpt-4o"
       analysis_type :detailed

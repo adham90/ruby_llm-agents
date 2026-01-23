@@ -22,7 +22,7 @@
 #   result.analysis.safe?        # Safety check result
 #
 module Llm
-  module Image
+  module Images
     class ContentModerationPipeline < ApplicationImagePipeline
       # Step 1: Analyze the image for content safety and metadata
       step :analyze, analyzer: Llm::Image::ContentAnalyzer

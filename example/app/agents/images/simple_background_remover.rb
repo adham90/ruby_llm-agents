@@ -10,7 +10,7 @@
 #   result.save("logo_transparent.png")
 #
 module Llm
-  module Image
+  module Images
     class SimpleBackgroundRemover < ApplicationBackgroundRemover
       model "rembg"
       output_format :png

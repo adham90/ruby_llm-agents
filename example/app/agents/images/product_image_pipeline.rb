@@ -22,7 +22,7 @@
 #   result.step(:analyze)     # Analysis result
 #
 module Llm
-  module Image
+  module Images
     class ProductImagePipeline < ApplicationImagePipeline
       # Step 1: Generate the base product image
       step :generate, generator: Llm::Image::ProductImageGenerator

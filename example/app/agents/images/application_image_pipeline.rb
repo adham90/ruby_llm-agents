@@ -102,7 +102,7 @@
 #   result.duration_ms           # Total pipeline duration
 #
 module Llm
-  module Image
+  module Images
     class ApplicationImagePipeline < RubyLLM::Agents::ImagePipeline
       # ============================================
       # Shared Pipeline Configuration

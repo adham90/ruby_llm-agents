@@ -17,7 +17,7 @@
 #   composite_with_background(result.to_blob, "office_background.jpg")
 #
 module Llm
-  module Image
+  module Images
     class PortraitBackgroundRemover < ApplicationBackgroundRemover
       model "segment-anything"
       output_format :png

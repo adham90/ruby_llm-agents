@@ -28,7 +28,7 @@
 #   )
 #
 module Llm
-  module Image
+  module Images
     class ThumbnailGenerator < ApplicationImageGenerator
       description "Generates eye-catching thumbnails for videos and articles"
       version "1.0"

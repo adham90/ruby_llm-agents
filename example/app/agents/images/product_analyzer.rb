@@ -12,7 +12,7 @@
 #   result.dominant_color # { hex: "#CC0000", name: "red", percentage: 45 }
 #
 module Llm
-  module Image
+  module Images
     class ProductAnalyzer < ApplicationImageAnalyzer
       model "gpt-4o"
       analysis_type :all

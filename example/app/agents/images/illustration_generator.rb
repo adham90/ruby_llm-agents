@@ -28,7 +28,7 @@
 #   )
 #
 module Llm
-  module Image
+  module Images
     class IllustrationGenerator < ApplicationImageGenerator
       description "Generates artistic illustrations for blog posts and articles"
       version "1.0"

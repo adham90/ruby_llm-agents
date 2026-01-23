@@ -93,7 +93,7 @@
 #   - illustration_generator.rb    - Blog illustrations
 #
 module Llm
-  module Image
+  module Images
     class ApplicationImageGenerator < RubyLLM::Agents::ImageGenerator
       # ============================================
       # Shared Model Configuration

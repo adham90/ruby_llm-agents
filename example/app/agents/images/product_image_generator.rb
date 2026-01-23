@@ -28,7 +28,7 @@
 #   )
 #
 module Llm
-  module Image
+  module Images
     class ProductImageGenerator < ApplicationImageGenerator
       description "Generates high-quality product images for e-commerce"
       version "1.0"
