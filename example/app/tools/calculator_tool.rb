@@ -8,11 +8,10 @@
 # - Return formatted results for the LLM
 # - Handle errors gracefully
 #
-# @example Usage via Llm::ToolsAgent
-#   Llm::ToolsAgent.call(query: "What is 25 * 4?")
+# @example Usage via ToolsAgent
+#   ToolsAgent.call(query: "What is 25 * 4?")
 #
-module Llm
-  class CalculatorTool < RubyLLM::Tool
+class CalculatorTool < RubyLLM::Tool
     description "Perform basic mathematical calculations. Supports addition, subtraction, multiplication, division, and exponentiation."
 
     param :operation, desc: "Math operation: add, subtract, multiply, divide, power", required: true
@@ -45,5 +44,4 @@ module Llm
     rescue StandardError => e
       "Error: #{e.message}"
     end
-  end
 end

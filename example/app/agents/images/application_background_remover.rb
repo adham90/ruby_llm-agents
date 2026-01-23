@@ -49,7 +49,7 @@
 # ============================================================================
 #
 #   # Basic background removal
-#   result = Llm::Image::MyRemover.call(image: "photo.jpg")
+#   result = Images::MyRemover.call(image: "photo.jpg")
 #   result.url            # => "https://..." (foreground with transparency)
 #   result.has_alpha?     # => true
 #
@@ -62,7 +62,7 @@
 #   end
 #
 #   # With tenant for budget tracking
-#   result = Llm::Image::MyRemover.call(image: "photo.jpg", tenant: organization)
+#   result = Images::MyRemover.call(image: "photo.jpg", tenant: organization)
 #
 #   # Attach to ActiveStorage
 #   product.transparent_image.attach(
@@ -80,27 +80,25 @@
 #   - portrait_background_remover.rb  - Portrait extraction
 #   - simple_background_remover.rb    - Fast simple removal
 #
-module Llm
-  module Images
-    class ApplicationBackgroundRemover < RubyLLM::Agents::BackgroundRemover
-      # ============================================
-      # Shared Model Configuration
-      # ============================================
-      # These settings are inherited by all background removers
+module Images
+  class ApplicationBackgroundRemover < RubyLLM::Agents::BackgroundRemover
+    # ============================================
+    # Shared Model Configuration
+    # ============================================
+    # These settings are inherited by all background removers
 
-      model "rembg"
-      output_format :png
+    model "rembg"
+    output_format :png
 
-      # ============================================
-      # Shared Caching
-      # ============================================
+    # ============================================
+    # Shared Caching
+    # ============================================
 
-      # cache_for 30.days  # Enable caching for all removers
+    # cache_for 30.days  # Enable caching for all removers
 
-      # ============================================
-      # Shared Helper Methods
-      # ============================================
-      # Define methods here that can be used by all removers
-    end
+    # ============================================
+    # Shared Helper Methods
+    # ============================================
+    # Define methods here that can be used by all removers
   end
 end

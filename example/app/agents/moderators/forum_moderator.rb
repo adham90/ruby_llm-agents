@@ -19,7 +19,7 @@
 # @example In a Rails controller
 #   class PostsController < ApplicationController
 #     def create
-#       result = Llm::Text::ForumModerator.call(text: params[:body])
+#       result = Moderators::ForumModerator.call(text: params[:body])
 #
 #       if result.flagged?
 #         @post = Post.create!(
@@ -41,7 +41,7 @@
 #
 #     def perform(post_id)
 #       post = Post.find(post_id)
-#       result = Llm::Text::ForumModerator.call(text: post.body)
+#       result = Moderators::ForumModerator.call(text: post.body)
 #
 #       if result.flagged?
 #         post.update!(
@@ -62,28 +62,26 @@
 #
 # @example With runtime override
 #   # Use stricter threshold for first-time posters
-#   result = Llm::Text::ForumModerator.call(
+#   result = Moderators::ForumModerator.call(
 #     text: post.body,
 #     threshold: user.posts_count.zero? ? 0.5 : 0.8
 #   )
 #
-module Llm
-  module Text
-    class ForumModerator < RubyLLM::Agents::Moderator
-      description "Balanced moderation for community forums"
-      version "1.0"
+module Moderators
+  class ForumModerator < RubyLLM::Agents::Moderator
+    description "Balanced moderation for community forums"
+    version "1.0"
 
-      # Use latest moderation model
-      model "omni-moderation-latest"
+    # Use latest moderation model
+    model "omni-moderation-latest"
 
-      # Balanced threshold - allow discussion, block clear violations
-      # 0.8 means content is flagged only if a category scores above 80%
-      threshold 0.8
+    # Balanced threshold - allow discussion, block clear violations
+    # 0.8 means content is flagged only if a category scores above 80%
+    threshold 0.8
 
-      # Focus on categories most relevant to forum discussions
-      # These are the most common policy violations in community content
-      categories :hate,
-                 :harassment
-    end
+    # Focus on categories most relevant to forum discussions
+    # These are the most common policy violations in community content
+    categories :hate,
+               :harassment
   end
 end

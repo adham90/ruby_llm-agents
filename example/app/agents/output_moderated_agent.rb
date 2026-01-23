@@ -18,11 +18,11 @@
 # - block_based_moderation_agent.rb - Block DSL with different thresholds
 #
 # @example Basic usage
-#   result = Llm::OutputModeratedAgent.call(topic: "write a story about friendship")
+#   result = OutputModeratedAgent.call(topic: "write a story about friendship")
 #   puts result.content
 #
 # @example Handling flagged output
-#   result = Llm::OutputModeratedAgent.call(topic: "controversial topic")
+#   result = OutputModeratedAgent.call(topic: "controversial topic")
 #   if result.moderation_flagged?
 #     puts "Output was blocked: #{result.moderation_categories.join(', ')}"
 #     puts "Phase: #{result.moderation_phase}"  # => :output
@@ -31,43 +31,41 @@
 #   end
 #
 # @example Checking moderation scores
-#   result = Llm::OutputModeratedAgent.call(topic: "some topic")
+#   result = OutputModeratedAgent.call(topic: "some topic")
 #   result.moderation_scores.each do |category, score|
 #     puts "#{category}: #{score.round(4)}"
 #   end
 #
-module Llm
-  class OutputModeratedAgent < ApplicationAgent
-    description "Demonstrates output-only content moderation"
-    version "1.0"
+class OutputModeratedAgent < ApplicationAgent
+  description "Demonstrates output-only content moderation"
+  version "1.0"
 
-    model "gpt-4o"
-    temperature 0.7
+  model "gpt-4o"
+  temperature 0.7
 
-    # Moderate only the output (LLM response)
-    # Input is passed through without moderation
-    moderation :output,
-      threshold: 0.6,
-      categories: [:hate, :violence, :harassment, :sexual]
+  # Moderate only the output (LLM response)
+  # Input is passed through without moderation
+  moderation :output,
+    threshold: 0.6,
+    categories: [:hate, :violence, :harassment, :sexual]
 
-    param :topic, required: true
+  param :topic, required: true
 
-    def system_prompt
-      <<~PROMPT
-        You are a creative content writer. Generate engaging content
-        based on the topic provided. Be creative but appropriate.
-      PROMPT
-    end
+  def system_prompt
+    <<~PROMPT
+      You are a creative content writer. Generate engaging content
+      based on the topic provided. Be creative but appropriate.
+    PROMPT
+  end
 
-    def user_prompt
-      "Write a short story or article about: #{topic}"
-    end
+  def user_prompt
+    "Write a short story or article about: #{topic}"
+  end
 
-    def execution_metadata
-      {
-        showcase: "moderation",
-        features: %w[output_moderation content_generation safety_checks]
-      }
-    end
+  def execution_metadata
+    {
+      showcase: "moderation",
+      features: %w[output_moderation content_generation safety_checks]
+    }
   end
 end

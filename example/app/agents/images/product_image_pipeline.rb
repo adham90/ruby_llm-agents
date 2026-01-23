@@ -6,7 +6,7 @@
 # in a single automated workflow.
 #
 # Usage:
-#   result = Llm::Image::ProductImagePipeline.call(
+#   result = Images::ProductImagePipeline.call(
 #     prompt: "Professional photo of wireless headphones",
 #     high_quality: true,
 #     transparent: true
@@ -21,26 +21,24 @@
 #   result.step(:remove_bg)   # Background removal result (if transparent: true)
 #   result.step(:analyze)     # Analysis result
 #
-module Llm
-  module Images
-    class ProductImagePipeline < ApplicationImagePipeline
-      # Step 1: Generate the base product image
-      step :generate, generator: Llm::Image::ProductImageGenerator
+module Images
+  class ProductImagePipeline < ApplicationImagePipeline
+    # Step 1: Generate the base product image
+    step :generate, generator: Images::ProductImageGenerator
 
-      # Step 2: Upscale for high quality (conditional)
-      step :upscale, upscaler: PhotoUpscaler, scale: 2, if: ->(ctx) { ctx[:high_quality] }
+    # Step 2: Upscale for high quality (conditional)
+    step :upscale, upscaler: PhotoUpscaler, scale: 2, if: ->(ctx) { ctx[:high_quality] }
 
-      # Step 3: Remove background for transparent images (conditional)
-      step :remove_bg, remover: Llm::Image::ProductBackgroundRemover, if: ->(ctx) { ctx[:transparent] }
+    # Step 3: Remove background for transparent images (conditional)
+    step :remove_bg, remover: Images::ProductBackgroundRemover, if: ->(ctx) { ctx[:transparent] }
 
-      # Step 4: Analyze the final image for metadata
-      step :analyze, analyzer: Llm::Image::ProductAnalyzer
+    # Step 4: Analyze the final image for metadata
+    step :analyze, analyzer: Images::ProductAnalyzer
 
-      description "Complete e-commerce product image workflow"
-      version "1.0"
+    description "Complete e-commerce product image workflow"
+    version "1.0"
 
-      # Optional: Enable caching for repeated prompts
-      # cache_for 1.hour
-    end
+    # Optional: Enable caching for repeated prompts
+    # cache_for 1.hour
   end
 end

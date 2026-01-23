@@ -98,26 +98,24 @@
 #   - multilingual_transcriber.rb - Auto-detect language transcription
 #   - technical_transcriber.rb    - Technical content with postprocessing
 #
-module Llm
-  module Audio
-    class ApplicationTranscriber < RubyLLM::Agents::Transcriber
-      # ============================================
-      # Shared Model Configuration
-      # ============================================
-      # These settings are inherited by all transcribers
+module Audio
+  class ApplicationTranscriber < RubyLLM::Agents::Transcriber
+    # ============================================
+    # Shared Model Configuration
+    # ============================================
+    # These settings are inherited by all transcribers
 
-      model "whisper-1"
+    model "whisper-1"
 
-      # ============================================
-      # Shared Caching
-      # ============================================
+    # ============================================
+    # Shared Caching
+    # ============================================
 
-      # cache_for 1.day  # Enable caching for all transcribers
+    # cache_for 1.day  # Enable caching for all transcribers
 
-      # ============================================
-      # Shared Helper Methods
-      # ============================================
-      # Define methods here that can be used by all transcribers
-    end
+    # ============================================
+    # Shared Helper Methods
+    # ============================================
+    # Define methods here that can be used by all transcribers
   end
 end

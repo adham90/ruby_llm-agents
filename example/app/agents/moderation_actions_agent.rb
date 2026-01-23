@@ -28,7 +28,7 @@
 #     rescue_from RubyLLM::Agents::ModerationError, with: :handle_moderation_error
 #
 #     def create
-#       result = Llm::ModerationActionsAgent.call(message: params[:message])
+#       result = ModerationActionsAgent.call(message: params[:message])
 #       render json: { response: result.content }
 #     end
 #
@@ -46,7 +46,7 @@
 #
 # @example Direct exception handling
 #   begin
-#     result = Llm::ModerationActionsAgent.call(message: user_input)
+#     result = ModerationActionsAgent.call(message: user_input)
 #     puts result.content
 #   rescue RubyLLM::Agents::ModerationError => e
 #     puts "Blocked by moderation!"
@@ -65,45 +65,43 @@
 #   # In RSpec
 #   it "raises ModerationError for harmful content" do
 #     expect {
-#       Llm::ModerationActionsAgent.call(message: harmful_content)
+#       ModerationActionsAgent.call(message: harmful_content)
 #     }.to raise_error(RubyLLM::Agents::ModerationError) do |error|
 #       expect(error.phase).to eq(:input)
 #       expect(error.flagged_categories).to include(:violence)
 #     end
 #   end
 #
-module Llm
-  class ModerationActionsAgent < ApplicationAgent
-    description "Demonstrates :raise action with exception handling"
-    version "1.0"
+class ModerationActionsAgent < ApplicationAgent
+  description "Demonstrates :raise action with exception handling"
+  version "1.0"
 
-    model "gpt-4o"
-    temperature 0.7
+  model "gpt-4o"
+  temperature 0.7
 
-    # Use :raise action - throws exception when content is flagged
-    moderation :input,
-      threshold: 0.6,
-      categories: [:hate, :violence, :harassment, :self_harm],
-      on_flagged: :raise
+  # Use :raise action - throws exception when content is flagged
+  moderation :input,
+    threshold: 0.6,
+    categories: [:hate, :violence, :harassment, :self_harm],
+    on_flagged: :raise
 
-    param :message, required: true
+  param :message, required: true
 
-    def system_prompt
-      <<~PROMPT
-        You are a helpful assistant. Provide clear, accurate responses
-        to user questions. Be friendly and professional.
-      PROMPT
-    end
+  def system_prompt
+    <<~PROMPT
+      You are a helpful assistant. Provide clear, accurate responses
+      to user questions. Be friendly and professional.
+    PROMPT
+  end
 
-    def user_prompt
-      message
-    end
+  def user_prompt
+    message
+  end
 
-    def execution_metadata
-      {
-        showcase: "moderation",
-        features: %w[raise_action exception_handling error_flow]
-      }
-    end
+  def execution_metadata
+    {
+      showcase: "moderation",
+      features: %w[raise_action exception_handling error_flow]
+    }
   end
 end

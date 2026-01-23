@@ -6,7 +6,7 @@
 # proper alpha transparency for compositing on any background.
 #
 # Usage:
-#   result = Llm::Image::ProductBackgroundRemover.call(image: "product.jpg")
+#   result = Images::ProductBackgroundRemover.call(image: "product.jpg")
 #   result.save("product_transparent.png")
 #
 #   # Attach to product
@@ -16,18 +16,16 @@
 #     content_type: "image/png"
 #   )
 #
-module Llm
-  module Images
-    class ProductBackgroundRemover < ApplicationBackgroundRemover
-      model "segment-anything"
-      output_format :png
-      refine_edges true
-      alpha_matting true
-      foreground_threshold 0.55
-      background_threshold 0.45
+module Images
+  class ProductBackgroundRemover < ApplicationBackgroundRemover
+    model "segment-anything"
+    output_format :png
+    refine_edges true
+    alpha_matting true
+    foreground_threshold 0.55
+    background_threshold 0.45
 
-      description "Removes backgrounds from product photos for e-commerce"
-      version "1.0"
-    end
+    description "Removes backgrounds from product photos for e-commerce"
+    version "1.0"
   end
 end

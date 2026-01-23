@@ -27,14 +27,14 @@
 # - Batch processing of content
 #
 # @example Basic usage
-#   result = Llm::Text::ContentModerator.call(text: "content to check")
+#   result = Moderators::ContentModerator.call(text: "content to check")
 #   if result.flagged?
 #     puts "Content is inappropriate"
 #   end
 #
 # @example In a Rails controller
 #   def create
-#     result = Llm::Text::ContentModerator.call(text: params[:content])
+#     result = Moderators::ContentModerator.call(text: params[:content])
 #     if result.flagged?
 #       render json: { error: "Content rejected" }, status: :unprocessable_entity
 #     else
@@ -47,7 +47,7 @@
 #   class ModeratePendingContentJob < ApplicationJob
 #     def perform(content_id)
 #       content = UserContent.find(content_id)
-#       result = Llm::Text::ContentModerator.call(text: content.body)
+#       result = Moderators::ContentModerator.call(text: content.body)
 #
 #       if result.flagged?
 #         content.update!(
@@ -60,18 +60,16 @@
 #     end
 #   end
 #
-module Llm
-  module Text
-    class ContentModerator < RubyLLM::Agents::Moderator
-      # Model to use for moderation
-      model "omni-moderation-latest"
+module Moderators
+  class ContentModerator < RubyLLM::Agents::Moderator
+    # Model to use for moderation
+    model "omni-moderation-latest"
 
-      # Score threshold - content is only flagged if max score >= threshold
-      threshold 0.7
+    # Score threshold - content is only flagged if max score >= threshold
+    threshold 0.7
 
-      # Categories to check - only flag if category matches
-      categories :hate, :violence, :harassment, :sexual
-    end
+    # Categories to check - only flag if category matches
+    categories :hate, :violence, :harassment, :sexual
   end
 end
 

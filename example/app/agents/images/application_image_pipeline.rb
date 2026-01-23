@@ -11,18 +11,18 @@
 #
 # STEP DEFINITION:
 # ----------------
-#   step :name, generator: Llm::Image::MyGenerator      # Text-to-image generation
+#   step :name, generator: Images::MyGenerator      # Text-to-image generation
 #   step :name, upscaler: MyUpscaler                    # Resolution enhancement
 #   step :name, transformer: MyTransformer              # Style transfer / img2img
 #   step :name, editor: MyEditor                        # Inpainting / editing
 #   step :name, variator: MyVariator                    # Generate variations
-#   step :name, analyzer: Llm::Image::MyAnalyzer        # Image analysis (non-image output)
-#   step :name, remover: Llm::Image::MyRemover          # Background removal
+#   step :name, analyzer: Images::MyAnalyzer        # Image analysis (non-image output)
+#   step :name, remover: Images::MyRemover          # Background removal
 #
 # CONDITIONAL STEPS:
 # ------------------
 #   step :upscale, upscaler: MyUpscaler, if: ->(ctx) { ctx[:high_quality] }
-#   step :remove_bg, remover: Llm::Image::MyRemover, unless: ->(ctx) { ctx[:keep_background] }
+#   step :remove_bg, remover: Images::MyRemover, unless: ->(ctx) { ctx[:keep_background] }
 #
 # STEP OPTIONS:
 # -------------
@@ -55,31 +55,31 @@
 #
 #   # Simple pipeline
 #   class ProductPipeline < ApplicationImagePipeline
-#     step :generate, generator: Llm::Image::ProductImageGenerator
+#     step :generate, generator: Images::ProductImageGenerator
 #     step :upscale, upscaler: PhotoUpscaler, scale: 2
 #   end
 #
-#   result = Llm::Image::ProductPipeline.call(prompt: "Laptop on desk")
+#   result = Images::ProductPipeline.call(prompt: "Laptop on desk")
 #   result.final_image    # => URL or data of processed image
 #   result.total_cost     # => Combined cost of all steps
 #
 #   # Pipeline with analysis
 #   class AnalysisPipeline < ApplicationImagePipeline
-#     step :generate, generator: Llm::Image::ProductImageGenerator
-#     step :analyze, analyzer: Llm::Image::ContentAnalyzer
+#     step :generate, generator: Images::ProductImageGenerator
+#     step :analyze, analyzer: Images::ContentAnalyzer
 #   end
 #
-#   result = Llm::Image::AnalysisPipeline.call(prompt: "Product photo")
+#   result = Images::AnalysisPipeline.call(prompt: "Product photo")
 #   result.analysis       # => ImageAnalysisResult
 #
 #   # Conditional pipeline
 #   class SmartPipeline < ApplicationImagePipeline
-#     step :generate, generator: Llm::Image::ProductImageGenerator
+#     step :generate, generator: Images::ProductImageGenerator
 #     step :upscale, upscaler: PhotoUpscaler, if: ->(ctx) { ctx[:hd] }
-#     step :remove_background, remover: Llm::Image::ProductBackgroundRemover, if: ->(ctx) { ctx[:transparent] }
+#     step :remove_background, remover: Images::ProductBackgroundRemover, if: ->(ctx) { ctx[:transparent] }
 #   end
 #
-#   result = Llm::Image::SmartPipeline.call(prompt: "...", hd: true, transparent: false)
+#   result = Images::SmartPipeline.call(prompt: "...", hd: true, transparent: false)
 #
 # ============================================================================
 # RESULT ACCESS
@@ -101,39 +101,37 @@
 #   result.total_cost            # Combined cost of all steps
 #   result.duration_ms           # Total pipeline duration
 #
-module Llm
-  module Images
-    class ApplicationImagePipeline < RubyLLM::Agents::ImagePipeline
-      # ============================================
-      # Shared Pipeline Configuration
-      # ============================================
-      # These settings are inherited by all pipelines
+module Images
+  class ApplicationImagePipeline < RubyLLM::Agents::ImagePipeline
+    # ============================================
+    # Shared Pipeline Configuration
+    # ============================================
+    # These settings are inherited by all pipelines
 
-      # stop_on_error true  # Stop on first step failure (default)
+    # stop_on_error true  # Stop on first step failure (default)
 
-      # ============================================
-      # Shared Caching
-      # ============================================
+    # ============================================
+    # Shared Caching
+    # ============================================
 
-      # cache_for 30.minutes  # Enable caching for all pipelines
+    # cache_for 30.minutes  # Enable caching for all pipelines
 
-      # ============================================
-      # Shared Callbacks
-      # ============================================
+    # ============================================
+    # Shared Callbacks
+    # ============================================
 
-      # before_pipeline :validate_tenant
+    # before_pipeline :validate_tenant
 
-      # after_pipeline :log_completion
+    # after_pipeline :log_completion
 
-      # private
+    # private
 
-      # def validate_tenant
-      #   raise ArgumentError, "Tenant required" unless context[:tenant]
-      # end
+    # def validate_tenant
+    #   raise ArgumentError, "Tenant required" unless context[:tenant]
+    # end
 
-      # def log_completion(result)
-      #   Rails.logger.info("Pipeline #{self.class.name} completed: #{result.success?}")
-      # end
-    end
+    # def log_completion(result)
+    #   Rails.logger.info("Pipeline #{self.class.name} completed: #{result.success?}")
+    # end
   end
 end

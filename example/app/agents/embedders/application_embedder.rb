@@ -49,34 +49,34 @@
 # ============================================================================
 #
 #   # Single text embedding
-#   result = Llm::Text::MyEmbedder.call(text: "Hello world")
+#   result = Embedders::MyEmbedder.call(text: "Hello world")
 #   result.vector        # => [0.123, -0.456, ...]
 #   result.dimensions    # => 1536
 #   result.input_tokens  # => 2
 #
 #   # Batch embedding
-#   result = Llm::Text::MyEmbedder.call(texts: ["Hello", "World"])
+#   result = Embedders::MyEmbedder.call(texts: ["Hello", "World"])
 #   result.vectors       # => [[...], [...]]
 #   result.count         # => 2
 #
 #   # With progress callback (for large batches)
-#   Llm::Text::MyEmbedder.call(texts: large_array) do |batch_result, idx|
+#   Embedders::MyEmbedder.call(texts: large_array) do |batch_result, idx|
 #     puts "Processed batch #{idx}: #{batch_result.count} embeddings"
 #   end
 #
 #   # Similarity comparison
-#   result1 = Llm::Text::MyEmbedder.call(text: "Ruby programming")
-#   result2 = Llm::Text::MyEmbedder.call(text: "Python programming")
+#   result1 = Embedders::MyEmbedder.call(text: "Ruby programming")
+#   result2 = Embedders::MyEmbedder.call(text: "Python programming")
 #   result1.similarity(result2)  # => 0.85
 #
 #   # Find most similar
-#   query = Llm::Text::MyEmbedder.call(text: "search query")
-#   documents = Llm::Text::MyEmbedder.call(texts: document_texts)
+#   query = Embedders::MyEmbedder.call(text: "search query")
+#   documents = Embedders::MyEmbedder.call(texts: document_texts)
 #   matches = query.most_similar(documents.vectors, limit: 5)
 #   # => [{index: 3, similarity: 0.92}, {index: 7, similarity: 0.87}, ...]
 #
 #   # With tenant for budget tracking
-#   Llm::Text::MyEmbedder.call(text: "hello", tenant: organization)
+#   Embedders::MyEmbedder.call(text: "hello", tenant: organization)
 #
 # ============================================================================
 # OTHER EMBEDDER EXAMPLES
@@ -89,32 +89,30 @@
 #   - clean_text_embedder.rb   - Text preprocessing before embedding
 #   - code_embedder.rb         - Domain-specific for source code
 #
-module Llm
-  module Text
-    class ApplicationEmbedder < RubyLLM::Agents::Embedder
-      # ============================================
-      # Shared Model Configuration
-      # ============================================
-      # These settings are inherited by all embedders
+module Embedders
+  class ApplicationEmbedder < RubyLLM::Agents::Embedder
+    # ============================================
+    # Shared Model Configuration
+    # ============================================
+    # These settings are inherited by all embedders
 
-      # model "text-embedding-3-small"   # Default model for all embedders
-      # dimensions 1536                   # Default dimensions
+    # model "text-embedding-3-small"   # Default model for all embedders
+    # dimensions 1536                   # Default dimensions
 
-      # ============================================
-      # Shared Caching
-      # ============================================
+    # ============================================
+    # Shared Caching
+    # ============================================
 
-      # cache_for 1.day  # Enable caching for all embedders
+    # cache_for 1.day  # Enable caching for all embedders
 
-      # ============================================
-      # Shared Helper Methods
-      # ============================================
-      # Define methods here that can be used by all embedders
+    # ============================================
+    # Shared Helper Methods
+    # ============================================
+    # Define methods here that can be used by all embedders
 
-      # Example: Common preprocessing
-      # def preprocess(text)
-      #   text.to_s.strip
-      # end
-    end
+    # Example: Common preprocessing
+    # def preprocess(text)
+    #   text.to_s.strip
+    # end
   end
 end

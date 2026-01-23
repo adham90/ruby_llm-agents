@@ -13,40 +13,38 @@
 # - Educational content
 #
 # @example Basic usage
-#   result = Llm::Audio::ArticleNarrator.call(text: "Welcome to our blog post...")
+#   result = Audio::ArticleNarrator.call(text: "Welcome to our blog post...")
 #   result.audio        # => Binary MP3 data
 #   result.duration     # => 45.2 (seconds)
 #   result.characters   # => 2500
 #   result.save_to("article.mp3")
 #
 # @example With streaming for real-time playback
-#   Llm::Audio::ArticleNarrator.stream(text: long_article) do |chunk|
+#   Audio::ArticleNarrator.stream(text: long_article) do |chunk|
 #     audio_buffer.append(chunk.audio)
 #   end
 #
 # @example With tenant tracking
-#   Llm::Audio::ArticleNarrator.call(text: content, tenant: organization)
+#   Audio::ArticleNarrator.call(text: content, tenant: organization)
 #
-module Llm
-  module Audio
-    class ArticleNarrator < ApplicationSpeaker
-      description "Narrates articles with professional, high-quality voice"
-      version "1.0"
+module Audio
+  class ArticleNarrator < ApplicationSpeaker
+    description "Narrates articles with professional, high-quality voice"
+    version "1.0"
 
-      # High-definition model for better quality
-      model "tts-1-hd"
+    # High-definition model for better quality
+    model "tts-1-hd"
 
-      # Nova voice - warm, engaging, good for articles
-      voice "nova"
+    # Nova voice - warm, engaging, good for articles
+    voice "nova"
 
-      # Standard speech speed
-      speed 1.0
+    # Standard speech speed
+    speed 1.0
 
-      # MP3 output for compatibility
-      output_format :mp3
+    # MP3 output for compatibility
+    output_format :mp3
 
-      # Cache narrations for 30 days
-      cache_for 30.days
-    end
+    # Cache narrations for 30 days
+    cache_for 30.days
   end
 end

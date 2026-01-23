@@ -17,7 +17,7 @@
 #
 # @example In a controller
 #   def create
-#     result = Llm::Text::ChildSafeModerator.call(text: params[:content])
+#     result = Moderators::ChildSafeModerator.call(text: params[:content])
 #     if result.flagged?
 #       render json: { error: "Content not appropriate for children" },
 #              status: :unprocessable_entity
@@ -30,7 +30,7 @@
 # @example Batch moderation
 #   comments = Comment.pending_review
 #   comments.each do |comment|
-#     result = Llm::Text::ChildSafeModerator.call(text: comment.body)
+#     result = Moderators::ChildSafeModerator.call(text: comment.body)
 #     if result.flagged?
 #       comment.update!(status: :rejected, rejection_reason: result.flagged_categories.join(', '))
 #     else
@@ -39,7 +39,7 @@
 #   end
 #
 # @example Checking specific categories
-#   result = Llm::Text::ChildSafeModerator.call(text: content)
+#   result = Moderators::ChildSafeModerator.call(text: content)
 #   if result.flagged?
 #     puts "Flagged categories: #{result.flagged_categories}"
 #     puts "Category scores:"
@@ -48,26 +48,24 @@
 #     end
 #   end
 #
-module Llm
-  module Text
-    class ChildSafeModerator < RubyLLM::Agents::Moderator
-      description "Very strict moderation for children's content"
-      version "1.0"
+module Moderators
+  class ChildSafeModerator < RubyLLM::Agents::Moderator
+    description "Very strict moderation for children's content"
+    version "1.0"
 
-      # Use latest moderation model
-      model "omni-moderation-latest"
+    # Use latest moderation model
+    model "omni-moderation-latest"
 
-      # Very low threshold - flag anything remotely concerning
-      # 0.3 means content is flagged if any category scores above 30%
-      threshold 0.3
+    # Very low threshold - flag anything remotely concerning
+    # 0.3 means content is flagged if any category scores above 30%
+    threshold 0.3
 
-      # Check all child-relevant categories
-      # Especially strict about sexual content and violence
-      categories :sexual,
-                 :violence,
-                 :self_harm,
-                 :hate,
-                 :harassment
-    end
+    # Check all child-relevant categories
+    # Especially strict about sexual content and violence
+    categories :sexual,
+               :violence,
+               :self_harm,
+               :hate,
+               :harassment
   end
 end

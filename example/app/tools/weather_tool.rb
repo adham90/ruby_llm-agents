@@ -7,11 +7,10 @@
 # - Format multi-line output
 # - Use boolean parameters
 #
-# @example Usage via Llm::ToolsAgent
-#   Llm::ToolsAgent.call(query: "What's the weather in Tokyo?")
+# @example Usage via ToolsAgent
+#   ToolsAgent.call(query: "What's the weather in Tokyo?")
 #
-module Llm
-  class WeatherTool < RubyLLM::Tool
+class WeatherTool < RubyLLM::Tool
     description "Get current weather for a location. Returns temperature, conditions, humidity, and optionally a forecast."
 
     param :location, desc: "City name or location", required: true
@@ -70,5 +69,4 @@ module Llm
         "#{temp_c}C"
       end
     end
-  end
 end

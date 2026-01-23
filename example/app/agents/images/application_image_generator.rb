@@ -63,22 +63,22 @@
 # ============================================================================
 #
 #   # Basic generation
-#   result = Llm::Image::MyGenerator.call(prompt: "A sunset over mountains")
+#   result = Images::MyGenerator.call(prompt: "A sunset over mountains")
 #   result.url            # => "https://..."
 #   result.revised_prompt # => "A beautiful sunset over..."
 #   result.save_to("image.png")
 #
 #   # Multiple images
-#   result = Llm::Image::MyGenerator.call(prompt: "A cat", count: 4)
+#   result = Images::MyGenerator.call(prompt: "A cat", count: 4)
 #   result.images.each_with_index do |img, i|
 #     img.save_to("cat_#{i}.png")
 #   end
 #
 #   # With tenant for budget tracking
-#   result = Llm::Image::MyGenerator.call(prompt: "Logo design", tenant: organization)
+#   result = Images::MyGenerator.call(prompt: "Logo design", tenant: organization)
 #
 #   # With Active Storage
-#   result = Llm::Image::MyGenerator.call(prompt: "Product photo")
+#   result = Images::MyGenerator.call(prompt: "Product photo")
 #   product.images.attach(result.as_blob)
 #
 # ============================================================================
@@ -92,35 +92,33 @@
 #   - avatar_generator.rb          - User profile avatars
 #   - illustration_generator.rb    - Blog illustrations
 #
-module Llm
-  module Images
-    class ApplicationImageGenerator < RubyLLM::Agents::ImageGenerator
-      # ============================================
-      # Shared Model Configuration
-      # ============================================
-      # These settings are inherited by all image generators
+module Images
+  class ApplicationImageGenerator < RubyLLM::Agents::ImageGenerator
+    # ============================================
+    # Shared Model Configuration
+    # ============================================
+    # These settings are inherited by all image generators
 
-      model "gpt-image-1"
-      size "1024x1024"
-      quality "standard"
-      style "natural"
+    model "gpt-image-1"
+    size "1024x1024"
+    quality "standard"
+    style "natural"
 
-      # ============================================
-      # Shared Content Policy
-      # ============================================
+    # ============================================
+    # Shared Content Policy
+    # ============================================
 
-      content_policy :standard
+    content_policy :standard
 
-      # ============================================
-      # Shared Caching
-      # ============================================
+    # ============================================
+    # Shared Caching
+    # ============================================
 
-      # cache_for 1.hour  # Enable caching for all generators
+    # cache_for 1.hour  # Enable caching for all generators
 
-      # ============================================
-      # Shared Helper Methods
-      # ============================================
-      # Define methods here that can be used by all generators
-    end
+    # ============================================
+    # Shared Helper Methods
+    # ============================================
+    # Define methods here that can be used by all generators
   end
 end

@@ -61,12 +61,12 @@
 # ============================================================================
 #
 #   # Basic analysis
-#   result = Llm::Image::MyAnalyzer.call(image: "photo.jpg")
+#   result = Images::MyAnalyzer.call(image: "photo.jpg")
 #   result.caption        # => "A sunset over mountains"
 #   result.tags           # => ["sunset", "mountains", "nature"]
 #
 #   # Analyze from URL
-#   result = Llm::Image::MyAnalyzer.call(image: "https://example.com/image.jpg")
+#   result = Images::MyAnalyzer.call(image: "https://example.com/image.jpg")
 #
 #   # Check for specific content
 #   result.has_tag?("car")        # => true/false
@@ -76,7 +76,7 @@
 #   result.dominant_color         # => { hex: "#FF0000", percentage: 30 }
 #
 #   # With tenant for budget tracking
-#   result = Llm::Image::MyAnalyzer.call(image: "photo.jpg", tenant: organization)
+#   result = Images::MyAnalyzer.call(image: "photo.jpg", tenant: organization)
 #
 # ============================================================================
 # OTHER IMAGE ANALYZER EXAMPLES
@@ -87,33 +87,31 @@
 #   - content_analyzer.rb          - Content moderation analysis
 #   - scene_analyzer.rb            - Scene understanding
 #
-module Llm
-  module Images
-    class ApplicationImageAnalyzer < RubyLLM::Agents::ImageAnalyzer
-      # ============================================
-      # Shared Model Configuration
-      # ============================================
-      # These settings are inherited by all image analyzers
+module Images
+  class ApplicationImageAnalyzer < RubyLLM::Agents::ImageAnalyzer
+    # ============================================
+    # Shared Model Configuration
+    # ============================================
+    # These settings are inherited by all image analyzers
 
-      model "gpt-4o"
-      analysis_type :detailed
+    model "gpt-4o"
+    analysis_type :detailed
 
-      # ============================================
-      # Shared Analysis Options
-      # ============================================
+    # ============================================
+    # Shared Analysis Options
+    # ============================================
 
-      max_tags 10
+    max_tags 10
 
-      # ============================================
-      # Shared Caching
-      # ============================================
+    # ============================================
+    # Shared Caching
+    # ============================================
 
-      # cache_for 1.day  # Enable caching for all analyzers
+    # cache_for 1.day  # Enable caching for all analyzers
 
-      # ============================================
-      # Shared Helper Methods
-      # ============================================
-      # Define methods here that can be used by all analyzers
-    end
+    # ============================================
+    # Shared Helper Methods
+    # ============================================
+    # Define methods here that can be used by all analyzers
   end
 end

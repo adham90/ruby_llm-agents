@@ -14,35 +14,33 @@
 # - Accessibility announcements
 #
 # @example Basic usage
-#   result = Llm::Audio::NotificationSpeaker.call(text: "Your file has been uploaded")
+#   result = Audio::NotificationSpeaker.call(text: "Your file has been uploaded")
 #   result.audio        # => Binary audio data
 #   result.duration     # => 1.8 (seconds)
 #   result.save_to("notification.mp3")
 #
 # @example Quick notification
-#   audio = Llm::Audio::NotificationSpeaker.call(text: "Task complete!").audio
+#   audio = Audio::NotificationSpeaker.call(text: "Task complete!").audio
 #   play_sound(audio)
 #
-module Llm
-  module Audio
-    class NotificationSpeaker < ApplicationSpeaker
-      description "Generates quick audio notifications and alerts"
-      version "1.0"
+module Audio
+  class NotificationSpeaker < ApplicationSpeaker
+    description "Generates quick audio notifications and alerts"
+    version "1.0"
 
-      # Standard model for speed
-      model "tts-1"
+    # Standard model for speed
+    model "tts-1"
 
-      # Alloy voice - neutral, clear, professional
-      voice "alloy"
+    # Alloy voice - neutral, clear, professional
+    voice "alloy"
 
-      # Slightly faster for notifications
-      speed 1.1
+    # Slightly faster for notifications
+    speed 1.1
 
-      # MP3 for compatibility
-      output_format :mp3
+    # MP3 for compatibility
+    output_format :mp3
 
-      # Short cache for notifications
-      cache_for 7.days
-    end
+    # Short cache for notifications
+    cache_for 7.days
   end
 end

@@ -13,52 +13,50 @@
 # - Placeholder avatars
 #
 # @example Basic usage
-#   result = Llm::Image::AvatarGenerator.call(prompt: "Professional woman avatar, friendly smile")
+#   result = Images::AvatarGenerator.call(prompt: "Professional woman avatar, friendly smile")
 #   result.url            # => "https://..."
 #   result.save_to("user_avatar.png")
 #
 # @example Character avatar
-#   result = Llm::Image::AvatarGenerator.call(
+#   result = Images::AvatarGenerator.call(
 #     prompt: "Cartoon fox character, adventure style, wearing scarf"
 #   )
 #
 # @example Abstract avatar
-#   result = Llm::Image::AvatarGenerator.call(
+#   result = Images::AvatarGenerator.call(
 #     prompt: "Abstract geometric pattern avatar in blue and purple"
 #   )
 #
-module Llm
-  module Images
-    class AvatarGenerator < ApplicationImageGenerator
-      description "Generates unique profile avatars and character illustrations"
-      version "1.0"
+module Images
+  class AvatarGenerator < ApplicationImageGenerator
+    description "Generates unique profile avatars and character illustrations"
+    version "1.0"
 
-      # DALL-E 3 for quality
-      model "gpt-image-1"
+    # DALL-E 3 for quality
+    model "gpt-image-1"
 
-      # Square format for profile pictures
-      size "1024x1024"
+    # Square format for profile pictures
+    size "1024x1024"
 
-      # Standard quality is good for avatars
-      quality "standard"
+    # Standard quality is good for avatars
+    quality "standard"
 
-      # Vivid for distinctive avatars
-      style "vivid"
+    # Vivid for distinctive avatars
+    style "vivid"
 
-      # Strict content policy for user-facing content
-      content_policy :strict
+    # Strict content policy for user-facing content
+    content_policy :strict
 
-      # Prompt template for avatar style
-      template "Profile avatar: {prompt}. Centered composition, clear face or symbol, " \
-               "works well at small sizes, distinctive and memorable, " \
-               "suitable for professional or social media use."
+    # Prompt template for avatar style
+    template "Profile avatar: {prompt}. Centered composition, clear face or symbol, " \
+             "works well at small sizes, distinctive and memorable, " \
+             "suitable for professional or social media use."
 
-      # Avoid inappropriate content for avatars
-      negative_prompt "offensive, inappropriate, scary, disturbing, " \
-                      "too complex, hard to recognize at small sizes"
+    # Avoid inappropriate content for avatars
+    negative_prompt "offensive, inappropriate, scary, disturbing, " \
+                    "too complex, hard to recognize at small sizes"
 
-      # Cache avatars briefly
-      cache_for 30.minutes
-    end
+    # Cache avatars briefly
+    cache_for 30.minutes
   end
 end

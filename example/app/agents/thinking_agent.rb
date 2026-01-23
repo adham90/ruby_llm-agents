@@ -21,31 +21,31 @@
 # - Ollama Qwen3: Default on, :none to disable
 #
 # @example Basic usage
-#   result = Llm::ThinkingAgent.call(query: "What is 127 * 43?")
+#   result = ThinkingAgent.call(query: "What is 127 * 43?")
 #   puts result.thinking_text  # Shows reasoning process
 #   puts result.content        # Final answer
 #
 # @example Check if thinking was used
-#   result = Llm::ThinkingAgent.call(query: "Solve this puzzle...")
+#   result = ThinkingAgent.call(query: "Solve this puzzle...")
 #   if result.has_thinking?
 #     puts "Thinking tokens: #{result.thinking_tokens}"
 #   end
 #
 # @example Runtime override
 #   # Use higher effort for complex problems
-#   result = Llm::ThinkingAgent.call(
+#   result = ThinkingAgent.call(
 #     query: "Complex problem...",
 #     thinking: { effort: :high, budget: 15000 }
 #   )
 #
 #   # Disable thinking for simple questions
-#   result = Llm::ThinkingAgent.call(
+#   result = ThinkingAgent.call(
 #     query: "What is 2+2?",
 #     thinking: false
 #   )
 #
 # @example Streaming with thinking
-#   Llm::ThinkingAgent.stream(query: "Analyze this...") do |chunk|
+#   ThinkingAgent.stream(query: "Analyze this...") do |chunk|
 #     if chunk.thinking&.text
 #       print "[Thinking] #{chunk.thinking.text}"
 #     elsif chunk.content
@@ -53,46 +53,44 @@
 #     end
 #   end
 #
-module Llm
-  class ThinkingAgent < ApplicationAgent
-    description "Demonstrates extended thinking/reasoning support"
-    version "1.0"
+class ThinkingAgent < ApplicationAgent
+  description "Demonstrates extended thinking/reasoning support"
+  version "1.0"
 
-    # Use a model that supports thinking
-    # Claude Opus 4.5 is recommended for best thinking support
-    model "claude-opus-4-5-20250514"
-    temperature 0.0
+  # Use a model that supports thinking
+  # Claude Opus 4.5 is recommended for best thinking support
+  model "claude-opus-4-5-20250514"
+  temperature 0.0
 
-    # Configure thinking with effort level and token budget
-    # effort: :none, :low, :medium, :high
-    # budget: max tokens for thinking computation
-    thinking effort: :high, budget: 10000
+  # Configure thinking with effort level and token budget
+  # effort: :none, :low, :medium, :high
+  # budget: max tokens for thinking computation
+  thinking effort: :high, budget: 10000
 
-    param :query, required: true
+  param :query, required: true
 
-    def system_prompt
-      <<~PROMPT
-        You are a reasoning assistant that excels at step-by-step problem solving.
+  def system_prompt
+    <<~PROMPT
+      You are a reasoning assistant that excels at step-by-step problem solving.
 
-        When given a problem:
-        1. Break it down into smaller steps
-        2. Work through each step carefully
-        3. Verify your work
-        4. Provide a clear final answer
+      When given a problem:
+      1. Break it down into smaller steps
+      2. Work through each step carefully
+      3. Verify your work
+      4. Provide a clear final answer
 
-        Show your reasoning process clearly.
-      PROMPT
-    end
+      Show your reasoning process clearly.
+    PROMPT
+  end
 
-    def user_prompt
-      query
-    end
+  def user_prompt
+    query
+  end
 
-    def execution_metadata
-      {
-        showcase: "thinking",
-        features: %w[extended_thinking reasoning effort_levels token_budget]
-      }
-    end
+  def execution_metadata
+    {
+      showcase: "thinking",
+      features: %w[extended_thinking reasoning effort_levels token_budget]
+    }
   end
 end

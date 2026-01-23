@@ -133,48 +133,46 @@
 #   VisionAgent.call(query: "Describe this", with: "image.png")
 #   VisionAgent.call(query: "Compare these", with: ["a.png", "b.png"])
 #
-module Llm
-  class ApplicationAgent < RubyLLM::Agents::Base
-    # ============================================
-    # Shared Model Configuration
-    # ============================================
-    # These settings are inherited by all agents
+class ApplicationAgent < RubyLLM::Agents::Base
+  # ============================================
+  # Shared Model Configuration
+  # ============================================
+  # These settings are inherited by all agents
 
-    # model "gemini-2.0-flash"   # Default model for all agents
-    # temperature 0.0            # Default temperature (0.0 = deterministic)
-    # timeout 60                 # Default timeout in seconds
+  # model "gemini-2.0-flash"   # Default model for all agents
+  # temperature 0.0            # Default temperature (0.0 = deterministic)
+  # timeout 60                 # Default timeout in seconds
 
-    # ============================================
-    # Shared Caching
-    # ============================================
+  # ============================================
+  # Shared Caching
+  # ============================================
 
-    # cache_for 1.hour  # Enable caching for all agents
+  # cache_for 1.hour  # Enable caching for all agents
 
-    # ============================================
-    # Shared Reliability Settings
-    # ============================================
-    # Configure once here, all agents inherit these settings
-    #
-    # reliability do
-    #   retries max: 2, backoff: :exponential, base: 0.4, max_delay: 3.0
-    #   fallback_models "gpt-4o-mini", "claude-3-haiku-20240307"
-    #   total_timeout 30
-    #   circuit_breaker errors: 5, within: 60, cooldown: 300
-    # end
+  # ============================================
+  # Shared Reliability Settings
+  # ============================================
+  # Configure once here, all agents inherit these settings
+  #
+  # reliability do
+  #   retries max: 2, backoff: :exponential, base: 0.4, max_delay: 3.0
+  #   fallback_models "gpt-4o-mini", "claude-3-haiku-20240307"
+  #   total_timeout 30
+  #   circuit_breaker errors: 5, within: 60, cooldown: 300
+  # end
 
-    # ============================================
-    # Shared Helper Methods
-    # ============================================
-    # Define methods here that can be used by all agents
+  # ============================================
+  # Shared Helper Methods
+  # ============================================
+  # Define methods here that can be used by all agents
 
-    # Example: Common system prompt prefix
-    # def system_prompt_prefix
-    #   "You are an AI assistant for #{Rails.application.class.module_parent_name}."
-    # end
+  # Example: Common system prompt prefix
+  # def system_prompt_prefix
+  #   "You are an AI assistant for #{Rails.application.class.module_parent_name}."
+  # end
 
-    # Example: Common metadata
-    # def execution_metadata
-    #   { app_version: Rails.application.config.version }
-    # end
-  end
+  # Example: Common metadata
+  # def execution_metadata
+  #   { app_version: Rails.application.config.version }
+  # end
 end

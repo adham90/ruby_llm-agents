@@ -18,11 +18,11 @@
 # - block_based_moderation_agent.rb - Different thresholds per phase
 #
 # @example Basic usage
-#   result = Llm::FullyModeratedAgent.call(message: "Hello, how are you?")
+#   result = FullyModeratedAgent.call(message: "Hello, how are you?")
 #   puts result.content
 #
 # @example Detecting which phase was flagged
-#   result = Llm::FullyModeratedAgent.call(message: "some message")
+#   result = FullyModeratedAgent.call(message: "some message")
 #   if result.moderation_flagged?
 #     case result.moderation_phase
 #     when :input
@@ -34,7 +34,7 @@
 #
 # @example Handling with exception
 #   begin
-#     result = Llm::FullyModeratedAgent.call(message: user_input)
+#     result = FullyModeratedAgent.call(message: user_input)
 #     render json: { response: result.content }
 #   rescue RubyLLM::Agents::ModerationError => e
 #     render json: {
@@ -44,40 +44,38 @@
 #     }, status: :unprocessable_entity
 #   end
 #
-module Llm
-  class FullyModeratedAgent < ApplicationAgent
-    description "Demonstrates both input AND output moderation"
-    version "1.0"
+class FullyModeratedAgent < ApplicationAgent
+  description "Demonstrates both input AND output moderation"
+  version "1.0"
 
-    model "gpt-4o"
-    temperature 0.7
+  model "gpt-4o"
+  temperature 0.7
 
-    # Moderate BOTH input and output
-    # Same threshold and categories apply to both phases
-    moderation :both,
-      threshold: 0.6,
-      categories: [:hate, :violence, :harassment, :self_harm],
-      on_flagged: :raise  # Raise exception instead of blocking
+  # Moderate BOTH input and output
+  # Same threshold and categories apply to both phases
+  moderation :both,
+    threshold: 0.6,
+    categories: [:hate, :violence, :harassment, :self_harm],
+    on_flagged: :raise  # Raise exception instead of blocking
 
-    param :message, required: true
+  param :message, required: true
 
-    def system_prompt
-      <<~PROMPT
-        You are a helpful and friendly customer support assistant.
-        Always be polite, professional, and provide accurate information.
-        If you don't know something, say so honestly.
-      PROMPT
-    end
+  def system_prompt
+    <<~PROMPT
+      You are a helpful and friendly customer support assistant.
+      Always be polite, professional, and provide accurate information.
+      If you don't know something, say so honestly.
+    PROMPT
+  end
 
-    def user_prompt
-      message
-    end
+  def user_prompt
+    message
+  end
 
-    def execution_metadata
-      {
-        showcase: "moderation",
-        features: %w[full_moderation input_output_checks customer_support]
-      }
-    end
+  def execution_metadata
+    {
+      showcase: "moderation",
+      features: %w[full_moderation input_output_checks customer_support]
+    }
   end
 end

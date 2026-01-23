@@ -103,28 +103,26 @@
 #   - multilang_speaker.rb     - Multi-language content (ElevenLabs)
 #   - technical_narrator.rb    - Technical content with pronunciations
 #
-module Llm
-  module Audio
-    class ApplicationSpeaker < RubyLLM::Agents::Speaker
-      # ============================================
-      # Shared Model Configuration
-      # ============================================
-      # These settings are inherited by all speakers
+module Audio
+  class ApplicationSpeaker < RubyLLM::Agents::Speaker
+    # ============================================
+    # Shared Model Configuration
+    # ============================================
+    # These settings are inherited by all speakers
 
-      provider :openai
-      model "tts-1"
-      voice "alloy"
+    provider :openai
+    model "tts-1"
+    voice "alloy"
 
-      # ============================================
-      # Shared Caching
-      # ============================================
+    # ============================================
+    # Shared Caching
+    # ============================================
 
-      # cache_for 1.day  # Enable caching for all speakers
+    # cache_for 1.day  # Enable caching for all speakers
 
-      # ============================================
-      # Shared Helper Methods
-      # ============================================
-      # Define methods here that can be used by all speakers
-    end
+    # ============================================
+    # Shared Helper Methods
+    # ============================================
+    # Define methods here that can be used by all speakers
   end
 end

@@ -18,9 +18,9 @@
 #   - moderation_actions_agent.rb         - Using :raise action with exceptions
 #
 # See these files for standalone moderators:
-#   - text/moderators/content_moderator.rb     - Standard standalone moderator
-#   - text/moderators/child_safe_moderator.rb  - Very strict (threshold 0.3)
-#   - text/moderators/forum_moderator.rb       - Balanced (threshold 0.8)
+#   - moderators/content_moderator.rb     - Standard standalone moderator
+#   - moderators/child_safe_moderator.rb  - Very strict (threshold 0.3)
+#   - moderators/forum_moderator.rb       - Balanced (threshold 0.8)
 #
 # ============================================================================
 #
@@ -41,18 +41,18 @@
 # - violence, violence/graphic
 #
 # @example Basic usage
-#   result = Llm::ModeratedAgent.call(message: "Hello!")
+#   result = ModeratedAgent.call(message: "Hello!")
 #   puts result.content  # => Normal response
 #
 # @example Flagged content
-#   result = Llm::ModeratedAgent.call(message: "harmful content")
+#   result = ModeratedAgent.call(message: "harmful content")
 #   if result.moderation_flagged?
 #     puts "Content blocked: #{result.moderation_categories.join(', ')}"
 #     puts "Phase: #{result.moderation_phase}"
 #   end
 #
 # @example Check moderation result
-#   result = Llm::ModeratedAgent.call(message: "Some text")
+#   result = ModeratedAgent.call(message: "Some text")
 #   if result.moderation_passed?
 #     puts "Content is safe"
 #   else
@@ -61,10 +61,10 @@
 #
 # @example Runtime override
 #   # Disable moderation for specific call
-#   result = Llm::ModeratedAgent.call(message: "test", moderation: false)
+#   result = ModeratedAgent.call(message: "test", moderation: false)
 #
 #   # Override threshold at runtime
-#   result = Llm::ModeratedAgent.call(
+#   result = ModeratedAgent.call(
 #     message: "test",
 #     moderation: { threshold: 0.95 }
 #   )
@@ -77,48 +77,46 @@
 #     puts "Scores: #{e.category_scores}"
 #   end
 #
-module Llm
-  class ModeratedAgent < ApplicationAgent
-    description "Demonstrates content moderation support"
-    version "1.0"
+class ModeratedAgent < ApplicationAgent
+  description "Demonstrates content moderation support"
+  version "1.0"
 
-    model "gpt-4o"
-    temperature 0.7
+  model "gpt-4o"
+  temperature 0.7
 
-    # Enable input moderation
-    # Options:
-    #   :input - Check user input before LLM call
-    #   :output - Check LLM response before returning
-    #   :both - Check both input and output
-    #
-    # Additional options:
-    #   model: - Moderation model (default: omni-moderation-latest)
-    #   threshold: - Score threshold 0.0-1.0 (nil = any flagged)
-    #   categories: - Only flag specific categories
-    #   on_flagged: - Action: :block (default), :raise, :warn, :log
-    #   custom_handler: - Method name for custom handling
-    moderation :input,
-      threshold: 0.7,
-      categories: [:hate, :violence, :harassment]
+  # Enable input moderation
+  # Options:
+  #   :input - Check user input before LLM call
+  #   :output - Check LLM response before returning
+  #   :both - Check both input and output
+  #
+  # Additional options:
+  #   model: - Moderation model (default: omni-moderation-latest)
+  #   threshold: - Score threshold 0.0-1.0 (nil = any flagged)
+  #   categories: - Only flag specific categories
+  #   on_flagged: - Action: :block (default), :raise, :warn, :log
+  #   custom_handler: - Method name for custom handling
+  moderation :input,
+    threshold: 0.7,
+    categories: [:hate, :violence, :harassment]
 
-    param :message, required: true
+  param :message, required: true
 
-    def system_prompt
-      <<~PROMPT
-        You are a helpful and friendly assistant. Always be polite
-        and provide accurate, helpful information.
-      PROMPT
-    end
+  def system_prompt
+    <<~PROMPT
+      You are a helpful and friendly assistant. Always be polite
+      and provide accurate, helpful information.
+    PROMPT
+  end
 
-    def user_prompt
-      message
-    end
+  def user_prompt
+    message
+  end
 
-    def execution_metadata
-      {
-        showcase: "moderation",
-        features: %w[content_moderation input_filtering safety_checks]
-      }
-    end
+  def execution_metadata
+    {
+      showcase: "moderation",
+      features: %w[content_moderation input_filtering safety_checks]
+    }
   end
 end

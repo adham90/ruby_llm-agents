@@ -13,48 +13,46 @@
 # - Product catalogs
 #
 # @example Basic usage
-#   result = Llm::Image::ProductImageGenerator.call(prompt: "Sleek wireless headphones on white background")
+#   result = Images::ProductImageGenerator.call(prompt: "Sleek wireless headphones on white background")
 #   result.url            # => "https://..."
 #   result.save_to("product_headphones.png")
 #
 # @example Product mockup
-#   result = Llm::Image::ProductImageGenerator.call(
+#   result = Images::ProductImageGenerator.call(
 #     prompt: "Minimalist water bottle, brushed steel finish, studio lighting"
 #   )
 #
 # @example With branding
-#   result = Llm::Image::ProductImageGenerator.call(
+#   result = Images::ProductImageGenerator.call(
 #     prompt: "Premium coffee beans in kraft paper bag with 'Acme Coffee' branding"
 #   )
 #
-module Llm
-  module Images
-    class ProductImageGenerator < ApplicationImageGenerator
-      description "Generates high-quality product images for e-commerce"
-      version "1.0"
+module Images
+  class ProductImageGenerator < ApplicationImageGenerator
+    description "Generates high-quality product images for e-commerce"
+    version "1.0"
 
-      # DALL-E 3 for highest quality
-      model "gpt-image-1"
+    # DALL-E 3 for highest quality
+    model "gpt-image-1"
 
-      # Square format for product listings
-      size "1024x1024"
+    # Square format for product listings
+    size "1024x1024"
 
-      # HD quality for product detail
-      quality "hd"
+    # HD quality for product detail
+    quality "hd"
 
-      # Natural style for realistic products
-      style "natural"
+    # Natural style for realistic products
+    style "natural"
 
-      # Strict content policy for commercial use
-      content_policy :strict
+    # Strict content policy for commercial use
+    content_policy :strict
 
-      # Prompt template for consistent product photography style
-      template "Professional product photography: {prompt}. Studio lighting, " \
-               "clean white background, high-end commercial photography style, " \
-               "sharp focus on product details."
+    # Prompt template for consistent product photography style
+    template "Professional product photography: {prompt}. Studio lighting, " \
+             "clean white background, high-end commercial photography style, " \
+             "sharp focus on product details."
 
-      # Cache product images for 1 hour
-      cache_for 1.hour
-    end
+    # Cache product images for 1 hour
+    cache_for 1.hour
   end
 end
