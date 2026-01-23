@@ -68,33 +68,35 @@ module RubyLLM
       # @return [Array<Hash>] Array of base agent stats (for backward compatibility)
       def build_agent_comparison(base_scope = Execution)
         scope = base_scope.last_n_days(@days)
-        agent_types = scope.distinct.pluck(:agent_type)
 
-        all_stats = agent_types.map do |agent_type|
-          agent_scope = scope.where(agent_type: agent_type)
-          count = agent_scope.count
-          total_cost = agent_scope.sum(:total_cost) || 0
-          successful = agent_scope.successful.count
+        # Get ALL agents from registry (file system + execution history)
+        all_agent_types = AgentRegistry.all
 
-          # Detect agent type using AgentRegistry
+        # Batch fetch stats for executed agents (4 queries total)
+        execution_stats = batch_fetch_agent_stats(scope)
+
+        all_stats = all_agent_types.map do |agent_type|
           agent_class = AgentRegistry.find(agent_type)
           detected_type = AgentRegistry.send(:detect_agent_type, agent_class)
-
-          # Get workflow type if applicable
           workflow_type = detected_type == "workflow" ? detect_workflow_type(agent_class) : nil
+
+          # Get stats from batch or use zeros for never-executed agents
+          stats = execution_stats[agent_type] || {
+            count: 0, total_cost: 0, avg_cost: 0, avg_duration_ms: 0, success_rate: 0
+          }
 
           {
             agent_type: agent_type,
             detected_type: detected_type,
-            executions: count,
-            total_cost: total_cost,
-            avg_cost: count > 0 ? (total_cost / count).round(6) : 0,
-            avg_duration_ms: agent_scope.average(:duration_ms)&.round || 0,
-            success_rate: count > 0 ? (successful.to_f / count * 100).round(1) : 0,
+            executions: stats[:count],
+            total_cost: stats[:total_cost],
+            avg_cost: stats[:avg_cost],
+            avg_duration_ms: stats[:avg_duration_ms],
+            success_rate: stats[:success_rate],
             is_workflow: detected_type == "workflow",
             workflow_type: workflow_type
           }
-        end.sort_by { |a| -(a[:total_cost] || 0) }
+        end.sort_by { |a| [-(a[:executions] || 0), -(a[:total_cost] || 0)] }
 
         # Split stats by agent type for 7-tab display
         @agent_stats = all_stats.select { |a| a[:detected_type] == "agent" }
@@ -331,6 +333,32 @@ module RubyLLM
         end
 
         alerts.take(3)
+      end
+
+      # Batch fetches execution stats for all agents in a time period
+      #
+      # @param scope [ActiveRecord::Relation] Base scope with time filter
+      # @return [Hash<String, Hash>] Agent type => stats hash
+      def batch_fetch_agent_stats(scope)
+        counts = scope.group(:agent_type).count
+        costs = scope.group(:agent_type).sum(:total_cost)
+        success_counts = scope.successful.group(:agent_type).count
+        durations = scope.group(:agent_type).average(:duration_ms)
+
+        agent_types = (counts.keys + costs.keys).uniq
+        agent_types.each_with_object({}) do |agent_type, hash|
+          count = counts[agent_type] || 0
+          total_cost = costs[agent_type] || 0
+          successful = success_counts[agent_type] || 0
+
+          hash[agent_type] = {
+            count: count,
+            total_cost: total_cost,
+            avg_cost: count > 0 ? (total_cost / count).round(6) : 0,
+            avg_duration_ms: durations[agent_type]&.round || 0,
+            success_rate: count > 0 ? (successful.to_f / count * 100).round(1) : 0
+          }
+        end
       end
     end
   end
