@@ -109,20 +109,20 @@
 
               <%= render "ruby_llm/agents/agents/sortable_header",
                   column: "execution_count", label: "Executions",
-                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction], align: "right" %>
+                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
 
               <%= render "ruby_llm/agents/agents/sortable_header",
                   column: "total_cost", label: "Cost",
-                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction], align: "right",
+                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction],
                   th_class: "hidden md:table-cell" %>
 
               <%= render "ruby_llm/agents/agents/sortable_header",
                   column: "success_rate", label: "Success",
-                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction], align: "right" %>
+                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
 
               <%= render "ruby_llm/agents/agents/sortable_header",
                   column: "last_executed", label: "Last Run",
-                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction], align: "right" %>
+                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
             </tr>
           </thead>
 
@@ -194,18 +194,18 @@
                 </td>
 
                 <!-- Executions -->
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right font-mono">
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-mono">
                   <%= number_with_delimiter(agent[:execution_count] || 0) %>
                 </td>
 
                 <!-- Cost -->
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right font-mono hidden md:table-cell">
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-mono hidden md:table-cell">
                   $<%= number_with_precision(agent[:total_cost] || 0, precision: 4) %>
                 </td>
 
                 <!-- Success Rate -->
-                <td class="px-4 py-3 whitespace-nowrap text-right">
-                  <div class="flex items-center justify-end gap-1.5">
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <div class="flex items-center gap-1.5">
                     <% if success_rate >= 95 %>
                       <span class="w-2 h-2 rounded-full bg-green-500"></span>
                       <span class="text-sm text-green-600 dark:text-green-400"><%= success_rate %>%</span>
@@ -220,7 +220,7 @@
                 </td>
 
                 <!-- Last Executed -->
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   <% if agent[:last_executed] %>
                     <%= time_ago_in_words(agent[:last_executed]) %> ago
                   <% else %>
@@ -286,18 +286,18 @@
                 </td>
 
                 <!-- Executions -->
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right font-mono">
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-mono">
                   <%= number_with_delimiter(agent[:execution_count] || 0) %>
                 </td>
 
                 <!-- Cost -->
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-right font-mono hidden md:table-cell">
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-mono hidden md:table-cell">
                   $<%= number_with_precision(agent[:total_cost] || 0, precision: 4) %>
                 </td>
 
                 <!-- Success Rate -->
-                <td class="px-4 py-3 whitespace-nowrap text-right">
-                  <div class="flex items-center justify-end gap-1.5">
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <div class="flex items-center gap-1.5">
                     <% if success_rate >= 95 %>
                       <span class="w-2 h-2 rounded-full bg-green-500"></span>
                       <span class="text-sm text-green-600 dark:text-green-400"><%= success_rate %>%</span>
@@ -312,7 +312,7 @@
                 </td>
 
                 <!-- Last Executed -->
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   <% if agent[:last_executed] %>
                     <%= time_ago_in_words(agent[:last_executed]) %> ago
                   <% else %>
