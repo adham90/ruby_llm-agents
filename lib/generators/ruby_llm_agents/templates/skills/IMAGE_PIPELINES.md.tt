@@ -1,4 +1,4 @@
-# <%= @root_namespace %>::Image Pipelines
+# Images Pipelines
 
 This directory contains multi-step image processing pipelines. All pipelines inherit from `ApplicationImagePipeline`.
 
@@ -12,13 +12,11 @@ rails generate ruby_llm_agents:image_pipeline Product --steps generate,upscale,r
 
 Or create manually:
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class ProductPipeline < ApplicationImagePipeline
-      step :generate, generator: ProductGenerator
-      step :upscale, upscaler: PhotoUpscaler, scale: 2
-      step :remove_bg, remover: BackgroundRemover
-    end
+module Images
+  class ProductPipeline < ApplicationImagePipeline
+    step :generate, generator: ProductGenerator
+    step :upscale, upscaler: PhotoUpscaler, scale: 2
+    step :remove_bg, remover: BackgroundRemover
   end
 end
 ```
@@ -77,7 +75,7 @@ cache_for 1.hour     # Cache pipeline results
 ### Basic Execution
 
 ```ruby
-result = <%= @root_namespace %>::Image::ProductPipeline.call(prompt: "Laptop on desk")
+result = Images::ProductPipeline.call(prompt: "Laptop on desk")
 
 result.success?       # All steps succeeded
 result.final_image    # Final processed image
@@ -89,7 +87,7 @@ result.duration_ms    # Total pipeline duration
 ### Access Individual Steps
 
 ```ruby
-result = <%= @root_namespace %>::Image::ProductPipeline.call(prompt: "Product photo")
+result = Images::ProductPipeline.call(prompt: "Product photo")
 
 result.step(:generate)    # Generation step result
 result.step(:upscale)     # Upscale step result
@@ -100,25 +98,23 @@ result.step_count         # Total number of steps
 ### Save Result
 
 ```ruby
-result = <%= @root_namespace %>::Image::ProductPipeline.call(prompt: "...")
+result = Images::ProductPipeline.call(prompt: "...")
 result.save("final_output.png")
 ```
 
 ### Conditional Execution
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class SmartPipeline < ApplicationImagePipeline
-      step :generate, generator: ProductGenerator
-      step :upscale, upscaler: PhotoUpscaler, if: ->(ctx) { ctx[:hd] }
-      step :remove_bg, remover: BackgroundRemover, if: ->(ctx) { ctx[:transparent] }
-    end
+module Images
+  class SmartPipeline < ApplicationImagePipeline
+    step :generate, generator: ProductGenerator
+    step :upscale, upscaler: PhotoUpscaler, if: ->(ctx) { ctx[:hd] }
+    step :remove_bg, remover: BackgroundRemover, if: ->(ctx) { ctx[:transparent] }
   end
 end
 
 # Call with options
-result = <%= @root_namespace %>::Image::SmartPipeline.call(
+result = Images::SmartPipeline.call(
   prompt: "Product photo",
   hd: true,
   transparent: false
@@ -130,26 +126,24 @@ result = <%= @root_namespace %>::Image::SmartPipeline.call(
 ### E-commerce Product Pipeline
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class EcommercePipeline < ApplicationImagePipeline
-      description "Generate and process product images"
-      version "1.0"
+module Images
+  class EcommercePipeline < ApplicationImagePipeline
+    description "Generate and process product images"
+    version "1.0"
 
-      step :generate, generator: ProductGenerator
-      step :upscale, upscaler: PhotoUpscaler, scale: 2
-      step :remove_bg, remover: BackgroundRemover
-      step :analyze, analyzer: ProductAnalyzer
+    step :generate, generator: ProductGenerator
+    step :upscale, upscaler: PhotoUpscaler, scale: 2
+    step :remove_bg, remover: BackgroundRemover
+    step :analyze, analyzer: ProductAnalyzer
 
-      cache_for 1.day
+    cache_for 1.day
 
-      after_pipeline :log_completion
+    after_pipeline :log_completion
 
-      private
+    private
 
-      def log_completion(result)
-        Rails.logger.info("Pipeline completed: cost=#{result.total_cost}")
-      end
+    def log_completion(result)
+      Rails.logger.info("Pipeline completed: cost=#{result.total_cost}")
     end
   end
 end
@@ -158,45 +152,41 @@ end
 ### Marketing Asset Pipeline
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class MarketingPipeline < ApplicationImagePipeline
-      step :generate, generator: MarketingGenerator, quality: "hd"
-      step :transform, transformer: BrandStyleTransformer, strength: 0.3
-      step :variations, variator: DesignVariator, count: 4
+module Images
+  class MarketingPipeline < ApplicationImagePipeline
+    step :generate, generator: MarketingGenerator, quality: "hd"
+    step :transform, transformer: BrandStyleTransformer, strength: 0.3
+    step :variations, variator: DesignVariator, count: 4
 
-      stop_on_error false  # Continue even if transform fails
-    end
+    stop_on_error false  # Continue even if transform fails
   end
 end
 
-result = <%= @root_namespace %>::Image::MarketingPipeline.call(prompt: "Sale banner")
+result = Images::MarketingPipeline.call(prompt: "Sale banner")
 result.step(:variations).images  # Get all variations
 ```
 
 ### Photo Enhancement Pipeline
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class EnhancementPipeline < ApplicationImagePipeline
-      step :upscale, upscaler: PhotoUpscaler, scale: 2
-      step :enhance, transformer: EnhancementTransformer, strength: 0.2
-      step :analyze, analyzer: QualityAnalyzer
+module Images
+  class EnhancementPipeline < ApplicationImagePipeline
+    step :upscale, upscaler: PhotoUpscaler, scale: 2
+    step :enhance, transformer: EnhancementTransformer, strength: 0.2
+    step :analyze, analyzer: QualityAnalyzer
 
-      before_pipeline :validate_image_format
+    before_pipeline :validate_image_format
 
-      private
+    private
 
-      def validate_image_format
-        raise ArgumentError, "Image required" unless context[:image]
-      end
+    def validate_image_format
+      raise ArgumentError, "Image required" unless context[:image]
     end
   end
 end
 
 # Process existing image
-result = <%= @root_namespace %>::Image::EnhancementPipeline.call(image: "photo.jpg")
+result = Images::EnhancementPipeline.call(image: "photo.jpg")
 ```
 
 ## Result Methods

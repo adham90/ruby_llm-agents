@@ -1,45 +1,43 @@
 # frozen_string_literal: true
 
-module <%= @root_namespace %>
-  module Image
+module Images
 <%- if class_name.include?("::") -%>
 <%- class_name.split("::")[0..-2].each_with_index do |mod, i| -%>
-<%= "  " * (i + 2) %>module <%= mod %>
+<%= "  " * (i + 1) %>module <%= mod %>
 <%- end -%>
-<%= "  " * (class_name.split("::").length + 1) %>class <%= class_name.split("::").last %>Analyzer < ApplicationImageAnalyzer
+<%= "  " * class_name.split("::").length %>class <%= class_name.split("::").last %>Analyzer < ApplicationImageAnalyzer
 <%- else -%>
-    class <%= class_name %>Analyzer < ApplicationImageAnalyzer
+  class <%= class_name %>Analyzer < ApplicationImageAnalyzer
 <%- end -%>
-      # Model configuration
-      model "<%= options[:model] %>"
-      analysis_type :<%= options[:analysis_type] %>
+    # Model configuration
+    model "<%= options[:model] %>"
+    analysis_type :<%= options[:analysis_type] %>
 <% if options[:extract_colors] -%>
-      extract_colors true
+    extract_colors true
 <% end -%>
 <% if options[:detect_objects] -%>
-      detect_objects true
+    detect_objects true
 <% end -%>
 <% if options[:extract_text] -%>
-      extract_text true
+    extract_text true
 <% end -%>
-      max_tags <%= options[:max_tags] %>
+    max_tags <%= options[:max_tags] %>
 <% if options[:cache] -%>
 
-      # Caching
-      cache_for <%= options[:cache] %>
+    # Caching
+    cache_for <%= options[:cache] %>
 <% end -%>
 
-      # Optional: Custom analysis prompt
-      # prompt "Analyze this image and describe..."
+    # Optional: Custom analysis prompt
+    # prompt "Analyze this image and describe..."
 
-      # Optional: Description
-      # description "Analyzes <%= class_name.downcase %> images"
+    # Optional: Description
+    # description "Analyzes <%= class_name.downcase %> images"
 <%- if class_name.include?("::") -%>
-<%- (class_name.split("::").length + 1).times do |i| -%>
-<%= "  " * (class_name.split("::").length + 1 - i) %>end
+<%- class_name.split("::").length.times do |i| -%>
+<%= "  " * (class_name.split("::").length - i) %>end
 <%- end -%>
 <%- else -%>
-    end
-<%- end -%>
   end
+<%- end -%>
 end

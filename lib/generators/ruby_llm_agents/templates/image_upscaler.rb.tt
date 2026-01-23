@@ -1,38 +1,36 @@
 # frozen_string_literal: true
 
-module <%= @root_namespace %>
-  module Image
+module Images
 <%- if class_name.include?("::") -%>
 <%- class_name.split("::")[0..-2].each_with_index do |mod, i| -%>
-<%= "  " * (i + 2) %>module <%= mod %>
+<%= "  " * (i + 1) %>module <%= mod %>
 <%- end -%>
-<%= "  " * (class_name.split("::").length + 1) %>class <%= class_name.split("::").last %>Upscaler < ApplicationImageUpscaler
+<%= "  " * class_name.split("::").length %>class <%= class_name.split("::").last %>Upscaler < ApplicationImageUpscaler
 <%- else -%>
-    class <%= class_name %>Upscaler < ApplicationImageUpscaler
+  class <%= class_name %>Upscaler < ApplicationImageUpscaler
 <%- end -%>
-      # Model configuration
-      model "<%= options[:model] %>"
-      scale <%= options[:scale] %>
+    # Model configuration
+    model "<%= options[:model] %>"
+    scale <%= options[:scale] %>
 <% if options[:face_enhance] -%>
-      face_enhance true
+    face_enhance true
 <% end -%>
 <% if options[:cache] -%>
 
-      # Caching
-      cache_for <%= options[:cache] %>
+    # Caching
+    cache_for <%= options[:cache] %>
 <% end -%>
 
-      # Optional: Denoise strength (0.0-1.0)
-      # denoise_strength 0.5
+    # Optional: Denoise strength (0.0-1.0)
+    # denoise_strength 0.5
 
-      # Optional: Description
-      # description "Upscales <%= class_name.downcase %> images"
+    # Optional: Description
+    # description "Upscales <%= class_name.downcase %> images"
 <%- if class_name.include?("::") -%>
-<%- (class_name.split("::").length + 1).times do |i| -%>
-<%= "  " * (class_name.split("::").length + 1 - i) %>end
+<%- class_name.split("::").length.times do |i| -%>
+<%= "  " * (class_name.split("::").length - i) %>end
 <%- end -%>
 <%- else -%>
-    end
-<%- end -%>
   end
+<%- end -%>
 end

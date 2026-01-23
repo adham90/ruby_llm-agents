@@ -1,4 +1,4 @@
-# <%= @root_namespace %> Tools
+# Agents Tools
 
 This directory contains tools that agents can use to perform actions. Tools allow LLM agents to interact with external systems, APIs, databases, and more.
 
@@ -7,7 +7,7 @@ This directory contains tools that agents can use to perform actions. Tools allo
 Tools use the RubyLLM tool interface. Create a class that includes `RubyLLM::Tool`:
 
 ```ruby
-module <%= @root_namespace %>
+module Agents
   class SearchTool
     include RubyLLM::Tool
 
@@ -68,7 +68,7 @@ end
 Register tools in your agent:
 
 ```ruby
-module <%= @root_namespace %>
+module Agents
   class ResearchAgent < ApplicationAgent
     model "gpt-4o"
 
@@ -97,7 +97,7 @@ end
 ### Database Query Tool
 
 ```ruby
-module <%= @root_namespace %>
+module Agents
   class CustomerLookupTool
     include RubyLLM::Tool
 
@@ -129,7 +129,7 @@ end
 ### API Integration Tool
 
 ```ruby
-module <%= @root_namespace %>
+module Agents
   class WeatherTool
     include RubyLLM::Tool
 
@@ -161,7 +161,7 @@ end
 ### Action Tool
 
 ```ruby
-module <%= @root_namespace %>
+module Agents
   class SendEmailTool
     include RubyLLM::Tool
 
@@ -198,7 +198,7 @@ end
 ## Testing Tools
 
 ```ruby
-RSpec.describe <%= @root_namespace %>::SearchTool do
+RSpec.describe Agents::SearchTool do
   describe "#execute" do
     it "returns search results" do
       tool = described_class.new

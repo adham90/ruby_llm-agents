@@ -1,35 +1,33 @@
 # frozen_string_literal: true
 
-module <%= @root_namespace %>
-  module Image
+module Images
 <%- if class_name.include?("::") -%>
 <%- class_name.split("::")[0..-2].each_with_index do |mod, i| -%>
-<%= "  " * (i + 2) %>module <%= mod %>
+<%= "  " * (i + 1) %>module <%= mod %>
 <%- end -%>
-<%= "  " * (class_name.split("::").length + 1) %>class <%= class_name.split("::").last %>Editor < ApplicationImageEditor
+<%= "  " * class_name.split("::").length %>class <%= class_name.split("::").last %>Editor < ApplicationImageEditor
 <%- else -%>
-    class <%= class_name %>Editor < ApplicationImageEditor
+  class <%= class_name %>Editor < ApplicationImageEditor
 <%- end -%>
-      # Model configuration
-      model "<%= options[:model] %>"
-      size "<%= options[:size] %>"
+    # Model configuration
+    model "<%= options[:model] %>"
+    size "<%= options[:size] %>"
 <% if options[:content_policy] != "standard" -%>
-      content_policy :<%= options[:content_policy] %>
+    content_policy :<%= options[:content_policy] %>
 <% end -%>
 <% if options[:cache] -%>
 
-      # Caching
-      cache_for <%= options[:cache] %>
+    # Caching
+    cache_for <%= options[:cache] %>
 <% end -%>
 
-      # Optional: Description
-      # description "Edits <%= class_name.downcase %> images"
+    # Optional: Description
+    # description "Edits <%= class_name.downcase %> images"
 <%- if class_name.include?("::") -%>
-<%- (class_name.split("::").length + 1).times do |i| -%>
-<%= "  " * (class_name.split("::").length + 1 - i) %>end
+<%- class_name.split("::").length.times do |i| -%>
+<%= "  " * (class_name.split("::").length - i) %>end
 <%- end -%>
 <%- else -%>
-    end
-<%- end -%>
   end
+<%- end -%>
 end

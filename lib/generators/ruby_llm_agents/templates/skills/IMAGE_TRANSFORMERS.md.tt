@@ -1,4 +1,4 @@
-# <%= @root_namespace %>::Image Transformers
+# Images Transformers
 
 This directory contains image transformation services (style transfer, img2img). All transformers inherit from `ApplicationImageTransformer`.
 
@@ -12,13 +12,11 @@ rails generate ruby_llm_agents:image_transformer Style --strength 0.8
 
 Or create manually:
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class StyleTransformer < ApplicationImageTransformer
-      model "gpt-image-1"
-      strength 0.7
-      size "1024x1024"
-    end
+module Images
+  class StyleTransformer < ApplicationImageTransformer
+    model "gpt-image-1"
+    strength 0.7
+    size "1024x1024"
   end
 end
 ```
@@ -40,7 +38,7 @@ end
 ## Using Transformers
 
 ```ruby
-result = <%= @root_namespace %>::Image::StyleTransformer.call(
+result = Images::StyleTransformer.call(
   image: "photo.jpg",
   prompt: "Oil painting style, impressionist"
 )
@@ -53,7 +51,7 @@ result.save("transformed.png")
 ### Override Strength
 
 ```ruby
-result = <%= @root_namespace %>::Image::StyleTransformer.call(
+result = Images::StyleTransformer.call(
   image: "photo.jpg",
   prompt: "Watercolor painting",
   strength: 0.5  # More subtle
@@ -65,18 +63,16 @@ result = <%= @root_namespace %>::Image::StyleTransformer.call(
 ### Artistic Style Transfer
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class ArtisticTransformer < ApplicationImageTransformer
-      strength 0.8
+module Images
+  class ArtisticTransformer < ApplicationImageTransformer
+    strength 0.8
 
-      template "{prompt} style, artistic rendering, high quality"
-    end
+    template "{prompt} style, artistic rendering, high quality"
   end
 end
 
 # Usage
-<%= @root_namespace %>::Image::ArtisticTransformer.call(
+Images::ArtisticTransformer.call(
   image: "photo.jpg",
   prompt: "Van Gogh starry night"
 )
@@ -85,14 +81,12 @@ end
 ### Photo Enhancement
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class EnhancementTransformer < ApplicationImageTransformer
-      strength 0.3  # Subtle enhancement
+module Images
+  class EnhancementTransformer < ApplicationImageTransformer
+    strength 0.3  # Subtle enhancement
 
-      def default_prompt
-        "Enhanced lighting, improved colors, professional photography"
-      end
+    def default_prompt
+      "Enhanced lighting, improved colors, professional photography"
     end
   end
 end
@@ -101,13 +95,11 @@ end
 ### Sketch to Photo
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class SketchToPhotoTransformer < ApplicationImageTransformer
-      strength 0.9
+module Images
+  class SketchToPhotoTransformer < ApplicationImageTransformer
+    strength 0.9
 
-      template "Photorealistic version of this sketch: {prompt}"
-    end
+    template "Photorealistic version of this sketch: {prompt}"
   end
 end
 ```

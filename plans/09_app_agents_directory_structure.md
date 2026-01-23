@@ -8,7 +8,38 @@ Define the recommended directory structure for Rails applications using the `rub
 
 - The gem's framework code stays in `lib/ruby_llm/agents/`
 - Applications using the gem need a clear convention for organizing their custom agents
-- This structure should be documented and optionally scaffolded by generators
+- This structure should be documented and scaffolded by generators
+
+## Breaking Changes from Previous Structure
+
+**Old structure (deprecated):**
+```
+app/{root}/                        # Configurable root (default: "llm")
+├── agents/
+├── text/embedders/
+├── image/generators/
+├── image/analyzers/
+├── audio/speakers/
+├── audio/transcribers/
+└── workflows/
+```
+
+**New structure:**
+```
+app/
+├── agents/                        # Fixed location (not configurable)
+│   ├── images/                    # Flat by modality (no operation nesting)
+│   ├── audio/
+│   ├── embedders/
+│   └── moderators/
+└── workflows/
+```
+
+**Key changes:**
+1. Root is now fixed at `app/agents/` (not configurable)
+2. Plural folder names (`images/` not `image/`)
+3. Flat modality folders (no `generators/`, `analyzers/` subfolders)
+4. Simpler namespacing (`Images::Foo` not `Llm::Image::Foo`)
 
 ---
 
@@ -283,42 +314,195 @@ No explicit requires needed.
 
 ---
 
-## Generator Support (Future)
+## Generator Commands
 
-The gem could provide generators:
+The gem provides these generators:
 
 ```bash
+# Install the gem (creates base structure)
+rails generate ruby_llm_agents:install
+
 # Generate a task agent
-rails generate agent CustomerSupport
+rails generate ruby_llm_agents:agent CustomerSupport query:required
 
-# Generate an image agent
-rails generate agent:image ProductGenerator
+# Generate image agents
+rails generate ruby_llm_agents:image_generator Product
+rails generate ruby_llm_agents:image_analyzer Content
+rails generate ruby_llm_agents:image_editor Photo
+rails generate ruby_llm_agents:image_upscaler HighRes
+rails generate ruby_llm_agents:image_variator Style
+rails generate ruby_llm_agents:image_transformer Format
+rails generate ruby_llm_agents:background_remover Product
+rails generate ruby_llm_agents:image_pipeline Product
 
-# Generate an embedder
-rails generate agent:embedder Semantic
+# Generate audio agents
+rails generate ruby_llm_agents:transcriber Meeting
+rails generate ruby_llm_agents:speaker Voice
+
+# Generate text agents
+rails generate ruby_llm_agents:embedder Semantic
+# (moderator generator to be added)
 
 # Generate a workflow
-rails generate workflow ContentPipeline
+rails generate ruby_llm_agents:workflow ContentPipeline
+
+# Migrate from old structure
+rails generate ruby_llm_agents:migrate_structure
+rails generate ruby_llm_agents:migrate_structure --dry-run
 ```
 
 ---
 
-## Migration from Existing Apps
+## Migration from Old Structure
 
-If an app already has agents elsewhere:
+### Automatic Migration
 
-1. Create `app/agents/application_agent.rb`
-2. Move task agents to `app/agents/`
-3. Create modality folders as needed
-4. Update any explicit requires (shouldn't be needed with Zeitwerk)
-5. Update any full class references
+Run the migration generator:
+
+```bash
+# Preview changes (recommended first)
+rails generate ruby_llm_agents:migrate_structure --dry-run
+
+# Execute migration
+rails generate ruby_llm_agents:migrate_structure
+```
+
+### What the Migration Does
+
+1. **Detects old structure** at `app/{root}/` (default: `app/llm/`)
+2. **Creates new directories** under `app/agents/` and `app/workflows/`
+3. **Moves files** with `git mv` when in a git repo
+4. **Updates namespaces** in Ruby files:
+   - `Llm::` → (removed)
+   - `Llm::Image::` → `Images::`
+   - `Llm::Audio::` → `Audio::`
+   - `Llm::Text::` → `Embedders::` or `Moderators::`
+5. **Updates base class references**
+6. **Removes empty old directories**
+
+### File Mapping
+
+| Old Location | New Location |
+|--------------|--------------|
+| `app/llm/agents/*.rb` | `app/agents/*.rb` |
+| `app/llm/image/generators/*.rb` | `app/agents/images/*.rb` |
+| `app/llm/image/analyzers/*.rb` | `app/agents/images/*.rb` |
+| `app/llm/image/editors/*.rb` | `app/agents/images/*.rb` |
+| `app/llm/image/upscalers/*.rb` | `app/agents/images/*.rb` |
+| `app/llm/image/variators/*.rb` | `app/agents/images/*.rb` |
+| `app/llm/image/transformers/*.rb` | `app/agents/images/*.rb` |
+| `app/llm/image/background_removers/*.rb` | `app/agents/images/*.rb` |
+| `app/llm/image/pipelines/*.rb` | `app/agents/images/*.rb` |
+| `app/llm/audio/speakers/*.rb` | `app/agents/audio/*.rb` |
+| `app/llm/audio/transcribers/*.rb` | `app/agents/audio/*.rb` |
+| `app/llm/text/embedders/*.rb` | `app/agents/embedders/*.rb` |
+| `app/llm/workflows/*.rb` | `app/workflows/*.rb` |
+
+### Namespace Mapping
+
+| Old Namespace | New Namespace |
+|---------------|---------------|
+| `Llm::CustomerSupportAgent` | `CustomerSupportAgent` |
+| `Llm::Image::ProductGenerator` | `Images::ProductGenerator` |
+| `Llm::Image::ContentAnalyzer` | `Images::ContentAnalyzer` |
+| `Llm::Audio::MeetingTranscriber` | `Audio::MeetingTranscriber` |
+| `Llm::Audio::VoiceSpeaker` | `Audio::VoiceSpeaker` |
+| `Llm::Text::SemanticEmbedder` | `Embedders::SemanticEmbedder` |
+| `Llm::ContentPipelineWorkflow` | `ContentPipelineWorkflow` |
+
+### Manual Steps After Migration
+
+1. **Update references** in your codebase:
+   ```ruby
+   # Before
+   Llm::Image::ProductGenerator.call(prompt: "...")
+
+   # After
+   Images::ProductGenerator.call(prompt: "...")
+   ```
+
+2. **Update tests** to use new class names
+
+3. **Remove old configuration** (if any):
+   ```ruby
+   # config/initializers/ruby_llm_agents.rb
+   # Remove: config.root_directory = "llm"
+   ```
+
+4. **Verify autoloading** works:
+   ```bash
+   rails runner "puts Images::ProductGenerator"
+   ```
+
+---
+
+## Implementation Plan
+
+### Phase 1: Create Migration Generator
+
+Create `lib/generators/ruby_llm_agents/migrate_structure_generator.rb`:
+
+1. Detect old structure presence
+2. Map old paths to new paths
+3. Move files (with git mv if available)
+4. Update namespaces in moved files
+5. Clean up empty directories
+6. Provide dry-run option
+
+### Phase 2: Update Install Generator
+
+Update `lib/generators/ruby_llm_agents/install_generator.rb`:
+
+1. Remove configurable `root_directory`
+2. Create `app/agents/` structure
+3. Create `app/workflows/` structure
+4. Update templates for new namespacing
+
+### Phase 3: Update All Agent Generators
+
+Update each generator to use new paths:
+
+| Generator | Old Path | New Path |
+|-----------|----------|----------|
+| `agent_generator.rb` | `app/{root}/agents/` | `app/agents/` |
+| `image_generator_generator.rb` | `app/{root}/image/generators/` | `app/agents/images/` |
+| `image_analyzer_generator.rb` | `app/{root}/image/analyzers/` | `app/agents/images/` |
+| `image_editor_generator.rb` | `app/{root}/image/editors/` | `app/agents/images/` |
+| `image_upscaler_generator.rb` | `app/{root}/image/upscalers/` | `app/agents/images/` |
+| `image_variator_generator.rb` | `app/{root}/image/variators/` | `app/agents/images/` |
+| `image_transformer_generator.rb` | `app/{root}/image/transformers/` | `app/agents/images/` |
+| `background_remover_generator.rb` | `app/{root}/image/background_removers/` | `app/agents/images/` |
+| `image_pipeline_generator.rb` | `app/{root}/image/pipelines/` | `app/agents/images/` |
+| `transcriber_generator.rb` | `app/{root}/audio/transcribers/` | `app/agents/audio/` |
+| `speaker_generator.rb` | `app/{root}/audio/speakers/` | `app/agents/audio/` |
+| `embedder_generator.rb` | `app/{root}/text/embedders/` | `app/agents/embedders/` |
+
+### Phase 4: Update Templates
+
+Update all `.rb.tt` templates:
+
+1. Remove `{root_namespace}::` prefixes
+2. Update module names to new convention
+3. Update base class references
+
+### Phase 5: Update Configuration
+
+1. Deprecate `root_directory` config option
+2. Remove from configuration.rb (with deprecation warning)
+3. Update engine.rb autoload paths
+
+### Phase 6: Documentation
+
+1. Update README with new structure
+2. Add UPGRADING.md guide
+3. Update CHANGELOG
 
 ---
 
 ## Open Questions
 
 1. **Should `concerns/` be `agents/concerns/` or just `concerns/`?**
-   - Recommendation: `agents/concerns/` to keep agent-specific code together
+   - Decision: `agents/concerns/` to keep agent-specific code together
 
 2. **What about agent-specific views/partials?**
    - Consider: `app/views/agents/` if agents need UI components
@@ -326,12 +510,17 @@ If an app already has agents elsewhere:
 3. **Testing structure?**
    - Mirror in `spec/agents/` or `test/agents/`
 
+4. **Backwards compatibility period?**
+   - Suggestion: Support old structure with deprecation warnings for 2 minor versions
+
 ---
 
 ## Success Criteria
 
 - [ ] Clear convention documented
-- [ ] Generators produce correct structure
+- [ ] Migration generator works correctly
+- [ ] All agent generators produce correct structure
 - [ ] Rails autoloading works without configuration
 - [ ] Easy to understand for new developers
 - [ ] Scales from 1 agent to 100+ agents
+- [ ] Old structure migration is smooth

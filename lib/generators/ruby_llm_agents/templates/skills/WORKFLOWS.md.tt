@@ -1,4 +1,4 @@
-# <%= @root_namespace %> Workflows
+# Workflows Workflows
 
 This directory contains workflow orchestration classes that compose multiple agents. Workflows provide patterns for sequential, parallel, and conditional agent execution.
 
@@ -17,7 +17,7 @@ This directory contains workflow orchestration classes that compose multiple age
 Execute agents in order, passing each step's output to the next:
 
 ```ruby
-module <%= @root_namespace %>
+module Workflows
   class ContentPipeline < RubyLLM::Agents::Workflow::Pipeline
     version "1.0"
     timeout 120
@@ -35,7 +35,7 @@ end
 Execute multiple agents simultaneously:
 
 ```ruby
-module <%= @root_namespace %>
+module Workflows
   class ReviewAnalyzer < RubyLLM::Agents::Workflow::Parallel
     version "1.0"
 
@@ -59,7 +59,7 @@ end
 Route to different agents based on classification:
 
 ```ruby
-module <%= @root_namespace %>
+module Workflows
   class SupportRouter < RubyLLM::Agents::Workflow::Router
     version "1.0"
     classifier ClassificationAgent
@@ -145,7 +145,7 @@ end
 ### Basic Execution
 
 ```ruby
-result = <%= @root_namespace %>::ContentPipeline.call(text: "raw input")
+result = Workflows::ContentPipeline.call(text: "raw input")
 
 result.success?      # All steps succeeded
 result.partial?      # Some steps succeeded
@@ -158,7 +158,7 @@ result.duration_ms   # Total duration
 ### Pipeline Results
 
 ```ruby
-result = <%= @root_namespace %>::ContentPipeline.call(text: "input")
+result = Workflows::ContentPipeline.call(text: "input")
 
 result.steps                     # Hash of all step results
 result.steps[:extract].content   # Specific step output
@@ -168,7 +168,7 @@ result.errors                    # Hash of step errors
 ### Parallel Results
 
 ```ruby
-result = <%= @root_namespace %>::ReviewAnalyzer.call(text: "Great product!")
+result = Workflows::ReviewAnalyzer.call(text: "Great product!")
 
 result.branches                     # Hash of branch results
 result.branches[:sentiment].content # Specific branch output
@@ -177,7 +177,7 @@ result.branches[:sentiment].content # Specific branch output
 ### Router Results
 
 ```ruby
-result = <%= @root_namespace %>::SupportRouter.call(question: "How do I pay?")
+result = Workflows::SupportRouter.call(question: "How do I pay?")
 
 result.classification  # What route was selected
 result.route          # Which agent handled it
@@ -191,7 +191,7 @@ result.content        # Response from routed agent
 Transform data between pipeline steps:
 
 ```ruby
-module <%= @root_namespace %>
+module Workflows
   class TransformPipeline < RubyLLM::Agents::Workflow::Pipeline
     step :analyze, agent: AnalyzerAgent
     step :enrich,  agent: EnricherAgent
@@ -212,7 +212,7 @@ end
 Combine parallel results:
 
 ```ruby
-module <%= @root_namespace %>
+module Workflows
   class SafetyChecker < RubyLLM::Agents::Workflow::Parallel
     branch :toxicity, agent: ToxicityAgent
     branch :spam,     agent: SpamAgent
@@ -233,7 +233,7 @@ end
 Handle step failures:
 
 ```ruby
-module <%= @root_namespace %>
+module Workflows
   class ResilientPipeline < RubyLLM::Agents::Workflow::Pipeline
     step :primary, agent: PrimaryAgent
     step :backup,  agent: BackupAgent, optional: true
@@ -253,7 +253,7 @@ end
 Stop workflow if cost exceeds threshold:
 
 ```ruby
-module <%= @root_namespace %>
+module Workflows
   class BudgetedWorkflow < RubyLLM::Agents::Workflow::Pipeline
     max_cost 1.00  # Stop if workflow exceeds $1.00
 
@@ -266,7 +266,7 @@ end
 ## Testing Workflows
 
 ```ruby
-RSpec.describe <%= @root_namespace %>::ContentPipeline do
+RSpec.describe Workflows::ContentPipeline do
   describe ".call" do
     it "processes content through all steps" do
       result = described_class.call(text: "test input")

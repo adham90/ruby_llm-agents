@@ -1,4 +1,4 @@
-# <%= @root_namespace %>::Image Editors
+# Images Editors
 
 This directory contains image editing services (inpainting, masked edits). All editors inherit from `ApplicationImageEditor`.
 
@@ -12,13 +12,11 @@ rails generate ruby_llm_agents:image_editor Background --model gpt-image-1
 
 Or create manually:
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class BackgroundEditor < ApplicationImageEditor
-      model "gpt-image-1"
-      size "1024x1024"
-      content_policy :standard
-    end
+module Images
+  class BackgroundEditor < ApplicationImageEditor
+    model "gpt-image-1"
+    size "1024x1024"
+    content_policy :standard
   end
 end
 ```
@@ -36,7 +34,7 @@ end
 ### Basic Edit with Mask
 
 ```ruby
-result = <%= @root_namespace %>::Image::BackgroundEditor.call(
+result = Images::BackgroundEditor.call(
   image: "photo.png",
   mask: "mask.png",
   prompt: "Beautiful sunset sky background"
@@ -51,7 +49,7 @@ result.save("edited.png")
 
 ```ruby
 # Mask should be PNG with transparent areas indicating regions to edit
-result = <%= @root_namespace %>::Image::BackgroundEditor.call(
+result = Images::BackgroundEditor.call(
   image: original_image,
   mask: mask_with_transparent_areas,
   prompt: "Modern city skyline"
@@ -63,15 +61,13 @@ result = <%= @root_namespace %>::Image::BackgroundEditor.call(
 ### Background Replacement
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class BackgroundReplacer < ApplicationImageEditor
-      model "gpt-image-1"
-      size "1024x1024"
+module Images
+  class BackgroundReplacer < ApplicationImageEditor
+    model "gpt-image-1"
+    size "1024x1024"
 
-      def default_prompt
-        "Professional studio background, soft lighting"
-      end
+    def default_prompt
+      "Professional studio background, soft lighting"
     end
   end
 end
@@ -80,15 +76,13 @@ end
 ### Object Removal
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class ObjectRemover < ApplicationImageEditor
-      model "gpt-image-1"
+module Images
+  class ObjectRemover < ApplicationImageEditor
+    model "gpt-image-1"
 
-      # Mask covers the object to remove
-      def default_prompt
-        "Seamless continuation of the surrounding area"
-      end
+    # Mask covers the object to remove
+    def default_prompt
+      "Seamless continuation of the surrounding area"
     end
   end
 end

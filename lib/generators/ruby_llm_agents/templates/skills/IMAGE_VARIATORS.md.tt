@@ -1,4 +1,4 @@
-# <%= @root_namespace %>::Image Variators
+# Images Variators
 
 This directory contains image variation services. All variators inherit from `ApplicationImageVariator`.
 
@@ -12,13 +12,11 @@ rails generate ruby_llm_agents:image_variator Product --count 4
 
 Or create manually:
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class ProductVariator < ApplicationImageVariator
-      model "gpt-image-1"
-      count 4
-      size "1024x1024"
-    end
+module Images
+  class ProductVariator < ApplicationImageVariator
+    model "gpt-image-1"
+    count 4
+    size "1024x1024"
   end
 end
 ```
@@ -40,7 +38,7 @@ end
 ## Using Variators
 
 ```ruby
-result = <%= @root_namespace %>::Image::ProductVariator.call(image: "product.png")
+result = Images::ProductVariator.call(image: "product.png")
 
 result.urls         # Array of variation URLs
 result.images       # Array of image data
@@ -51,7 +49,7 @@ result.total_cost   # Combined cost
 ### Override Count
 
 ```ruby
-result = <%= @root_namespace %>::Image::ProductVariator.call(
+result = Images::ProductVariator.call(
   image: "logo.png",
   count: 8  # Generate 8 variations
 )
@@ -60,7 +58,7 @@ result = <%= @root_namespace %>::Image::ProductVariator.call(
 ### Save All Variations
 
 ```ruby
-result = <%= @root_namespace %>::Image::ProductVariator.call(image: "design.png")
+result = Images::ProductVariator.call(image: "design.png")
 
 result.images.each_with_index do |image_data, i|
   File.write("variation_#{i}.png", image_data)
@@ -72,28 +70,24 @@ end
 ### Design Exploration
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class DesignVariator < ApplicationImageVariator
-      count 6
-      variation_strength 0.5  # Moderate differences
-    end
+module Images
+  class DesignVariator < ApplicationImageVariator
+    count 6
+    variation_strength 0.5  # Moderate differences
   end
 end
 
 # Generate design alternatives
-result = <%= @root_namespace %>::Image::DesignVariator.call(image: "concept.png")
+result = Images::DesignVariator.call(image: "concept.png")
 ```
 
 ### A/B Testing Assets
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class MarketingVariator < ApplicationImageVariator
-      count 4
-      variation_strength 0.3  # Similar but different
-    end
+module Images
+  class MarketingVariator < ApplicationImageVariator
+    count 4
+    variation_strength 0.3  # Similar but different
   end
 end
 ```
@@ -101,13 +95,11 @@ end
 ### Avatar Options
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class AvatarVariator < ApplicationImageVariator
-      count 8
-      size "512x512"
-      variation_strength 0.4
-    end
+module Images
+  class AvatarVariator < ApplicationImageVariator
+    count 8
+    size "512x512"
+    variation_strength 0.4
   end
 end
 ```

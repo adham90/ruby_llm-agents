@@ -1,4 +1,4 @@
-# <%= @root_namespace %>::Image Background Removers
+# Images Background Removers
 
 This directory contains background removal services. All removers inherit from `ApplicationBackgroundRemover`.
 
@@ -12,13 +12,11 @@ rails generate ruby_llm_agents:background_remover Product --edge_refinement high
 
 Or create manually:
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class ProductRemover < ApplicationBackgroundRemover
-      model "remove-bg"
-      edge_refinement :high
-      output_format :png
-    end
+module Images
+  class ProductRemover < ApplicationBackgroundRemover
+    model "remove-bg"
+    edge_refinement :high
+    output_format :png
   end
 end
 ```
@@ -45,7 +43,7 @@ end
 ## Using Removers
 
 ```ruby
-result = <%= @root_namespace %>::Image::ProductRemover.call(image: "product.jpg")
+result = Images::ProductRemover.call(image: "product.jpg")
 
 result.url          # Image URL with transparent background
 result.image_data   # PNG binary data
@@ -56,7 +54,7 @@ result.save("product_nobg.png")
 ### With Background Color
 
 ```ruby
-result = <%= @root_namespace %>::Image::ProductRemover.call(
+result = Images::ProductRemover.call(
   image: "product.jpg",
   background_color: "#FFFFFF"  # White background
 )
@@ -65,7 +63,7 @@ result = <%= @root_namespace %>::Image::ProductRemover.call(
 ### Override Settings
 
 ```ruby
-result = <%= @root_namespace %>::Image::ProductRemover.call(
+result = Images::ProductRemover.call(
   image: "complex_photo.jpg",
   edge_refinement: :high,
   output_format: :webp
@@ -77,14 +75,12 @@ result = <%= @root_namespace %>::Image::ProductRemover.call(
 ### E-commerce Product Photos
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class ProductBackgroundRemover < ApplicationBackgroundRemover
-      edge_refinement :high
-      output_format :png
+module Images
+  class ProductBackgroundRemover < ApplicationBackgroundRemover
+    edge_refinement :high
+    output_format :png
 
-      cache_for 30.days  # Product images don't change often
-    end
+    cache_for 30.days  # Product images don't change often
   end
 end
 ```
@@ -92,24 +88,22 @@ end
 ### Profile Photo Processing
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class AvatarBackgroundRemover < ApplicationBackgroundRemover
-      edge_refinement :high
-      output_format :png
-    end
+module Images
+  class AvatarBackgroundRemover < ApplicationBackgroundRemover
+    edge_refinement :high
+    output_format :png
   end
 end
 
 # Remove background and resize
-result = <%= @root_namespace %>::Image::AvatarBackgroundRemover.call(image: uploaded_photo)
+result = Images::AvatarBackgroundRemover.call(image: uploaded_photo)
 ```
 
 ### Batch Processing
 
 ```ruby
 Product.where(background_removed: false).find_each do |product|
-  result = <%= @root_namespace %>::Image::ProductBackgroundRemover.call(
+  result = Images::ProductBackgroundRemover.call(
     image: product.original_image.download
   )
 

@@ -9,10 +9,9 @@ module RubyLlmAgents
   #   rails generate ruby_llm_agents:embedder Document
   #   rails generate ruby_llm_agents:embedder Document --model text-embedding-3-large
   #   rails generate ruby_llm_agents:embedder Document --dimensions 512
-  #   rails generate ruby_llm_agents:embedder Document --root=ai
   #
   # This will create:
-  #   - app/{root}/text/embedders/document_embedder.rb
+  #   - app/agents/embedders/document_embedder.rb
   #
   class EmbedderGenerator < ::Rails::Generators::NamedBase
     source_root File.expand_path("templates", __dir__)
@@ -25,19 +24,9 @@ module RubyLlmAgents
                  desc: "Texts per API call for batch processing"
     class_option :cache, type: :string, default: nil,
                  desc: "Cache TTL (e.g., '1.week', '1.day')"
-    class_option :root,
-                 type: :string,
-                 default: nil,
-                 desc: "Root directory name (default: uses config or 'llm')"
-    class_option :namespace,
-                 type: :string,
-                 default: nil,
-                 desc: "Root namespace (default: camelized root or config)"
 
     def ensure_base_class_and_skill_file
-      @root_namespace = root_namespace
-      @text_namespace = "#{root_namespace}::Text"
-      embedders_dir = "app/#{root_directory}/text/embedders"
+      embedders_dir = "app/agents/embedders"
 
       # Create directory if needed
       empty_directory embedders_dir
@@ -56,17 +45,15 @@ module RubyLlmAgents
     end
 
     def create_embedder_file
-      # Support nested paths: "search/document" -> "app/{root}/text/embedders/search/document_embedder.rb"
-      @root_namespace = root_namespace
-      @text_namespace = "#{root_namespace}::Text"
+      # Support nested paths: "search/document" -> "app/agents/embedders/search/document_embedder.rb"
       embedder_path = name.underscore
-      template "embedder.rb.tt", "app/#{root_directory}/text/embedders/#{embedder_path}_embedder.rb"
+      template "embedder.rb.tt", "app/agents/embedders/#{embedder_path}_embedder.rb"
     end
 
     def show_usage
       # Build full class name from path
       embedder_class_name = name.split("/").map(&:camelize).join("::")
-      full_class_name = "#{root_namespace}::Text::#{embedder_class_name}Embedder"
+      full_class_name = "Embedders::#{embedder_class_name}Embedder"
       say ""
       say "Embedder #{full_class_name} created!", :green
       say ""
@@ -82,26 +69,6 @@ module RubyLlmAgents
       say "    puts \"Processed batch \#{idx}\""
       say "  end"
       say ""
-    end
-
-    private
-
-    def root_directory
-      @root_directory ||= options[:root] || RubyLLM::Agents.configuration.root_directory
-    end
-
-    def root_namespace
-      @root_namespace ||= options[:namespace] || camelize(root_directory)
-    end
-
-    def camelize(str)
-      # Handle special cases for common abbreviations
-      return "AI" if str.downcase == "ai"
-      return "ML" if str.downcase == "ml"
-      return "LLM" if str.downcase == "llm"
-
-      # Standard camelization
-      str.split(/[-_]/).map(&:capitalize).join
     end
   end
 end

@@ -1,4 +1,4 @@
-# <%= @root_namespace %>::Audio Transcribers
+# Audio Transcribers
 
 This directory contains audio transcription services. All transcribers inherit from `ApplicationTranscriber`.
 
@@ -13,14 +13,12 @@ rails generate ruby_llm_agents:transcriber Podcast --output_format srt
 
 Or create manually:
 ```ruby
-module <%= @root_namespace %>
-  module Audio
-    class MeetingTranscriber < ApplicationTranscriber
-      model "whisper-1"
-      language "en"
-      output_format :text
-      include_timestamps :segment
-    end
+module Audio
+  class MeetingTranscriber < ApplicationTranscriber
+    model "whisper-1"
+    language "en"
+    output_format :text
+    include_timestamps :segment
   end
 end
 ```
@@ -85,7 +83,7 @@ end
 ### Basic Transcription
 
 ```ruby
-result = <%= @root_namespace %>::Audio::MeetingTranscriber.call(audio: "meeting.mp3")
+result = Audio::MeetingTranscriber.call(audio: "meeting.mp3")
 
 result.text         # The transcribed text
 result.duration     # Audio duration in seconds
@@ -96,20 +94,20 @@ result.total_cost   # Cost in USD
 ### From File Path
 
 ```ruby
-result = <%= @root_namespace %>::Audio::MeetingTranscriber.call(audio: "/path/to/audio.mp3")
+result = Audio::MeetingTranscriber.call(audio: "/path/to/audio.mp3")
 ```
 
 ### From Binary Data
 
 ```ruby
 audio_data = File.read("recording.wav", mode: "rb")
-result = <%= @root_namespace %>::Audio::MeetingTranscriber.call(audio: audio_data)
+result = Audio::MeetingTranscriber.call(audio: audio_data)
 ```
 
 ### From URL
 
 ```ruby
-result = <%= @root_namespace %>::Audio::MeetingTranscriber.call(
+result = Audio::MeetingTranscriber.call(
   audio: "https://example.com/audio.mp3"
 )
 ```
@@ -117,17 +115,15 @@ result = <%= @root_namespace %>::Audio::MeetingTranscriber.call(
 ### With Timestamps (SRT)
 
 ```ruby
-module <%= @root_namespace %>
-  module Audio
-    class SubtitleTranscriber < ApplicationTranscriber
-      model "whisper-1"
-      output_format :srt
-      include_timestamps :segment
-    end
+module Audio
+  class SubtitleTranscriber < ApplicationTranscriber
+    model "whisper-1"
+    output_format :srt
+    include_timestamps :segment
   end
 end
 
-result = <%= @root_namespace %>::Audio::SubtitleTranscriber.call(audio: "video.mp4")
+result = Audio::SubtitleTranscriber.call(audio: "video.mp4")
 File.write("subtitles.srt", result.text)
 ```
 
@@ -136,23 +132,21 @@ File.write("subtitles.srt", result.text)
 ### Meeting Transcription
 
 ```ruby
-module <%= @root_namespace %>
-  module Audio
-    class MeetingTranscriber < ApplicationTranscriber
-      model "whisper-1"
-      language "en"
-      cache_for 90.days
+module Audio
+  class MeetingTranscriber < ApplicationTranscriber
+    model "whisper-1"
+    language "en"
+    cache_for 90.days
 
-      def prompt
-        "Business meeting with technical discussions"
-      end
+    def prompt
+      "Business meeting with technical discussions"
+    end
 
-      def postprocess_text(text)
-        text
-          .gsub(/\bum\b/i, '')
-          .gsub(/\buh\b/i, '')
-          .squeeze(' ')
-      end
+    def postprocess_text(text)
+      text
+        .gsub(/\bum\b/i, '')
+        .gsub(/\buh\b/i, '')
+        .squeeze(' ')
     end
   end
 end
@@ -161,16 +155,14 @@ end
 ### Podcast Subtitles
 
 ```ruby
-module <%= @root_namespace %>
-  module Audio
-    class PodcastTranscriber < ApplicationTranscriber
-      model "whisper-1"
-      output_format :vtt
-      include_timestamps :segment
+module Audio
+  class PodcastTranscriber < ApplicationTranscriber
+    model "whisper-1"
+    output_format :vtt
+    include_timestamps :segment
 
-      def prompt
-        "Technology podcast discussing software development"
-      end
+    def prompt
+      "Technology podcast discussing software development"
     end
   end
 end
@@ -179,20 +171,18 @@ end
 ### Voice Note Processing
 
 ```ruby
-module <%= @root_namespace %>
-  module Audio
-    class VoiceNoteTranscriber < ApplicationTranscriber
-      model "whisper-1"
-      output_format :json
+module Audio
+  class VoiceNoteTranscriber < ApplicationTranscriber
+    model "whisper-1"
+    output_format :json
 
-      def postprocess_text(text)
-        # Clean up casual speech
-        text
-          .gsub(/\byou know\b/i, '')
-          .gsub(/\bi mean\b/i, '')
-          .gsub(/\bkind of\b/i, '')
-          .squeeze(' ')
-      end
+    def postprocess_text(text)
+      # Clean up casual speech
+      text
+        .gsub(/\byou know\b/i, '')
+        .gsub(/\bi mean\b/i, '')
+        .gsub(/\bkind of\b/i, '')
+        .squeeze(' ')
     end
   end
 end
@@ -201,24 +191,22 @@ end
 ### Multilingual Transcription
 
 ```ruby
-module <%= @root_namespace %>
-  module Audio
-    class MultilingualTranscriber < ApplicationTranscriber
-      model "whisper-1"
-      # Leave language nil for auto-detection
-      output_format :json
-    end
+module Audio
+  class MultilingualTranscriber < ApplicationTranscriber
+    model "whisper-1"
+    # Leave language nil for auto-detection
+    output_format :json
   end
 end
 
-result = <%= @root_namespace %>::Audio::MultilingualTranscriber.call(audio: "spanish.mp3")
+result = Audio::MultilingualTranscriber.call(audio: "spanish.mp3")
 result.language  # => "es"
 ```
 
 ## Testing Transcribers
 
 ```ruby
-RSpec.describe <%= @root_namespace %>::Audio::MeetingTranscriber do
+RSpec.describe Audio::MeetingTranscriber do
   describe ".call" do
     it "transcribes audio file" do
       result = described_class.call(audio: fixture_file("sample.mp3"))

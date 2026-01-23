@@ -9,10 +9,9 @@ module RubyLlmAgents
   #   rails generate ruby_llm_agents:image_analyzer Product
   #   rails generate ruby_llm_agents:image_analyzer Content --model gpt-4o --analysis_type detailed
   #   rails generate ruby_llm_agents:image_analyzer Photo --extract_colors --detect_objects
-  #   rails generate ruby_llm_agents:image_analyzer Product --root=ai
   #
   # This will create:
-  #   - app/{root}/image/analyzers/product_analyzer.rb
+  #   - app/agents/images/product_analyzer.rb
   #
   class ImageAnalyzerGenerator < ::Rails::Generators::NamedBase
     source_root File.expand_path("templates", __dir__)
@@ -31,46 +30,34 @@ module RubyLlmAgents
                  desc: "Maximum number of tags to return"
     class_option :cache, type: :string, default: nil,
                  desc: "Cache TTL (e.g., '1.hour', '1.day')"
-    class_option :root,
-                 type: :string,
-                 default: nil,
-                 desc: "Root directory name (default: uses config or 'llm')"
-    class_option :namespace,
-                 type: :string,
-                 default: nil,
-                 desc: "Root namespace (default: camelized root or config)"
 
     def ensure_base_class_and_skill_file
-      @root_namespace = root_namespace
-      @image_namespace = "#{root_namespace}::Image"
-      analyzers_dir = "app/#{root_directory}/image/analyzers"
+      images_dir = "app/agents/images"
 
       # Create directory if needed
-      empty_directory analyzers_dir
+      empty_directory images_dir
 
       # Create base class if it doesn't exist
-      base_class_path = "#{analyzers_dir}/application_image_analyzer.rb"
+      base_class_path = "#{images_dir}/application_image_analyzer.rb"
       unless File.exist?(File.join(destination_root, base_class_path))
         template "application_image_analyzer.rb.tt", base_class_path
       end
 
       # Create skill file if it doesn't exist
-      skill_file_path = "#{analyzers_dir}/IMAGE_ANALYZERS.md"
+      skill_file_path = "#{images_dir}/IMAGE_ANALYZERS.md"
       unless File.exist?(File.join(destination_root, skill_file_path))
         template "skills/IMAGE_ANALYZERS.md.tt", skill_file_path
       end
     end
 
     def create_image_analyzer_file
-      @root_namespace = root_namespace
-      @image_namespace = "#{root_namespace}::Image"
       analyzer_path = name.underscore
-      template "image_analyzer.rb.tt", "app/#{root_directory}/image/analyzers/#{analyzer_path}_analyzer.rb"
+      template "image_analyzer.rb.tt", "app/agents/images/#{analyzer_path}_analyzer.rb"
     end
 
     def show_usage
       analyzer_class_name = name.split("/").map(&:camelize).join("::")
-      full_class_name = "#{root_namespace}::Image::#{analyzer_class_name}Analyzer"
+      full_class_name = "Images::#{analyzer_class_name}Analyzer"
       say ""
       say "Image analyzer #{full_class_name} created!", :green
       say ""
@@ -93,23 +80,6 @@ module RubyLlmAgents
       say "  result.objects  # => [{name: 'laptop', location: 'center', confidence: 'high'}]"
       say "  result.colors   # => [{hex: '#C0C0C0', name: 'silver', percentage: 45}]"
       say ""
-    end
-
-    private
-
-    def root_directory
-      @root_directory ||= options[:root] || RubyLLM::Agents.configuration.root_directory
-    end
-
-    def root_namespace
-      @root_namespace ||= options[:namespace] || camelize(root_directory)
-    end
-
-    def camelize(str)
-      return "AI" if str.downcase == "ai"
-      return "ML" if str.downcase == "ml"
-      return "LLM" if str.downcase == "llm"
-      str.split(/[-_]/).map(&:capitalize).join
     end
   end
 end

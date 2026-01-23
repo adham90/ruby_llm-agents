@@ -1,20 +1,22 @@
 # frozen_string_literal: true
 
-# Base class for all image upscalers in the application
-#
-# Inherits from RubyLLM::Agents::ImageUpscaler and provides a common
-# foundation for custom image upscaling classes.
-#
-# @example Creating a custom upscaler
-#   class PhotoUpscaler < ApplicationImageUpscaler
-#     model "real-esrgan"
-#     scale 4
-#     face_enhance true
-#   end
-#
-class ApplicationImageUpscaler < RubyLLM::Agents::ImageUpscaler
-  # Default configuration (can be overridden in subclasses)
-  # model "real-esrgan"
-  # scale 4
-  # face_enhance false
+module Images
+  # Base class for all image upscalers in the application
+  #
+  # Inherits from RubyLLM::Agents::ImageUpscaler and provides a common
+  # foundation for custom image upscaling classes.
+  #
+  # @example Creating a custom upscaler
+  #   class PhotoUpscaler < ApplicationImageUpscaler
+  #     model "real-esrgan"
+  #     scale 4
+  #     face_enhance true
+  #   end
+  #
+  class ApplicationImageUpscaler < RubyLLM::Agents::ImageUpscaler
+    # Default configuration (can be overridden in subclasses)
+    # model "real-esrgan"
+    # scale 4
+    # face_enhance false
+  end
 end

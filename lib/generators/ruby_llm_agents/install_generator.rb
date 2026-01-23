@@ -8,13 +8,13 @@ module RubyLlmAgents
   #
   # Usage:
   #   rails generate ruby_llm_agents:install
-  #   rails generate ruby_llm_agents:install --root=ai
   #
   # This will:
   #   - Create the migration for ruby_llm_agents_executions table
   #   - Create the initializer at config/initializers/ruby_llm_agents.rb
-  #   - Create app/{root}/agents/application_agent.rb base class
-  #   - Create app/{root}/text/embedders/application_embedder.rb base class
+  #   - Create app/agents/application_agent.rb base class
+  #   - Create app/agents/concerns/ directory
+  #   - Create app/workflows/application_workflow.rb base class
   #   - Optionally mount the dashboard engine in routes
   #
   class InstallGenerator < ::Rails::Generators::Base
@@ -28,14 +28,6 @@ module RubyLlmAgents
                  desc: "Skip generating the initializer file"
     class_option :mount_dashboard, type: :boolean, default: true,
                  desc: "Mount the dashboard engine in routes"
-    class_option :root,
-                 type: :string,
-                 default: nil,
-                 desc: "Root directory name (default: uses config or 'llm')"
-    class_option :namespace,
-                 type: :string,
-                 default: nil,
-                 desc: "Root namespace (default: camelized root or config)"
 
     def create_migration_file
       return if options[:skip_migration]
@@ -53,43 +45,38 @@ module RubyLlmAgents
     end
 
     def create_directory_structure
-      say_status :create, "#{root_directory}/ directory structure", :green
+      say_status :create, "agents/ directory structure", :green
 
-      # Create agents directory
-      empty_directory "app/#{root_directory}/agents"
+      # Create agents directory and subdirectories
+      empty_directory "app/agents"
+      empty_directory "app/agents/concerns"
 
-      # Create text/embedders directory
-      empty_directory "app/#{root_directory}/text/embedders"
+      # Create workflows directory
+      empty_directory "app/workflows"
+
+      # Create tools directory
+      empty_directory "app/tools"
     end
 
     def create_application_agent
-      @root_namespace = root_namespace
-      template "application_agent.rb.tt", "app/#{root_directory}/agents/application_agent.rb"
+      template "application_agent.rb.tt", "app/agents/application_agent.rb"
     end
 
-    def create_application_embedder
-      @root_namespace = root_namespace
-      @text_namespace = "#{root_namespace}::Text"
-      template "application_embedder.rb.tt", "app/#{root_directory}/text/embedders/application_embedder.rb"
+    def create_application_workflow
+      template "application_workflow.rb.tt", "app/workflows/application_workflow.rb"
     end
 
     def create_skill_files
-      @root_namespace = root_namespace
       say_status :create, "skill documentation files", :green
 
       # Create agents skill file
-      template "skills/AGENTS.md.tt", "app/#{root_directory}/agents/AGENTS.md"
+      template "skills/AGENTS.md.tt", "app/agents/AGENTS.md"
 
-      # Create embedders skill file
-      template "skills/EMBEDDERS.md.tt", "app/#{root_directory}/text/embedders/EMBEDDERS.md"
+      # Create workflows skill file
+      template "skills/WORKFLOWS.md.tt", "app/workflows/WORKFLOWS.md"
 
-      # Create tools directory and skill file
-      empty_directory "app/#{root_directory}/tools"
-      template "skills/TOOLS.md.tt", "app/#{root_directory}/tools/TOOLS.md"
-
-      # Create workflows directory and skill file
-      empty_directory "app/#{root_directory}/workflows"
-      template "skills/WORKFLOWS.md.tt", "app/#{root_directory}/workflows/WORKFLOWS.md"
+      # Create tools skill file
+      template "skills/TOOLS.md.tt", "app/tools/TOOLS.md"
     end
 
     def mount_dashboard_engine
@@ -112,27 +99,29 @@ module RubyLlmAgents
       say "RubyLLM::Agents has been installed!", :green
       say ""
       say "Directory structure created:"
-      say "  app/#{root_directory}/"
+      say "  app/"
       say "  ├── agents/"
       say "  │   ├── application_agent.rb"
+      say "  │   ├── concerns/"
       say "  │   └── AGENTS.md"
-      say "  ├── text/"
-      say "  │   └── embedders/"
-      say "  │       ├── application_embedder.rb"
-      say "  │       └── EMBEDDERS.md"
-      say "  ├── tools/"
-      say "  │   └── TOOLS.md"
-      say "  └── workflows/"
-      say "      └── WORKFLOWS.md"
+      say "  ├── workflows/"
+      say "  │   ├── application_workflow.rb"
+      say "  │   └── WORKFLOWS.md"
+      say "  └── tools/"
+      say "      └── TOOLS.md"
       say ""
       say "Skill files (*.md) help AI coding assistants understand how to use this gem."
-      say ""
-      say "Namespace: #{root_namespace}::"
       say ""
       say "Next steps:"
       say "  1. Run migrations: rails db:migrate"
       say "  2. Generate an agent: rails generate ruby_llm_agents:agent MyAgent query:required"
       say "  3. Access the dashboard at: /agents"
+      say ""
+      say "Generator commands:"
+      say "  rails generate ruby_llm_agents:agent CustomerSupport query:required"
+      say "  rails generate ruby_llm_agents:image_generator Product"
+      say "  rails generate ruby_llm_agents:transcriber Meeting"
+      say "  rails generate ruby_llm_agents:embedder Semantic"
       say ""
     end
 
@@ -144,18 +133,6 @@ module RubyLlmAgents
 
     def db_migrate_path
       "db/migrate"
-    end
-
-    def root_directory
-      @root_directory ||= options[:root] || RubyLLM::Agents.configuration.root_directory
-    end
-
-    def root_namespace
-      @root_namespace ||= options[:namespace] || camelize(root_directory)
-    end
-
-    def camelize(str)
-      str.split(/[-_]/).map(&:capitalize).join
     end
   end
 end

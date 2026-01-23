@@ -1,44 +1,42 @@
 # frozen_string_literal: true
 
-module <%= @root_namespace %>
-  module Image
+module Images
 <%- if class_name.include?("::") -%>
 <%- class_name.split("::")[0..-2].each_with_index do |mod, i| -%>
-<%= "  " * (i + 2) %>module <%= mod %>
+<%= "  " * (i + 1) %>module <%= mod %>
 <%- end -%>
-<%= "  " * (class_name.split("::").length + 1) %>class <%= class_name.split("::").last %>BackgroundRemover < ApplicationBackgroundRemover
+<%= "  " * class_name.split("::").length %>class <%= class_name.split("::").last %>BackgroundRemover < ApplicationBackgroundRemover
 <%- else -%>
-    class <%= class_name %>BackgroundRemover < ApplicationBackgroundRemover
+  class <%= class_name %>BackgroundRemover < ApplicationBackgroundRemover
 <%- end -%>
-      # Model configuration
-      model "<%= options[:model] %>"
-      output_format :<%= options[:output_format] %>
+    # Model configuration
+    model "<%= options[:model] %>"
+    output_format :<%= options[:output_format] %>
 <% if options[:refine_edges] -%>
-      refine_edges true
+    refine_edges true
 <% end -%>
 <% if options[:alpha_matting] -%>
-      alpha_matting true
+    alpha_matting true
 <% end -%>
 <% if options[:return_mask] -%>
-      return_mask true
+    return_mask true
 <% end -%>
 <% if options[:cache] -%>
 
-      # Caching
-      cache_for <%= options[:cache] %>
+    # Caching
+    cache_for <%= options[:cache] %>
 <% end -%>
 
-      # Optional: Edge threshold
-      # edge_threshold 0.5
+    # Optional: Edge threshold
+    # edge_threshold 0.5
 
-      # Optional: Description
-      # description "Removes backgrounds from <%= class_name.downcase %> images"
+    # Optional: Description
+    # description "Removes backgrounds from <%= class_name.downcase %> images"
 <%- if class_name.include?("::") -%>
-<%- (class_name.split("::").length + 1).times do |i| -%>
-<%= "  " * (class_name.split("::").length + 1 - i) %>end
+<%- class_name.split("::").length.times do |i| -%>
+<%= "  " * (class_name.split("::").length - i) %>end
 <%- end -%>
 <%- else -%>
-    end
-<%- end -%>
   end
+<%- end -%>
 end

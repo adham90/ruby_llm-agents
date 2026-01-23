@@ -7,10 +7,9 @@ module RubyLlmAgents
   #
   # Usage:
   #   rails generate ruby_llm_agents:agent SearchIntent query:required limit:10
-  #   rails generate ruby_llm_agents:agent SearchIntent query:required --root=ai
   #
   # This will create:
-  #   - app/{root}/agents/search_intent_agent.rb
+  #   - app/agents/search_intent_agent.rb
   #
   # Parameter syntax:
   #   name           - Optional parameter
@@ -28,18 +27,9 @@ module RubyLlmAgents
                  desc: "The temperature setting (0.0-1.0)"
     class_option :cache, type: :string, default: nil,
                  desc: "Cache TTL (e.g., '1.hour', '30.minutes')"
-    class_option :root,
-                 type: :string,
-                 default: nil,
-                 desc: "Root directory name (default: uses config or 'llm')"
-    class_option :namespace,
-                 type: :string,
-                 default: nil,
-                 desc: "Root namespace (default: camelized root or config)"
 
     def ensure_base_class_and_skill_file
-      @root_namespace = root_namespace
-      agents_dir = "app/#{root_directory}/agents"
+      agents_dir = "app/agents"
 
       # Create directory if needed
       empty_directory agents_dir
@@ -58,17 +48,15 @@ module RubyLlmAgents
     end
 
     def create_agent_file
-      # Support nested paths: "chat/support" -> "app/{root}/agents/chat/support_agent.rb"
-      # Rails' class_name handles namespacing: "chat/support" -> "Chat::Support"
-      @root_namespace = root_namespace
+      # Support nested paths: "chat/support" -> "app/agents/chat/support_agent.rb"
       agent_path = name.underscore
-      template "agent.rb.tt", "app/#{root_directory}/agents/#{agent_path}_agent.rb"
+      template "agent.rb.tt", "app/agents/#{agent_path}_agent.rb"
     end
 
     def show_usage
-      # Build full class name from path (e.g., "chat/support" -> "Chat::Support")
+      # Build full class name from path (e.g., "chat/support" -> "Chat::SupportAgent")
       agent_class_name = name.split("/").map(&:camelize).join("::")
-      full_class_name = "#{root_namespace}::#{agent_class_name}Agent"
+      full_class_name = "#{agent_class_name}Agent"
       say ""
       say "Agent #{full_class_name} created!", :green
       say ""
@@ -79,24 +67,6 @@ module RubyLlmAgents
     end
 
     private
-
-    def root_directory
-      @root_directory ||= options[:root] || RubyLLM::Agents.configuration.root_directory
-    end
-
-    def root_namespace
-      @root_namespace ||= options[:namespace] || camelize(root_directory)
-    end
-
-    def camelize(str)
-      # Handle special cases for common abbreviations
-      return "AI" if str.downcase == "ai"
-      return "ML" if str.downcase == "ml"
-      return "LLM" if str.downcase == "llm"
-
-      # Standard camelization
-      str.split(/[-_]/).map(&:capitalize).join
-    end
 
     def parsed_params
       @parsed_params ||= params.map do |param|

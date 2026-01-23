@@ -1,4 +1,4 @@
-# <%= @root_namespace %>::Image Analyzers
+# Images Analyzers
 
 This directory contains image analysis services. All analyzers inherit from `ApplicationImageAnalyzer`.
 
@@ -12,14 +12,12 @@ rails generate ruby_llm_agents:image_analyzer Product --model gpt-4o
 
 Or create manually:
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class ProductAnalyzer < ApplicationImageAnalyzer
-      model "gpt-4o"
-      analysis_type :detailed
-      extract_colors true
-      detect_objects true
-    end
+module Images
+  class ProductAnalyzer < ApplicationImageAnalyzer
+    model "gpt-4o"
+    analysis_type :detailed
+    extract_colors true
+    detect_objects true
   end
 end
 ```
@@ -41,7 +39,7 @@ end
 ## Using Analyzers
 
 ```ruby
-result = <%= @root_namespace %>::Image::ProductAnalyzer.call(image: "product.jpg")
+result = Images::ProductAnalyzer.call(image: "product.jpg")
 
 result.description   # Text description
 result.objects       # Detected objects
@@ -53,7 +51,7 @@ result.total_cost    # Cost in USD
 ### Analyze URL
 
 ```ruby
-result = <%= @root_namespace %>::Image::ProductAnalyzer.call(
+result = Images::ProductAnalyzer.call(
   image: "https://example.com/photo.jpg"
 )
 ```
@@ -61,16 +59,14 @@ result = <%= @root_namespace %>::Image::ProductAnalyzer.call(
 ### Custom Analysis Prompt
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class CustomAnalyzer < ApplicationImageAnalyzer
-      model "gpt-4o"
-      analysis_type :custom
+module Images
+  class CustomAnalyzer < ApplicationImageAnalyzer
+    model "gpt-4o"
+    analysis_type :custom
 
-      def analysis_prompt
-        "Analyze this image for: composition, lighting, color harmony. " \
-        "Return JSON with scores from 1-10 for each aspect."
-      end
+    def analysis_prompt
+      "Analyze this image for: composition, lighting, color harmony. " \
+      "Return JSON with scores from 1-10 for each aspect."
     end
   end
 end
@@ -81,15 +77,13 @@ end
 ### Content Moderation
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class ModerationAnalyzer < ApplicationImageAnalyzer
-      model "gpt-4o"
+module Images
+  class ModerationAnalyzer < ApplicationImageAnalyzer
+    model "gpt-4o"
 
-      def analysis_prompt
-        "Analyze this image for inappropriate content. " \
-        "Return JSON with: safe (boolean), reason (string if unsafe)"
-      end
+    def analysis_prompt
+      "Analyze this image for inappropriate content. " \
+      "Return JSON with: safe (boolean), reason (string if unsafe)"
     end
   end
 end
@@ -98,15 +92,13 @@ end
 ### Product Categorization
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class CategoryAnalyzer < ApplicationImageAnalyzer
-      model "gpt-4o"
-      detect_objects true
+module Images
+  class CategoryAnalyzer < ApplicationImageAnalyzer
+    model "gpt-4o"
+    detect_objects true
 
-      def analysis_prompt
-        "Identify the product category, brand if visible, and condition."
-      end
+    def analysis_prompt
+      "Identify the product category, brand if visible, and condition."
     end
   end
 end

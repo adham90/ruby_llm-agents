@@ -1,4 +1,4 @@
-# <%= @root_namespace %>::Image Generators
+# Images Generators
 
 This directory contains image generation services. All generators inherit from `ApplicationImageGenerator`.
 
@@ -13,15 +13,13 @@ rails generate ruby_llm_agents:image_generator Product --quality hd --style vivi
 
 Or create manually:
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class LogoGenerator < ApplicationImageGenerator
-      model "gpt-image-1"
-      size "1024x1024"
-      quality "hd"
-      style "vivid"
-      content_policy :standard
-    end
+module Images
+  class LogoGenerator < ApplicationImageGenerator
+    model "gpt-image-1"
+    size "1024x1024"
+    quality "hd"
+    style "vivid"
+    content_policy :standard
   end
 end
 ```
@@ -100,7 +98,7 @@ end
 ### Basic Generation
 
 ```ruby
-result = <%= @root_namespace %>::Image::LogoGenerator.call(prompt: "Tech startup logo")
+result = Images::LogoGenerator.call(prompt: "Tech startup logo")
 
 result.url          # Temporary URL to generated image
 result.image_data   # Binary image data
@@ -111,14 +109,14 @@ result.total_cost   # Cost in USD
 ### Save to File
 
 ```ruby
-result = <%= @root_namespace %>::Image::LogoGenerator.call(prompt: "Company logo")
+result = Images::LogoGenerator.call(prompt: "Company logo")
 result.save("logo.png")
 ```
 
 ### Generate Multiple Images
 
 ```ruby
-result = <%= @root_namespace %>::Image::LogoGenerator.call(
+result = Images::LogoGenerator.call(
   prompt: "Product photography",
   count: 4
 )
@@ -130,7 +128,7 @@ result.images       # Array of image data
 ### Override Settings at Runtime
 
 ```ruby
-result = <%= @root_namespace %>::Image::LogoGenerator.call(
+result = Images::LogoGenerator.call(
   prompt: "High quality portrait",
   quality: "hd",
   size: "1792x1024",
@@ -143,7 +141,7 @@ result = <%= @root_namespace %>::Image::LogoGenerator.call(
 If ActiveStorage is available:
 
 ```ruby
-result = <%= @root_namespace %>::Image::ProductGenerator.call(prompt: "Product shot")
+result = Images::ProductGenerator.call(prompt: "Product shot")
 
 # Attach to a model
 product.images.attach(
@@ -158,19 +156,17 @@ product.images.attach(
 ### Product Photography
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class ProductGenerator < ApplicationImageGenerator
-      model "gpt-image-1"
-      size "1024x1024"
-      quality "hd"
-      style "natural"
+module Images
+  class ProductGenerator < ApplicationImageGenerator
+    model "gpt-image-1"
+    size "1024x1024"
+    quality "hd"
+    style "natural"
 
-      template "Professional product photography of {prompt}, " \
-               "white background, studio lighting, e-commerce style"
+    template "Professional product photography of {prompt}, " \
+             "white background, studio lighting, e-commerce style"
 
-      negative_prompt "text, watermark, blurry, low quality"
-    end
+    negative_prompt "text, watermark, blurry, low quality"
   end
 end
 ```
@@ -178,17 +174,15 @@ end
 ### Marketing Banners
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class BannerGenerator < ApplicationImageGenerator
-      model "gpt-image-1"
-      size "1792x1024"  # Landscape
-      quality "hd"
-      style "vivid"
+module Images
+  class BannerGenerator < ApplicationImageGenerator
+    model "gpt-image-1"
+    size "1792x1024"  # Landscape
+    quality "hd"
+    style "vivid"
 
-      template "Marketing banner for {prompt}, bold colors, " \
-               "eye-catching design, professional"
-    end
+    template "Marketing banner for {prompt}, bold colors, " \
+             "eye-catching design, professional"
   end
 end
 ```
@@ -196,18 +190,16 @@ end
 ### Avatar Generation
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class AvatarGenerator < ApplicationImageGenerator
-      model "gpt-image-1"
-      size "512x512"
-      quality "standard"
-      style "vivid"
-      content_policy :strict
+module Images
+  class AvatarGenerator < ApplicationImageGenerator
+    model "gpt-image-1"
+    size "512x512"
+    quality "standard"
+    style "vivid"
+    content_policy :strict
 
-      template "Friendly cartoon avatar of {prompt}, " \
-               "professional, approachable, colorful"
-    end
+    template "Friendly cartoon avatar of {prompt}, " \
+             "professional, approachable, colorful"
   end
 end
 ```
@@ -215,26 +207,24 @@ end
 ### Social Media Graphics
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class SocialGenerator < ApplicationImageGenerator
-      model "gpt-image-1"
-      quality "standard"
+module Images
+  class SocialGenerator < ApplicationImageGenerator
+    model "gpt-image-1"
+    quality "standard"
 
-      def preprocess_prompt(prompt)
-        "#{prompt}, social media post, engaging, modern design"
-      end
+    def preprocess_prompt(prompt)
+      "#{prompt}, social media post, engaging, modern design"
     end
   end
 end
 
 # Usage with different sizes
-<%= @root_namespace %>::Image::SocialGenerator.call(
+Images::SocialGenerator.call(
   prompt: "Tech announcement",
   size: "1024x1024"  # Instagram
 )
 
-<%= @root_namespace %>::Image::SocialGenerator.call(
+Images::SocialGenerator.call(
   prompt: "Tech announcement",
   size: "1792x1024"  # Twitter/LinkedIn
 )
@@ -243,7 +233,7 @@ end
 ## Testing Generators
 
 ```ruby
-RSpec.describe <%= @root_namespace %>::Image::LogoGenerator do
+RSpec.describe Images::LogoGenerator do
   describe ".call" do
     it "generates an image" do
       result = described_class.call(prompt: "Test logo")

@@ -1,4 +1,4 @@
-# <%= @root_namespace %> Agents
+# Agents
 
 This directory contains LLM-powered agents for the application. All agents inherit from `ApplicationAgent`.
 
@@ -11,28 +11,45 @@ rails generate ruby_llm_agents:agent AgentName param1:required param2:default_va
 
 Or create manually by extending `ApplicationAgent`:
 ```ruby
-module <%= @root_namespace %>
-  class MyAgent < ApplicationAgent
-    # Configuration
-    model "gpt-4o"
-    temperature 0.0
-    version "1.0"
+class MyAgent < ApplicationAgent
+  # Configuration
+  model "gpt-4o"
+  temperature 0.0
+  version "1.0"
 
-    # Parameters
-    param :query, required: true
-    param :limit, default: 10
+  # Parameters
+  param :query, required: true
+  param :limit, default: 10
 
-    private
+  private
 
-    def system_prompt
-      "You are a helpful assistant."
-    end
+  def system_prompt
+    "You are a helpful assistant."
+  end
 
-    def user_prompt
-      query
-    end
+  def user_prompt
+    query
   end
 end
+```
+
+## Directory Structure
+
+```
+app/agents/
+├── application_agent.rb      # Base class for all agents
+├── concerns/                 # Shared agent mixins
+├── my_agent.rb              # Task agents at root
+├── images/                   # Image operation agents
+│   ├── product_generator.rb
+│   └── content_analyzer.rb
+├── audio/                    # Audio operation agents
+│   ├── meeting_transcriber.rb
+│   └── voice_narrator.rb
+├── embedders/               # Embedding agents
+│   └── semantic_embedder.rb
+└── moderators/              # Moderation agents
+    └── content_moderator.rb
 ```
 
 ## DSL Reference
@@ -178,7 +195,7 @@ end
 
 ```ruby
 # Basic call
-result = <%= @root_namespace %>::MyAgent.call(query: "hello")
+result = MyAgent.call(query: "hello")
 
 # Access result
 result.content          # The response content
@@ -187,27 +204,73 @@ result.output_tokens    # Tokens in response
 result.total_cost       # Cost in USD
 
 # Debug mode (no API call)
-result = <%= @root_namespace %>::MyAgent.call(query: "hello", dry_run: true)
+result = MyAgent.call(query: "hello", dry_run: true)
 
 # Skip cache
-result = <%= @root_namespace %>::MyAgent.call(query: "hello", skip_cache: true)
+result = MyAgent.call(query: "hello", skip_cache: true)
 
 # With attachments
-result = <%= @root_namespace %>::MyAgent.call(query: "describe this", with: "image.png")
+result = MyAgent.call(query: "describe this", with: "image.png")
 
 # Streaming
-<%= @root_namespace %>::MyAgent.stream(query: "hello") do |chunk|
+MyAgent.stream(query: "hello") do |chunk|
   print chunk.content
 end
 
 # Multi-tenancy
-result = <%= @root_namespace %>::MyAgent.call(query: "hello", tenant: current_user)
+result = MyAgent.call(query: "hello", tenant: current_user)
+```
+
+## Specialized Agents
+
+### Image Agents
+```ruby
+# app/agents/images/product_generator.rb
+module Images
+  class ProductGenerator < RubyLLM::Agents::Image::Generator
+    model "dall-e-3"
+    size "1024x1024"
+    quality "hd"
+  end
+end
+
+# Usage
+result = Images::ProductGenerator.call(prompt: "A product photo")
+result.url  # Image URL
+```
+
+### Audio Agents
+```ruby
+# app/agents/audio/meeting_transcriber.rb
+module Audio
+  class MeetingTranscriber < RubyLLM::Agents::Audio::Transcriber
+    model "whisper-1"
+  end
+end
+
+# Usage
+result = Audio::MeetingTranscriber.call(audio: "meeting.mp3")
+result.text  # Transcribed text
+```
+
+### Embedding Agents
+```ruby
+# app/agents/embedders/semantic_embedder.rb
+module Embedders
+  class SemanticEmbedder < RubyLLM::Agents::Embedder
+    model "text-embedding-3-large"
+  end
+end
+
+# Usage
+result = Embedders::SemanticEmbedder.call(text: "Hello world")
+result.embedding  # Vector array
 ```
 
 ## Testing Agents
 
 ```ruby
-RSpec.describe <%= @root_namespace %>::MyAgent do
+RSpec.describe MyAgent do
   describe ".call" do
     it "returns expected result" do
       # Use dry_run for unit tests

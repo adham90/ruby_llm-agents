@@ -1,21 +1,23 @@
 # frozen_string_literal: true
 
-# Base class for all image transformers in the application
-#
-# Inherits from RubyLLM::Agents::ImageTransformer and provides a common
-# foundation for custom image transformation classes.
-#
-# @example Creating a custom transformer
-#   class AnimeTransformer < ApplicationImageTransformer
-#     model "sdxl"
-#     strength 0.8
-#     template "anime style, studio ghibli, {prompt}"
-#   end
-#
-class ApplicationImageTransformer < RubyLLM::Agents::ImageTransformer
-  # Default configuration (can be overridden in subclasses)
-  # model "sdxl"
-  # size "1024x1024"
-  # strength 0.75
-  # preserve_composition true
+module Images
+  # Base class for all image transformers in the application
+  #
+  # Inherits from RubyLLM::Agents::ImageTransformer and provides a common
+  # foundation for custom image transformation classes.
+  #
+  # @example Creating a custom transformer
+  #   class AnimeTransformer < ApplicationImageTransformer
+  #     model "sdxl"
+  #     strength 0.8
+  #     template "anime style, studio ghibli, {prompt}"
+  #   end
+  #
+  class ApplicationImageTransformer < RubyLLM::Agents::ImageTransformer
+    # Default configuration (can be overridden in subclasses)
+    # model "sdxl"
+    # size "1024x1024"
+    # strength 0.75
+    # preserve_composition true
+  end
 end

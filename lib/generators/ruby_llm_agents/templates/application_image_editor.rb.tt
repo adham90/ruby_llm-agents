@@ -1,20 +1,22 @@
 # frozen_string_literal: true
 
-# Base class for all image editors in the application
-#
-# Inherits from RubyLLM::Agents::ImageEditor and provides a common
-# foundation for custom image editing classes.
-#
-# @example Creating a custom editor
-#   class BackgroundEditor < ApplicationImageEditor
-#     model "gpt-image-1"
-#     size "1024x1024"
-#     content_policy :strict
-#   end
-#
-class ApplicationImageEditor < RubyLLM::Agents::ImageEditor
-  # Default configuration (can be overridden in subclasses)
-  # model "gpt-image-1"
-  # size "1024x1024"
-  # content_policy :standard
+module Images
+  # Base class for all image editors in the application
+  #
+  # Inherits from RubyLLM::Agents::ImageEditor and provides a common
+  # foundation for custom image editing classes.
+  #
+  # @example Creating a custom editor
+  #   class BackgroundEditor < ApplicationImageEditor
+  #     model "gpt-image-1"
+  #     size "1024x1024"
+  #     content_policy :strict
+  #   end
+  #
+  class ApplicationImageEditor < RubyLLM::Agents::ImageEditor
+    # Default configuration (can be overridden in subclasses)
+    # model "gpt-image-1"
+    # size "1024x1024"
+    # content_policy :standard
+  end
 end

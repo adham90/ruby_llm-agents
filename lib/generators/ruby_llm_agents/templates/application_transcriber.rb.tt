@@ -1,53 +1,51 @@
 # frozen_string_literal: true
 
-module <%= @root_namespace %>
-  module Audio
-    # ApplicationTranscriber - Base class for all transcribers in this application
-    #
-    # All transcribers inherit from this class. Configure shared settings here
-    # that apply to all transcribers, or override them per-transcriber as needed.
-    #
-    # Example:
-    #   class MeetingTranscriber < ApplicationTranscriber
-    #     language "en"
-    #
-    #     def prompt
-    #       "Business meeting discussion about quarterly results"
-    #     end
-    #   end
-    #
-    # Usage:
-    #   <%= @root_namespace %>::Audio::MeetingTranscriber.call(audio: "meeting.mp3")
-    #
-    class ApplicationTranscriber < RubyLLM::Agents::Transcriber
-      # ============================================
-      # Shared Model Configuration
-      # ============================================
-      # These settings are inherited by all transcribers
+module Audio
+  # ApplicationTranscriber - Base class for all transcribers in this application
+  #
+  # All transcribers inherit from this class. Configure shared settings here
+  # that apply to all transcribers, or override them per-transcriber as needed.
+  #
+  # Example:
+  #   class MeetingTranscriber < ApplicationTranscriber
+  #     language "en"
+  #
+  #     def prompt
+  #       "Business meeting discussion about quarterly results"
+  #     end
+  #   end
+  #
+  # Usage:
+  #   Audio::MeetingTranscriber.call(audio: "meeting.mp3")
+  #
+  class ApplicationTranscriber < RubyLLM::Agents::Transcriber
+    # ============================================
+    # Shared Model Configuration
+    # ============================================
+    # These settings are inherited by all transcribers
 
-      # model "whisper-1"           # Default transcription model
-      # language "en"               # Default language (nil = auto-detect)
-      # output_format :text         # Output format (:text, :srt, :vtt, :json)
-      # include_timestamps :segment # Timestamp granularity (:none, :segment, :word)
+    # model "whisper-1"           # Default transcription model
+    # language "en"               # Default language (nil = auto-detect)
+    # output_format :text         # Output format (:text, :srt, :vtt, :json)
+    # include_timestamps :segment # Timestamp granularity (:none, :segment, :word)
 
-      # ============================================
-      # Shared Caching
-      # ============================================
-      # Same audio always produces same transcription, so caching is effective
+    # ============================================
+    # Shared Caching
+    # ============================================
+    # Same audio always produces same transcription, so caching is effective
 
-      # cache_for 30.days  # Cache transcriptions for 30 days
+    # cache_for 30.days  # Cache transcriptions for 30 days
 
-      # ============================================
-      # Shared Post-processing
-      # ============================================
-      # Override in subclass for custom text cleanup
+    # ============================================
+    # Shared Post-processing
+    # ============================================
+    # Override in subclass for custom text cleanup
 
-      # def postprocess_text(text)
-      #   text
-      #     .gsub(/\bum\b/i, '')     # Remove filler words
-      #     .gsub(/\buh\b/i, '')
-      #     .squeeze(' ')             # Remove extra spaces
-      # end
-    end
+    # def postprocess_text(text)
+    #   text
+    #     .gsub(/\bum\b/i, '')     # Remove filler words
+    #     .gsub(/\buh\b/i, '')
+    #     .squeeze(' ')             # Remove extra spaces
+    # end
   end
 end

@@ -1,4 +1,4 @@
-# <%= @root_namespace %>::Text Embedders
+# Embedders
 
 This directory contains text embedding services for vector search and semantic similarity. All embedders inherit from `ApplicationEmbedder`.
 
@@ -13,14 +13,12 @@ rails generate ruby_llm_agents:embedder Search --dimensions 512 --batch_size 50
 
 Or create manually:
 ```ruby
-module <%= @root_namespace %>
-  module Text
-    class DocumentEmbedder < ApplicationEmbedder
-      model "text-embedding-3-small"
-      dimensions 1536
-      batch_size 100
-      cache_for 1.week
-    end
+module Embedders
+  class DocumentEmbedder < ApplicationEmbedder
+    model "text-embedding-3-small"
+    dimensions 1536
+    batch_size 100
+    cache_for 1.week
   end
 end
 ```
@@ -76,7 +74,7 @@ end
 ### Single Text Embedding
 
 ```ruby
-result = <%= @root_namespace %>::Text::DocumentEmbedder.call(text: "Hello world")
+result = Embedders::DocumentEmbedder.call(text: "Hello world")
 
 result.embedding    # [0.123, -0.456, ...] vector array
 result.dimensions   # 1536
@@ -90,7 +88,7 @@ Process multiple texts efficiently:
 
 ```ruby
 texts = ["Hello world", "Goodbye world", "Ruby programming"]
-result = <%= @root_namespace %>::Text::DocumentEmbedder.call(texts: texts)
+result = Embedders::DocumentEmbedder.call(texts: texts)
 
 result.embeddings   # Array of embedding vectors
 result.count        # 3
@@ -112,7 +110,7 @@ end
 
 # Generate and store embedding
 document = Document.find(1)
-result = <%= @root_namespace %>::Text::DocumentEmbedder.call(text: document.content)
+result = Embedders::DocumentEmbedder.call(text: document.content)
 document.update!(embedding: result.embedding)
 ```
 
@@ -120,7 +118,7 @@ document.update!(embedding: result.embedding)
 
 ```ruby
 # Embed the query
-query_result = <%= @root_namespace %>::Text::SearchEmbedder.call(text: "ruby web framework")
+query_result = Embedders::SearchEmbedder.call(text: "ruby web framework")
 
 # Find similar documents
 similar = Document.nearest_neighbors(:embedding, query_result.embedding, distance: "cosine")
@@ -132,20 +130,18 @@ similar = Document.nearest_neighbors(:embedding, query_result.embedding, distanc
 ### Document Embedding
 
 ```ruby
-module <%= @root_namespace %>
-  module Text
-    class DocumentEmbedder < ApplicationEmbedder
-      model "text-embedding-3-large"
-      dimensions 1024
-      batch_size 50
-      cache_for 30.days
+module Embedders
+  class DocumentEmbedder < ApplicationEmbedder
+    model "text-embedding-3-large"
+    dimensions 1024
+    batch_size 50
+    cache_for 30.days
 
-      def preprocess(text)
-        text
-          .strip
-          .gsub(/\s+/, ' ')
-          .truncate(8000)
-      end
+    def preprocess(text)
+      text
+        .strip
+        .gsub(/\s+/, ' ')
+        .truncate(8000)
     end
   end
 end
@@ -154,16 +150,14 @@ end
 ### Search Query Embedding
 
 ```ruby
-module <%= @root_namespace %>
-  module Text
-    class SearchEmbedder < ApplicationEmbedder
-      model "text-embedding-3-small"
-      dimensions 512
-      cache_for 1.hour  # Queries may repeat
+module Embedders
+  class SearchEmbedder < ApplicationEmbedder
+    model "text-embedding-3-small"
+    dimensions 512
+    cache_for 1.hour  # Queries may repeat
 
-      def preprocess(text)
-        text.strip.downcase
-      end
+    def preprocess(text)
+      text.strip.downcase
     end
   end
 end
@@ -172,20 +166,18 @@ end
 ### Code Embedding
 
 ```ruby
-module <%= @root_namespace %>
-  module Text
-    class CodeEmbedder < ApplicationEmbedder
-      model "text-embedding-3-large"
-      cache_for 7.days
+module Embedders
+  class CodeEmbedder < ApplicationEmbedder
+    model "text-embedding-3-large"
+    cache_for 7.days
 
-      def preprocess(text)
-        # Remove comments, normalize whitespace
-        text
-          .gsub(/#.*$/, '')
-          .gsub(/\/\/.*$/, '')
-          .gsub(/\s+/, ' ')
-          .strip
-      end
+    def preprocess(text)
+      # Remove comments, normalize whitespace
+      text
+        .gsub(/#.*$/, '')
+        .gsub(/\/\/.*$/, '')
+        .gsub(/\s+/, ' ')
+        .strip
     end
   end
 end
@@ -198,13 +190,13 @@ end
 Document.find_each(batch_size: 100) do |doc|
   next if doc.embedding.present?
 
-  result = <%= @root_namespace %>::Text::DocumentEmbedder.call(text: doc.content)
+  result = Embedders::DocumentEmbedder.call(text: doc.content)
   doc.update!(embedding: result.embedding)
 end
 
 # Or batch multiple at once
 texts = Document.where(embedding: nil).limit(100).pluck(:id, :content)
-results = <%= @root_namespace %>::Text::DocumentEmbedder.call(texts: texts.map(&:last))
+results = Embedders::DocumentEmbedder.call(texts: texts.map(&:last))
 
 texts.each_with_index do |(id, _), index|
   Document.find(id).update!(embedding: results.embeddings[index])
@@ -214,7 +206,7 @@ end
 ## Testing Embedders
 
 ```ruby
-RSpec.describe <%= @root_namespace %>::Text::DocumentEmbedder do
+RSpec.describe Embedders::DocumentEmbedder do
   describe ".call" do
     it "returns embedding vector" do
       result = described_class.call(text: "Hello world")

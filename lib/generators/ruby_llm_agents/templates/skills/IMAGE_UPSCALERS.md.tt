@@ -1,4 +1,4 @@
-# <%= @root_namespace %>::Image Upscalers
+# Images Upscalers
 
 This directory contains image upscaling services. All upscalers inherit from `ApplicationImageUpscaler`.
 
@@ -12,13 +12,11 @@ rails generate ruby_llm_agents:image_upscaler Photo --scale 4
 
 Or create manually:
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class PhotoUpscaler < ApplicationImageUpscaler
-      model "esrgan"
-      scale 4
-      denoise true
-    end
+module Images
+  class PhotoUpscaler < ApplicationImageUpscaler
+    model "esrgan"
+    scale 4
+    denoise true
   end
 end
 ```
@@ -40,7 +38,7 @@ end
 ## Using Upscalers
 
 ```ruby
-result = <%= @root_namespace %>::Image::PhotoUpscaler.call(image: "small.jpg")
+result = Images::PhotoUpscaler.call(image: "small.jpg")
 
 result.url              # Upscaled image URL
 result.image_data       # Binary data
@@ -52,7 +50,7 @@ result.save("large.png")
 ### Override Scale
 
 ```ruby
-result = <%= @root_namespace %>::Image::PhotoUpscaler.call(
+result = Images::PhotoUpscaler.call(
   image: "thumbnail.jpg",
   scale: 2  # Just double it
 )
@@ -63,13 +61,11 @@ result = <%= @root_namespace %>::Image::PhotoUpscaler.call(
 ### Thumbnail Enhancement
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class ThumbnailUpscaler < ApplicationImageUpscaler
-      scale 4
-      denoise true
-      sharpen true
-    end
+module Images
+  class ThumbnailUpscaler < ApplicationImageUpscaler
+    scale 4
+    denoise true
+    sharpen true
   end
 end
 ```
@@ -77,12 +73,10 @@ end
 ### Print Preparation
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class PrintUpscaler < ApplicationImageUpscaler
-      scale 4
-      denoise false  # Preserve original detail
-    end
+module Images
+  class PrintUpscaler < ApplicationImageUpscaler
+    scale 4
+    denoise false  # Preserve original detail
   end
 end
 ```
@@ -90,13 +84,11 @@ end
 ### Avatar Enhancement
 
 ```ruby
-module <%= @root_namespace %>
-  module Image
-    class AvatarUpscaler < ApplicationImageUpscaler
-      scale 2  # Modest upscale
-      denoise true
-      sharpen true
-    end
+module Images
+  class AvatarUpscaler < ApplicationImageUpscaler
+    scale 2  # Modest upscale
+    denoise true
+    sharpen true
   end
 end
 ```
