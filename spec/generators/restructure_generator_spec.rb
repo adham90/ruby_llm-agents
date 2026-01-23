@@ -3,7 +3,7 @@
 require "rails_helper"
 require "generators/ruby_llm_agents/restructure_generator"
 
-RSpec.describe RubyLlmAgents::RestructureGenerator, type: :generator, skip: "Restructure generator needs rework - configuration path_for doesn't respect root_directory option" do
+RSpec.describe RubyLlmAgents::RestructureGenerator, type: :generator do
   # Use the standard DESTINATION_ROOT from GeneratorHelpers
   # and stub Rails.root to point to it
 

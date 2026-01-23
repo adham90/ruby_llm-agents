@@ -218,6 +218,99 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
         # Should not raise
         expect { middleware.call(context) }.not_to raise_error
       end
+
+      it "handles complex objects that fail to_json" do
+        # Create an object that will fail JSON serialization
+        complex_object = Object.new
+        def complex_object.to_json
+          raise "Cannot serialize"
+        end
+
+        def complex_object.to_s
+          "fallback_string"
+        end
+
+        context = RubyLLM::Agents::Pipeline::Context.new(
+          input: complex_object,
+          agent_class: agent_class
+        )
+
+        allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+
+        # Should not raise, falls back to to_s
+        expect { middleware.call(context) }.not_to raise_error
+      end
+    end
+
+    context "error handling" do
+      it "continues execution when cache read fails" do
+        context = build_context
+        expected_output = { embedding: [0.4, 0.5, 0.6] }
+
+        # Make cache read fail
+        allow(cache_store).to receive(:read).and_raise(StandardError.new("Read failed"))
+
+        expect(app).to receive(:call) do |ctx|
+          ctx.output = expected_output
+          ctx
+        end
+
+        result = middleware.call(context)
+        expect(result.output).to eq(expected_output)
+      end
+
+      it "continues execution when cache write fails" do
+        context = build_context
+        expected_output = { embedding: [0.4, 0.5, 0.6] }
+
+        # Allow read but fail write
+        allow(cache_store).to receive(:read).and_return(nil)
+        allow(cache_store).to receive(:write).and_raise(StandardError.new("Write failed"))
+
+        expect(app).to receive(:call) do |ctx|
+          ctx.output = expected_output
+          ctx
+        end
+
+        result = middleware.call(context)
+        expect(result.output).to eq(expected_output)
+      end
+
+      it "passes through when cache_store raises an error" do
+        context = build_context
+
+        # Make configuration fail when accessing cache_store
+        allow(config).to receive(:cache_store).and_raise(StandardError.new("Config error"))
+
+        expect(app).to receive(:call).with(context).and_return(context)
+
+        result = middleware.call(context)
+        expect(result).to eq(context)
+      end
+    end
+
+    context "with skip_cache option" do
+      it "skips cache read but still writes when skip_cache is true" do
+        context = build_context(skip_cache: true)
+        cached_output = { embedding: [0.1, 0.2, 0.3] }
+        new_output = { embedding: [0.4, 0.5, 0.6] }
+
+        # Pre-populate cache
+        cache_key = "ruby_llm_agents/embedding/TestAgent/1.0/test-model/#{Digest::SHA256.hexdigest('test input')}"
+        cache_store.write(cache_key, cached_output)
+
+        # Should call the next middleware even though cache has a value
+        expect(app).to receive(:call) do |ctx|
+          ctx.output = new_output
+          ctx
+        end
+
+        result = middleware.call(context)
+
+        # Should get the fresh result, not cached
+        expect(result.output).to eq(new_output)
+        expect(result.cached).to be_falsey
+      end
     end
   end
 end

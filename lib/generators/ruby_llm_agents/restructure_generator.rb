@@ -190,7 +190,7 @@ module RubyLlmAgents
     private
 
     def root_directory
-      @root_directory ||= options[:root] || RubyLLM::Agents.configuration.root_directory
+      @root_directory ||= options[:root] || RubyLLM::Agents.configuration.root_directory || "agents"
     end
 
     def root_namespace

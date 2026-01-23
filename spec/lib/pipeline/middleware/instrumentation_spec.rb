@@ -560,5 +560,219 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
       middleware.call(context)
     end
+
+    it "falls back to false when tracking config raises an error" do
+      agent_class = Class.new do
+        def self.name; "ErrorAgent"; end
+        def self.agent_type; :unknown_type; end
+        def self.model; "test-model"; end
+      end
+
+      middleware = described_class.new(app, agent_class)
+      context = RubyLLM::Agents::Pipeline::Context.new(input: "test", agent_class: agent_class)
+
+      # Make config raise an error
+      allow(RubyLLM::Agents).to receive(:configuration).and_raise(StandardError.new("Config error"))
+      allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+
+      # Should not raise, just skip tracking
+      expect { middleware.call(context) }.not_to raise_error
+    end
+  end
+
+  describe "multi-tenancy support" do
+    let(:mock_execution) do
+      instance_double("RubyLLM::Agents::Execution",
+                      id: 123,
+                      status: "running",
+                      class: RubyLLM::Agents::Execution)
+    end
+
+    before do
+      allow(config).to receive(:track_embeddings).and_return(true)
+      stub_const("RubyLLM::Agents::Execution", Class.new)
+    end
+
+    it "includes tenant_id when multi-tenancy is enabled" do
+      allow(config).to receive(:multi_tenancy_enabled?).and_return(true)
+
+      context = build_context
+      context.tenant_id = "tenant-123"
+
+      allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+
+      expect(RubyLLM::Agents::Execution).to receive(:create!).with(
+        hash_including(tenant_id: "tenant-123")
+      ).and_return(mock_execution)
+
+      allow(mock_execution).to receive(:update!)
+
+      middleware.call(context)
+    end
+
+    it "omits tenant_id when multi-tenancy is disabled" do
+      allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
+
+      context = build_context
+      context.tenant_id = "tenant-123"
+
+      allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+
+      expect(RubyLLM::Agents::Execution).to receive(:create!).with(
+        hash_not_including(:tenant_id)
+      ).and_return(mock_execution)
+
+      allow(mock_execution).to receive(:update!)
+
+      middleware.call(context)
+    end
+  end
+
+  describe "cache key tracking" do
+    let(:mock_execution) do
+      instance_double("RubyLLM::Agents::Execution",
+                      id: 123,
+                      status: "running",
+                      class: RubyLLM::Agents::Execution)
+    end
+
+    before do
+      allow(config).to receive(:track_embeddings).and_return(true)
+      allow(config).to receive(:respond_to?).with(:track_cache_hits).and_return(true)
+      allow(config).to receive(:track_cache_hits).and_return(true)
+      allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
+      stub_const("RubyLLM::Agents::Execution", Class.new)
+    end
+
+    it "includes cache key for cached results" do
+      context = build_context
+      context.cached = true
+      context[:cache_key] = "ruby_llm_agents/test/key"
+
+      allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+      allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+
+      expect(mock_execution).to receive(:update!).with(
+        hash_including(response_cache_key: "ruby_llm_agents/test/key")
+      )
+
+      middleware.call(context)
+    end
+  end
+
+  describe "metadata tracking" do
+    let(:mock_execution) do
+      instance_double("RubyLLM::Agents::Execution",
+                      id: 123,
+                      status: "running",
+                      class: RubyLLM::Agents::Execution)
+    end
+
+    before do
+      allow(config).to receive(:track_embeddings).and_return(true)
+      allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
+      stub_const("RubyLLM::Agents::Execution", Class.new)
+    end
+
+    it "includes custom metadata in execution record when metadata is present" do
+      context = build_context
+      # Use the []= method to set metadata directly on the context's @metadata hash
+      context[:custom_field] = "custom_value"
+      context[:request_id] = "req-123"
+
+      # Verify metadata is set
+      expect(context.metadata).not_to be_empty
+
+      allow(app).to receive(:call) do |ctx|
+        ctx.output = "result"
+        ctx
+      end
+      allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+
+      # The middleware only includes metadata if context.metadata.any? is true
+      expect(mock_execution).to receive(:update!) do |data|
+        # Metadata should be included when context has metadata entries
+        expect(data[:status]).to eq("success")
+        # Check if metadata was properly propagated
+        if context.metadata.any?
+          expect(data).to have_key(:metadata)
+        end
+      end
+
+      middleware.call(context)
+    end
+
+    it "does not include metadata key when metadata is empty" do
+      context = build_context
+      # Don't add any metadata
+
+      allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+      allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+
+      expect(mock_execution).to receive(:update!).with(
+        hash_not_including(:metadata)
+      )
+
+      middleware.call(context)
+    end
+  end
+
+  describe "parameter sanitization" do
+    let(:mock_execution) do
+      instance_double("RubyLLM::Agents::Execution",
+                      id: 123,
+                      status: "running",
+                      class: RubyLLM::Agents::Execution)
+    end
+
+    let(:agent_class_with_options) do
+      Class.new do
+        def self.name; "AgentWithOptions"; end
+        def self.agent_type; :embedding; end
+        def self.model; "test-model"; end
+      end
+    end
+
+    before do
+      allow(config).to receive(:track_embeddings).and_return(true)
+      allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
+      stub_const("RubyLLM::Agents::Execution", Class.new)
+    end
+
+    it "redacts sensitive parameters" do
+      agent_instance = instance_double("AgentInstance")
+      allow(agent_instance).to receive(:respond_to?).with(:options, true).and_return(true)
+      allow(agent_instance).to receive(:options).and_return({
+        query: "test query",
+        api_key: "secret-key",
+        password: "secret-pass",
+        token: "bearer-token",
+        normal_param: "normal"
+      })
+
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: agent_class_with_options,
+        agent_instance: agent_instance
+      )
+
+      allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+
+      expect(RubyLLM::Agents::Execution).to receive(:create!).with(
+        hash_including(
+          parameters: hash_including(
+            "query" => "test query",
+            "api_key" => "[REDACTED]",
+            "password" => "[REDACTED]",
+            "token" => "[REDACTED]",
+            "normal_param" => "normal"
+          )
+        )
+      ).and_return(mock_execution)
+
+      allow(mock_execution).to receive(:update!)
+
+      middleware.call(context)
+    end
   end
 end

@@ -754,4 +754,190 @@ RSpec.describe RubyLLM::Agents::Configuration do
       end
     end
   end
+
+  describe "#all_retryable_patterns" do
+    it "returns all patterns from default_retryable_patterns" do
+      patterns = config.all_retryable_patterns
+      expect(patterns).to include("rate limit")
+      expect(patterns).to include("429")
+      expect(patterns).to include("500")
+      expect(patterns).to include("overloaded")
+    end
+
+    it "flattens and deduplicates patterns" do
+      config.default_retryable_patterns = {
+        category1: ["pattern1", "pattern2"],
+        category2: ["pattern2", "pattern3"]
+      }
+      patterns = config.all_retryable_patterns
+      expect(patterns).to eq(%w[pattern1 pattern2 pattern3])
+    end
+  end
+
+  describe "#async_available?" do
+    it "returns a boolean value" do
+      # Since we're testing in a Rails context where Async may be available
+      result = config.async_available?
+      # It returns truthy/falsy based on whether Async is defined
+      expect(result).to satisfy { |v| v == true || v == false || v.nil? }
+    end
+
+    it "returns truthy when Async and Async::Semaphore are defined" do
+      stub_const("Async", Module.new)
+      stub_const("Async::Semaphore", Class.new)
+      expect(config.async_available?).to be_truthy
+    end
+
+    it "returns falsy when Async is not defined" do
+      hide_const("Async") if defined?(Async)
+      new_config = described_class.new
+      expect(new_config.async_available?).to be_falsy
+    end
+  end
+
+  describe "#async_context?" do
+    it "returns false when not in an async context" do
+      # In a normal test context, we should not be in an async context
+      expect(config.async_context?).to be false
+    end
+
+    it "returns false when async is not available" do
+      allow(config).to receive(:async_available?).and_return(false)
+      expect(config.async_context?).to be false
+    end
+  end
+
+  describe "moderation configuration" do
+    it "sets default moderation model" do
+      expect(config.default_moderation_model).to eq("omni-moderation-latest")
+    end
+
+    it "sets default moderation threshold to nil" do
+      expect(config.default_moderation_threshold).to be_nil
+    end
+
+    it "sets default moderation action to :block" do
+      expect(config.default_moderation_action).to eq(:block)
+    end
+
+    it "enables moderation tracking by default" do
+      expect(config.track_moderation).to be true
+    end
+  end
+
+  describe "transcription configuration" do
+    it "sets default transcription model" do
+      expect(config.default_transcription_model).to eq("whisper-1")
+    end
+
+    it "enables transcription tracking by default" do
+      expect(config.track_transcriptions).to be true
+    end
+  end
+
+  describe "TTS configuration" do
+    it "sets default TTS provider" do
+      expect(config.default_tts_provider).to eq(:openai)
+    end
+
+    it "sets default TTS model" do
+      expect(config.default_tts_model).to eq("tts-1")
+    end
+
+    it "sets default TTS voice" do
+      expect(config.default_tts_voice).to eq("nova")
+    end
+
+    it "enables speech tracking by default" do
+      expect(config.track_speech).to be true
+    end
+  end
+
+  describe "image generation configuration" do
+    it "sets default image model" do
+      expect(config.default_image_model).to eq("gpt-image-1")
+    end
+
+    it "sets default image size" do
+      expect(config.default_image_size).to eq("1024x1024")
+    end
+
+    it "sets default image quality" do
+      expect(config.default_image_quality).to eq("standard")
+    end
+
+    it "sets default image style" do
+      expect(config.default_image_style).to eq("vivid")
+    end
+
+    it "enables image generation tracking by default" do
+      expect(config.track_image_generation).to be true
+    end
+
+    it "sets image model aliases" do
+      aliases = config.image_model_aliases
+      expect(aliases[:fast]).to eq("flux-schnell")
+      expect(aliases[:quality]).to eq("gpt-image-1")
+      expect(aliases[:cheap]).to eq("sdxl")
+    end
+  end
+
+  describe "thinking configuration" do
+    it "sets default thinking to nil" do
+      expect(config.default_thinking).to be_nil
+    end
+
+    it "can be set with effort and budget" do
+      config.default_thinking = { effort: :high, budget: 10000 }
+      expect(config.default_thinking).to eq({ effort: :high, budget: 10000 })
+    end
+  end
+
+  describe "namespace_for with custom root_namespace" do
+    before do
+      config.root_namespace = "LLM"
+    end
+
+    it "returns LLM for nil category" do
+      expect(config.namespace_for(nil)).to eq("LLM")
+    end
+
+    it "returns LLM::Images for :images category" do
+      expect(config.namespace_for(:images)).to eq("LLM::Images")
+    end
+
+    it "returns LLM::Audio for :audio category" do
+      expect(config.namespace_for(:audio)).to eq("LLM::Audio")
+    end
+
+    it "returns LLM::Text for :text category" do
+      expect(config.namespace_for(:text)).to eq("LLM::Text")
+    end
+
+    it "returns LLM::Image for :image category" do
+      expect(config.namespace_for(:image)).to eq("LLM::Image")
+    end
+  end
+
+  describe "path_for with custom root_directory" do
+    before do
+      config.root_directory = "llm"
+    end
+
+    it "returns app/llm for nil category" do
+      expect(config.path_for(nil)).to eq("app/llm")
+    end
+
+    it "returns app/llm/agents for agents type" do
+      expect(config.path_for(nil, "agents")).to eq("app/llm/agents")
+    end
+
+    it "returns app/llm/text for :text category" do
+      expect(config.path_for(:text)).to eq("app/llm/text")
+    end
+
+    it "returns app/llm/image/generators for :image category with generators type" do
+      expect(config.path_for(:image, "generators")).to eq("app/llm/image/generators")
+    end
+  end
 end

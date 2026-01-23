@@ -822,20 +822,27 @@ module RubyLLM
       #
       # @param category [Symbol, nil] Category (:audio, :image, :text, or nil for root)
       # @return [String, nil] Full namespace string, or nil if no namespace configured
-      # @example With default namespace
+      # @example With root_namespace = "Llm"
       #   namespace_for(:image) #=> "Llm::Image"
       #   namespace_for(nil)    #=> "Llm"
       # @example With no namespace (root_namespace = nil)
       #   namespace_for(:image) #=> "Image"
       #   namespace_for(nil)    #=> nil
       def namespace_for(category = nil)
-        case category
+        category_namespace = case category
         when :images then "Images"
         when :audio then "Audio"
         when :embedders then "Embedders"
         when :moderators then "Moderators"
         when :workflows then "Workflows"
-        else nil
+        when :text then "Text"
+        when :image then "Image"
+        end
+
+        if root_namespace
+          category_namespace ? "#{root_namespace}::#{category_namespace}" : root_namespace
+        else
+          category_namespace
         end
       end
 
@@ -844,17 +851,34 @@ module RubyLLM
       # @param category [Symbol, nil] Category (:audio, :image, :text, or nil)
       # @param type [String] Component type (e.g., "agents", "speakers", "generators")
       # @return [String] Full path relative to Rails.root
-      # @example
+      # @example With root_directory = "llm"
       #   path_for(:image, "generators") #=> "app/llm/image/generators"
       #   path_for(nil, "agents")        #=> "app/llm/agents"
+      # @example With root_directory = "agents" (default)
+      #   path_for(:images)              #=> "app/agents/images"
+      #   path_for(nil, "tools")         #=> "app/agents/tools"
       def path_for(category, type = nil)
-        case category
-        when :images then "app/agents/images"
-        when :audio then "app/agents/audio"
-        when :embedders then "app/agents/embedders"
-        when :moderators then "app/agents/moderators"
-        when :workflows then "app/agents/workflows"
-        else type ? "app/agents/#{type}" : "app/agents"
+        root = root_directory || "agents"
+        base = "app/#{root}"
+
+        category_path = case category
+        when :images then "images"
+        when :audio then "audio"
+        when :embedders then "embedders"
+        when :moderators then "moderators"
+        when :workflows then "workflows"
+        when :text then "text"
+        when :image then "image"
+        end
+
+        if category_path && type
+          "#{base}/#{category_path}/#{type}"
+        elsif category_path
+          "#{base}/#{category_path}"
+        elsif type
+          "#{base}/#{type}"
+        else
+          base
         end
       end
 
@@ -862,13 +886,17 @@ module RubyLLM
       #
       # @return [Array<String>] List of paths relative to Rails.root
       def all_autoload_paths
+        root = root_directory || "agents"
+        base = "app/#{root}"
+
         [
-          "app/agents",
-          "app/agents/images",
-          "app/agents/audio",
-          "app/agents/embedders",
-          "app/agents/moderators",
-          "app/agents/workflows"
+          base,
+          "#{base}/images",
+          "#{base}/audio",
+          "#{base}/embedders",
+          "#{base}/moderators",
+          "#{base}/workflows",
+          "#{base}/tools"
         ]
       end
 

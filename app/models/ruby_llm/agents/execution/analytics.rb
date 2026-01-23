@@ -201,16 +201,21 @@ module RubyLLM
 
             # Use database-agnostic aggregation with Ruby post-processing
             results = where(created_at: start_time..(reference_time + 1.hour))
-              .select(:status, :total_cost, :created_at)
+              .select(:status, :total_cost, :duration_ms, :input_tokens, :output_tokens, :created_at)
               .group_by { |r| r.created_at.beginning_of_hour }
 
             # Build arrays for all 24 hours (fill missing with zeros)
             success_data = []
             failed_data = []
             cost_data = []
+            duration_data = []
+            tokens_data = []
             total_success = 0
             total_failed = 0
             total_cost = 0.0
+            total_duration_sum = 0
+            total_duration_count = 0
+            total_tokens = 0
 
             (23.downto(0)).each do |hours_ago|
               bucket_time = (reference_time - hours_ago.hours).beginning_of_hour
@@ -219,23 +224,43 @@ module RubyLLM
               s = rows.count { |r| r.status == "success" }
               f = rows.count { |r| r.status.in?(%w[error timeout]) }
               c = rows.sum { |r| r.total_cost.to_f }
+              t = rows.sum { |r| (r.input_tokens || 0) + (r.output_tokens || 0) }
+
+              # Average duration for this bucket
+              duration_rows = rows.select { |r| r.duration_ms.to_i > 0 }
+              d = duration_rows.any? ? (duration_rows.sum { |r| r.duration_ms.to_i } / duration_rows.count) : 0
 
               success_data << s
               failed_data << f
               cost_data << c.round(4)
+              duration_data << d.round
+              tokens_data << t
 
               total_success += s
               total_failed += f
               total_cost += c
+              total_tokens += t
+              total_duration_sum += duration_rows.sum { |r| r.duration_ms.to_i }
+              total_duration_count += duration_rows.count
             end
+
+            avg_duration_ms = total_duration_count > 0 ? (total_duration_sum / total_duration_count).round : 0
 
             {
               range: "today",
-              totals: { success: total_success, failed: total_failed, cost: total_cost.round(4) },
+              totals: {
+                success: total_success,
+                failed: total_failed,
+                cost: total_cost.round(4),
+                duration_ms: avg_duration_ms,
+                tokens: total_tokens
+              },
               series: [
                 { name: "Success", data: success_data },
-                { name: "Failed", data: failed_data },
-                { name: "Cost", data: cost_data }
+                { name: "Errors", data: failed_data },
+                { name: "Cost", data: cost_data },
+                { name: "Duration", data: duration_data },
+                { name: "Tokens", data: tokens_data }
               ]
             }
           end
@@ -253,16 +278,21 @@ module RubyLLM
 
             # Use database-agnostic aggregation with Ruby post-processing
             results = where(created_at: start_date.beginning_of_day..end_date.end_of_day)
-              .select(:status, :total_cost, :created_at)
+              .select(:status, :total_cost, :duration_ms, :input_tokens, :output_tokens, :created_at)
               .group_by { |r| r.created_at.to_date }
 
             # Build arrays for all days (fill missing with zeros)
             success_data = []
             failed_data = []
             cost_data = []
+            duration_data = []
+            tokens_data = []
             total_success = 0
             total_failed = 0
             total_cost = 0.0
+            total_duration_sum = 0
+            total_duration_count = 0
+            total_tokens = 0
 
             (days - 1).downto(0).each do |i|
               date = end_date - i.days
@@ -271,24 +301,44 @@ module RubyLLM
               s = rows.count { |r| r.status == "success" }
               f = rows.count { |r| r.status.in?(%w[error timeout]) }
               c = rows.sum { |r| r.total_cost.to_f }
+              t = rows.sum { |r| (r.input_tokens || 0) + (r.output_tokens || 0) }
+
+              # Average duration for this bucket
+              duration_rows = rows.select { |r| r.duration_ms.to_i > 0 }
+              d = duration_rows.any? ? (duration_rows.sum { |r| r.duration_ms.to_i } / duration_rows.count) : 0
 
               success_data << s
               failed_data << f
               cost_data << c.round(4)
+              duration_data << d.round
+              tokens_data << t
 
               total_success += s
               total_failed += f
               total_cost += c
+              total_tokens += t
+              total_duration_sum += duration_rows.sum { |r| r.duration_ms.to_i }
+              total_duration_count += duration_rows.count
             end
+
+            avg_duration_ms = total_duration_count > 0 ? (total_duration_sum / total_duration_count).round : 0
 
             {
               range: "#{days}d",
               days: days,
-              totals: { success: total_success, failed: total_failed, cost: total_cost.round(4) },
+              totals: {
+                success: total_success,
+                failed: total_failed,
+                cost: total_cost.round(4),
+                duration_ms: avg_duration_ms,
+                tokens: total_tokens
+              },
               series: [
                 { name: "Success", data: success_data },
-                { name: "Failed", data: failed_data },
-                { name: "Cost", data: cost_data }
+                { name: "Errors", data: failed_data },
+                { name: "Cost", data: cost_data },
+                { name: "Duration", data: duration_data },
+                { name: "Tokens", data: tokens_data }
               ]
             }
           end
