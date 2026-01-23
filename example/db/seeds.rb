@@ -1582,21 +1582,25 @@ puts "\n" + "=" * 60
 puts "Demonstrating Embedders..."
 puts "=" * 60
 
-embedder_configs = [
-  { name: "ApplicationEmbedder", description: "Base class with DSL documentation" },
-  { name: "DocumentEmbedder", model: "text-embedding-3-small", dimensions: 512, cache: "1 week" },
-  { name: "SearchEmbedder", model: "text-embedding-3-large", dimensions: 3072, cache: "2 weeks" },
-  { name: "BatchEmbedder", model: "text-embedding-3-small", dimensions: 1024, batch_size: 100 },
-  { name: "CleanTextEmbedder", model: "text-embedding-3-small", dimensions: 512, preprocessing: true },
-  { name: "CodeEmbedder", model: "text-embedding-3-large", dimensions: 1536, preprocessing: true }
-]
+begin
+  embedder_configs = [
+    { name: "Embedders::ApplicationEmbedder", display: "ApplicationEmbedder" },
+    { name: "Embedders::DocumentEmbedder", display: "DocumentEmbedder" },
+    { name: "Embedders::SearchEmbedder", display: "SearchEmbedder" },
+    { name: "Embedders::BatchEmbedder", display: "BatchEmbedder" },
+    { name: "Embedders::CleanTextEmbedder", display: "CleanTextEmbedder" },
+    { name: "Embedders::CodeEmbedder", display: "CodeEmbedder" }
+  ]
 
-embedder_configs.each do |config|
-  klass = Object.const_get(config[:name])
-  puts "  #{config[:name]}:"
-  puts "    Model: #{klass.model}"
-  puts "    Dimensions: #{klass.dimensions || 'default'}"
-  puts "    Cache: #{klass.cache_enabled? ? klass.cache_ttl.inspect : 'disabled'}"
+  embedder_configs.each do |config|
+    klass = config[:name].constantize
+    puts "  #{config[:display]}:"
+    puts "    Model: #{klass.model}"
+    puts "    Dimensions: #{klass.dimensions || 'default'}"
+    puts "    Cache: #{klass.cache_enabled? ? klass.cache_ttl.inspect : 'disabled'}"
+  end
+rescue NameError => e
+  puts "  (Embedder classes not loaded - skipping demonstration)"
 end
 
 # =============================================================================
@@ -1606,18 +1610,22 @@ puts "\n" + "=" * 60
 puts "Demonstrating Standalone Moderators..."
 puts "=" * 60
 
-moderator_configs = [
-  { name: "ContentModerator", threshold: 0.7, categories: [:hate, :violence, :harassment, :sexual] },
-  { name: "ChildSafeModerator", threshold: 0.3, categories: [:sexual, :violence, :self_harm, :hate, :harassment] },
-  { name: "ForumModerator", threshold: 0.8, categories: [:hate, :harassment] }
-]
+begin
+  moderator_configs = [
+    { name: "Moderators::ContentModerator", display: "ContentModerator" },
+    { name: "Moderators::ChildSafeModerator", display: "ChildSafeModerator" },
+    { name: "Moderators::ForumModerator", display: "ForumModerator" }
+  ]
 
-moderator_configs.each do |config|
-  klass = Object.const_get(config[:name])
-  puts "  #{config[:name]}:"
-  puts "    Model: #{klass.model}"
-  puts "    Threshold: #{klass.threshold}"
-  puts "    Categories: #{klass.categories.inspect}"
+  moderator_configs.each do |config|
+    klass = config[:name].constantize
+    puts "  #{config[:display]}:"
+    puts "    Model: #{klass.model}"
+    puts "    Threshold: #{klass.threshold}"
+    puts "    Categories: #{klass.categories.inspect}"
+  end
+rescue NameError => e
+  puts "  (Moderator classes not loaded - skipping demonstration)"
 end
 
 # =============================================================================
@@ -1691,36 +1699,66 @@ end
 puts "\nEmbedder Executions:"
 %w[DocumentEmbedder SearchEmbedder BatchEmbedder CleanTextEmbedder CodeEmbedder].each do |embedder|
   count = RubyLLM::Agents::Execution.where(agent_type: embedder).count
-  klass = Object.const_get(embedder)
-  puts "  #{embedder}: #{count} executions (model=#{klass.model}, dims=#{klass.dimensions || 'default'})" if count > 0
+  if count > 0
+    klass = "Embedders::#{embedder}".safe_constantize
+    if klass
+      puts "  #{embedder}: #{count} executions (model=#{klass.model}, dims=#{klass.dimensions || 'default'})"
+    else
+      puts "  #{embedder}: #{count} executions"
+    end
+  end
 end
 
 puts "\nStandalone Moderator Executions:"
 %w[ContentModerator ChildSafeModerator ForumModerator].each do |moderator|
   count = RubyLLM::Agents::Execution.where(agent_type: moderator).count
-  klass = Object.const_get(moderator)
-  puts "  #{moderator}: #{count} executions (threshold=#{klass.threshold})" if count > 0
+  if count > 0
+    klass = "Moderators::#{moderator}".safe_constantize
+    if klass
+      puts "  #{moderator}: #{count} executions (threshold=#{klass.threshold})"
+    else
+      puts "  #{moderator}: #{count} executions"
+    end
+  end
 end
 
 puts "\nSpeaker Executions:"
 %w[ArticleNarrator PodcastSpeaker NotificationSpeaker MultilangSpeaker TechnicalNarrator].each do |speaker|
   count = RubyLLM::Agents::Execution.where(agent_type: speaker).count
-  klass = Object.const_get(speaker)
-  puts "  #{speaker}: #{count} executions (model=#{klass.model}, voice=#{klass.voice})" if count > 0
+  if count > 0
+    klass = "Audio::#{speaker}".safe_constantize
+    if klass
+      puts "  #{speaker}: #{count} executions (model=#{klass.model}, voice=#{klass.voice})"
+    else
+      puts "  #{speaker}: #{count} executions"
+    end
+  end
 end
 
 puts "\nTranscriber Executions:"
 %w[MeetingTranscriber SubtitleGenerator PodcastTranscriber MultilingualTranscriber TechnicalTranscriber].each do |transcriber|
   count = RubyLLM::Agents::Execution.where(agent_type: transcriber).count
-  klass = Object.const_get(transcriber)
-  puts "  #{transcriber}: #{count} executions (model=#{klass.model})" if count > 0
+  if count > 0
+    klass = "Audio::#{transcriber}".safe_constantize
+    if klass
+      puts "  #{transcriber}: #{count} executions (model=#{klass.model})"
+    else
+      puts "  #{transcriber}: #{count} executions"
+    end
+  end
 end
 
 puts "\nImage Generator Executions:"
 %w[ProductImageGenerator LogoGenerator ThumbnailGenerator AvatarGenerator IllustrationGenerator].each do |generator|
   count = RubyLLM::Agents::Execution.where(agent_type: generator).count
-  klass = Object.const_get(generator)
-  puts "  #{generator}: #{count} executions (size=#{klass.size}, quality=#{klass.quality})" if count > 0
+  if count > 0
+    klass = "Images::#{generator}".safe_constantize
+    if klass
+      puts "  #{generator}: #{count} executions (size=#{klass.size}, quality=#{klass.quality})"
+    else
+      puts "  #{generator}: #{count} executions"
+    end
+  end
 end
 
 puts "\nWorkflow Executions:"
@@ -1731,38 +1769,38 @@ end
 
 puts "\nEmbedders Available:"
 %w[ApplicationEmbedder DocumentEmbedder SearchEmbedder BatchEmbedder CleanTextEmbedder CodeEmbedder].each do |embedder|
-  klass = Object.const_get(embedder)
-  puts "  #{embedder}: model=#{klass.model}, dimensions=#{klass.dimensions || 'default'}"
+  klass = "Embedders::#{embedder}".safe_constantize
+  puts "  #{embedder}: model=#{klass.model}, dimensions=#{klass.dimensions || 'default'}" if klass
 end
 
 puts "\nStandalone Moderators Available:"
 %w[ContentModerator ChildSafeModerator ForumModerator].each do |moderator|
-  klass = Object.const_get(moderator)
-  puts "  #{moderator}: threshold=#{klass.threshold}, categories=#{klass.categories.length}"
+  klass = "Moderators::#{moderator}".safe_constantize
+  puts "  #{moderator}: threshold=#{klass.threshold}, categories=#{klass.categories.length}" if klass
 end
 
 puts "\nSpeakers Available:"
 %w[ApplicationSpeaker ArticleNarrator PodcastSpeaker NotificationSpeaker MultilangSpeaker TechnicalNarrator].each do |speaker|
-  klass = Object.const_get(speaker)
-  puts "  #{speaker}: model=#{klass.model}, voice=#{klass.voice}"
+  klass = "Audio::#{speaker}".safe_constantize
+  puts "  #{speaker}: model=#{klass.model}, voice=#{klass.voice}" if klass
 end
 
 puts "\nTranscribers Available:"
 %w[ApplicationTranscriber MeetingTranscriber SubtitleGenerator PodcastTranscriber MultilingualTranscriber TechnicalTranscriber].each do |transcriber|
-  klass = Object.const_get(transcriber)
-  puts "  #{transcriber}: model=#{klass.model}, format=#{klass.output_format}"
+  klass = "Audio::#{transcriber}".safe_constantize
+  puts "  #{transcriber}: model=#{klass.model}, format=#{klass.output_format}" if klass
 end
 
 puts "\nImage Generators Available:"
 %w[ApplicationImageGenerator ProductImageGenerator LogoGenerator ThumbnailGenerator AvatarGenerator IllustrationGenerator].each do |generator|
-  klass = Object.const_get(generator)
-  puts "  #{generator}: model=#{klass.model}, size=#{klass.size}, quality=#{klass.quality}"
+  klass = "Images::#{generator}".safe_constantize
+  puts "  #{generator}: model=#{klass.model}, size=#{klass.size}, quality=#{klass.quality}" if klass
 end
 
 puts "\nWorkflows Available:"
 %w[ContentAnalyzer ContentPipeline SupportRouter].each do |workflow|
-  klass = Object.const_get(workflow)
-  puts "  #{workflow}: #{klass.description}"
+  klass = "Images::#{workflow}".safe_constantize
+  puts "  #{workflow}: #{klass.description}" if klass
 end
 
 puts "\nTotal: #{Organization.count} organizations, #{RubyLLM::Agents::Execution.count} executions"
