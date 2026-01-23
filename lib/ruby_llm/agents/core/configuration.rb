@@ -702,8 +702,8 @@ module RubyLLM
         @default_background_output_format = :png  # Output format for transparency
 
         # Directory structure defaults
-        @root_directory = "llm"  # Root directory under app/
-        @root_namespace = "Llm"  # Root namespace for classes
+        @root_directory = "agents"  # Root directory under app/
+        @root_namespace = nil  # No namespace (top-level classes)
       end
 
       # Returns the configured cache store, falling back to Rails.cache
@@ -829,21 +829,13 @@ module RubyLLM
       #   namespace_for(:image) #=> "Image"
       #   namespace_for(nil)    #=> nil
       def namespace_for(category = nil)
-        # Handle no namespace configuration
-        if root_namespace.blank?
-          case category
-          when :audio then "Audio"
-          when :image then "Image"
-          when :text then "Text"
-          else nil
-          end
-        else
-          case category
-          when :audio then "#{root_namespace}::Audio"
-          when :image then "#{root_namespace}::Image"
-          when :text then "#{root_namespace}::Text"
-          else root_namespace
-          end
+        case category
+        when :images then "Images"
+        when :audio then "Audio"
+        when :embedders then "Embedders"
+        when :moderators then "Moderators"
+        when :workflows then "Workflows"
+        else nil
         end
       end
 
@@ -855,13 +847,14 @@ module RubyLLM
       # @example
       #   path_for(:image, "generators") #=> "app/llm/image/generators"
       #   path_for(nil, "agents")        #=> "app/llm/agents"
-      def path_for(category, type)
-        base = root_directory.present? ? "app/#{root_directory}" : "app"
+      def path_for(category, type = nil)
         case category
-        when :audio then "#{base}/audio/#{type}"
-        when :image then "#{base}/image/#{type}"
-        when :text then "#{base}/text/#{type}"
-        else "#{base}/#{type}"
+        when :images then "app/agents/images"
+        when :audio then "app/agents/audio"
+        when :embedders then "app/agents/embedders"
+        when :moderators then "app/agents/moderators"
+        when :workflows then "app/agents/workflows"
+        else type ? "app/agents/#{type}" : "app/agents"
         end
       end
 
@@ -870,24 +863,12 @@ module RubyLLM
       # @return [Array<String>] List of paths relative to Rails.root
       def all_autoload_paths
         [
-          # Top-level
-          path_for(nil, "agents"),
-          path_for(nil, "workflows"),
-          path_for(nil, "tools"),
-          # Audio
-          path_for(:audio, "speakers"),
-          path_for(:audio, "transcribers"),
-          # Image
-          path_for(:image, "analyzers"),
-          path_for(:image, "background_removers"),
-          path_for(:image, "editors"),
-          path_for(:image, "generators"),
-          path_for(:image, "transformers"),
-          path_for(:image, "upscalers"),
-          path_for(:image, "variators"),
-          # Text
-          path_for(:text, "embedders"),
-          path_for(:text, "moderators")
+          "app/agents",
+          "app/agents/images",
+          "app/agents/audio",
+          "app/agents/embedders",
+          "app/agents/moderators",
+          "app/agents/workflows"
         ]
       end
 

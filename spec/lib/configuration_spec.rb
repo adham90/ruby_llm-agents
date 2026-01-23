@@ -623,8 +623,8 @@ RSpec.describe RubyLLM::Agents::Configuration do
 
   describe "directory and namespace configuration" do
     describe "#root_directory" do
-      it "defaults to 'llm'" do
-        expect(config.root_directory).to eq("llm")
+      it "defaults to 'agents'" do
+        expect(config.root_directory).to eq("agents")
       end
 
       it "can be customized" do
@@ -634,8 +634,8 @@ RSpec.describe RubyLLM::Agents::Configuration do
     end
 
     describe "#root_namespace" do
-      it "defaults to 'Llm'" do
-        expect(config.root_namespace).to eq("Llm")
+      it "defaults to nil (no namespace)" do
+        expect(config.root_namespace).to be_nil
       end
 
       it "can be customized" do
@@ -655,141 +655,65 @@ RSpec.describe RubyLLM::Agents::Configuration do
     end
 
     describe "#namespace_for" do
-      context "with default namespace (Llm)" do
-        it "returns root namespace for nil category" do
-          expect(config.namespace_for(nil)).to eq("Llm")
-        end
-
-        it "returns root namespace for no argument" do
-          expect(config.namespace_for).to eq("Llm")
-        end
-
-        it "returns Llm::Audio for :audio category" do
-          expect(config.namespace_for(:audio)).to eq("Llm::Audio")
-        end
-
-        it "returns Llm::Image for :image category" do
-          expect(config.namespace_for(:image)).to eq("Llm::Image")
-        end
-
-        it "returns Llm::Text for :text category" do
-          expect(config.namespace_for(:text)).to eq("Llm::Text")
-        end
-      end
-
-      context "with custom namespace (AI)" do
-        before { config.root_namespace = "AI" }
-
-        it "returns AI for nil category" do
-          expect(config.namespace_for(nil)).to eq("AI")
-        end
-
-        it "returns AI::Audio for :audio category" do
-          expect(config.namespace_for(:audio)).to eq("AI::Audio")
-        end
-
-        it "returns AI::Image for :image category" do
-          expect(config.namespace_for(:image)).to eq("AI::Image")
-        end
-
-        it "returns AI::Text for :text category" do
-          expect(config.namespace_for(:text)).to eq("AI::Text")
-        end
-      end
-
-      context "with no namespace (nil)" do
-        before { config.root_namespace = nil }
-
+      context "with default namespace (nil)" do
         it "returns nil for nil category" do
           expect(config.namespace_for(nil)).to be_nil
+        end
+
+        it "returns nil for no argument" do
+          expect(config.namespace_for).to be_nil
+        end
+
+        it "returns Images for :images category" do
+          expect(config.namespace_for(:images)).to eq("Images")
         end
 
         it "returns Audio for :audio category" do
           expect(config.namespace_for(:audio)).to eq("Audio")
         end
 
-        it "returns Image for :image category" do
-          expect(config.namespace_for(:image)).to eq("Image")
+        it "returns Embedders for :embedders category" do
+          expect(config.namespace_for(:embedders)).to eq("Embedders")
         end
 
-        it "returns Text for :text category" do
-          expect(config.namespace_for(:text)).to eq("Text")
-        end
-      end
-
-      context "with empty string namespace" do
-        before { config.root_namespace = "" }
-
-        it "returns nil for nil category" do
-          expect(config.namespace_for(nil)).to be_nil
+        it "returns Moderators for :moderators category" do
+          expect(config.namespace_for(:moderators)).to eq("Moderators")
         end
 
-        it "returns Audio for :audio category" do
-          expect(config.namespace_for(:audio)).to eq("Audio")
-        end
-
-        it "returns Image for :image category" do
-          expect(config.namespace_for(:image)).to eq("Image")
-        end
-
-        it "returns Text for :text category" do
-          expect(config.namespace_for(:text)).to eq("Text")
+        it "returns Workflows for :workflows category" do
+          expect(config.namespace_for(:workflows)).to eq("Workflows")
         end
       end
     end
 
     describe "#path_for" do
-      context "with default root_directory (llm)" do
-        it "returns app/llm/agents for agents" do
-          expect(config.path_for(nil, "agents")).to eq("app/llm/agents")
+      context "with default root_directory (agents)" do
+        it "returns app/agents for nil category" do
+          expect(config.path_for(nil)).to eq("app/agents")
         end
 
-        it "returns app/llm/tools for tools" do
-          expect(config.path_for(nil, "tools")).to eq("app/llm/tools")
+        it "returns app/agents/tools for tools type" do
+          expect(config.path_for(nil, "tools")).to eq("app/agents/tools")
         end
 
-        it "returns app/llm/workflows for workflows" do
-          expect(config.path_for(nil, "workflows")).to eq("app/llm/workflows")
+        it "returns app/agents/images for :images category" do
+          expect(config.path_for(:images)).to eq("app/agents/images")
         end
 
-        it "returns app/llm/audio/speakers for audio speakers" do
-          expect(config.path_for(:audio, "speakers")).to eq("app/llm/audio/speakers")
+        it "returns app/agents/audio for :audio category" do
+          expect(config.path_for(:audio)).to eq("app/agents/audio")
         end
 
-        it "returns app/llm/audio/transcribers for audio transcribers" do
-          expect(config.path_for(:audio, "transcribers")).to eq("app/llm/audio/transcribers")
+        it "returns app/agents/embedders for :embedders category" do
+          expect(config.path_for(:embedders)).to eq("app/agents/embedders")
         end
 
-        it "returns app/llm/image/generators for image generators" do
-          expect(config.path_for(:image, "generators")).to eq("app/llm/image/generators")
+        it "returns app/agents/moderators for :moderators category" do
+          expect(config.path_for(:moderators)).to eq("app/agents/moderators")
         end
 
-        it "returns app/llm/image/analyzers for image analyzers" do
-          expect(config.path_for(:image, "analyzers")).to eq("app/llm/image/analyzers")
-        end
-
-        it "returns app/llm/text/embedders for text embedders" do
-          expect(config.path_for(:text, "embedders")).to eq("app/llm/text/embedders")
-        end
-
-        it "returns app/llm/text/moderators for text moderators" do
-          expect(config.path_for(:text, "moderators")).to eq("app/llm/text/moderators")
-        end
-      end
-
-      context "with custom root_directory (ai)" do
-        before { config.root_directory = "ai" }
-
-        it "returns app/ai/agents for agents" do
-          expect(config.path_for(nil, "agents")).to eq("app/ai/agents")
-        end
-
-        it "returns app/ai/image/generators for image generators" do
-          expect(config.path_for(:image, "generators")).to eq("app/ai/image/generators")
-        end
-
-        it "returns app/ai/text/embedders for text embedders" do
-          expect(config.path_for(:text, "embedders")).to eq("app/ai/text/embedders")
+        it "returns app/agents/workflows for :workflows category" do
+          expect(config.path_for(:workflows)).to eq("app/agents/workflows")
         end
       end
     end
@@ -799,45 +723,34 @@ RSpec.describe RubyLLM::Agents::Configuration do
         expect(config.all_autoload_paths).to be_an(Array)
       end
 
-      it "includes top-level paths" do
+      it "includes base agents path" do
         paths = config.all_autoload_paths
-        expect(paths).to include("app/llm/agents")
-        expect(paths).to include("app/llm/workflows")
-        expect(paths).to include("app/llm/tools")
+        expect(paths).to include("app/agents")
       end
 
-      it "includes audio paths" do
+      it "includes images path" do
         paths = config.all_autoload_paths
-        expect(paths).to include("app/llm/audio/speakers")
-        expect(paths).to include("app/llm/audio/transcribers")
+        expect(paths).to include("app/agents/images")
       end
 
-      it "includes image paths" do
+      it "includes audio path" do
         paths = config.all_autoload_paths
-        expect(paths).to include("app/llm/image/analyzers")
-        expect(paths).to include("app/llm/image/background_removers")
-        expect(paths).to include("app/llm/image/editors")
-        expect(paths).to include("app/llm/image/generators")
-        expect(paths).to include("app/llm/image/transformers")
-        expect(paths).to include("app/llm/image/upscalers")
-        expect(paths).to include("app/llm/image/variators")
+        expect(paths).to include("app/agents/audio")
       end
 
-      it "includes text paths" do
+      it "includes embedders path" do
         paths = config.all_autoload_paths
-        expect(paths).to include("app/llm/text/embedders")
-        expect(paths).to include("app/llm/text/moderators")
+        expect(paths).to include("app/agents/embedders")
       end
 
-      context "with custom root_directory" do
-        before { config.root_directory = "ai" }
+      it "includes moderators path" do
+        paths = config.all_autoload_paths
+        expect(paths).to include("app/agents/moderators")
+      end
 
-        it "uses the custom directory in all paths" do
-          paths = config.all_autoload_paths
-          expect(paths.all? { |p| p.start_with?("app/ai/") }).to be true
-          expect(paths).to include("app/ai/agents")
-          expect(paths).to include("app/ai/image/generators")
-        end
+      it "includes workflows path" do
+        paths = config.all_autoload_paths
+        expect(paths).to include("app/agents/workflows")
       end
     end
   end
