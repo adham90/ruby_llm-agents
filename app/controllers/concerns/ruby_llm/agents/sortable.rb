@@ -21,6 +21,7 @@ module RubyLLM
       SORTABLE_COLUMNS = {
         "agent_type" => "agent_type",
         "status" => "status",
+        "model_id" => "model_id",
         "agent_version" => "agent_version",
         "total_tokens" => "total_tokens",
         "total_cost" => "total_cost",

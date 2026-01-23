@@ -290,6 +290,9 @@ module RubyLLM
         # Apply execution type tab filter (agents vs workflows)
         scope = apply_execution_type_filter(scope)
 
+        # Apply retries filter (show only executions with multiple attempts)
+        scope = scope.where("attempts_count > 1") if params[:has_retries].present?
+
         # Only show root executions (not workflow children) - children are nested under parents
         scope = scope.where(parent_execution_id: nil)
 

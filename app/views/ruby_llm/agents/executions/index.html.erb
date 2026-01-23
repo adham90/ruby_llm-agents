@@ -4,25 +4,3 @@
   <%= render partial: "ruby_llm/agents/executions/filters", locals: { agent_types: @agent_types, model_ids: @model_ids, workflow_types: @workflow_types, filter_stats: @filter_stats } %>
   <%= render partial: "ruby_llm/agents/executions/list", locals: { executions: @executions, pagination: @pagination, filter_stats: @filter_stats } %>
 </div>
-
-<script>
-  // Toggle attempts expansion (used by executions list)
-  function toggleAttempts(executionId) {
-    const attemptsRow = document.getElementById('attempts-row-' + executionId);
-    const expandBtn = document.querySelector(`button[data-execution-id="${executionId}"]`);
-
-    if (attemptsRow) {
-      const isHidden = attemptsRow.classList.contains('hidden');
-      attemptsRow.classList.toggle('hidden');
-
-      // Rotate the chevron
-      if (expandBtn) {
-        const svg = expandBtn.querySelector('svg');
-        if (svg) {
-          svg.classList.toggle('rotate-90', isHidden);
-        }
-        expandBtn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
-      }
-    }
-  }
-</script>

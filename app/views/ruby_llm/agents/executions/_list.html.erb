@@ -9,8 +9,6 @@
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead class="bg-gray-50 dark:bg-gray-900">
           <tr>
-            <th scope="col" class="px-2 py-3 w-8"></th>
-
             <%= render "ruby_llm/agents/shared/sortable_header",
                 column: "agent_type", label: "Agent",
                 current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
@@ -20,12 +18,12 @@
                 current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
 
             <%= render "ruby_llm/agents/shared/sortable_header",
-                column: "agent_version", label: "Version",
+                column: "model_id", label: "Model",
                 current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
 
-            <th scope="col" class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Attempts
-            </th>
+            <%= render "ruby_llm/agents/shared/sortable_header",
+                column: "agent_version", label: "Version",
+                current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
 
             <%= render "ruby_llm/agents/shared/sortable_header",
                 column: "total_tokens", label: "Tokens",
@@ -47,30 +45,13 @@
 
         <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
           <% executions.each do |execution| %>
-            <% has_attempts = execution.respond_to?(:attempts) && execution.attempts.present? && execution.attempts.size > 0 %>
+            <% attempts_count = (execution.respond_to?(:attempts_count) && execution.attempts_count) || (execution.respond_to?(:attempts) && execution.attempts&.size) || 1 %>
             <tr
-              class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
               id="execution-row-<%= execution.id %>"
+              onclick="window.location='<%= ruby_llm_agents.execution_path(execution) %>'"
             >
-              <!-- Expand/Collapse Button -->
-              <td class="px-2 py-3 whitespace-nowrap">
-                <% if has_attempts %>
-                  <button
-                    type="button"
-                    onclick="toggleAttempts(<%= execution.id %>); event.stopPropagation();"
-                    class="expand-btn p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                    data-execution-id="<%= execution.id %>"
-                    aria-expanded="false"
-                    aria-label="Toggle attempts"
-                  >
-                    <svg class="w-4 h-4 text-gray-500 dark:text-gray-400 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                    </svg>
-                  </button>
-                <% end %>
-              </td>
-
-              <td class="px-4 py-3 whitespace-nowrap cursor-pointer" onclick="window.location='<%= ruby_llm_agents.execution_path(execution) %>'">
+              <td class="px-4 py-3 whitespace-nowrap">
                 <div class="flex items-center gap-2">
                   <% if execution.respond_to?(:workflow_type) && execution.workflow_type.present? %>
                     <%= render "ruby_llm/agents/shared/workflow_type_badge", workflow_type: execution.workflow_type, size: :xs, show_label: false %>
@@ -86,32 +67,32 @@
                 <% end %>
               </td>
 
-              <td class="px-4 py-3 whitespace-nowrap cursor-pointer" onclick="window.location='<%= ruby_llm_agents.execution_path(execution) %>'">
-                <%= render "ruby_llm/agents/shared/status_badge", status: execution.status %>
-              </td>
-
-              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 cursor-pointer" onclick="window.location='<%= ruby_llm_agents.execution_path(execution) %>'">
-                v<%= execution.agent_version %>
-              </td>
-
-              <!-- Attempts Count -->
-              <td class="px-4 py-3 whitespace-nowrap text-sm text-center cursor-pointer" onclick="window.location='<%= ruby_llm_agents.execution_path(execution) %>'">
-                <% attempts_count = (execution.respond_to?(:attempts_count) && execution.attempts_count) || (execution.respond_to?(:attempts) && execution.attempts&.size) || 1 %>
-                <% if attempts_count > 1 %>
-                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                    <%= attempts_count %> attempts
+              <td class="px-4 py-3 whitespace-nowrap">
+                <div>
+                  <%= render "ruby_llm/agents/shared/status_badge", status: execution.status, attempts_count: attempts_count %>
+                </div>
+                <% if execution.status_error? && execution.error_class.present? %>
+                  <span class="text-xs text-red-500 dark:text-red-400 block mt-0.5">
+                    <%= execution.error_class.split("::").last %>
                   </span>
-                <% else %>
-                  <span class="text-gray-400 dark:text-gray-500">1</span>
                 <% end %>
+              </td>
+
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                <span title="<%= execution.model_id %>">
+                  <%= execution.model_id&.split("/")&.last || execution.model_id || "-" %>
+                </span>
+              </td>
+
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                v<%= execution.agent_version %>
               </td>
 
               <td
                 class="
                   px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100
-                  text-right font-medium cursor-pointer
+                  text-right font-medium
                 "
-                onclick="window.location='<%= ruby_llm_agents.execution_path(execution) %>'"
               >
                 <%= number_to_human_short(execution.total_tokens || 0) %>
               </td>
@@ -119,9 +100,8 @@
               <td
                 class="
                   px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100
-                  text-right font-medium cursor-pointer
+                  text-right font-medium
                 "
-                onclick="window.location='<%= ruby_llm_agents.execution_path(execution) %>'"
               >
                 <%= number_to_human_short(execution.total_cost || 0, prefix: "$", precision: 2) %>
               </td>
@@ -129,77 +109,16 @@
               <td
                 class="
                   px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100
-                  text-right font-medium cursor-pointer
+                  text-right font-medium
                 "
-                onclick="window.location='<%= ruby_llm_agents.execution_path(execution) %>'"
               >
                 <%= number_with_delimiter(execution.duration_ms || 0) %>ms
               </td>
 
-              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right cursor-pointer" onclick="window.location='<%= ruby_llm_agents.execution_path(execution) %>'">
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
                 <%= time_ago_in_words(execution.created_at) %> ago
               </td>
             </tr>
-
-            <!-- Inline Attempts Expansion Row (hidden by default) -->
-            <% if has_attempts %>
-              <tr id="attempts-row-<%= execution.id %>" class="hidden bg-gray-50 dark:bg-gray-900">
-                <td colspan="9" class="px-4 py-3">
-                  <div class="ml-6">
-                    <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">Attempts Timeline</h4>
-                    <div class="space-y-2">
-                      <% execution.attempts.each_with_index do |attempt, idx| %>
-                        <% is_successful = attempt["error_class"].nil? && !attempt["short_circuited"] %>
-                        <% is_short_circuited = attempt["short_circuited"] %>
-                        <div class="flex items-center gap-3 text-sm <%= is_successful ? 'bg-green-50 dark:bg-green-900/20 border-l-2 border-green-500' : is_short_circuited ? 'bg-gray-100 dark:bg-gray-800 border-l-2 border-gray-400' : 'bg-red-50 dark:bg-red-900/20 border-l-2 border-red-500' %> px-3 py-2 rounded-r">
-                          <span class="font-medium text-gray-700 dark:text-gray-300 w-6">#<%= idx + 1 %></span>
-                          <span class="text-gray-600 dark:text-gray-400 w-32 truncate" title="<%= attempt["model_id"] %>">
-                            <%= attempt["model_id"]&.split("/")&.last || "unknown" %>
-                          </span>
-                          <% if is_successful %>
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200">
-                              Success
-                            </span>
-                          <% elsif is_short_circuited %>
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
-                              Skipped (breaker)
-                            </span>
-                          <% else %>
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-200" title="<%= attempt["error_message"] %>">
-                              <%= attempt["error_class"]&.split("::")&.last || "Error" %>
-                            </span>
-                          <% end %>
-                          <% if attempt["duration_ms"] %>
-                            <span class="text-gray-500 dark:text-gray-400 text-xs">
-                              <%= number_with_delimiter(attempt["duration_ms"].to_i) %>ms
-                            </span>
-                          <% end %>
-                          <% if attempt["input_tokens"] || attempt["output_tokens"] %>
-                            <span class="text-gray-500 dark:text-gray-400 text-xs">
-                              <%= number_to_human_short((attempt["input_tokens"] || 0) + (attempt["output_tokens"] || 0)) %> tokens
-                            </span>
-                          <% end %>
-                        </div>
-                      <% end %>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            <% end %>
-
-            <% if execution.status_error? && execution.error_message.present? %>
-              <tr class="bg-red-50 dark:bg-red-900/30">
-                <td colspan="9" class="px-4 py-2">
-                  <p class="text-xs text-red-600 dark:text-red-400 ml-8">
-                    <span class="font-medium">
-                      <%= execution.error_class %>:
-                    </span>
-
-                    <%= truncate(execution.error_message, length: 150) %>
-                  </p>
-                </td>
-              </tr>
-            <% end %>
           <% end %>
         </tbody>
       </table>
