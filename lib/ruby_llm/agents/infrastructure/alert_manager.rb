@@ -46,6 +46,14 @@ module RubyLLM
             call_custom_alert(alerts[:custom], event, full_payload)
           end
 
+          # Send email alerts
+          if alerts[:email_recipients].present?
+            email_events = alerts[:email_events] || config.alert_events
+            if email_events.include?(event)
+              send_email_alerts(event, full_payload, alerts[:email_recipients])
+            end
+          end
+
           # Emit ActiveSupport::Notification for observability
           emit_notification(event, full_payload)
         rescue StandardError => e
@@ -90,6 +98,24 @@ module RubyLLM
           custom_proc.call(event, payload)
         rescue StandardError => e
           Rails.logger.warn("[RubyLLM::Agents::AlertManager] Custom alert failed: #{e.message}")
+        end
+
+        # Sends email alerts to configured recipients
+        #
+        # @param event [Symbol] The event type
+        # @param payload [Hash] The payload
+        # @param recipients [Array<String>] Email addresses
+        # @return [void]
+        def send_email_alerts(event, payload, recipients)
+          Array(recipients).each do |recipient|
+            AlertMailer.alert_notification(
+              event: event,
+              payload: payload,
+              recipient: recipient
+            ).deliver_later
+          end
+        rescue StandardError => e
+          Rails.logger.warn("[RubyLLM::Agents::AlertManager] Email alert failed: #{e.message}")
         end
 
         # Emits an ActiveSupport::Notification

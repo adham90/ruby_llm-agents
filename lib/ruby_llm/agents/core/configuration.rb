@@ -744,7 +744,8 @@ module RubyLLM
 
         alerts[:slack_webhook_url].present? ||
           alerts[:webhook_url].present? ||
-          alerts[:custom].present?
+          alerts[:custom].present? ||
+          alerts[:email_recipients].present?
       end
 
       # Returns the list of events to alert on

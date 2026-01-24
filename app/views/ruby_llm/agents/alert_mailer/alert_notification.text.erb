@@ -1,0 +1,18 @@
+RubyLLM::Agents Alert
+=====================
+
+<%= @title %>
+Severity: <%= @severity %>
+Time: <%= @timestamp.strftime("%B %d, %Y at %I:%M %p %Z") %>
+
+<% if @payload.present? %>
+Event Details
+-------------
+<% @payload.except(:event).each do |key, value| %>
+<%= key.to_s.titleize %>: <%= value.is_a?(Hash) ? value.to_json : value %>
+<% end %>
+<% end %>
+
+---
+This alert was sent by RubyLLM::Agents.
+Event type: <%= @event %>

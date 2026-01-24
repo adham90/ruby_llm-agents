@@ -151,6 +151,110 @@ RSpec.describe RubyLLM::Agents::AlertManager do
       end
     end
 
+    context "with email recipients configured" do
+      let(:mailer_double) { double("mailer", deliver_later: true) }
+
+      before do
+        RubyLLM::Agents.configure do |config|
+          config.alerts = {
+            on_events: [:budget_soft_cap, :budget_hard_cap],
+            email_recipients: ["admin@example.com", "ops@example.com"]
+          }
+        end
+      end
+
+      it "sends email to all recipients" do
+        expect(RubyLLM::Agents::AlertMailer).to receive(:alert_notification).with(
+          event: :budget_soft_cap,
+          payload: hash_including(amount: 100),
+          recipient: "admin@example.com"
+        ).and_return(mailer_double)
+
+        expect(RubyLLM::Agents::AlertMailer).to receive(:alert_notification).with(
+          event: :budget_soft_cap,
+          payload: hash_including(amount: 100),
+          recipient: "ops@example.com"
+        ).and_return(mailer_double)
+
+        described_class.notify(:budget_soft_cap, { amount: 100 })
+      end
+
+      it "calls deliver_later on each email" do
+        allow(RubyLLM::Agents::AlertMailer).to receive(:alert_notification).and_return(mailer_double)
+        expect(mailer_double).to receive(:deliver_later).twice
+
+        described_class.notify(:budget_soft_cap, { amount: 100 })
+      end
+    end
+
+    context "with email_events filter configured" do
+      let(:mailer_double) { double("mailer", deliver_later: true) }
+
+      before do
+        RubyLLM::Agents.configure do |config|
+          config.alerts = {
+            on_events: [:budget_soft_cap, :budget_hard_cap, :breaker_open],
+            email_recipients: ["admin@example.com"],
+            email_events: [:budget_hard_cap, :breaker_open]
+          }
+        end
+      end
+
+      it "sends email for events in email_events" do
+        allow(RubyLLM::Agents::AlertMailer).to receive(:alert_notification).and_return(mailer_double)
+        expect(mailer_double).to receive(:deliver_later)
+
+        described_class.notify(:budget_hard_cap, { amount: 100 })
+      end
+
+      it "does not send email for events not in email_events" do
+        expect(RubyLLM::Agents::AlertMailer).not_to receive(:alert_notification)
+
+        described_class.notify(:budget_soft_cap, { amount: 50 })
+      end
+    end
+
+    context "with single email recipient as string" do
+      let(:mailer_double) { double("mailer", deliver_later: true) }
+
+      before do
+        RubyLLM::Agents.configure do |config|
+          config.alerts = {
+            on_events: [:budget_soft_cap],
+            email_recipients: "admin@example.com"
+          }
+        end
+      end
+
+      it "handles single recipient string" do
+        expect(RubyLLM::Agents::AlertMailer).to receive(:alert_notification).with(
+          event: :budget_soft_cap,
+          payload: hash_including(amount: 100),
+          recipient: "admin@example.com"
+        ).and_return(mailer_double)
+        expect(mailer_double).to receive(:deliver_later)
+
+        described_class.notify(:budget_soft_cap, { amount: 100 })
+      end
+    end
+
+    context "email alert error handling" do
+      before do
+        RubyLLM::Agents.configure do |config|
+          config.alerts = {
+            on_events: [:budget_soft_cap],
+            email_recipients: ["admin@example.com"]
+          }
+        end
+        allow(RubyLLM::Agents::AlertMailer).to receive(:alert_notification).and_raise(StandardError, "SMTP error")
+      end
+
+      it "logs warning but does not raise" do
+        expect(Rails.logger).to receive(:warn).with(/Email alert failed/)
+        expect { described_class.notify(:budget_soft_cap, { amount: 100 }) }.not_to raise_error
+      end
+    end
+
     context "with non-success HTTP response" do
       let(:http_double) { instance_double(Net::HTTP) }
       let(:response_double) { instance_double(Net::HTTPBadRequest, code: "400", body: "Bad Request") }
