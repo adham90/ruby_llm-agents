@@ -1,4 +1,4 @@
-# Workflows Workflows
+# Workflows
 
 This directory contains workflow orchestration classes that compose multiple agents. Workflows provide patterns for sequential, parallel, and conditional agent execution.
 
@@ -6,11 +6,247 @@ This directory contains workflow orchestration classes that compose multiple age
 
 | Type | Class | Description |
 |------|-------|-------------|
-| Pipeline | `Workflow::Pipeline` | Sequential execution, data flows between steps |
-| Parallel | `Workflow::Parallel` | Concurrent execution with aggregation |
-| Router | `Workflow::Router` | Conditional dispatch based on classification |
+| **DSL Workflow** | `Workflow` | Declarative DSL for mixed sequential/parallel/routing |
+| Pipeline | `Workflow::Pipeline` | Legacy: Sequential execution, data flows between steps |
+| Parallel | `Workflow::Parallel` | Legacy: Concurrent execution with aggregation |
+| Router | `Workflow::Router` | Legacy: Conditional dispatch based on classification |
 
-## Creating Workflows
+## Declarative DSL Workflows (Recommended)
+
+The new declarative DSL provides a clean, expressive syntax for defining workflows with minimal boilerplate. It supports sequential steps, parallel execution, conditional routing, and input validation all in one workflow class.
+
+### Minimal Workflow
+
+```ruby
+module Workflows
+  class SimpleWorkflow < RubyLLM::Agents::Workflow
+    step :fetch, FetcherAgent
+    step :process, ProcessorAgent
+    step :save, SaverAgent
+  end
+end
+
+# Usage
+result = Workflows::SimpleWorkflow.call(order_id: "ORD-123")
+result.success?          # => true
+result.content           # => final step output
+result.steps[:process]   # => ProcessorAgent result
+```
+
+### Full-Featured Workflow
+
+```ruby
+module Workflows
+  class OrderWorkflow < RubyLLM::Agents::Workflow
+    description "Process customer orders end-to-end"
+    version "2.0"
+    timeout 300
+    max_cost 2.00
+
+    # Input validation with defaults
+    input do
+      required :order_id, String
+      required :user_id, Integer
+      optional :priority, String, default: "normal"
+      optional :expedited, :boolean, default: false
+    end
+
+    # Sequential steps
+    step :fetch, FetcherAgent, timeout: 30
+    step :validate, ValidatorAgent
+
+    # Conditional routing based on previous step result
+    step :process, on: -> { validate.tier } do |route|
+      route.premium  PremiumProcessorAgent
+      route.standard StandardProcessorAgent
+      route.default  BasicProcessorAgent
+    end
+
+    # Parallel execution block
+    parallel do
+      step :analyze, AnalyzerAgent
+      step :summarize, SummarizerAgent
+      step :notify, NotifierAgent
+    end
+
+    # Conditional step execution
+    step :expedite, ExpediteAgent, if: :expedited?
+
+    private
+
+    def expedited?
+      input.expedited == true
+    end
+  end
+end
+```
+
+### DSL Reference
+
+#### Input Schema
+
+Define required and optional inputs with type validation:
+
+```ruby
+input do
+  required :order_id, String
+  required :amount, Numeric
+  optional :priority, String, default: "normal"
+  optional :debug, :boolean, default: false
+
+  # With enum validation
+  optional :status, String, in: %w[pending active completed]
+end
+```
+
+#### Step Options
+
+```ruby
+# Basic step
+step :name, AgentClass
+
+# With description
+step :validate, ValidatorAgent, "Validates order data"
+
+# With timeout (seconds)
+step :fetch, FetcherAgent, timeout: 30
+
+# Optional step (workflow continues on failure)
+step :enrich, EnricherAgent, optional: true
+
+# With default value on failure
+step :lookup, LookupAgent, optional: true, default: { found: false }
+
+# Conditional execution
+step :notify, NotifierAgent, if: :should_notify?
+step :skip_this, SkipAgent, unless: :condition_met?
+
+# With retry
+step :api_call, ApiAgent, retry: 3
+step :api_call, ApiAgent, retry: { max: 3, delay: 2, backoff: :exponential }
+```
+
+#### Conditional Routing
+
+Route to different agents based on a value:
+
+```ruby
+# Route based on lambda returning a value
+step :process, on: -> { validate.tier } do |route|
+  route.premium  PremiumAgent
+  route.standard StandardAgent
+  route.default  FallbackAgent  # Required fallback
+end
+
+# With custom input mapping per route
+step :handle, on: -> { classify.type } do |route|
+  route.billing  BillingAgent,  input: -> { { account: input.account_id } }
+  route.support  SupportAgent,  input: -> { { ticket: input.ticket_id } }
+  route.default  GeneralAgent
+end
+```
+
+#### Parallel Execution
+
+Execute steps concurrently:
+
+```ruby
+# Anonymous parallel group
+parallel do
+  step :sentiment, SentimentAgent
+  step :keywords, KeywordAgent
+  step :entities, EntityAgent
+end
+
+# Named parallel group with options
+parallel :analysis, fail_fast: true, concurrency: 2 do
+  step :deep_analyze, DeepAnalyzer
+  step :quick_scan, QuickScanner
+end
+```
+
+#### Lifecycle Hooks
+
+```ruby
+class MyWorkflow < RubyLLM::Agents::Workflow
+  step :process, ProcessorAgent
+  step :save, SaverAgent
+
+  # Workflow-level hooks
+  before_workflow { Rails.logger.info("Starting workflow") }
+  after_workflow { Rails.logger.info("Workflow complete") }
+
+  # Step-level hooks
+  before_step(:process) { |context| log_step_start(:process) }
+  after_step(:process) { |result, duration_ms| log_step_end(:process, duration_ms) }
+
+  # Error hooks
+  on_step_failure(:process) { |error, context| handle_error(error) }
+end
+```
+
+#### Accessing Step Results
+
+Within the workflow, access previous step results:
+
+```ruby
+step :validate, ValidatorAgent
+
+# In routing lambda
+step :process, on: -> { validate.tier } do |route|
+  # validate.tier returns validate step's result[:tier]
+end
+
+# In condition methods
+def should_notify?
+  validate.valid? && input.callback_url.present?
+end
+```
+
+### Workflow Result API
+
+```ruby
+result = MyWorkflow.call(order_id: "123")
+
+# Status
+result.success?    # All steps succeeded
+result.partial?    # Some optional steps failed
+result.error?      # Required step failed
+result.status      # "success", "partial", or "error"
+
+# Content
+result.content     # Final step output
+
+# Step results
+result.steps                      # Hash of all step results
+result.steps[:validate]           # Specific step result
+result.steps[:validate].content   # Step output content
+
+# Metrics
+result.total_cost      # Combined cost of all steps
+result.input_tokens    # Total input tokens
+result.output_tokens   # Total output tokens
+result.duration_ms     # Total workflow duration
+
+# Errors
+result.errors          # Hash of step errors
+```
+
+### Dry Run / Validation
+
+Validate workflow configuration without executing:
+
+```ruby
+validation = MyWorkflow.dry_run(order_id: "123")
+
+validation[:valid]         # true/false
+validation[:input_errors]  # Array of validation errors
+validation[:steps]         # List of step names
+validation[:agents]        # List of agent classes
+validation[:parallel_groups]  # Parallel group info
+```
+
+## Creating Workflows (Legacy Patterns)
 
 ### Pipeline (Sequential)
 
@@ -289,12 +525,27 @@ end
 
 ## Best Practices
 
-1. **Version your workflows** - Track changes for debugging
-2. **Set timeouts** - Prevent runaway workflows
+### General
+
+1. **Version your workflows** - Track changes for debugging and rollback
+2. **Set timeouts** - Prevent runaway workflows at both workflow and step level
 3. **Use max_cost** - Control spending on expensive operations
-4. **Handle errors gracefully** - Use optional steps and error handlers
+4. **Handle errors gracefully** - Use optional steps, defaults, and error handlers
 5. **Keep workflows focused** - One workflow, one purpose
 6. **Test step interactions** - Unit test agents, integration test workflows
-7. **Log workflow execution** - Track step timing and costs
-8. **Use parallel for independent operations** - Improve throughput
-9. **Use router for classification** - Keep routing logic centralized
+
+### DSL Workflows (Recommended)
+
+1. **Use input schemas** - Validate inputs early with `required`/`optional` declarations
+2. **Prefer DSL over legacy patterns** - The new DSL is more flexible and composable
+3. **Use parallel for independent operations** - Group unrelated steps for concurrent execution
+4. **Use routing for classification** - Clean syntax for conditional agent selection
+5. **Leverage step result access** - Use `step_name.field` syntax in conditions/routing
+6. **Add lifecycle hooks** - Log, track, and handle errors at appropriate points
+7. **Use dry_run for validation** - Check workflow configuration before execution
+
+### Legacy Patterns
+
+1. **Use Pipeline for sequential data processing** - Data flows naturally between steps
+2. **Use Parallel for fan-out operations** - Independent operations with aggregation
+3. **Use Router for classification-based dispatch** - When route selection depends on LLM classification

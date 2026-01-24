@@ -30,7 +30,8 @@ module RubyLLM
         @workflows_by_type = {
           pipeline: @workflows.select { |w| w[:workflow_type] == "pipeline" },
           parallel: @workflows.select { |w| w[:workflow_type] == "parallel" },
-          router: @workflows.select { |w| w[:workflow_type] == "router" }
+          router: @workflows.select { |w| w[:workflow_type] == "router" },
+          dsl: @workflows.select { |w| w[:workflow_type] == "dsl" }
         }
 
         @workflow_count = @workflows.size
@@ -73,18 +74,26 @@ module RubyLLM
 
       private
 
-      # Detects the workflow type kind (pipeline, parallel, router)
+      # Detects the workflow type kind (pipeline, parallel, router, dsl)
+      #
+      # DSL workflows are those that use the new step/parallel DSL directly
+      # on the Workflow base class without inheriting from Pipeline/Parallel/Router.
       #
       # @return [String, nil] The workflow type kind
       def detect_workflow_type_kind
         if @workflow_class
           ancestors = @workflow_class.ancestors.map { |a| a.name.to_s }
+
+          # Check for legacy workflow types first
           if ancestors.include?("RubyLLM::Agents::Workflow::Pipeline")
             "pipeline"
           elsif ancestors.include?("RubyLLM::Agents::Workflow::Parallel")
             "parallel"
           elsif ancestors.include?("RubyLLM::Agents::Workflow::Router")
             "router"
+          elsif @workflow_class.respond_to?(:step_configs) && @workflow_class.step_configs.any?
+            # New DSL-based workflow
+            "dsl"
           end
         else
           # Fallback to execution history
@@ -284,6 +293,25 @@ module RubyLLM
           load_parallel_config
         when "router"
           load_router_config
+        when "dsl"
+          load_dsl_config
+        end
+      end
+
+      # Loads DSL-based workflow configuration
+      #
+      # @return [void]
+      def load_dsl_config
+        @steps = extract_dsl_steps(@workflow_class)
+        @parallel_groups = extract_parallel_groups(@workflow_class)
+        @config[:steps_count] = @steps.size
+        @config[:parallel_groups_count] = @parallel_groups.size
+        @config[:has_routing] = @steps.any? { |s| s[:routing] }
+        @config[:has_input_schema] = @workflow_class.input_schema.present?
+
+        # Extract input schema for display
+        if @workflow_class.input_schema
+          @input_schema_fields = @workflow_class.input_schema.fields.transform_values(&:to_h)
         end
       end
 
@@ -328,6 +356,38 @@ module RubyLLM
             optional: config[:continue_on_error] || false
           }
         end
+      end
+
+      # Extracts steps from a DSL-based workflow class
+      #
+      # @param klass [Class] The workflow class
+      # @return [Array<Hash>] Array of step hashes with DSL metadata
+      def extract_dsl_steps(klass)
+        return [] unless klass.respond_to?(:step_metadata)
+
+        klass.step_metadata.map do |meta|
+          {
+            name: meta[:name],
+            agent: meta[:agent],
+            description: meta[:description],
+            ui_label: meta[:ui_label],
+            optional: meta[:optional],
+            timeout: meta[:timeout],
+            routing: meta[:routing],
+            parallel: meta[:parallel],
+            parallel_group: meta[:parallel_group]
+          }
+        end
+      end
+
+      # Extracts parallel groups from a DSL-based workflow class
+      #
+      # @param klass [Class] The workflow class
+      # @return [Array<Hash>] Array of parallel group hashes
+      def extract_parallel_groups(klass)
+        return [] unless klass.respond_to?(:parallel_groups)
+
+        klass.parallel_groups.map(&:to_h)
       end
 
       # Extracts branches from a parallel workflow class

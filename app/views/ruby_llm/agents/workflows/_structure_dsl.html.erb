@@ -1,0 +1,312 @@
+<%
+  # DSL-based workflow structure visualization
+  # Shows steps with support for routing (branching) and parallel groups
+  steps = local_assigns[:steps] || []
+  parallel_groups = local_assigns[:parallel_groups] || []
+  input_schema_fields = local_assigns[:input_schema_fields] || {}
+%>
+
+<% if steps.any? %>
+  <!-- Visual DSL Workflow Flow -->
+  <div class="py-4 overflow-x-auto">
+    <div class="flex items-start justify-center gap-2 min-w-max px-4">
+      <%
+        # Group steps: sequential steps and parallel groups
+        current_parallel_group = nil
+        grouped_items = []
+
+        steps.each do |step|
+          if step[:parallel_group].present?
+            pg = parallel_groups.find { |g| g[:name] == step[:parallel_group] }
+            if current_parallel_group != step[:parallel_group]
+              current_parallel_group = step[:parallel_group]
+              grouped_items << { type: :parallel_group, group: pg, steps: [step] }
+            else
+              grouped_items.last[:steps] << step
+            end
+          else
+            current_parallel_group = nil
+            grouped_items << { type: :step, step: step }
+          end
+        end
+      %>
+
+      <% grouped_items.each_with_index do |item, index| %>
+        <% if item[:type] == :step %>
+          <% step = item[:step] %>
+          <!-- Single Step Box -->
+          <div class="flex flex-col items-center">
+            <%
+              # Determine step styling based on type
+              if step[:routing]
+                border_color = "border-amber-300 dark:border-amber-600"
+                bg_color = "bg-amber-50 dark:bg-amber-900/30"
+                text_color = "text-amber-700 dark:text-amber-300"
+                icon_color = "text-amber-400 dark:text-amber-500"
+              else
+                border_color = "border-indigo-200 dark:border-indigo-700"
+                bg_color = "bg-indigo-50 dark:bg-indigo-900/30"
+                text_color = "text-indigo-700 dark:text-indigo-300"
+                icon_color = "text-indigo-400 dark:text-indigo-500"
+              end
+            %>
+            <div class="w-28 h-16 flex flex-col items-center justify-center rounded-lg border-2 <%= border_color %> <%= bg_color %> <%= step[:optional] ? 'border-dashed' : '' %> relative">
+              <% if step[:routing] %>
+                <!-- Routing indicator -->
+                <div class="absolute -top-2 -right-2">
+                  <svg class="w-4 h-4 <%= icon_color %>" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M7.707 3.293a1 1 0 010 1.414L5.414 7H11a7 7 0 017 7v2a1 1 0 11-2 0v-2a5 5 0 00-5-5H5.414l2.293 2.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                  </svg>
+                </div>
+              <% end %>
+              <span class="text-sm font-semibold <%= text_color %> truncate max-w-24 px-1">
+                <%= step[:name] %>
+              </span>
+              <% if step[:ui_label].present? %>
+                <span class="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-24">
+                  <%= step[:ui_label] %>
+                </span>
+              <% end %>
+            </div>
+            <span class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate max-w-28" title="<%= step[:agent] %>">
+              <%= step[:agent]&.to_s&.gsub(/Agent$/, '') %>
+            </span>
+            <% if step[:optional] %>
+              <span class="text-[10px] text-gray-400 dark:text-gray-500 italic">(optional)</span>
+            <% end %>
+          </div>
+        <% else %>
+          <!-- Parallel Group Box -->
+          <div class="flex flex-col items-center">
+            <div class="relative border-2 border-dashed border-purple-300 dark:border-purple-600 rounded-lg p-3 bg-purple-50/50 dark:bg-purple-900/20">
+              <!-- Fork indicator at top -->
+              <div class="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                <div class="bg-purple-100 dark:bg-purple-800 rounded-full px-2 py-0.5">
+                  <span class="text-[10px] font-medium text-purple-700 dark:text-purple-300">parallel</span>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 mt-1">
+                <% item[:steps].each_with_index do |step, step_idx| %>
+                  <div class="flex flex-col items-center">
+                    <div class="w-24 h-14 flex flex-col items-center justify-center rounded-lg border border-purple-200 dark:border-purple-700 bg-white dark:bg-gray-800 <%= step[:optional] ? 'border-dashed' : '' %>">
+                      <span class="text-xs font-semibold text-purple-700 dark:text-purple-300 truncate max-w-20 px-1">
+                        <%= step[:name] %>
+                      </span>
+                    </div>
+                    <span class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 truncate max-w-24">
+                      <%= step[:agent]&.to_s&.gsub(/Agent$/, '') %>
+                    </span>
+                  </div>
+                <% end %>
+              </div>
+
+              <% if item[:group] %>
+                <div class="flex items-center justify-center gap-2 mt-2 text-[10px] text-purple-600 dark:text-purple-400">
+                  <% if item[:group][:fail_fast] %>
+                    <span class="bg-purple-100 dark:bg-purple-900/50 px-1.5 py-0.5 rounded">fail_fast</span>
+                  <% end %>
+                  <% if item[:group][:concurrency] %>
+                    <span class="bg-purple-100 dark:bg-purple-900/50 px-1.5 py-0.5 rounded">max: <%= item[:group][:concurrency] %></span>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- Arrow between items -->
+        <% unless index == grouped_items.length - 1 %>
+          <% next_item = grouped_items[index + 1] %>
+          <% current_step = item[:type] == :step ? item[:step] : nil %>
+          <% if current_step&.dig(:routing) %>
+            <!-- Branching arrow for routing steps -->
+            <div class="flex items-center text-amber-400 dark:text-amber-500 mt-4">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+              </svg>
+            </div>
+          <% else %>
+            <div class="flex items-center text-indigo-400 dark:text-indigo-500 mt-4">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+              </svg>
+            </div>
+          <% end %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Input Schema (if defined) -->
+  <% if input_schema_fields.present? %>
+    <div class="border-t border-gray-100 dark:border-gray-700 pt-4 mt-4">
+      <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+        Input Schema
+      </p>
+
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <% input_schema_fields.each do |name, field| %>
+          <div class="flex items-start gap-2 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900/50">
+            <span class="w-2 h-2 rounded-full mt-1.5 <%= field[:required] ? 'bg-red-400' : 'bg-gray-300 dark:bg-gray-600' %>"></span>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1">
+                <span class="font-medium text-gray-700 dark:text-gray-300 text-sm truncate">
+                  <%= name %>
+                </span>
+                <span class="text-[10px] text-gray-500 dark:text-gray-400">
+                  <%= field[:type] %>
+                </span>
+              </div>
+              <% if field[:default].present? || field[:default] == false %>
+                <span class="text-[10px] text-gray-500 dark:text-gray-400">
+                  default: <%= field[:default].inspect %>
+                </span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Step Details Table -->
+  <div class="border-t border-gray-100 dark:border-gray-700 pt-4 mt-4">
+    <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+      Step Details
+    </p>
+
+    <div class="space-y-2">
+      <% steps.each_with_index do |step, index| %>
+        <%
+          # Determine row styling
+          if step[:routing]
+            badge_bg = "bg-amber-100 dark:bg-amber-900/50"
+            badge_text = "text-amber-600 dark:text-amber-300"
+          elsif step[:parallel_group]
+            badge_bg = "bg-purple-100 dark:bg-purple-900/50"
+            badge_text = "text-purple-600 dark:text-purple-300"
+          else
+            badge_bg = "bg-indigo-100 dark:bg-indigo-900/50"
+            badge_text = "text-indigo-600 dark:text-indigo-300"
+          end
+        %>
+        <div class="flex items-start gap-3 py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-900/50">
+          <span class="w-6 h-6 flex items-center justify-center rounded-full <%= badge_bg %> text-xs font-medium <%= badge_text %>">
+            <%= index + 1 %>
+          </span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center flex-wrap gap-2">
+              <span class="font-medium text-gray-700 dark:text-gray-300">
+                <%= step[:name] %>
+              </span>
+              <span class="text-gray-400 dark:text-gray-500 text-sm">-></span>
+              <% if step[:agent] %>
+                <code class="text-sm font-mono text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded truncate max-w-xs">
+                  <%= step[:agent] %>
+                </code>
+              <% else %>
+                <span class="text-sm text-gray-500 dark:text-gray-400 italic">
+                  (block)
+                </span>
+              <% end %>
+
+              <!-- Badges -->
+              <% if step[:routing] %>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300">
+                  <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M7.707 3.293a1 1 0 010 1.414L5.414 7H11a7 7 0 017 7v2a1 1 0 11-2 0v-2a5 5 0 00-5-5H5.414l2.293 2.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                  </svg>
+                  routing
+                </span>
+              <% end %>
+
+              <% if step[:parallel_group] %>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300">
+                  <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z"/>
+                  </svg>
+                  <%= step[:parallel_group] %>
+                </span>
+              <% end %>
+
+              <% if step[:optional] %>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+                  optional
+                </span>
+              <% end %>
+
+              <% if step[:timeout] %>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
+                  <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                  </svg>
+                  <%= step[:timeout] %>s
+                </span>
+              <% end %>
+            </div>
+
+            <% if step[:description].present? %>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <%= step[:description] %>
+              </p>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Parallel Groups Summary -->
+  <% if parallel_groups.present? %>
+    <div class="border-t border-gray-100 dark:border-gray-700 pt-4 mt-4">
+      <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+        Parallel Groups
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <% parallel_groups.each do |group| %>
+          <div class="flex items-start gap-3 py-2 px-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+            <span class="w-6 h-6 flex items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/50 text-xs font-medium text-purple-600 dark:text-purple-300">
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z"/>
+              </svg>
+            </span>
+            <div class="flex-1">
+              <div class="flex items-center gap-2">
+                <span class="font-medium text-purple-700 dark:text-purple-300">
+                  <%= group[:name] %>
+                </span>
+                <span class="text-sm text-gray-500 dark:text-gray-400">
+                  (<%= group[:step_names]&.size || 0 %> steps)
+                </span>
+              </div>
+              <div class="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                <% if group[:fail_fast] %>
+                  <span>fail_fast: on</span>
+                <% end %>
+                <% if group[:concurrency] %>
+                  <span>concurrency: <%= group[:concurrency] %></span>
+                <% end %>
+                <% if group[:timeout] %>
+                  <span>timeout: <%= group[:timeout] %>s</span>
+                <% end %>
+              </div>
+              <div class="flex flex-wrap gap-1 mt-1">
+                <% group[:step_names]&.each do |step_name| %>
+                  <span class="text-xs bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300 px-1.5 py-0.5 rounded">
+                    <%= step_name %>
+                  </span>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+<% else %>
+  <p class="text-gray-500 dark:text-gray-400 italic py-4">
+    No steps defined for this DSL workflow.
+  </p>
+<% end %>

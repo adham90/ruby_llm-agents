@@ -3,6 +3,8 @@
 require_relative "result"
 require_relative "instrumentation"
 require_relative "thread_pool"
+require_relative "dsl"
+require_relative "dsl/executor"
 require_relative "pipeline"
 require_relative "parallel"
 require_relative "router"
@@ -12,15 +14,49 @@ module RubyLLM
     # Base class for workflow orchestration
     #
     # Provides shared functionality for composing multiple agents into
-    # coordinated workflows. Subclasses implement specific patterns:
+    # coordinated workflows. Can be used directly with the new DSL or
+    # through specialized subclasses:
     # - Pipeline: Sequential execution with data flowing between steps
     # - Parallel: Concurrent execution with result aggregation
     # - Router: Conditional dispatch based on classification
     #
-    # @example Creating a custom workflow
-    #   class MyWorkflow < RubyLLM::Agents::Workflow
-    #     version "1.0"
-    #     # ... workflow-specific DSL
+    # @example Minimal workflow with new DSL
+    #   class SimpleWorkflow < RubyLLM::Agents::Workflow
+    #     step :fetch, FetcherAgent
+    #     step :process, ProcessorAgent
+    #     step :save, SaverAgent
+    #   end
+    #
+    # @example Full-featured workflow
+    #   class OrderWorkflow < RubyLLM::Agents::Workflow
+    #     description "Process customer orders end-to-end"
+    #
+    #     input do
+    #       required :order_id, String
+    #       optional :priority, String, default: "normal"
+    #     end
+    #
+    #     step :fetch, FetcherAgent, timeout: 1.minute
+    #     step :validate, ValidatorAgent
+    #
+    #     step :process, on: -> { validate.tier } do |route|
+    #       route.premium  PremiumAgent
+    #       route.standard StandardAgent
+    #       route.default  DefaultAgent
+    #     end
+    #
+    #     parallel do
+    #       step :analyze, AnalyzerAgent
+    #       step :summarize, SummarizerAgent
+    #     end
+    #
+    #     step :notify, NotifierAgent, if: :should_notify?
+    #
+    #     private
+    #
+    #     def should_notify?
+    #       input.callback_url.present?
+    #     end
     #   end
     #
     # @see RubyLLM::Agents::Workflow::Pipeline
@@ -29,6 +65,7 @@ module RubyLLM
     # @api public
     class Workflow
       include Workflow::Instrumentation
+      include Workflow::DSL
 
       class << self
         # @!attribute [rw] version
@@ -97,11 +134,20 @@ module RubyLLM
 
         # Factory method to instantiate and execute a workflow
         #
+        # Supports both hash and keyword argument styles:
+        #   MyWorkflow.call(order_id: "123")
+        #   MyWorkflow.call({ order_id: "123" })
+        #
+        # @param input [Hash] Input hash (optional)
         # @param kwargs [Hash] Parameters to pass to the workflow
         # @yield [chunk] Optional block for streaming support
         # @return [WorkflowResult] The workflow result with aggregate metrics
-        def call(**kwargs, &block)
-          new(**kwargs).call(&block)
+        def call(input = nil, **kwargs, &block)
+          # Support both call(hash) and call(**kwargs) patterns
+          merged_input = input.is_a?(Hash) ? input.merge(kwargs) : kwargs
+          # Pass input to constructor to maintain backward compatibility with
+          # legacy subclasses that override call without arguments
+          new(**merged_input).call(&block)
         end
       end
 
@@ -117,6 +163,10 @@ module RubyLLM
       #   @return [Integer, nil] The ID of the root execution record
       attr_reader :execution_id
 
+      # @!attribute [r] step_results
+      #   @return [Hash<Symbol, Result>] Results from executed steps
+      attr_reader :step_results
+
       # Creates a new workflow instance
       #
       # @param kwargs [Hash] Parameters for the workflow
@@ -126,16 +176,84 @@ module RubyLLM
         @execution_id = nil
         @accumulated_cost = 0.0
         @step_results = {}
+        @validated_input = nil
       end
 
       # Executes the workflow
       #
-      # @abstract Subclasses must implement this method
+      # When using the new DSL with `step` declarations, this method
+      # automatically executes the workflow using the DSL executor.
+      # For legacy subclasses (Pipeline, Parallel, Router), this raises
+      # NotImplementedError to be overridden.
+      #
+      # Supports both hash and keyword argument styles:
+      #   workflow.call(order_id: "123")
+      #   workflow.call({ order_id: "123" })
+      #
+      # @param input [Hash] Input hash (optional)
+      # @param kwargs [Hash] Keyword arguments for input
       # @yield [chunk] Optional block for streaming support
       # @return [WorkflowResult] The workflow result
-      def call(&block)
-        raise NotImplementedError, "#{self.class} must implement #call"
+      def call(input = nil, **kwargs, &block)
+        # Merge input sources: constructor options, hash arg, keyword args
+        merged_input = @options.merge(input.is_a?(Hash) ? input : {}).merge(kwargs)
+        @options = merged_input
+
+        # Use DSL executor if steps are defined with the new DSL
+        if self.class.step_configs.any?
+          instrument_workflow do
+            execute_with_dsl(&block)
+          end
+        else
+          raise NotImplementedError, "#{self.class} must implement #call or define steps"
+        end
       end
+
+      # Validates workflow input and executes a dry run
+      #
+      # Returns information about the workflow without executing agents.
+      # Supports both positional hash and keyword arguments.
+      #
+      # @param input_hash [Hash] Input hash (optional)
+      # @param input [Hash] Keyword arguments for input
+      # @return [Hash] Validation results and workflow structure
+      def self.dry_run(input_hash = nil, **input)
+        input = input_hash.merge(input) if input_hash.is_a?(Hash)
+        errors = []
+
+        # Validate input if schema defined
+        if input_schema
+          begin
+            input_schema.validate!(input)
+          rescue DSL::InputSchema::ValidationError => e
+            errors.concat(e.errors)
+          end
+        end
+
+        # Validate configuration
+        errors.concat(validate_configuration)
+
+        {
+          valid: errors.empty?,
+          input_errors: errors,
+          steps: step_metadata.map { |s| s[:name] },
+          agents: step_metadata.map { |s| s[:agent] }.compact,
+          parallel_groups: parallel_groups.map(&:to_h),
+          warnings: validate_configuration
+        }
+      end
+
+      private
+
+      # Executes the workflow using the DSL executor
+      #
+      # @return [WorkflowResult] The workflow result
+      def execute_with_dsl(&block)
+        executor = DSL::Executor.new(self)
+        executor.execute(&block)
+      end
+
+      public
 
       protected
 

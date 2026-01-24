@@ -38,6 +38,11 @@
               class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors inline-flex items-center gap-1.5">
         <span aria-hidden="true">&lt;&gt;</span> Router (<%= @workflows_by_type[:router].size %>)
       </button>
+      <button type="button" @click="activeSubTab = 'dsl'; updateUrl()"
+              :class="activeSubTab === 'dsl' ? 'bg-emerald-600 text-white' : 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-800'"
+              class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors inline-flex items-center gap-1.5">
+        <span aria-hidden="true">&#x25c8;</span> DSL (<%= @workflows_by_type[:dsl]&.size || 0 %>)
+      </button>
     </div>
   </div>
 

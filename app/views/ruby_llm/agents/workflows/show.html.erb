@@ -49,6 +49,16 @@
           <span><%= @branches.size %> branches</span>
         <% elsif @workflow_type_kind == "router" && @routes.present? %>
           <span><%= @routes.size %> routes</span>
+        <% elsif @workflow_type_kind == "dsl" && @steps.present? %>
+          <span><%= @steps.size %> steps</span>
+          <% if @parallel_groups.present? %>
+            <span class="text-gray-300 dark:text-gray-600">|</span>
+            <span><%= @parallel_groups.size %> parallel groups</span>
+          <% end %>
+          <% if @config && @config[:has_routing] %>
+            <span class="text-gray-300 dark:text-gray-600">|</span>
+            <span class="text-amber-600 dark:text-amber-400">routing enabled</span>
+          <% end %>
         <% end %>
 
         <% if @config && @config[:timeout] %>
@@ -109,6 +119,33 @@
       <span class="text-sm text-gray-500 dark:text-gray-400">
         classifier: <%= @config[:classifier_model] %> @ <%= @config[:classifier_temperature] || 0.0 %>
       </span>
+    <% elsif @workflow_type_kind == "dsl" && @config %>
+      <div class="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+        <% if @config[:has_input_schema] %>
+          <span class="inline-flex items-center gap-1">
+            <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+            input schema
+          </span>
+        <% end %>
+        <% if @config[:has_routing] %>
+          <span class="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M7.707 3.293a1 1 0 010 1.414L5.414 7H11a7 7 0 017 7v2a1 1 0 11-2 0v-2a5 5 0 00-5-5H5.414l2.293 2.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+            routing
+          </span>
+        <% end %>
+        <% if @config[:parallel_groups_count].to_i > 0 %>
+          <span class="inline-flex items-center gap-1 text-purple-600 dark:text-purple-400">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z"/>
+            </svg>
+            parallel
+          </span>
+        <% end %>
+      </div>
     <% end %>
   </div>
 
@@ -119,6 +156,11 @@
     <%= render "ruby_llm/agents/workflows/structure_parallel", branches: @branches || [] %>
   <% when "router" %>
     <%= render "ruby_llm/agents/workflows/structure_router", routes: @routes || [] %>
+  <% when "dsl" %>
+    <%= render "ruby_llm/agents/workflows/structure_dsl",
+        steps: @steps || [],
+        parallel_groups: @parallel_groups || [],
+        input_schema_fields: @input_schema_fields || {} %>
   <% else %>
     <p class="text-gray-500 dark:text-gray-400 italic">
       Workflow structure unavailable
