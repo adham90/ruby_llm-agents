@@ -1,29 +1,27 @@
 # frozen_string_literal: true
 
-# Example Router Workflow
+# Example Routing Workflow using the new DSL
 # Routes customer messages to specialized agents based on intent
 #
 # Usage:
 #   result = SupportRouter.call(message: "I was charged twice")
-#   result.routed_to         # :billing, :technical, or :default
-#   result.classification    # Classification details
-#   result.content           # Response from routed agent
+#   result.steps[:classify].content  # Classification details (e.g., { category: "billing" })
+#   result.steps[:handle].content    # Response from routed agent
+#   result.content                   # Final workflow output
 #
-class SupportRouter < RubyLLM::Agents::Workflow::Router
+class SupportRouter < RubyLLM::Agents::Workflow
   description "Routes customer messages to specialized support agents based on intent"
   version "1.0"
-  classifier_model "gpt-4o-mini"
-  classifier_temperature 0.0
 
-  route :billing,   to: BillingAgent,   description: "Billing questions, charges, refunds, invoices"
-  route :technical, to: TechnicalAgent, description: "Technical issues, bugs, errors, crashes"
-  route :default,   to: GeneralAgent
+  input do
+    required :message, String
+  end
 
-  # Transform input before routing to agent
-  def before_route(input, chosen_route)
-    input.merge(
-      routed_at: Time.current,
-      route_context: chosen_route
-    )
+  step :classify, ClassifierAgent
+
+  step :handle, on: -> { classify.category } do |route|
+    route.billing BillingAgent
+    route.technical TechnicalAgent
+    route.default GeneralAgent
   end
 end
