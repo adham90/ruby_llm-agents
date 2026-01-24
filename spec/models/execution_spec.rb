@@ -187,64 +187,6 @@ RSpec.describe RubyLLM::Agents::Execution, type: :model do
       end
     end
 
-    describe ".search" do
-      it "returns all records when query is blank" do
-        create_list(:execution, 3)
-        expect(described_class.search("")).to eq(described_class.all)
-        expect(described_class.search(nil)).to eq(described_class.all)
-      end
-
-      it "searches by error_class" do
-        create(:execution, error_class: "TimeoutError")
-        create(:execution, error_class: "NetworkError")
-
-        result = described_class.search("Timeout")
-        expect(result.count).to eq(1)
-        expect(result.first.error_class).to eq("TimeoutError")
-      end
-
-      it "searches by error_message" do
-        create(:execution, error_message: "Connection refused by server")
-        create(:execution, error_message: "Request timed out")
-
-        result = described_class.search("Connection")
-        expect(result.count).to eq(1)
-        expect(result.first.error_message).to include("Connection")
-      end
-
-      it "searches within parameters JSON" do
-        create(:execution, parameters: { query: "find special item" })
-        create(:execution, parameters: { query: "normal search" })
-
-        result = described_class.search("special")
-        expect(result.count).to eq(1)
-      end
-
-      it "is case insensitive" do
-        create(:execution, error_class: "TimeoutError")
-
-        expect(described_class.search("timeout").count).to eq(1)
-        expect(described_class.search("TIMEOUT").count).to eq(1)
-        expect(described_class.search("TimeOut").count).to eq(1)
-      end
-
-      it "sanitizes SQL wildcards in search input" do
-        create(:execution, error_message: "100% complete")
-
-        # Should not match all records due to unsanitized %
-        result = described_class.search("%")
-        expect(result.count).to eq(1)
-      end
-
-      it "can be chained with other scopes" do
-        create(:execution, error_class: "TimeoutError", status: "error")
-        create(:execution, error_class: "TimeoutError", status: "success")
-
-        result = described_class.errors.search("Timeout")
-        expect(result.count).to eq(1)
-        expect(result.first.status).to eq("error")
-      end
-    end
   end
 
   describe "aggregations" do

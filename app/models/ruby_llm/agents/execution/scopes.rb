@@ -156,37 +156,6 @@ module RubyLLM
 
           # @!endgroup
 
-          # @!group Search Scopes
-
-          # @!method search(query)
-          #   Free-text search across error fields and parameters
-          #   @param query [String] Search query
-          #   @return [ActiveRecord::Relation]
-          scope :search, ->(query) do
-            return all if query.blank?
-
-            sanitized_query = "%#{sanitize_sql_like(query)}%"
-            # Use database-agnostic case-insensitive search
-            # PostgreSQL: ILIKE, SQLite: LIKE with LOWER() + ESCAPE clause
-            if connection.adapter_name.downcase.include?("postgresql")
-              where(
-                "error_class ILIKE :q OR error_message ILIKE :q OR CAST(parameters AS TEXT) ILIKE :q",
-                q: sanitized_query
-              )
-            else
-              # SQLite and other databases need ESCAPE clause for backslash to work
-              sanitized_query_lower = sanitized_query.downcase
-              where(
-                "LOWER(error_class) LIKE :q ESCAPE '\\' OR " \
-                "LOWER(error_message) LIKE :q ESCAPE '\\' OR " \
-                "LOWER(CAST(parameters AS TEXT)) LIKE :q ESCAPE '\\'",
-                q: sanitized_query_lower
-              )
-            end
-          end
-
-          # @!endgroup
-
           # @!group Tracing Scopes
 
           # @!method by_trace(trace_id)

@@ -240,9 +240,6 @@ module RubyLLM
       def filtered_executions
         scope = tenant_scoped_executions
 
-        # Apply search filter
-        scope = scope.search(params[:q]) if params[:q].present?
-
         # Apply agent type filter
         agent_types = parse_array_param(:agent_types)
         if agent_types.any?

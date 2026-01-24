@@ -201,38 +201,6 @@ RSpec.describe RubyLLM::Agents::ExecutionsController, "edge cases", type: :contr
       end
     end
 
-    context "with search edge cases" do
-      # NOTE: The following search tests are skipped because they expose a bug in the
-      # controller's search implementation (ambiguous column name in SQL when using
-      # self-joins with SQLite). This is a controller bug, not a test bug.
-      # TODO: Fix the controller's search SQL to properly qualify column names.
-
-      it "searches with special characters", skip: "Controller search has ambiguous column bug" do
-        get :index, params: { q: "test%_[]" }
-
-        expect(response).to have_http_status(:success)
-      end
-
-      it "searches with very long query", skip: "Controller search has ambiguous column bug" do
-        get :index, params: { q: "a" * 1000 }
-
-        expect(response).to have_http_status(:success)
-      end
-
-      it "searches with empty string" do
-        get :index, params: { q: "" }
-
-        expect(response).to have_http_status(:success)
-      end
-
-      it "searches with SQL-like patterns", skip: "Controller search has ambiguous column bug" do
-        get :index, params: { q: "'; DROP TABLE executions; --" }
-
-        expect(response).to have_http_status(:success)
-        expect(RubyLLM::Agents::Execution.table_exists?).to be true
-      end
-    end
-
     context "with combined filters" do
       it "handles multiple filters simultaneously" do
         get :index, params: {
@@ -281,14 +249,6 @@ RSpec.describe RubyLLM::Agents::ExecutionsController, "edge cases", type: :contr
 
       expect(response).to have_http_status(:success)
       expect(response.content_type).to include("text/html")
-    end
-
-    # NOTE: Skipped because the controller doesn't have a turbo_stream template
-    # for the index action. This would require adding the template.
-    it "responds to turbo_stream format", skip: "Missing turbo_stream template for index" do
-      get :index, format: :turbo_stream
-
-      expect(response).to have_http_status(:success)
     end
   end
 
