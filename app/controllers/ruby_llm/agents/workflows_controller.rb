@@ -273,61 +273,55 @@ module RubyLLM
           max_cost: safe_call(@workflow_class, :max_cost)
         }
 
-        # Workflow-specific configuration
+        # Load unified workflow structure for all types
+        load_unified_workflow_config
+      end
+
+      # Loads unified workflow configuration for all workflow types
+      # Normalizes pipeline, parallel, router, and DSL workflows to a common format
+      #
+      # @return [void]
+      def load_unified_workflow_config
+        @parallel_groups = []
+        @input_schema_fields = {}
+
         case @workflow_type_kind
         when "pipeline"
-          load_pipeline_config
+          @steps = extract_steps(@workflow_class)
+          @config[:steps_count] = @steps.size
         when "parallel"
-          load_parallel_config
+          branches = extract_branches(@workflow_class)
+          # Convert parallel branches to steps in a parallel group
+          @steps = branches.map do |branch|
+            branch.merge(parallel: true, parallel_group: :main)
+          end
+          @parallel_groups = [{ name: :main, step_names: branches.map { |b| b[:name] }, fail_fast: safe_call(@workflow_class, :fail_fast?) }]
+          @config[:branches_count] = branches.size
+          @config[:fail_fast] = safe_call(@workflow_class, :fail_fast?)
         when "router"
-          load_router_config
-        when "dsl"
-          load_dsl_config
+          routes = extract_routes(@workflow_class)
+          # Convert router to a classify step followed by routing step
+          @steps = [
+            { name: :classify, agent: "Classifier", routing: false, description: "Classifies input to determine route" },
+            { name: :route, agent: nil, routing: true, routes: routes, description: "Routes to specialized agent" }
+          ]
+          @config[:routes_count] = routes.size
+          @config[:routes] = routes
+          @config[:classifier_model] = safe_call(@workflow_class, :classifier_model)
+          @config[:classifier_temperature] = safe_call(@workflow_class, :classifier_temperature)
+        else
+          # DSL-based workflow (default)
+          @steps = extract_dsl_steps(@workflow_class)
+          @parallel_groups = extract_parallel_groups(@workflow_class)
+          @config[:steps_count] = @steps.size
+          @config[:parallel_groups_count] = @parallel_groups.size
+          @config[:has_routing] = @steps.any? { |s| s[:routing] }
+          @config[:has_input_schema] = @workflow_class.respond_to?(:input_schema) && @workflow_class.input_schema.present?
+
+          if @config[:has_input_schema]
+            @input_schema_fields = @workflow_class.input_schema.fields.transform_values(&:to_h)
+          end
         end
-      end
-
-      # Loads DSL-based workflow configuration
-      #
-      # @return [void]
-      def load_dsl_config
-        @steps = extract_dsl_steps(@workflow_class)
-        @parallel_groups = extract_parallel_groups(@workflow_class)
-        @config[:steps_count] = @steps.size
-        @config[:parallel_groups_count] = @parallel_groups.size
-        @config[:has_routing] = @steps.any? { |s| s[:routing] }
-        @config[:has_input_schema] = @workflow_class.input_schema.present?
-
-        # Extract input schema for display
-        if @workflow_class.input_schema
-          @input_schema_fields = @workflow_class.input_schema.fields.transform_values(&:to_h)
-        end
-      end
-
-      # Loads pipeline-specific configuration
-      #
-      # @return [void]
-      def load_pipeline_config
-        @steps = extract_steps(@workflow_class)
-        @config[:steps_count] = @steps.size
-      end
-
-      # Loads parallel-specific configuration
-      #
-      # @return [void]
-      def load_parallel_config
-        @branches = extract_branches(@workflow_class)
-        @config[:branches_count] = @branches.size
-        @config[:fail_fast] = safe_call(@workflow_class, :fail_fast?)
-      end
-
-      # Loads router-specific configuration
-      #
-      # @return [void]
-      def load_router_config
-        @routes = extract_routes(@workflow_class)
-        @config[:routes_count] = @routes.size
-        @config[:classifier_model] = safe_call(@workflow_class, :classifier_model)
-        @config[:classifier_temperature] = safe_call(@workflow_class, :classifier_temperature)
       end
 
       # Extracts steps from a pipeline workflow class

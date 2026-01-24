@@ -1,28 +1,20 @@
 <%
-  # Step/Branch/Route Performance Analytics
+  # Step Performance Analytics
   # Shows per-step metrics in a table format
   workflow_type = local_assigns[:workflow_type]
   step_stats = local_assigns[:step_stats] || []
   route_distribution = local_assigns[:route_distribution] || {}
 
-  # Determine labels based on workflow type
-  section_title = case workflow_type
-    when "pipeline" then "Step Performance"
-    when "parallel" then "Branch Performance"
-    when "router" then "Route Distribution"
-    else "Step Performance"
-  end
-
-  column_label = case workflow_type
-    when "pipeline" then "Step"
-    when "parallel" then "Branch"
-    when "router" then "Route"
-    else "Step"
-  end
+  # Unified labels
+  section_title = "Step Performance"
+  column_label = "Step"
 
   # Calculate max values for bar charts
   max_duration = step_stats.map { |s| s[:avg_duration_ms] }.compact.max || 1
   max_cost = step_stats.map { |s| s[:avg_cost] }.compact.max || 0.001
+
+  # Check if any steps are parallel
+  has_parallel = step_stats.any? { |s| s[:name].to_s.include?("parallel") || workflow_type == "parallel" }
 %>
 
 <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
