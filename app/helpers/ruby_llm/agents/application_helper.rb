@@ -11,6 +11,39 @@ module RubyLLM
     module ApplicationHelper
       include Chartkick::Helper if defined?(Chartkick)
 
+      # Wiki base URL for documentation links
+      WIKI_BASE_URL = "https://github.com/adham90/ruby_llm-agents/wiki/".freeze
+
+      # Page to documentation mapping
+      DOC_PAGES = {
+        "dashboard/index" => "Dashboard",
+        "agents/index" => "Agent-DSL",
+        "agents/show" => "Agent-DSL",
+        "workflows/index" => "Workflows",
+        "workflows/show" => "Workflows",
+        "executions/index" => "Execution-Tracking",
+        "executions/show" => "Execution-Tracking",
+        "tenants/index" => "Multi-Tenancy",
+        "system_config/show" => "Configuration",
+        "api_configurations/show" => "Configuration"
+      }.freeze
+
+      # Returns the documentation URL for the current page or a specific page key
+      #
+      # @param page_key [String, nil] Optional page key (e.g., "agents/index")
+      # @return [String, nil] The documentation URL or nil if no mapping exists
+      # @example Get documentation URL for current page
+      #   documentation_url #=> "https://github.com/adham90/ruby_llm-agents/wiki/Agent-DSL"
+      # @example Get documentation URL for specific page
+      #   documentation_url("dashboard/index") #=> "https://github.com/adham90/ruby_llm-agents/wiki/Dashboard"
+      def documentation_url(page_key = nil)
+        key = page_key || "#{controller_name}/#{action_name}"
+        doc_page = DOC_PAGES[key]
+        return nil unless doc_page
+
+        "#{WIKI_BASE_URL}#{doc_page}"
+      end
+
       # Returns the URL helpers for the engine's routes
       #
       # Use this to generate paths and URLs within the dashboard views.

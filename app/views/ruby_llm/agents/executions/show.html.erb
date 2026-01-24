@@ -30,6 +30,7 @@
       <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 truncate">
         <%= @execution.agent_type.gsub(/Agent$/, '') %>
       </h2>
+      <%= render "ruby_llm/agents/shared/doc_link" %>
       <%= render "ruby_llm/agents/shared/status_badge", status: @execution.status, size: :md %>
       <% if secondary_badges.any? %>
         <div class="relative" x-data="{ showDetails: false }">

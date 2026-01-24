@@ -12,6 +12,7 @@
         <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
           <%= @agent_type.gsub(/Agent$/, '') %>
         </h1>
+        <%= render "ruby_llm/agents/shared/doc_link" %>
 
         <% if @agent_active %>
           <span
