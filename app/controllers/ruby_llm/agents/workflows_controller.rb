@@ -25,21 +25,9 @@ module RubyLLM
       def index
         all_items = AgentRegistry.all_with_details
         @workflows = all_items.select { |a| a[:is_workflow] }
-
-        # Group workflows by type for sub-tabs
-        @workflows_by_type = {
-          pipeline: @workflows.select { |w| w[:workflow_type] == "pipeline" },
-          parallel: @workflows.select { |w| w[:workflow_type] == "parallel" },
-          router: @workflows.select { |w| w[:workflow_type] == "router" },
-          dsl: @workflows.select { |w| w[:workflow_type] == "dsl" }
-        }
-
-        @workflow_count = @workflows.size
       rescue StandardError => e
         Rails.logger.error("[RubyLLM::Agents] Error loading workflows: #{e.message}")
         @workflows = []
-        @workflows_by_type = { pipeline: [], parallel: [], router: [] }
-        @workflow_count = 0
         flash.now[:alert] = "Error loading workflows list"
       end
 

@@ -2,20 +2,16 @@
   workflow_colors = {
     "pipeline" => { border: "border-l-indigo-500", icon_bg: "bg-indigo-100 dark:bg-indigo-900/50", icon_text: "text-indigo-600 dark:text-indigo-300" },
     "parallel" => { border: "border-l-cyan-500", icon_bg: "bg-cyan-100 dark:bg-cyan-900/50", icon_text: "text-cyan-600 dark:text-cyan-300" },
-    "router" => { border: "border-l-amber-500", icon_bg: "bg-amber-100 dark:bg-amber-900/50", icon_text: "text-amber-600 dark:text-amber-300" }
+    "router" => { border: "border-l-amber-500", icon_bg: "bg-amber-100 dark:bg-amber-900/50", icon_text: "text-amber-600 dark:text-amber-300" },
+    "dsl" => { border: "border-l-emerald-500", icon_bg: "bg-emerald-100 dark:bg-emerald-900/50", icon_text: "text-emerald-600 dark:text-emerald-300" }
   }
-  colors = workflow_colors[workflow[:workflow_type]] || { border: "border-l-gray-400", icon_bg: "bg-gray-100", icon_text: "text-gray-600" }
+  colors = workflow_colors[workflow[:workflow_type]] || { border: "border-l-emerald-500", icon_bg: "bg-emerald-100 dark:bg-emerald-900/50", icon_text: "text-emerald-600 dark:text-emerald-300" }
 
-  child_label = case workflow[:workflow_type]
-    when "pipeline" then "steps"
-    when "parallel" then "branches"
-    when "router" then "routes"
-    else "children"
-  end
+  child_label = "steps"
 %>
 
 <div x-data="{ expanded: false }" class="block bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 <%= colors[:border] %>">
-  <%= link_to ruby_llm_agents.workflow_path(ERB::Util.url_encode(workflow[:name]), tab: local_assigns[:current_tab], subtab: local_assigns[:current_subtab]), class: "block p-4 sm:p-5 relative z-10", data: { turbo: false }, style: "pointer-events: auto;" do %>
+  <%= link_to ruby_llm_agents.workflow_path(ERB::Util.url_encode(workflow[:name]), tab: local_assigns[:current_tab]), class: "block p-4 sm:p-5 relative z-10", data: { turbo: false }, style: "pointer-events: auto;" do %>
     <!-- Header Row -->
     <div class="flex items-center justify-between gap-2">
       <div class="flex items-center gap-2 min-w-0">

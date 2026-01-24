@@ -9,6 +9,7 @@
   size = local_assigns[:size] || :sm
   show_label = local_assigns.fetch(:show_label, true)
 
+  # Legacy types for backward compatibility with existing workflows
   config = case workflow_type.to_s
     when "pipeline"
       {
@@ -34,21 +35,14 @@
         text: "text-amber-700 dark:text-amber-300",
         icon_char: "⌂"
       }
-    when "dsl"
-      {
-        icon: "dsl",
-        label: "DSL",
-        bg: "bg-emerald-100 dark:bg-emerald-900/50",
-        text: "text-emerald-700 dark:text-emerald-300",
-        icon_char: "◈"
-      }
     else
+      # Default: DSL-based unified workflow (new standard)
       {
         icon: "workflow",
         label: "Workflow",
-        bg: "bg-gray-100 dark:bg-gray-700",
-        text: "text-gray-700 dark:text-gray-300",
-        icon_char: "⚙"
+        bg: "bg-emerald-100 dark:bg-emerald-900/50",
+        text: "text-emerald-700 dark:text-emerald-300",
+        icon_char: "◈"
       }
     end
 
