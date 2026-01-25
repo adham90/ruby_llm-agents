@@ -293,7 +293,11 @@ module RubyLLM
             routing: meta[:routing],
             parallel: meta[:parallel],
             parallel_group: meta[:parallel_group],
-            custom_block: config&.custom_block?
+            custom_block: config&.custom_block?,
+            # New composition features
+            workflow: meta[:workflow],
+            iteration: meta[:iteration],
+            iteration_concurrency: meta[:iteration_concurrency]
           }
 
           # Add extended configuration from StepConfig
@@ -307,8 +311,16 @@ module RubyLLM
               pick_fields: config.pick_fields,
               pick_from: config.pick_from,
               default_value: config.default_value,
-              routes: extract_routes(config)
+              routes: extract_routes(config),
+              # Iteration error handling
+              iteration_fail_fast: config.iteration_fail_fast?,
+              continue_on_error: config.continue_on_error?
             )
+
+            # Add sub-workflow metadata for nested workflow steps
+            if config.workflow? && config.agent
+              step_hash[:sub_workflow] = extract_sub_workflow_metadata(config.agent)
+            end
           end
 
           step_hash.compact
@@ -391,6 +403,48 @@ module RubyLLM
         return nil if timeout.nil?
 
         timeout.respond_to?(:to_i) ? timeout.to_i : timeout
+      end
+
+      # Extracts metadata for a nested sub-workflow
+      #
+      # @param workflow_class [Class] The sub-workflow class
+      # @return [Hash] Sub-workflow metadata including steps preview and budget info
+      def extract_sub_workflow_metadata(workflow_class)
+        return nil unless workflow_class.respond_to?(:step_metadata)
+
+        {
+          name: workflow_class.name,
+          description: safe_call(workflow_class, :description),
+          timeout: safe_call(workflow_class, :timeout),
+          max_cost: safe_call(workflow_class, :max_cost),
+          max_recursion_depth: safe_call(workflow_class, :max_recursion_depth),
+          steps_count: workflow_class.step_configs.size,
+          steps_preview: extract_sub_workflow_steps_preview(workflow_class)
+        }.compact
+      rescue StandardError => e
+        Rails.logger.debug "[RubyLLM::Agents] Could not extract sub-workflow metadata: #{e.message}"
+        nil
+      end
+
+      # Extracts a simplified steps preview for sub-workflow display
+      #
+      # @param workflow_class [Class] The sub-workflow class
+      # @return [Array<Hash>] Simplified step hashes for preview
+      def extract_sub_workflow_steps_preview(workflow_class)
+        return [] unless workflow_class.respond_to?(:step_metadata)
+
+        workflow_class.step_metadata.map do |meta|
+          {
+            name: meta[:name],
+            agent: meta[:agent]&.gsub(/Agent$/, "")&.gsub(/Workflow$/, ""),
+            routing: meta[:routing],
+            iteration: meta[:iteration],
+            workflow: meta[:workflow],
+            parallel: meta[:parallel]
+          }.compact
+        end
+      rescue StandardError
+        []
       end
 
       # Extracts parallel groups from a DSL-based workflow class

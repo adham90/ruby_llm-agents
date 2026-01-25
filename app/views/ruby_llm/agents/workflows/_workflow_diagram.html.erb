@@ -1,6 +1,6 @@
 <%
-  # Unified workflow diagram visualization
-  # Renders a visual flow chart for any workflow type (sequential, parallel, routing)
+  # Vertical workflow diagram visualization
+  # Redesigned for clarity: vertical flow, spelled-out indicators, visual hierarchy
   #
   # Required locals:
   #   steps: Array of step hashes with full DSL metadata
@@ -14,485 +14,729 @@
   parallel_groups = local_assigns[:parallel_groups] || []
   input_schema_fields = local_assigns[:input_schema_fields] || {}
   lifecycle_hooks = local_assigns[:lifecycle_hooks] || {}
+
+  # Group steps into sequential items and parallel groups
+  def group_steps(steps, parallel_groups)
+    current_parallel_group = nil
+    grouped_items = []
+
+    steps.each do |step|
+      if step[:parallel_group].present?
+        pg = parallel_groups.find { |g| g[:name].to_s == step[:parallel_group].to_s }
+        if current_parallel_group != step[:parallel_group]
+          current_parallel_group = step[:parallel_group]
+          grouped_items << { type: :parallel_group, group: pg, steps: [step] }
+        else
+          grouped_items.last[:steps] << step
+        end
+      else
+        current_parallel_group = nil
+        grouped_items << { type: :step, step: step }
+      end
+    end
+
+    grouped_items
+  end
+
+  grouped_items = group_steps(steps, parallel_groups)
 %>
 
 <% if steps.any? %>
   <!-- Lifecycle Hooks Banner -->
   <% if lifecycle_hooks[:before_workflow].to_i > 0 || lifecycle_hooks[:after_workflow].to_i > 0 || lifecycle_hooks[:on_step_error].to_i > 0 %>
-    <div class="flex items-center justify-center gap-4 mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+    <div class="flex items-center justify-center gap-4 mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
       <% if lifecycle_hooks[:before_workflow].to_i > 0 %>
         <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800">
-          <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
-          </svg>
-          <span class="text-xs font-medium text-emerald-700 dark:text-emerald-300">before_workflow</span>
+          <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
+          <span class="text-xs font-medium text-emerald-700 dark:text-emerald-300">before_workflow hook</span>
         </div>
       <% end %>
       <% if lifecycle_hooks[:after_workflow].to_i > 0 %>
         <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-900/30 border border-sky-200 dark:border-sky-800">
-          <svg class="w-4 h-4 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/>
-          </svg>
-          <span class="text-xs font-medium text-sky-700 dark:text-sky-300">after_workflow</span>
+          <svg class="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd"/></svg>
+          <span class="text-xs font-medium text-sky-700 dark:text-sky-300">after_workflow hook</span>
         </div>
       <% end %>
       <% if lifecycle_hooks[:on_step_error].to_i > 0 %>
         <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800">
-          <svg class="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-          </svg>
-          <span class="text-xs font-medium text-rose-700 dark:text-rose-300">on_step_error</span>
+          <svg class="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+          <span class="text-xs font-medium text-rose-700 dark:text-rose-300">on_step_error hook</span>
         </div>
       <% end %>
     </div>
   <% end %>
 
-  <!-- Workflow Flow Diagram -->
-  <div class="py-6 overflow-x-auto">
-    <div class="flex items-center justify-center gap-3 min-w-max px-4">
-      <!-- Start Node -->
-      <div class="flex flex-col items-center">
-        <div class="w-12 h-12 flex items-center justify-center rounded-full bg-green-100 dark:bg-green-900/50 border-2 border-green-400 dark:border-green-600">
-          <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
+  <!-- Vertical Flow Diagram -->
+  <div class="flex flex-col items-center py-6">
+    <!-- Start Node -->
+    <div class="flex flex-col items-center mb-2">
+      <div class="relative">
+        <div class="absolute inset-0 rounded-full bg-green-400/20 dark:bg-green-500/20 animate-pulse"></div>
+        <div class="relative w-16 h-10 flex items-center justify-center rounded-full bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/50 dark:to-green-800/50 border-2 border-green-500 dark:border-green-600 shadow-md">
+          <span class="text-sm font-bold text-green-700 dark:text-green-300 uppercase tracking-wide">Start</span>
         </div>
-        <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">Start</span>
       </div>
+    </div>
 
-      <!-- Arrow from start -->
-      <div class="flex items-center text-gray-400 dark:text-gray-500">
-        <svg class="w-8 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
-        </svg>
-      </div>
+    <!-- Connecting Line from Start -->
+    <div class="w-0.5 h-6 bg-gradient-to-b from-green-400 to-gray-300 dark:from-green-600 dark:to-gray-600"></div>
 
-      <%
-        # Group steps into sequential items and parallel groups
-        current_parallel_group = nil
-        grouped_items = []
-
-        steps.each do |step|
-          if step[:parallel_group].present?
-            pg = parallel_groups.find { |g| g[:name].to_s == step[:parallel_group].to_s }
-            if current_parallel_group != step[:parallel_group]
-              current_parallel_group = step[:parallel_group]
-              grouped_items << { type: :parallel_group, group: pg, steps: [step] }
-            else
-              grouped_items.last[:steps] << step
-            end
+    <!-- Steps Flow -->
+    <% grouped_items.each_with_index do |item, index| %>
+      <% if item[:type] == :step %>
+        <% step = item[:step] %>
+        <%
+          # Determine step type and styling
+          if step[:workflow]
+            step_type = :workflow
+            border_class = "border-emerald-400 dark:border-emerald-500"
+            bg_class = "bg-emerald-50 dark:bg-emerald-900/30"
+            text_class = "text-emerald-800 dark:text-emerald-200"
+            type_label = "Sub-workflow"
+            type_icon = '<svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z"/></svg>'
+          elsif step[:iteration]
+            step_type = :iteration
+            border_class = "border-blue-400 dark:border-blue-500"
+            bg_class = "bg-blue-50 dark:bg-blue-900/30"
+            text_class = "text-blue-800 dark:text-blue-200"
+            type_label = "Iteration"
+            type_icon = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>'
+          elsif step[:routing]
+            step_type = :routing
+            border_class = "border-amber-400 dark:border-amber-500"
+            bg_class = "bg-amber-50 dark:bg-amber-900/30"
+            text_class = "text-amber-800 dark:text-amber-200"
+            type_label = "Routing"
+            type_icon = '<svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7.707 3.293a1 1 0 010 1.414L5.414 7H11a7 7 0 017 7v2a1 1 0 11-2 0v-2a5 5 0 00-5-5H5.414l2.293 2.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>'
+          elsif step[:custom_block]
+            step_type = :block
+            border_class = "border-violet-400 dark:border-violet-500"
+            bg_class = "bg-violet-50 dark:bg-violet-900/30"
+            text_class = "text-violet-800 dark:text-violet-200"
+            type_label = "Block"
+            type_icon = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>'
           else
-            current_parallel_group = nil
-            grouped_items << { type: :step, step: step }
+            step_type = :sequential
+            border_class = "border-slate-300 dark:border-slate-600"
+            bg_class = "bg-white dark:bg-gray-800"
+            text_class = "text-slate-800 dark:text-slate-200"
+            type_label = nil
+            type_icon = nil
           end
-        end
-      %>
+        %>
 
-      <% grouped_items.each_with_index do |item, index| %>
-        <% if item[:type] == :step %>
-          <% step = item[:step] %>
-          <%
-            # Determine step styling based on type
-            if step[:routing]
-              border_color = "border-amber-400 dark:border-amber-500"
-              bg_color = "bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/40 dark:to-orange-900/40"
-              text_color = "text-amber-800 dark:text-amber-200"
-              shadow = "shadow-amber-100 dark:shadow-amber-900/20"
-            elsif step[:custom_block]
-              border_color = "border-violet-400 dark:border-violet-500"
-              bg_color = "bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-900/40 dark:to-purple-900/40"
-              text_color = "text-violet-800 dark:text-violet-200"
-              shadow = "shadow-violet-100 dark:shadow-violet-900/20"
-            else
-              border_color = "border-indigo-300 dark:border-indigo-600"
-              bg_color = "bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/40 dark:to-blue-900/40"
-              text_color = "text-indigo-800 dark:text-indigo-200"
-              shadow = "shadow-indigo-100 dark:shadow-indigo-900/20"
-            end
-          %>
-          <!-- Step Node -->
-          <div class="flex flex-col items-center group relative">
-            <div class="relative w-36 min-h-[5rem] flex flex-col items-center justify-center rounded-xl border-2 <%= border_color %> <%= bg_color %> <%= step[:optional] ? 'border-dashed' : '' %> shadow-lg <%= shadow %> p-3 transition-all hover:shadow-xl hover:scale-105">
-              <% if step[:routing] %>
-                <!-- Routing diamond indicator -->
-                <div class="absolute -top-2 -right-2 w-6 h-6 bg-amber-400 dark:bg-amber-500 rounded-md rotate-45 flex items-center justify-center shadow">
-                  <svg class="w-3 h-3 text-white -rotate-45" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M7.707 3.293a1 1 0 010 1.414L5.414 7H11a7 7 0 017 7v2a1 1 0 11-2 0v-2a5 5 0 00-5-5H5.414l2.293 2.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                  </svg>
-                </div>
-              <% end %>
-
-              <% if step[:custom_block] %>
-                <!-- Block step indicator -->
-                <div class="absolute -top-2 -left-2 w-6 h-6 bg-violet-500 dark:bg-violet-600 rounded-full flex items-center justify-center shadow">
-                  <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
-                  </svg>
-                </div>
-              <% end %>
-
-              <!-- Step Name -->
-              <span class="text-sm font-bold <%= text_color %> text-center leading-tight">
-                <%= step[:name].to_s.titleize %>
-              </span>
-
-              <!-- Agent Name or Block indicator -->
-              <% if step[:agent].present? %>
-                <span class="text-[10px] text-gray-500 dark:text-gray-400 mt-1 truncate max-w-32 text-center">
-                  <%= step[:agent].to_s.gsub(/Agent$/, '') %>
+        <!-- Step Card -->
+        <div class="w-full max-w-lg group/step">
+          <div class="relative rounded-xl border-2 <%= border_class %> <%= bg_class %> <%= step[:optional] ? 'border-dashed' : '' %> shadow-sm hover:shadow-lg hover:scale-[1.01] transition-all duration-200 p-4">
+            <!-- Step Number & Type Badge -->
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 text-sm font-bold text-gray-600 dark:text-gray-300">
+                  <%= index + 1 %>
                 </span>
-              <% elsif step[:custom_block] %>
-                <span class="text-[10px] text-violet-500 dark:text-violet-400 mt-1 italic">(block)</span>
-              <% end %>
-
-              <!-- Inline Badges Row -->
-              <div class="flex flex-wrap items-center justify-center gap-1 mt-2">
-                <% if step[:retry_config] %>
-                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-300" title="Retry: <%= step[:retry_config][:max] %>x <%= step[:retry_config][:backoff] %>">
-                    <svg class="w-2.5 h-2.5 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                    <%= step[:retry_config][:max] %>x
-                  </span>
-                <% end %>
-
-                <% if step[:if_condition] %>
-                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-cyan-100 dark:bg-cyan-900/50 text-cyan-600 dark:text-cyan-300" title="if: <%= step[:if_condition] %>">
-                    <svg class="w-2.5 h-2.5 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                    if
-                  </span>
-                <% end %>
-
-                <% if step[:unless_condition] %>
-                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-pink-100 dark:bg-pink-900/50 text-pink-600 dark:text-pink-300" title="unless: <%= step[:unless_condition] %>">
-                    <svg class="w-2.5 h-2.5 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                    unless
-                  </span>
-                <% end %>
-
-                <% if step[:fallbacks]&.any? %>
-                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-300" title="Fallback: <%= step[:fallbacks].join(', ') %>">
-                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-                  </span>
-                <% end %>
-
-                <% if step[:has_input_mapper] || step[:pick_fields] %>
-                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300" title="Custom input mapping<%= step[:pick_fields] ? ": pick #{step[:pick_fields].join(', ')}" : '' %>">
-                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                  </span>
-                <% end %>
-
-                <% if step[:default_value] %>
-                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300" title="Default: <%= step[:default_value].inspect.truncate(50) %>">
-                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                  </span>
-                <% end %>
+                <span class="font-bold <%= text_class %> text-lg uppercase tracking-tight">
+                  <%= step[:name].to_s.titleize %>
+                </span>
               </div>
+
+              <% if type_label %>
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium <%= bg_class %> border <%= border_class %> <%= text_class %>">
+                  <%= raw type_icon %>
+                  <%= type_label %>
+                </span>
+              <% end %>
             </div>
 
-            <!-- Below-card indicators -->
-            <% if step[:optional] %>
-              <span class="text-[10px] text-gray-400 dark:text-gray-500 mt-1 italic">(optional)</span>
-            <% end %>
-            <% if step[:timeout] %>
-              <span class="text-[10px] text-blue-500 dark:text-blue-400 mt-0.5">
-                <svg class="w-3 h-3 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <%= step[:timeout] %>s
-              </span>
+            <!-- Agent/Workflow Name -->
+            <% if step[:agent].present? %>
+              <div class="flex items-center gap-2 mb-3 text-sm text-gray-600 dark:text-gray-400">
+                <% if step[:workflow] %>
+                  <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z"/></svg>
+                <% else %>
+                  <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                <% end %>
+                <code class="font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded"><%= step[:agent] %></code>
+              </div>
+            <% elsif step[:custom_block] %>
+              <div class="flex items-center gap-2 mb-3 text-sm text-violet-600 dark:text-violet-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                <span class="italic">Custom Ruby block</span>
+              </div>
             <% end %>
 
-            <!-- Hover Tooltip -->
-            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 pointer-events-none">
-              <div class="bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded-lg px-3 py-2 shadow-xl max-w-xs whitespace-nowrap">
-                <p class="font-bold"><%= step[:name] %></p>
-                <% if step[:description] %>
-                  <p class="mt-1 opacity-80 whitespace-normal"><%= step[:description] %></p>
-                <% end %>
-                <% if step[:retry_config] %>
-                  <p class="mt-1 text-orange-300 dark:text-orange-600">Retry: <%= step[:retry_config][:max] %>x with <%= step[:retry_config][:backoff] %> backoff</p>
-                <% end %>
-                <% if step[:if_condition] %>
-                  <p class="mt-1 text-cyan-300 dark:text-cyan-600">if: <%= step[:if_condition] %></p>
-                <% end %>
-                <% if step[:unless_condition] %>
-                  <p class="mt-1 text-pink-300 dark:text-pink-600">unless: <%= step[:unless_condition] %></p>
-                <% end %>
-                <% if step[:fallbacks]&.any? %>
-                  <p class="mt-1 text-yellow-300 dark:text-yellow-600">Fallback: <%= step[:fallbacks].join(' -> ') %></p>
-                <% end %>
-                <% if step[:default_value] %>
-                  <p class="mt-1 text-gray-300 dark:text-gray-600">Default: <%= step[:default_value].inspect.truncate(30) %></p>
-                <% end %>
+            <!-- Input/Output Data Flow -->
+            <% if step[:pick_fields] || step[:has_input_mapper] %>
+              <div class="mb-3 p-2 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 text-xs">
+                <div class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-green-500 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                  <span class="font-medium text-gray-600 dark:text-gray-400">Input:</span>
+                  <% if step[:pick_fields] %>
+                    <code class="font-mono text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 px-1.5 py-0.5 rounded">
+                      <%= step[:pick_fields].join(', ') %>
+                    </code>
+                    <% if step[:pick_from] %>
+                      <span class="text-gray-400 dark:text-gray-500">from</span>
+                      <span class="font-medium text-indigo-600 dark:text-indigo-400">:<%= step[:pick_from] %></span>
+                    <% end %>
+                  <% else %>
+                    <span class="text-gray-500 dark:text-gray-400 italic">custom mapping (lambda)</span>
+                  <% end %>
+                </div>
               </div>
+            <% end %>
+
+            <!-- Description -->
+            <% if step[:description].present? %>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-3 leading-relaxed">
+                <%= step[:description] %>
+              </p>
+            <% end %>
+
+            <!-- Sub-workflow Preview (expandable) -->
+            <% if step[:workflow] && step[:sub_workflow] %>
+              <div class="mb-3" x-data="{ expanded: false }">
+                <div class="p-3 rounded-lg bg-emerald-100/50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 border-dashed">
+                  <!-- Header with expand button -->
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z"/></svg>
+                      Nested Workflow (<%= step[:sub_workflow][:steps_count] %> steps)
+                    </div>
+                    <button @click="expanded = !expanded" class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-300 dark:hover:bg-emerald-700 transition-colors cursor-pointer">
+                      <span x-text="expanded ? 'Collapse' : 'Expand'">Expand</span>
+                      <svg class="w-3 h-3 transition-transform" :class="expanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                  </div>
+
+                  <!-- Budget inheritance indicators -->
+                  <div class="flex flex-wrap gap-2 text-xs mb-2">
+                    <% if step[:sub_workflow][:timeout] %>
+                      <span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-emerald-200/70 dark:bg-emerald-800/50 text-emerald-700 dark:text-emerald-300">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        Inherits remaining timeout
+                      </span>
+                    <% end %>
+                    <% if step[:sub_workflow][:max_cost] %>
+                      <span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-emerald-200/70 dark:bg-emerald-800/50 text-emerald-700 dark:text-emerald-300">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/></svg>
+                        Inherits remaining budget
+                      </span>
+                    <% end %>
+                    <% if step[:sub_workflow][:max_recursion_depth] %>
+                      <span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-emerald-200/70 dark:bg-emerald-800/50 text-emerald-700 dark:text-emerald-300">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        Max depth: <%= step[:sub_workflow][:max_recursion_depth] %>
+                      </span>
+                    <% end %>
+                  </div>
+
+                  <!-- Collapsed: Mini horizontal flow preview -->
+                  <div x-show="!expanded" class="flex items-center gap-1 overflow-x-auto py-2">
+                    <% step[:sub_workflow][:steps_preview]&.each_with_index do |sub_step, sub_idx| %>
+                      <%
+                        sub_border = if sub_step[:routing]
+                          "border-amber-300 dark:border-amber-600"
+                        elsif sub_step[:workflow]
+                          "border-emerald-300 dark:border-emerald-600"
+                        elsif sub_step[:iteration]
+                          "border-blue-300 dark:border-blue-600"
+                        else
+                          "border-gray-300 dark:border-gray-600"
+                        end
+                      %>
+                      <% unless sub_idx == 0 %>
+                        <svg class="w-3 h-3 text-gray-400 dark:text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                      <% end %>
+                      <div class="flex-shrink-0 px-2 py-1 text-[10px] rounded border <%= sub_border %> bg-white dark:bg-gray-800">
+                        <%= sub_step[:name].to_s.titleize.truncate(12) %>
+                      </div>
+                    <% end %>
+                  </div>
+
+                  <!-- Expanded: Full step list -->
+                  <div x-show="expanded" x-collapse class="space-y-1.5 pt-2">
+                    <% step[:sub_workflow][:steps_preview]&.each_with_index do |sub_step, sub_idx| %>
+                      <%
+                        sub_bg = if sub_step[:routing]
+                          "bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700"
+                        elsif sub_step[:workflow]
+                          "bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-700"
+                        elsif sub_step[:iteration]
+                          "bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700"
+                        elsif sub_step[:parallel]
+                          "bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-700"
+                        else
+                          "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                        end
+                      %>
+                      <div class="flex items-center gap-2 p-2 rounded-lg border <%= sub_bg %>">
+                        <span class="w-5 h-5 flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-[10px] font-bold text-gray-600 dark:text-gray-400">
+                          <%= sub_idx + 1 %>
+                        </span>
+                        <span class="text-xs font-medium text-gray-700 dark:text-gray-300">
+                          <%= sub_step[:name].to_s.titleize %>
+                        </span>
+                        <% if sub_step[:agent] %>
+                          <span class="inline-flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400">
+                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                            <%= sub_step[:agent] %>
+                          </span>
+                        <% end %>
+                        <% if sub_step[:routing] %>
+                          <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-800 text-amber-600 dark:text-amber-300">routing</span>
+                        <% end %>
+                        <% if sub_step[:iteration] %>
+                          <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-300">iteration</span>
+                        <% end %>
+                        <% if sub_step[:workflow] %>
+                          <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-800 text-emerald-600 dark:text-emerald-300">workflow</span>
+                        <% end %>
+                        <% if sub_step[:parallel] %>
+                          <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-800 text-purple-600 dark:text-purple-300">parallel</span>
+                        <% end %>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+
+            <!-- Iteration Details -->
+            <% if step[:iteration] %>
+              <div class="mb-3 p-3 rounded-lg bg-blue-100/50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                <div class="flex items-center gap-2 text-sm font-medium text-blue-700 dark:text-blue-300 mb-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                  FOR EACH item in collection
+                </div>
+
+                <!-- Fan-out visualization -->
+                <div class="flex items-center justify-center py-3 mb-3 border-b border-blue-200 dark:border-blue-700">
+                  <div class="flex flex-col items-center">
+                    <div class="text-xs text-blue-500 dark:text-blue-400 mb-1">Collection</div>
+                    <div class="w-12 h-6 rounded bg-blue-200 dark:bg-blue-800 flex items-center justify-center text-xs text-blue-700 dark:text-blue-300">[...]</div>
+                  </div>
+                  <svg class="w-4 h-4 mx-3 text-blue-400 dark:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  <div class="flex flex-col items-center">
+                    <!-- Show concurrent or sequential processing -->
+                    <% if step[:iteration_concurrency] && step[:iteration_concurrency] > 1 %>
+                      <div class="text-xs text-blue-500 dark:text-blue-400 mb-1">Process <%= step[:iteration_concurrency] %> at a time</div>
+                      <div class="flex gap-1">
+                        <% step[:iteration_concurrency].times do |i| %>
+                          <div class="w-6 h-6 rounded bg-blue-300 dark:bg-blue-700 flex items-center justify-center text-[10px] text-blue-800 dark:text-blue-200"><%= i + 1 %></div>
+                        <% end %>
+                        <div class="w-6 h-6 rounded border-2 border-dashed border-blue-300 dark:border-blue-600 flex items-center justify-center text-[10px] text-blue-400 dark:text-blue-500">...</div>
+                      </div>
+                    <% else %>
+                      <div class="text-xs text-blue-500 dark:text-blue-400 mb-1">Process one at a time</div>
+                      <div class="flex items-center gap-1">
+                        <div class="w-6 h-6 rounded bg-blue-300 dark:bg-blue-700 flex items-center justify-center text-[10px] text-blue-800 dark:text-blue-200">1</div>
+                        <svg class="w-3 h-3 text-blue-400 dark:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        <div class="w-6 h-6 rounded bg-blue-200 dark:bg-blue-800 flex items-center justify-center text-[10px] text-blue-600 dark:text-blue-400">2</div>
+                        <svg class="w-3 h-3 text-blue-400 dark:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        <div class="w-6 h-6 rounded border-2 border-dashed border-blue-300 dark:border-blue-600 flex items-center justify-center text-[10px] text-blue-400 dark:text-blue-500">N</div>
+                      </div>
+                    <% end %>
+                  </div>
+                  <svg class="w-4 h-4 mx-3 text-blue-400 dark:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  <div class="flex flex-col items-center">
+                    <div class="text-xs text-blue-500 dark:text-blue-400 mb-1">Results</div>
+                    <div class="w-12 h-6 rounded bg-blue-200 dark:bg-blue-800 flex items-center justify-center text-xs text-blue-700 dark:text-blue-300">[...]</div>
+                  </div>
+                </div>
+
+                <!-- Iteration settings -->
+                <div class="flex flex-wrap gap-2 text-xs">
+                  <% if step[:iteration_concurrency] %>
+                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-blue-200 dark:bg-blue-800 text-blue-700 dark:text-blue-300">
+                      <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+                      <%= step[:iteration_concurrency] %> concurrent
+                    </span>
+                  <% else %>
+                    <span class="px-2 py-1 rounded bg-blue-200/50 dark:bg-blue-800/50 text-blue-600 dark:text-blue-400">
+                      Sequential (1 at a time)
+                    </span>
+                  <% end %>
+                  <% if step[:continue_on_error] %>
+                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300">
+                      <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                      continue_on_error (collects all results)
+                    </span>
+                  <% elsif step[:iteration_fail_fast] %>
+                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300">
+                      <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                      fail_fast (stops on first error)
+                    </span>
+                  <% else %>
+                    <span class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+                      Default error handling
+                    </span>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+
+            <!-- Routing Details (Decision Tree) -->
+            <% if step[:routing] && step[:routes].present? %>
+              <div class="mb-3 p-3 rounded-lg bg-amber-100/50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                <!-- Decision diamond header -->
+                <div class="flex items-center justify-center mb-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-amber-400 dark:bg-amber-500 rotate-45 flex items-center justify-center shadow-sm">
+                      <span class="text-white text-sm font-bold -rotate-45">?</span>
+                    </div>
+                    <span class="text-sm font-medium text-amber-700 dark:text-amber-300">
+                      DECIDE: route based on value
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Branching visualization -->
+                <div class="relative">
+                  <!-- Branch lines container -->
+                  <div class="flex flex-wrap justify-center gap-3">
+                    <% step[:routes].each_with_index do |route, route_idx| %>
+                      <%
+                        is_default = route[:default]
+                        card_bg = is_default ? "bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600" : "bg-white dark:bg-gray-800 border-amber-300 dark:border-amber-600"
+                        label_color = is_default ? "text-gray-600 dark:text-gray-400" : "text-amber-700 dark:text-amber-300"
+                      %>
+                      <div class="flex flex-col items-center">
+                        <!-- Branch line -->
+                        <div class="w-0.5 h-4 bg-amber-300 dark:bg-amber-600"></div>
+                        <!-- Route value pill -->
+                        <div class="px-2 py-0.5 rounded-full text-xs font-medium <%= is_default ? 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400' : 'bg-amber-200 dark:bg-amber-800 text-amber-700 dark:text-amber-300' %> mb-1">
+                          <% if is_default %>
+                            else
+                          <% else %>
+                            :<%= route[:name] %>
+                          <% end %>
+                        </div>
+                        <!-- Arrow -->
+                        <svg class="w-3 h-3 text-amber-400 dark:text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                        <!-- Route card -->
+                        <div class="p-2 rounded-lg border-2 <%= card_bg %> text-center min-w-[100px]">
+                          <div class="text-xs font-semibold <%= label_color %>">
+                            <%= route[:agent]&.gsub(/Agent$/, '')&.gsub(/Workflow$/, '') || '?' %>
+                          </div>
+                          <% if route[:timeout] %>
+                            <div class="inline-flex items-center gap-1 text-[10px] text-blue-500 dark:text-blue-400 mt-1">
+                              <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                              <%= route[:timeout] %>s
+                            </div>
+                          <% end %>
+                          <% if route[:fallback] %>
+                            <div class="inline-flex items-center gap-1 text-[10px] text-yellow-600 dark:text-yellow-400 mt-1">
+                              <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                              <%= route[:fallback].gsub(/Agent$/, '') %>
+                            </div>
+                          <% end %>
+                          <% if route[:if_condition] %>
+                            <div class="inline-flex items-center gap-1 text-[10px] text-cyan-600 dark:text-cyan-400 mt-1">
+                              <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+                              conditional
+                            </div>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+
+                <!-- Routes summary count -->
+                <div class="text-center mt-3 pt-2 border-t border-amber-200 dark:border-amber-700">
+                  <span class="text-xs text-amber-600 dark:text-amber-400">
+                    <%= step[:routes].size %> possible routes
+                    <% default_route = step[:routes].find { |r| r[:default] } %>
+                    <% if default_route %>
+                      (with default fallback)
+                    <% end %>
+                  </span>
+                </div>
+              </div>
+            <% end %>
+
+            <!-- Status Indicators (spelled out) -->
+            <div class="flex flex-wrap gap-2 text-xs">
+              <% if step[:retry_config] && step[:retry_config][:max].to_i > 0 %>
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                  Retry <%= step[:retry_config][:max] %>&times; on failure
+                  <% if step[:retry_config][:backoff] && step[:retry_config][:backoff] != :none %>
+                    (<%= step[:retry_config][:backoff] %>)
+                  <% end %>
+                </span>
+              <% end %>
+
+              <% if step[:timeout] %>
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  Timeout: <%= step[:timeout] %>s
+                </span>
+              <% end %>
+
+              <% if step[:if_condition] %>
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">
+                  <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+                  if: <%= step[:if_condition] %>
+                </span>
+              <% end %>
+
+              <% if step[:unless_condition] %>
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-300 border border-pink-200 dark:border-pink-800">
+                  <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+                  unless: <%= step[:unless_condition] %>
+                </span>
+              <% end %>
+
+              <% if step[:optional] %>
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600">
+                  (optional)
+                </span>
+              <% end %>
+
+              <% if step[:fallbacks]&.any? %>
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                  Fallback: <%= step[:fallbacks].map { |f| f.gsub(/Agent$/, '') }.join(' → ') %>
+                </span>
+              <% end %>
+
+              <% if step[:default_value] %>
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600">
+                  default: <%= step[:default_value].inspect.truncate(20) %>
+                </span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+      <% else %>
+        <!-- Parallel Group -->
+        <div class="w-full max-w-2xl" x-data="{ expanded: true }">
+          <!-- Fork visualization -->
+          <div class="flex justify-center mb-2">
+            <div class="flex items-end gap-1">
+              <div class="w-8 h-4 border-l-2 border-b-2 border-purple-400 dark:border-purple-500 rounded-bl"></div>
+              <div class="w-0.5 h-6 bg-purple-400 dark:bg-purple-500"></div>
+              <div class="w-8 h-4 border-r-2 border-b-2 border-purple-400 dark:border-purple-500 rounded-br"></div>
             </div>
           </div>
 
-          <% if step[:routing] && step[:routes].present? %>
-            <!-- Route Branch Visualization -->
-            <div class="flex flex-col items-start gap-1 mx-2">
-              <% step[:routes].each_with_index do |route, route_idx| %>
-                <div class="flex items-center gap-2">
-                  <!-- Branch line -->
-                  <div class="flex items-center">
-                    <div class="w-4 h-px bg-amber-300 dark:bg-amber-600"></div>
-                    <div class="w-2 h-2 rounded-full <%= route[:default] ? 'bg-gray-400 dark:bg-gray-500' : 'bg-amber-400 dark:bg-amber-500' %>"></div>
-                    <div class="w-4 h-px bg-amber-300 dark:bg-amber-600"></div>
-                  </div>
+          <div class="relative rounded-2xl border-2 border-purple-400 dark:border-purple-500 bg-purple-50/80 dark:bg-purple-900/20 shadow-md p-4">
+            <!-- Parallel Group Header -->
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2">
+                <span class="w-7 h-7 flex items-center justify-center rounded-full bg-purple-500 dark:bg-purple-600 text-sm font-bold text-white">
+                  <%= index + 1 %>
+                </span>
+                <span class="font-bold text-purple-800 dark:text-purple-200 text-lg uppercase tracking-tight">
+                  <%= item[:group]&.dig(:name) || 'Parallel Group' %>
+                </span>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-200 dark:bg-purple-800 text-purple-700 dark:text-purple-300">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                  <%= item[:steps].size %> concurrent
+                </span>
+              </div>
 
-                  <!-- Route card -->
-                  <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg <%= route[:default] ? 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700' : 'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800' %> border">
-                    <span class="text-xs font-medium <%= route[:default] ? 'text-gray-600 dark:text-gray-400' : 'text-amber-700 dark:text-amber-300' %>">
-                      <%= route[:name] %>
-                    </span>
-                    <span class="text-gray-400 dark:text-gray-500">-></span>
-                    <span class="text-xs text-gray-600 dark:text-gray-400">
-                      <%= route[:agent]&.gsub(/Agent$/, '') || '?' %>
-                    </span>
-
-                    <!-- Route badges -->
-                    <% if route[:fallback] %>
-                      <span class="text-[9px] px-1 py-0.5 rounded bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-300" title="Fallback: <%= route[:fallback] %>">
-                        <svg class="w-2.5 h-2.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-                      </span>
-                    <% end %>
-                    <% if route[:if_condition] %>
-                      <span class="text-[9px] px-1 py-0.5 rounded bg-cyan-100 dark:bg-cyan-900/50 text-cyan-600 dark:text-cyan-300" title="if: <%= route[:if_condition] %>">
-                        <svg class="w-2.5 h-2.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                      </span>
-                    <% end %>
-                    <% if route[:timeout] %>
-                      <span class="text-[9px] px-1 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300">
-                        <svg class="w-2.5 h-2.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <%= route[:timeout] %>s
-                      </span>
-                    <% end %>
-                    <% if route[:has_input_mapper] %>
-                      <span class="text-[9px] px-1 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300" title="Custom input">
-                        <svg class="w-2.5 h-2.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                      </span>
-                    <% end %>
-                  </div>
-                </div>
-              <% end %>
-            </div>
-          <% end %>
-        <% else %>
-          <!-- Parallel Group -->
-          <div x-data="{ expanded: true }" class="flex flex-col items-center">
-            <div class="relative border-2 border-dashed border-purple-400 dark:border-purple-500 rounded-2xl p-4 bg-gradient-to-br from-purple-50/80 to-violet-50/80 dark:from-purple-900/30 dark:to-violet-900/30 shadow-lg shadow-purple-100 dark:shadow-purple-900/20">
-              <!-- Collapsible header -->
-              <button @click="expanded = !expanded" class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-purple-500 dark:bg-purple-600 text-white rounded-full px-3 py-1 shadow-lg flex items-center gap-1 hover:bg-purple-600 dark:hover:bg-purple-700 transition-colors cursor-pointer">
-                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z"/>
-                </svg>
-                <span class="text-[10px] font-bold uppercase tracking-wide">Parallel</span>
+              <button @click="expanded = !expanded" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-100 dark:bg-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-700 transition-colors cursor-pointer border border-purple-300 dark:border-purple-600">
+                <span x-text="expanded ? 'Collapse' : 'Expand'">Collapse</span>
                 <svg class="w-3 h-3 transition-transform" :class="expanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                 </svg>
               </button>
+            </div>
 
-              <!-- Fork lines -->
-              <div class="absolute -left-3 top-1/2 -translate-y-1/2 flex flex-col gap-1">
-                <% item[:steps].size.times do %>
-                  <div class="w-3 h-0.5 bg-purple-300 dark:bg-purple-600"></div>
-                <% end %>
-              </div>
+            <!-- Expanded: Show all parallel steps with visual fork -->
+            <div x-show="expanded" x-collapse>
+              <!-- Steps grid -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-<%= [item[:steps].size, 3].min %> gap-4 mb-4">
+                <% item[:steps].each_with_index do |step, step_idx| %>
+                  <div class="relative">
+                    <!-- Connecting line from fork -->
+                    <div class="absolute -top-4 left-1/2 w-0.5 h-4 bg-purple-300 dark:bg-purple-600 -translate-x-1/2"></div>
 
-              <!-- Expanded content -->
-              <div x-show="expanded" x-collapse class="flex items-stretch gap-3 mt-2">
-                <% item[:steps].each do |step| %>
-                  <div class="flex flex-col items-center group relative">
-                    <div class="w-28 min-h-[4rem] flex flex-col items-center justify-center rounded-lg border-2 border-purple-300 dark:border-purple-600 bg-white dark:bg-gray-800 shadow-sm p-2 <%= step[:optional] ? 'border-dashed' : '' %> transition-all hover:shadow-md hover:scale-105">
-                      <span class="text-xs font-bold text-purple-700 dark:text-purple-300 text-center">
+                    <div class="rounded-lg border-2 border-purple-300 dark:border-purple-600 bg-white dark:bg-gray-800 p-3 <%= step[:optional] ? 'border-dashed' : '' %> h-full">
+                      <div class="font-semibold text-purple-700 dark:text-purple-300 text-sm mb-1">
                         <%= step[:name].to_s.titleize %>
-                      </span>
+                      </div>
                       <% if step[:agent].present? %>
-                        <span class="text-[9px] text-gray-500 dark:text-gray-400 truncate max-w-24 mt-0.5">
+                        <code class="text-xs font-mono text-gray-500 dark:text-gray-400">
                           <%= step[:agent].to_s.gsub(/Agent$/, '') %>
-                        </span>
+                        </code>
+                      <% elsif step[:custom_block] %>
+                        <span class="text-xs text-violet-500 dark:text-violet-400 italic">(block)</span>
                       <% end %>
 
-                      <!-- Mini badges for parallel steps -->
-                      <div class="flex flex-wrap items-center justify-center gap-0.5 mt-1">
-                        <% if step[:retry_config] %>
-                          <span class="px-1 py-0.5 rounded text-[8px] bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-300" title="Retry: <%= step[:retry_config][:max] %>x">
-                            <svg class="w-2 h-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                      <!-- Mini indicators -->
+                      <div class="flex flex-wrap gap-1 mt-2">
+                        <% if step[:retry_config] && step[:retry_config][:max].to_i > 0 %>
+                          <span class="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-300">
+                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <%= step[:retry_config][:max] %>&times;
+                          </span>
+                        <% end %>
+                        <% if step[:timeout] %>
+                          <span class="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300">
+                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <%= step[:timeout] %>s
                           </span>
                         <% end %>
                         <% if step[:if_condition] || step[:unless_condition] %>
-                          <span class="px-1 py-0.5 rounded text-[8px] bg-cyan-100 dark:bg-cyan-900/50 text-cyan-600 dark:text-cyan-300">
-                            <svg class="w-2 h-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                          <span class="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-cyan-100 dark:bg-cyan-900/50 text-cyan-600 dark:text-cyan-300">
+                            <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+                            conditional
                           </span>
                         <% end %>
-                        <% if step[:has_input_mapper] || step[:pick_fields] %>
-                          <span class="px-1 py-0.5 rounded text-[8px] bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300">
-                            <svg class="w-2 h-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                          </span>
-                        <% end %>
-                        <% if step[:default_value] %>
-                          <span class="px-1 py-0.5 rounded text-[8px] bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                            <svg class="w-2 h-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <% if step[:optional] %>
+                          <span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                            optional
                           </span>
                         <% end %>
                       </div>
                     </div>
-                    <% if step[:optional] %>
-                      <span class="text-[9px] text-gray-400 dark:text-gray-500 mt-0.5 italic">(optional)</span>
-                    <% end %>
-                    <% if step[:timeout] %>
-                      <span class="text-[9px] text-blue-500 dark:text-blue-400 mt-0.5">
-                        <svg class="w-2.5 h-2.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <%= step[:timeout] %>s
-                      </span>
-                    <% end %>
+
+                    <!-- Connecting line to join -->
+                    <div class="absolute -bottom-4 left-1/2 w-0.5 h-4 bg-purple-300 dark:bg-purple-600 -translate-x-1/2"></div>
                   </div>
                 <% end %>
               </div>
 
-              <!-- Collapsed summary -->
-              <div x-show="!expanded" class="text-center py-2 mt-2">
-                <span class="text-xs text-purple-600 dark:text-purple-400">
-                  <%= item[:steps].size %> parallel steps
+              <!-- WAIT FOR ALL indicator -->
+              <div class="flex items-center justify-center py-2 border-t border-purple-200 dark:border-purple-700">
+                <span class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-200 dark:bg-purple-800 text-sm font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  Wait for all
                 </span>
               </div>
+            </div>
 
-              <% if item[:group] && (item[:group][:fail_fast] || item[:group][:concurrency] || item[:group][:timeout]) %>
-                <div class="flex items-center justify-center gap-2 mt-2 text-[9px] text-purple-600 dark:text-purple-400">
-                  <% if item[:group][:fail_fast] %>
-                    <span class="bg-purple-200 dark:bg-purple-800 px-1.5 py-0.5 rounded font-medium">fail_fast</span>
+            <!-- Collapsed: Just show count -->
+            <div x-show="!expanded" class="text-center py-4">
+              <div class="flex items-center justify-center gap-2 text-purple-600 dark:text-purple-400">
+                <% item[:steps].each_with_index do |step, step_idx| %>
+                  <div class="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-800 flex items-center justify-center text-xs font-medium text-purple-600 dark:text-purple-300">
+                    <%= step_idx + 1 %>
+                  </div>
+                  <% unless step_idx == item[:steps].size - 1 %>
+                    <span class="text-purple-300 dark:text-purple-600">|</span>
                   <% end %>
-                  <% if item[:group][:timeout] %>
-                    <span class="bg-purple-200 dark:bg-purple-800 px-1.5 py-0.5 rounded font-medium">
-                      <svg class="w-2.5 h-2.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                      <%= item[:group][:timeout] %>s
-                    </span>
-                  <% end %>
-                  <% if item[:group][:concurrency] %>
-                    <span class="bg-purple-200 dark:bg-purple-800 px-1.5 py-0.5 rounded font-medium">max: <%= item[:group][:concurrency] %></span>
-                  <% end %>
-                </div>
-              <% end %>
-
-              <!-- Join lines -->
-              <div class="absolute -right-3 top-1/2 -translate-y-1/2 flex flex-col gap-1">
-                <% item[:steps].size.times do %>
-                  <div class="w-3 h-0.5 bg-purple-300 dark:bg-purple-600"></div>
                 <% end %>
               </div>
+              <p class="text-xs text-purple-500 dark:text-purple-400 mt-2">Click to expand <%= item[:steps].size %> parallel steps</p>
+            </div>
+
+            <!-- Group options -->
+            <% if item[:group] && (item[:group][:fail_fast] || item[:group][:concurrency] || item[:group][:timeout]) %>
+              <div class="flex items-center justify-center gap-3 mt-3 pt-3 border-t border-purple-200 dark:border-purple-700">
+                <% if item[:group][:fail_fast] %>
+                  <span class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300">
+                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                    fail_fast (stop on first error)
+                  </span>
+                <% end %>
+                <% if item[:group][:timeout] %>
+                  <span class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-purple-200 dark:bg-purple-800 text-purple-700 dark:text-purple-300">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Timeout: <%= item[:group][:timeout] %>s
+                  </span>
+                <% end %>
+                <% if item[:group][:concurrency] %>
+                  <span class="text-xs px-2 py-1 rounded bg-purple-200 dark:bg-purple-800 text-purple-700 dark:text-purple-300">
+                    Max concurrency: <%= item[:group][:concurrency] %>
+                  </span>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+
+          <!-- Join visualization -->
+          <div class="flex justify-center mt-2">
+            <div class="flex items-start gap-1">
+              <div class="w-8 h-4 border-l-2 border-t-2 border-purple-400 dark:border-purple-500 rounded-tl"></div>
+              <div class="w-0.5 h-6 bg-purple-400 dark:bg-purple-500"></div>
+              <div class="w-8 h-4 border-r-2 border-t-2 border-purple-400 dark:border-purple-500 rounded-tr"></div>
             </div>
           </div>
-        <% end %>
-
-        <!-- Arrow between items -->
-        <% unless index == grouped_items.length - 1 %>
-          <% current_step = item[:type] == :step ? item[:step] : nil %>
-          <% if current_step&.dig(:routing) && !current_step[:routes].present? %>
-            <!-- Branching arrow for routing steps -->
-            <div class="flex items-center text-amber-400 dark:text-amber-500">
-              <svg class="w-8 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
-              </svg>
-            </div>
-          <% else %>
-            <div class="flex items-center text-gray-400 dark:text-gray-500">
-              <svg class="w-8 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
-              </svg>
-            </div>
-          <% end %>
-        <% end %>
+        </div>
       <% end %>
 
-      <!-- Arrow to end -->
-      <div class="flex items-center text-gray-400 dark:text-gray-500">
-        <svg class="w-8 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
-        </svg>
-      </div>
-
-      <!-- End Node -->
-      <div class="flex flex-col items-center">
-        <div class="w-12 h-12 flex items-center justify-center rounded-full bg-red-100 dark:bg-red-900/50 border-2 border-red-400 dark:border-red-600">
-          <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
-          </svg>
+      <!-- Connecting Line to Next Step -->
+      <% unless index == grouped_items.length - 1 %>
+        <div class="flex flex-col items-center">
+          <div class="w-0.5 h-4 bg-gray-300 dark:bg-gray-600"></div>
+          <svg class="w-4 h-4 text-gray-400 dark:text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+          <div class="w-0.5 h-4 bg-gray-300 dark:bg-gray-600"></div>
         </div>
-        <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">End</span>
+      <% end %>
+    <% end %>
+
+    <!-- Connecting Line to End -->
+    <div class="w-0.5 h-6 bg-gradient-to-b from-gray-300 to-red-400 dark:from-gray-600 dark:to-red-600"></div>
+
+    <!-- End Node -->
+    <div class="flex flex-col items-center mt-2">
+      <div class="relative">
+        <div class="relative w-16 h-10 flex items-center justify-center rounded-full bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/50 dark:to-red-800/50 border-2 border-red-500 dark:border-red-600 shadow-md">
+          <span class="text-sm font-bold text-red-700 dark:text-red-300 uppercase tracking-wide">End</span>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- Legend -->
-  <div class="flex flex-wrap items-center justify-center gap-4 py-3 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
-    <!-- Step types -->
-    <div class="flex items-center gap-1.5">
-      <div class="w-4 h-4 rounded border-2 border-indigo-300 dark:border-indigo-600 bg-indigo-50 dark:bg-indigo-900/40"></div>
-      <span>Sequential</span>
+  <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+    <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-gray-500 dark:text-gray-400">
+      <!-- Step Types -->
+      <div class="flex items-center gap-1.5">
+        <div class="w-4 h-4 rounded border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-gray-800"></div>
+        <span>Sequential</span>
+      </div>
+      <% if steps.any? { |s| s[:workflow] } %>
+        <div class="flex items-center gap-1.5">
+          <div class="w-4 h-4 rounded border-2 border-emerald-400 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30"></div>
+          <span>Sub-workflow</span>
+        </div>
+      <% end %>
+      <% if steps.any? { |s| s[:iteration] } %>
+        <div class="flex items-center gap-1.5">
+          <div class="w-4 h-4 rounded border-2 border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/30"></div>
+          <span>Iteration</span>
+        </div>
+      <% end %>
+      <% if parallel_groups.any? %>
+        <div class="flex items-center gap-1.5">
+          <div class="w-4 h-4 rounded border-2 border-dashed border-purple-400 dark:border-purple-500 bg-purple-50 dark:bg-purple-900/30"></div>
+          <span>Parallel</span>
+        </div>
+      <% end %>
+      <% if steps.any? { |s| s[:routing] } %>
+        <div class="flex items-center gap-1.5">
+          <div class="w-4 h-4 rounded border-2 border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-900/30"></div>
+          <span>Routing</span>
+        </div>
+      <% end %>
+      <% if steps.any? { |s| s[:custom_block] } %>
+        <div class="flex items-center gap-1.5">
+          <div class="w-4 h-4 rounded border-2 border-violet-400 dark:border-violet-500 bg-violet-50 dark:bg-violet-900/30"></div>
+          <span>Block</span>
+        </div>
+      <% end %>
+      <% if steps.any? { |s| s[:optional] } %>
+        <div class="flex items-center gap-1.5">
+          <div class="w-4 h-4 rounded border-2 border-dashed border-gray-400 dark:border-gray-500 bg-gray-50 dark:bg-gray-800"></div>
+          <span>Optional</span>
+        </div>
+      <% end %>
     </div>
-    <div class="flex items-center gap-1.5">
-      <div class="w-4 h-4 rounded border-2 border-dashed border-purple-400 dark:border-purple-500 bg-purple-50 dark:bg-purple-900/30"></div>
-      <span>Parallel</span>
-    </div>
-    <% if steps.any? { |s| s[:routing] } %>
-      <div class="flex items-center gap-1.5">
-        <div class="w-4 h-4 rounded border-2 border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-900/40"></div>
-        <span>Routing</span>
-      </div>
-    <% end %>
-    <% if steps.any? { |s| s[:custom_block] } %>
-      <div class="flex items-center gap-1.5">
-        <div class="w-4 h-4 rounded border-2 border-violet-400 dark:border-violet-500 bg-violet-50 dark:bg-violet-900/40"></div>
-        <span>Block</span>
-      </div>
-    <% end %>
-    <% if steps.any? { |s| s[:optional] } %>
-      <div class="flex items-center gap-1.5">
-        <div class="w-4 h-4 rounded border-2 border-dashed border-gray-400 dark:border-gray-500 bg-gray-50 dark:bg-gray-800"></div>
-        <span>Optional</span>
-      </div>
-    <% end %>
-
-    <!-- Feature badges -->
-    <% if steps.any? { |s| s[:retry_config] } %>
-      <div class="flex items-center gap-1">
-        <span class="px-1.5 py-0.5 rounded text-[9px] bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-300">
-          <svg class="w-2.5 h-2.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-        </span>
-        <span>Retry</span>
-      </div>
-    <% end %>
-    <% if steps.any? { |s| s[:if_condition] || s[:unless_condition] } %>
-      <div class="flex items-center gap-1">
-        <span class="px-1.5 py-0.5 rounded text-[9px] bg-cyan-100 dark:bg-cyan-900/50 text-cyan-600 dark:text-cyan-300">
-          <svg class="w-2.5 h-2.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-        </span>
-        <span>Conditional</span>
-      </div>
-    <% end %>
-    <% if steps.any? { |s| s[:fallbacks]&.any? } || steps.any? { |s| s[:routes]&.any? { |r| r[:fallback] } } %>
-      <div class="flex items-center gap-1">
-        <span class="px-1.5 py-0.5 rounded text-[9px] bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-300">
-          <svg class="w-2.5 h-2.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-        </span>
-        <span>Fallback</span>
-      </div>
-    <% end %>
-    <% if steps.any? { |s| s[:has_input_mapper] || s[:pick_fields] } %>
-      <div class="flex items-center gap-1">
-        <span class="px-1.5 py-0.5 rounded text-[9px] bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300">
-          <svg class="w-2.5 h-2.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-        </span>
-        <span>Input Mapping</span>
-      </div>
-    <% end %>
   </div>
 
   <!-- Input Schema (if defined) -->
   <% if input_schema_fields.present? %>
-    <div class="border-t border-gray-100 dark:border-gray-700 pt-4 mt-2">
-      <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 font-medium">
+    <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+      <h4 class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-3">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
         Input Schema
-      </p>
+      </h4>
 
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         <% input_schema_fields.each do |name, field| %>
@@ -518,170 +762,14 @@
       </div>
     </div>
   <% end %>
-
-  <!-- Step Details -->
-  <div class="border-t border-gray-100 dark:border-gray-700 pt-4 mt-4">
-    <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 font-medium">
-      Step Details
-    </p>
-
-    <div class="space-y-2">
-      <% steps.each_with_index do |step, index| %>
-        <%
-          if step[:routing]
-            badge_bg = "bg-amber-100 dark:bg-amber-900/50"
-            badge_text = "text-amber-600 dark:text-amber-300"
-            badge_border = "border-amber-200 dark:border-amber-800"
-          elsif step[:custom_block]
-            badge_bg = "bg-violet-100 dark:bg-violet-900/50"
-            badge_text = "text-violet-600 dark:text-violet-300"
-            badge_border = "border-violet-200 dark:border-violet-800"
-          elsif step[:parallel_group]
-            badge_bg = "bg-purple-100 dark:bg-purple-900/50"
-            badge_text = "text-purple-600 dark:text-purple-300"
-            badge_border = "border-purple-200 dark:border-purple-800"
-          else
-            badge_bg = "bg-indigo-100 dark:bg-indigo-900/50"
-            badge_text = "text-indigo-600 dark:text-indigo-300"
-            badge_border = "border-indigo-200 dark:border-indigo-800"
-          end
-        %>
-        <div class="flex items-start gap-3 py-3 px-4 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800">
-          <span class="w-7 h-7 flex items-center justify-center rounded-full <%= badge_bg %> border <%= badge_border %> text-xs font-bold <%= badge_text %> flex-shrink-0">
-            <%= index + 1 %>
-          </span>
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center flex-wrap gap-2">
-              <span class="font-semibold text-gray-800 dark:text-gray-200">
-                <%= step[:name].to_s.titleize %>
-              </span>
-              <% if step[:agent].present? %>
-                <span class="text-gray-400 dark:text-gray-500">-></span>
-                <code class="text-sm font-mono text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">
-                  <%= step[:agent] %>
-                </code>
-              <% elsif step[:custom_block] %>
-                <span class="text-gray-400 dark:text-gray-500">-></span>
-                <code class="text-sm font-mono text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-900/50 px-2 py-0.5 rounded">
-                  (block)
-                </code>
-              <% end %>
-
-              <!-- All badges -->
-              <% if step[:routing] %>
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300">
-                  <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M7.707 3.293a1 1 0 010 1.414L5.414 7H11a7 7 0 017 7v2a1 1 0 11-2 0v-2a5 5 0 00-5-5H5.414l2.293 2.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                  </svg>
-                  routing
-                </span>
-              <% end %>
-
-              <% if step[:parallel_group] %>
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300">
-                  <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z"/>
-                  </svg>
-                  parallel
-                </span>
-              <% end %>
-
-              <% if step[:optional] %>
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
-                  optional
-                </span>
-              <% end %>
-
-              <% if step[:timeout] %>
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
-                  <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
-                  </svg>
-                  <%= step[:timeout] %>s
-                </span>
-              <% end %>
-
-              <% if step[:retry_config] %>
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300">
-                  <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                  retry: <%= step[:retry_config][:max] %>x <%= step[:retry_config][:backoff] %>
-                </span>
-              <% end %>
-
-              <% if step[:if_condition] %>
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300">
-                  <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                  if: <%= step[:if_condition] %>
-                </span>
-              <% end %>
-
-              <% if step[:unless_condition] %>
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-300">
-                  <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                  unless: <%= step[:unless_condition] %>
-                </span>
-              <% end %>
-
-              <% if step[:fallbacks]&.any? %>
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300">
-                  <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-                  fallback: <%= step[:fallbacks].join(' -> ') %>
-                </span>
-              <% end %>
-
-              <% if step[:default_value] %>
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
-                  default: <%= step[:default_value].inspect.truncate(30) %>
-                </span>
-              <% end %>
-
-              <% if step[:pick_fields] %>
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300">
-                  <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                  pick: <%= step[:pick_fields].join(', ') %><%= step[:pick_from] ? " from :#{step[:pick_from]}" : '' %>
-                </span>
-              <% end %>
-
-              <% if step[:has_input_mapper] && !step[:pick_fields] %>
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300">
-                  <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                  custom input
-                </span>
-              <% end %>
-            </div>
-
-            <% if step[:description].present? %>
-              <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                <%= step[:description] %>
-              </p>
-            <% end %>
-
-            <% if step[:routes].present? %>
-              <div class="mt-2 pl-4 border-l-2 border-amber-200 dark:border-amber-800">
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Routes:</p>
-                <div class="flex flex-wrap gap-2">
-                  <% step[:routes].each do |route| %>
-                    <div class="text-xs px-2 py-1 rounded <%= route[:default] ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' %>">
-                      <span class="font-medium"><%= route[:name] %></span>
-                      -> <%= route[:agent]&.gsub(/Agent$/, '') || '?' %>
-                      <% if route[:fallback] %><span class="text-yellow-600 dark:text-yellow-400 ml-1" title="Fallback: <%= route[:fallback] %>">-> <%= route[:fallback].gsub(/Agent$/, '') %></span><% end %>
-                      <% if route[:if_condition] %><span class="text-cyan-600 dark:text-cyan-400 ml-1">(if)</span><% end %>
-                      <% if route[:timeout] %><span class="text-blue-600 dark:text-blue-400 ml-1"><%= route[:timeout] %>s</span><% end %>
-                    </div>
-                  <% end %>
-                </div>
-              </div>
-            <% end %>
-          </div>
-        </div>
-      <% end %>
-    </div>
-  </div>
 <% else %>
-  <div class="py-8 text-center">
-    <svg class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
-    </svg>
-    <p class="text-gray-500 dark:text-gray-400 mt-2">No workflow structure available</p>
+  <div class="py-12 text-center">
+    <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+      <svg class="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+      </svg>
+    </div>
+    <p class="text-gray-500 dark:text-gray-400 text-lg">No workflow structure available</p>
+    <p class="text-gray-400 dark:text-gray-500 text-sm mt-1">This workflow has no steps defined</p>
   </div>
 <% end %>
