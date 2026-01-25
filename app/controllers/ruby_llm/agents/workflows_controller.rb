@@ -248,13 +248,20 @@ module RubyLLM
       def load_unified_workflow_config
         @parallel_groups = []
         @input_schema_fields = {}
+        @lifecycle_hooks = {}
 
         # All workflows use DSL
         @steps = extract_dsl_steps(@workflow_class)
         @parallel_groups = extract_parallel_groups(@workflow_class)
+        @lifecycle_hooks = extract_lifecycle_hooks(@workflow_class)
+
         @config[:steps_count] = @steps.size
         @config[:parallel_groups_count] = @parallel_groups.size
         @config[:has_routing] = @steps.any? { |s| s[:routing] }
+        @config[:has_conditions] = @steps.any? { |s| s[:if_condition] || s[:unless_condition] }
+        @config[:has_retries] = @steps.any? { |s| s[:retry_config] }
+        @config[:has_fallbacks] = @steps.any? { |s| s[:fallbacks]&.any? }
+        @config[:has_lifecycle_hooks] = @lifecycle_hooks.values.any? { |v| v.to_i > 0 }
         @config[:has_input_schema] = @workflow_class.respond_to?(:input_schema) && @workflow_class.input_schema.present?
 
         if @config[:has_input_schema]
@@ -262,15 +269,18 @@ module RubyLLM
         end
       end
 
-      # Extracts steps from a DSL-based workflow class
+      # Extracts steps from a DSL-based workflow class with full configuration
       #
       # @param klass [Class] The workflow class
-      # @return [Array<Hash>] Array of step hashes with DSL metadata
+      # @return [Array<Hash>] Array of step hashes with full DSL metadata
       def extract_dsl_steps(klass)
-        return [] unless klass.respond_to?(:step_metadata)
+        return [] unless klass.respond_to?(:step_metadata) && klass.respond_to?(:step_configs)
+
+        step_configs = klass.step_configs
 
         klass.step_metadata.map do |meta|
-          {
+          config = step_configs[meta[:name]]
+          step_hash = {
             name: meta[:name],
             agent: meta[:agent],
             description: meta[:description],
@@ -279,9 +289,105 @@ module RubyLLM
             timeout: meta[:timeout],
             routing: meta[:routing],
             parallel: meta[:parallel],
-            parallel_group: meta[:parallel_group]
+            parallel_group: meta[:parallel_group],
+            custom_block: config&.custom_block?
           }
+
+          # Add extended configuration from StepConfig
+          if config
+            step_hash.merge!(
+              retry_config: extract_retry_config(config),
+              fallbacks: config.fallbacks.map(&:name),
+              if_condition: describe_condition(config.if_condition),
+              unless_condition: describe_condition(config.unless_condition),
+              has_input_mapper: config.input_mapper.present?,
+              pick_fields: config.pick_fields,
+              pick_from: config.pick_from,
+              default_value: config.default_value,
+              routes: extract_routes(config)
+            )
+          end
+
+          step_hash.compact
         end
+      end
+
+      # Extracts retry configuration in a display-friendly format
+      #
+      # @param config [StepConfig] The step configuration
+      # @return [Hash, nil] Retry config hash or nil
+      def extract_retry_config(config)
+        retry_cfg = config.retry_config
+        return nil unless retry_cfg && retry_cfg[:max].to_i > 0
+
+        {
+          max: retry_cfg[:max],
+          backoff: retry_cfg[:backoff],
+          delay: retry_cfg[:delay]
+        }
+      end
+
+      # Describes a condition for display
+      #
+      # @param condition [Symbol, Proc, nil] The condition
+      # @return [String, nil] Human-readable description
+      def describe_condition(condition)
+        return nil if condition.nil?
+
+        case condition
+        when Symbol then condition.to_s
+        when Proc then "lambda"
+        else condition.to_s
+        end
+      end
+
+      # Extracts routes from a routing step
+      #
+      # @param config [StepConfig] The step configuration
+      # @return [Array<Hash>, nil] Array of route hashes or nil
+      def extract_routes(config)
+        return nil unless config.routing? && config.block
+
+        builder = RubyLLM::Agents::Workflow::DSL::RouteBuilder.new
+        config.block.call(builder)
+
+        routes = builder.routes.map do |name, route_config|
+          {
+            name: name.to_s,
+            agent: route_config[:agent]&.name,
+            timeout: extract_timeout_value(route_config[:options][:timeout]),
+            fallback: Array(route_config[:options][:fallback]).first&.then { |f| f.respond_to?(:name) ? f.name : f.to_s },
+            has_input_mapper: route_config[:options][:input].present?,
+            if_condition: describe_condition(route_config[:options][:if]),
+            default: false
+          }.compact
+        end
+
+        # Add default route
+        if builder.default
+          routes << {
+            name: "default",
+            agent: builder.default[:agent]&.name,
+            timeout: extract_timeout_value(builder.default[:options][:timeout]),
+            has_input_mapper: builder.default[:options][:input].present?,
+            default: true
+          }.compact
+        end
+
+        routes
+      rescue StandardError => e
+        Rails.logger.debug "[RubyLLM::Agents] Could not extract routes: #{e.message}"
+        nil
+      end
+
+      # Extracts timeout value handling ActiveSupport::Duration
+      #
+      # @param timeout [Integer, ActiveSupport::Duration, nil] The timeout value
+      # @return [Integer, nil] Timeout in seconds or nil
+      def extract_timeout_value(timeout)
+        return nil if timeout.nil?
+
+        timeout.respond_to?(:to_i) ? timeout.to_i : timeout
       end
 
       # Extracts parallel groups from a DSL-based workflow class
@@ -292,6 +398,21 @@ module RubyLLM
         return [] unless klass.respond_to?(:parallel_groups)
 
         klass.parallel_groups.map(&:to_h)
+      end
+
+      # Extracts lifecycle hooks from a workflow class
+      #
+      # @param klass [Class] The workflow class
+      # @return [Hash] Hash of hook types to counts
+      def extract_lifecycle_hooks(klass)
+        return {} unless klass.respond_to?(:lifecycle_hooks)
+
+        hooks = klass.lifecycle_hooks
+        {
+          before_workflow: hooks[:before_workflow]&.size || 0,
+          after_workflow: hooks[:after_workflow]&.size || 0,
+          on_step_error: hooks[:on_step_error]&.size || 0
+        }
       end
 
       # Safely calls a method on a class, returning nil if method doesn't exist
