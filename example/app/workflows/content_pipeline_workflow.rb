@@ -5,12 +5,16 @@
 #
 # Demonstrates:
 #   - Sequential pipeline steps with input mapping
-#   - Retry configuration with exponential backoff
+#   - Retry configuration with exponential and linear backoff
+#   - Retry with integer shorthand and error class filtering
 #   - Custom block step for inline logic
 #   - Conditional steps with unless:
 #   - pick: for selecting specific fields from previous steps
-#   - Parallel quality checks within a sequential flow
-#   - on_step_error and after_workflow lifecycle hooks
+#   - Parallel quality checks with timeout
+#   - on_step_error, on_step_failure, and after_workflow lifecycle hooks
+#   - on_error: step-level error handler
+#   - critical: flag for non-critical steps
+#   - Block flow control: skip!, halt!, fail!
 #
 # Usage:
 #   result = ContentPipelineWorkflow.call(text: "Your content here")
@@ -31,11 +35,21 @@ class ContentPipelineWorkflow < RubyLLM::Agents::Workflow
     optional :skip_formatting, :boolean, default: false
   end
 
+  # Retry with error class filtering and linear backoff
   step :extract, ExtractorAgent, "Extract main points and entities",
     timeout: 45.seconds,
-    retry: { max: 2, backoff: :exponential, delay: 1 }
+    retry: { max: 3, on: [Timeout::Error, Net::ReadTimeout], backoff: :linear, delay: 2 }
 
+  # Validation step with on_error handler (non-critical)
+  step :validate, ValidatorAgent, "Validate extracted data",
+    critical: false,
+    on_error: ->(error) { Rails.logger.warn "Validation skipped: #{error.message}" },
+    optional: true,
+    input: -> { { data: extract.to_h } }
+
+  # Retry with integer shorthand
   step :classify, ClassifierAgent, "Classify content type",
+    retry: 2,
     input: -> { { content: extract.content, entities: extract.entities } }
 
   step :enrich do
@@ -50,7 +64,8 @@ class ContentPipelineWorkflow < RubyLLM::Agents::Workflow
     }
   end
 
-  parallel :quality_checks, fail_fast: false do
+  # Parallel with timeout
+  parallel :quality_checks, fail_fast: false, timeout: 60.seconds do
     step :grammar, GrammarAgent, optional: true
     step :readability, ReadabilityAgent, optional: true
   end
@@ -62,8 +77,38 @@ class ContentPipelineWorkflow < RubyLLM::Agents::Workflow
     optional: true,
     default: { formatted: false }
 
+  # Block with flow control demonstrations
+  step :finalize do
+    # skip! - Skip this step with a default value
+    if classify.category == "spam"
+      skip!(reason: "Spam content detected", default: { skipped: true, reason: "spam" })
+    end
+
+    # fail! - Abort the workflow with an error
+    if extract.content.blank?
+      fail!("No content extracted - cannot finalize")
+    end
+
+    # halt! - Stop workflow early with a successful result
+    if quality_checks.readability&.score.to_f > 90
+      halt!(result: { status: "excellent", fast_tracked: true, quality_score: 90 })
+    end
+
+    # Normal completion
+    {
+      processed: true,
+      quality: quality_checks.to_h,
+      final_format: format&.to_h
+    }
+  end
+
   on_step_error do |step_name, error|
     Rails.logger.error "Pipeline step #{step_name} failed: #{error.message}"
+  end
+
+  on_step_failure :extract do |step_name, error, step_results|
+    Rails.logger.error "Extraction failed after retries: #{error.message}"
+    # Could trigger notification or fallback logic
   end
 
   after_workflow do

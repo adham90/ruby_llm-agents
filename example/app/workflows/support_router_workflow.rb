@@ -6,9 +6,12 @@
 # Demonstrates:
 #   - Routing patterns with on: condition
 #   - Per-route configuration (input mapping, timeout, fallback)
+#   - Multiple fallback chain for resilience
 #   - Conditional routes with if:
-#   - Fallback agents for error handling
+#   - Default route for unmatched categories
+#   - on_step_start lifecycle hook
 #   - Sequential steps before and after routing
+#   - description: option (alternative to positional)
 #
 # Usage:
 #   result = SupportRouterWorkflow.call(message: "I was charged twice")
@@ -28,7 +31,12 @@ class SupportRouterWorkflow < RubyLLM::Agents::Workflow
     optional :previous_context, String
   end
 
-  step :analyze, AnalyzerAgent, "Analyze request intent",
+  on_step_start do |step_name|
+    Rails.logger.debug "[SupportRouter] Starting step: #{step_name}"
+  end
+
+  step :analyze, AnalyzerAgent,
+    description: "Analyze request intent and categorize",
     timeout: 30.seconds
 
   step :handle, on: -> { analyze.category } do |route|
@@ -36,18 +44,22 @@ class SupportRouterWorkflow < RubyLLM::Agents::Workflow
       input: -> { { issue: input.message, tier: input.customer_tier } },
       timeout: 2.minutes
 
+    # Multiple fallback chain for resilience
     route.technical TechnicalAgent,
       input: -> { { problem: input.message, context: input.previous_context } },
-      fallback: GeneralAgent
+      fallback: [SpecialistAgent, GeneralAgent]
 
     route.account AccountAgent,
       if: -> { input.customer_tier != "free" }
 
+    # Default route for unmatched categories
     route.default GeneralAgent,
       input: -> { { query: input.message } }
   end
 
-  step :followup, FollowupAgent, "Generate follow-up suggestions",
+  # Using description: option instead of positional argument
+  step :followup, FollowupAgent,
+    description: "Generate follow-up suggestions based on response",
     optional: true,
     input: -> { { response: handle.to_h, original: input.message } }
 end
