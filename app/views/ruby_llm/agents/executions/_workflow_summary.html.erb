@@ -9,20 +9,9 @@
     <!-- Header -->
     <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <% case execution.workflow_type
-           when "pipeline" %>
-          <span class="text-indigo-600 dark:text-indigo-400">→</span>
-          <span class="font-medium text-gray-900 dark:text-gray-100">Pipeline</span>
-          <span class="text-gray-500 dark:text-gray-400">· <%= stats[:steps_count] %> steps</span>
-        <% when "parallel" %>
-          <span class="text-cyan-600 dark:text-cyan-400">⫴</span>
-          <span class="font-medium text-gray-900 dark:text-gray-100">Parallel</span>
-          <span class="text-gray-500 dark:text-gray-400">· <%= stats[:steps_count] %> branches</span>
-        <% when "router" %>
-          <span class="text-amber-600 dark:text-amber-400">⑂</span>
-          <span class="font-medium text-gray-900 dark:text-gray-100">Router</span>
-          <span class="text-gray-500 dark:text-gray-400">→ <%= execution.routed_to %></span>
-        <% end %>
+        <span class="text-emerald-600 dark:text-emerald-400">◈</span>
+        <span class="font-medium text-gray-900 dark:text-gray-100">Workflow</span>
+        <span class="text-gray-500 dark:text-gray-400">· <%= stats[:steps_count] %> steps</span>
       </div>
 
       <% overall_status = execution.workflow_overall_status %>
@@ -34,9 +23,7 @@
       <table class="min-w-full text-sm">
         <thead class="bg-gray-50 dark:bg-gray-900/50">
           <tr>
-            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-              <%= execution.pipeline_workflow? ? "Step" : execution.parallel_workflow? ? "Branch" : "Route" %>
-            </th>
+            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Step</th>
             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
             <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Duration</th>
             <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Tokens</th>
@@ -48,9 +35,7 @@
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
               <td class="px-4 py-2">
                 <%= link_to ruby_llm_agents.execution_path(step.id), class: "text-blue-600 dark:text-blue-400 hover:underline" do %>
-                  <% if execution.pipeline_workflow? %>
-                    <span class="text-gray-400 dark:text-gray-500"><%= index + 1 %>.</span>
-                  <% end %>
+                  <span class="text-gray-400 dark:text-gray-500"><%= index + 1 %>.</span>
                   <%= step.workflow_step || step.agent_type.gsub(/Agent$/, "") %>
                 <% end %>
               </td>

@@ -232,14 +232,9 @@ module RubyLLM
 
         # Returns the workflow type name for storage
         #
-        # @return [String] The workflow type (pipeline, parallel, router)
+        # @return [String] The workflow type
         def workflow_type_name
-          case self
-          when Workflow::Pipeline then "pipeline"
-          when Workflow::Parallel then "parallel"
-          when Workflow::Router then "router"
-          else "workflow"
-          end
+          "workflow"
         end
 
         # Hook for subclasses to add custom metadata

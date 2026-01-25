@@ -4,12 +4,12 @@
 # Routes customer messages to specialized agents based on intent
 #
 # Usage:
-#   result = SupportRouter.call(message: "I was charged twice")
+#   result = SupportRouterWorkflow.call(message: "I was charged twice")
 #   result.steps[:classify].content  # Classification details (e.g., { category: "billing" })
 #   result.steps[:handle].content    # Response from routed agent
 #   result.content                   # Final workflow output
 #
-class SupportRouter < RubyLLM::Agents::Workflow
+class SupportRouterWorkflow < RubyLLM::Agents::Workflow
   description "Routes customer messages to specialized support agents based on intent"
   version "1.0"
 

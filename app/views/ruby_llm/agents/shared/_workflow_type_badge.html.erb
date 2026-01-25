@@ -1,6 +1,6 @@
 <%
   # Workflow type badge with icon and color coding
-  # Usage: render "ruby_llm/agents/shared/workflow_type_badge", workflow_type: "pipeline"
+  # Usage: render "ruby_llm/agents/shared/workflow_type_badge", workflow_type: "workflow"
   # Options:
   #   size: :xs, :sm (default), :md
   #   show_label: true (default) or false for icon-only mode
@@ -9,42 +9,14 @@
   size = local_assigns[:size] || :sm
   show_label = local_assigns.fetch(:show_label, true)
 
-  # Legacy types for backward compatibility with existing workflows
-  config = case workflow_type.to_s
-    when "pipeline"
-      {
-        icon: "arrow-right",
-        label: "Pipeline",
-        bg: "bg-indigo-100 dark:bg-indigo-900/50",
-        text: "text-indigo-700 dark:text-indigo-300",
-        icon_char: "→"
-      }
-    when "parallel"
-      {
-        icon: "parallel",
-        label: "Parallel",
-        bg: "bg-cyan-100 dark:bg-cyan-900/50",
-        text: "text-cyan-700 dark:text-cyan-300",
-        icon_char: "⫿"
-      }
-    when "router"
-      {
-        icon: "router",
-        label: "Router",
-        bg: "bg-amber-100 dark:bg-amber-900/50",
-        text: "text-amber-700 dark:text-amber-300",
-        icon_char: "⌂"
-      }
-    else
-      # Default: DSL-based unified workflow (new standard)
-      {
-        icon: "workflow",
-        label: "Workflow",
-        bg: "bg-emerald-100 dark:bg-emerald-900/50",
-        text: "text-emerald-700 dark:text-emerald-300",
-        icon_char: "◈"
-      }
-    end
+  # All workflows use unified DSL workflow style
+  config = {
+    icon: "workflow",
+    label: "Workflow",
+    bg: "bg-emerald-100 dark:bg-emerald-900/50",
+    text: "text-emerald-700 dark:text-emerald-300",
+    icon_char: "◈"
+  }
 
   size_classes = case size
     when :xs

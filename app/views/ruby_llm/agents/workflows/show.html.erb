@@ -1,7 +1,7 @@
 <%= render "ruby_llm/agents/shared/breadcrumbs", items: [
   { label: "Dashboard", path: ruby_llm_agents.root_path },
   { label: "Workflows", path: ruby_llm_agents.agents_path(tab: "workflows") },
-  { label: @workflow_type.gsub(/Workflow$|Pipeline$|Parallel$|Router$/, '') }
+  { label: @workflow_type.split('::').last }
 ] %>
 
 <!-- Header -->
@@ -11,7 +11,7 @@
       <div class="flex items-center space-x-3">
         <%= render "ruby_llm/agents/shared/workflow_type_badge", workflow_type: @workflow_type_kind, size: :md %>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          <% name_parts = @workflow_type.gsub(/Workflow$|Pipeline$|Parallel$|Router$/, '').split('::') %>
+          <% name_parts = @workflow_type.split('::') %>
           <% if name_parts.length > 1 %>
             <span class="text-gray-400 dark:text-gray-500 font-normal"><%= name_parts[0..-2].join('::') %>::</span>
           <% end %>
@@ -126,17 +126,13 @@
           parallel
         </span>
       <% end %>
-      <% if @config && @config[:fail_fast] %>
-        <span class="text-gray-400 dark:text-gray-500">fail_fast: on</span>
-      <% end %>
     </div>
   </div>
 
   <%= render "ruby_llm/agents/workflows/workflow_diagram",
       steps: @steps || [],
       parallel_groups: @parallel_groups || [],
-      input_schema_fields: @input_schema_fields || {},
-      routes: @config&.dig(:routes) || [] %>
+      input_schema_fields: @input_schema_fields || {} %>
 </div>
 
 <!-- Stats Grid -->
@@ -180,12 +176,11 @@
       icon_color: "text-purple-500" %>
 </div>
 
-<!-- Step/Branch/Route Performance -->
+<!-- Step Performance -->
 <% if @step_stats.present? %>
   <%= render "ruby_llm/agents/workflows/step_performance",
       workflow_type: @workflow_type_kind,
-      step_stats: @step_stats,
-      route_distribution: @route_distribution %>
+      step_stats: @step_stats %>
 <% end %>
 
 <!-- Charts Section -->
@@ -305,40 +300,7 @@
         </p>
       </div>
 
-      <% if @workflow_type_kind == "parallel" %>
-        <div>
-          <p class="text-sm text-gray-500 dark:text-gray-400">Fail Fast</p>
-          <p class="font-medium text-gray-900 dark:text-gray-100">
-            <%= @config[:fail_fast] ? 'Yes' : 'No' %>
-          </p>
-        </div>
-      <% end %>
     </div>
-
-    <% if @workflow_type_kind == "router" && @config[:classifier_model] %>
-      <!-- Router Settings -->
-      <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
-        <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-          Router Settings
-        </p>
-
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <p class="text-sm text-gray-500 dark:text-gray-400">Classifier Model</p>
-            <p class="font-medium text-gray-900 dark:text-gray-100">
-              <%= @config[:classifier_model] %>
-            </p>
-          </div>
-
-          <div>
-            <p class="text-sm text-gray-500 dark:text-gray-400">Temperature</p>
-            <p class="font-medium text-gray-900 dark:text-gray-100">
-              <%= @config[:classifier_temperature] || 0.0 %>
-            </p>
-          </div>
-        </div>
-      </div>
-    <% end %>
   </div>
 <% end %>
 

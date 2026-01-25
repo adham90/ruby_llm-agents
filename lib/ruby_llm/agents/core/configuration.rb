@@ -892,6 +892,7 @@ module RubyLLM
 
         [
           base,
+          "app/workflows",           # Top-level workflows directory
           "#{base}/images",
           "#{base}/audio",
           "#{base}/embedders",

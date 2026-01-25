@@ -1,12 +1,6 @@
 <%
-  workflow_colors = {
-    "pipeline" => { border: "border-l-indigo-500", icon_bg: "bg-indigo-100 dark:bg-indigo-900/50", icon_text: "text-indigo-600 dark:text-indigo-300" },
-    "parallel" => { border: "border-l-cyan-500", icon_bg: "bg-cyan-100 dark:bg-cyan-900/50", icon_text: "text-cyan-600 dark:text-cyan-300" },
-    "router" => { border: "border-l-amber-500", icon_bg: "bg-amber-100 dark:bg-amber-900/50", icon_text: "text-amber-600 dark:text-amber-300" },
-    "dsl" => { border: "border-l-emerald-500", icon_bg: "bg-emerald-100 dark:bg-emerald-900/50", icon_text: "text-emerald-600 dark:text-emerald-300" }
-  }
-  colors = workflow_colors[workflow[:workflow_type]] || { border: "border-l-emerald-500", icon_bg: "bg-emerald-100 dark:bg-emerald-900/50", icon_text: "text-emerald-600 dark:text-emerald-300" }
-
+  # All workflows use unified emerald color scheme
+  colors = { border: "border-l-emerald-500", icon_bg: "bg-emerald-100 dark:bg-emerald-900/50", icon_text: "text-emerald-600 dark:text-emerald-300" }
   child_label = "steps"
 %>
 
@@ -17,7 +11,7 @@
       <div class="flex items-center gap-2 min-w-0">
         <%= render "ruby_llm/agents/shared/workflow_type_badge", workflow_type: workflow[:workflow_type], size: :sm %>
         <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate">
-          <% name_parts = workflow[:name].gsub(/Workflow$/, '').gsub(/Pipeline$|Parallel$|Router$/, '').split('::') %>
+          <% name_parts = workflow[:name].split('::') %>
           <% if name_parts.length > 1 %>
             <span class="text-gray-400 dark:text-gray-500 font-normal"><%= name_parts[0..-2].join('::') %>::</span>
           <% end %>

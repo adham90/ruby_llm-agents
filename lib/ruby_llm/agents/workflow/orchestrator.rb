@@ -5,22 +5,18 @@ require_relative "instrumentation"
 require_relative "thread_pool"
 require_relative "dsl"
 require_relative "dsl/executor"
-require_relative "pipeline"
-require_relative "parallel"
-require_relative "router"
 
 module RubyLLM
   module Agents
     # Base class for workflow orchestration
     #
     # Provides shared functionality for composing multiple agents into
-    # coordinated workflows. Can be used directly with the new DSL or
-    # through specialized subclasses:
-    # - Pipeline: Sequential execution with data flowing between steps
-    # - Parallel: Concurrent execution with result aggregation
-    # - Router: Conditional dispatch based on classification
+    # coordinated workflows using the DSL:
+    # - Sequential steps with data flowing between them
+    # - Parallel execution with result aggregation
+    # - Conditional routing based on step results
     #
-    # @example Minimal workflow with new DSL
+    # @example Minimal workflow
     #   class SimpleWorkflow < RubyLLM::Agents::Workflow
     #     step :fetch, FetcherAgent
     #     step :process, ProcessorAgent
@@ -59,9 +55,6 @@ module RubyLLM
     #     end
     #   end
     #
-    # @see RubyLLM::Agents::Workflow::Pipeline
-    # @see RubyLLM::Agents::Workflow::Parallel
-    # @see RubyLLM::Agents::Workflow::Router
     # @api public
     class Workflow
       include Workflow::Instrumentation

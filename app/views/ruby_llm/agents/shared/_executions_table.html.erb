@@ -42,17 +42,7 @@
                   <%= execution.agent_type.gsub(/Agent$/, "") %>
                 <% end %>
                 <% if is_workflow %>
-                  <% badge_style = case execution.workflow_type
-                       when "pipeline" then "text-indigo-600 dark:text-indigo-400"
-                       when "parallel" then "text-cyan-600 dark:text-cyan-400"
-                       when "router" then "text-amber-600 dark:text-amber-400"
-                     end %>
-                  <% badge_icon = case execution.workflow_type
-                       when "pipeline" then "→"
-                       when "parallel" then "⫴"
-                       when "router" then "⑂"
-                     end %>
-                  <span class="text-xs <%= badge_style %>"><%= badge_icon %></span>
+                  <span class="text-xs text-emerald-600 dark:text-emerald-400">◈</span>
                 <% end %>
               </div>
             </td>
@@ -134,12 +124,10 @@
                   </div>
                 </td>
 
-                <%# Step/Branch Name %>
+                <%# Step Name %>
                 <td class="px-4 py-2 whitespace-nowrap">
                   <%= link_to ruby_llm_agents.execution_path(child), class: "text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400" do %>
-                    <% if execution.pipeline_workflow? %>
-                      <span class="text-gray-400 dark:text-gray-500 text-xs"><%= index + 1 %>.</span>
-                    <% end %>
+                    <span class="text-gray-400 dark:text-gray-500 text-xs"><%= index + 1 %>.</span>
                     <%= child.workflow_step || child.agent_type.gsub(/Agent$/, "") %>
                   <% end %>
                 </td>

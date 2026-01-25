@@ -22,9 +22,8 @@ RSpec.describe RubyLLM::Agents::WorkflowsController, type: :controller do
     before do
       # Mock AgentRegistry to return test workflows
       allow(RubyLLM::Agents::AgentRegistry).to receive(:all_with_details).and_return([
-        { name: "TestPipeline", is_workflow: true, workflow_type: "pipeline", active: true },
-        { name: "TestParallel", is_workflow: true, workflow_type: "parallel", active: true },
-        { name: "TestRouter", is_workflow: true, workflow_type: "router", active: true },
+        { name: "TestWorkflow", is_workflow: true, workflow_type: "workflow", active: true },
+        { name: "TestWorkflow2", is_workflow: true, workflow_type: "workflow", active: true },
         { name: "TestAgent", is_workflow: false, agent_type: "agent", active: true }
       ])
     end
@@ -36,21 +35,8 @@ RSpec.describe RubyLLM::Agents::WorkflowsController, type: :controller do
 
     it "assigns @workflows with only workflows" do
       get :index
-      expect(assigns(:workflows).size).to eq(3)
+      expect(assigns(:workflows).size).to eq(2)
       expect(assigns(:workflows).all? { |w| w[:is_workflow] }).to be true
-    end
-
-    it "assigns @workflows_by_type" do
-      get :index
-      workflows_by_type = assigns(:workflows_by_type)
-      expect(workflows_by_type[:pipeline].size).to eq(1)
-      expect(workflows_by_type[:parallel].size).to eq(1)
-      expect(workflows_by_type[:router].size).to eq(1)
-    end
-
-    it "assigns @workflow_count" do
-      get :index
-      expect(assigns(:workflow_count)).to eq(3)
     end
 
     context "when an error occurs" do
@@ -59,11 +45,9 @@ RSpec.describe RubyLLM::Agents::WorkflowsController, type: :controller do
           .and_raise(StandardError.new("Test error"))
       end
 
-      it "sets empty arrays and flash alert" do
+      it "sets empty array and flash alert" do
         get :index
         expect(assigns(:workflows)).to eq([])
-        expect(assigns(:workflows_by_type)).to eq({ pipeline: [], parallel: [], router: [] })
-        expect(assigns(:workflow_count)).to eq(0)
         expect(flash[:alert]).to eq("Error loading workflows list")
       end
     end
@@ -104,29 +88,16 @@ RSpec.describe RubyLLM::Agents::WorkflowsController, type: :controller do
     end
 
     context "with different workflow types" do
-      let!(:parallel_execution) do
+      let!(:workflow_execution) do
         create(:execution,
-          agent_type: "TestParallelWorkflow",
-          workflow_type: "parallel"
+          agent_type: "TestDSLWorkflow",
+          workflow_type: "workflow"
         )
       end
 
-      let!(:router_execution) do
-        create(:execution,
-          agent_type: "TestRouterWorkflow",
-          workflow_type: "router",
-          routed_to: "billing"
-        )
-      end
-
-      it "detects parallel workflow type" do
-        get :show, params: { id: "TestParallelWorkflow" }
-        expect(assigns(:workflow_type_kind)).to eq("parallel")
-      end
-
-      it "detects router workflow type" do
-        get :show, params: { id: "TestRouterWorkflow" }
-        expect(assigns(:workflow_type_kind)).to eq("router")
+      it "detects workflow type" do
+        get :show, params: { id: "TestDSLWorkflow" }
+        expect(assigns(:workflow_type_kind)).to eq("workflow")
       end
     end
 
@@ -157,34 +128,6 @@ RSpec.describe RubyLLM::Agents::WorkflowsController, type: :controller do
       end
     end
 
-    context "with route distribution (router)" do
-      before do
-        create(:execution,
-          agent_type: "TestRouterWorkflow",
-          workflow_type: "router",
-          routed_to: "billing",
-          status: "success"
-        )
-        create(:execution,
-          agent_type: "TestRouterWorkflow",
-          workflow_type: "router",
-          routed_to: "billing",
-          status: "success"
-        )
-        create(:execution,
-          agent_type: "TestRouterWorkflow",
-          workflow_type: "router",
-          routed_to: "technical",
-          status: "success"
-        )
-      end
-
-      it "calculates route distribution for router workflows" do
-        get :show, params: { id: "TestRouterWorkflow" }
-        expect(assigns(:route_distribution)).to be_a(Hash)
-        expect(assigns(:route_distribution).keys).to include("billing")
-      end
-    end
 
     context "with status filter" do
       before do

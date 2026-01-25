@@ -1479,11 +1479,11 @@ puts "\n" + "=" * 60
 puts "Creating Workflow Executions..."
 puts "=" * 60
 
-# ContentAnalyzer (Parallel) - Acme content analysis
+# ContentAnalyzerWorkflow (Parallel) - Acme content analysis
 5.times do |i|
   create_workflow_execution(
     tenant_id: acme.llm_tenant_id,
-    agent_type: "ContentAnalyzer",
+    agent_type: "ContentAnalyzerWorkflow",
     model_id: "gpt-4o-mini",
     parameters: { text: "Content to analyze for sentiment, keywords, and summary #{i + 1}..." },
     response: {
@@ -1507,13 +1507,13 @@ puts "=" * 60
     created_at: Time.current - (i * 25).minutes
   )
 end
-puts "  Created 5 ContentAnalyzer (parallel) executions"
+puts "  Created 5 ContentAnalyzerWorkflow (parallel) executions"
 
-# ContentPipeline (Pipeline) - Enterprise content processing
+# ContentPipelineWorkflow (Pipeline) - Enterprise content processing
 5.times do |i|
   create_workflow_execution(
     tenant_id: enterprise.llm_tenant_id,
-    agent_type: "ContentPipeline",
+    agent_type: "ContentPipelineWorkflow",
     model_id: "gpt-4o",
     parameters: { text: "Raw content to extract, classify, and format #{i + 1}..." },
     response: {
@@ -1537,9 +1537,9 @@ puts "  Created 5 ContentAnalyzer (parallel) executions"
     created_at: Time.current - (i * 35).minutes
   )
 end
-puts "  Created 5 ContentPipeline (pipeline) executions"
+puts "  Created 5 ContentPipelineWorkflow (pipeline) executions"
 
-# SupportRouter (Router) - Startup customer support
+# SupportRouterWorkflow (Router) - Startup customer support
 routes = [:billing, :technical, :default, :billing, :technical]
 5.times do |i|
   chosen_route = routes[i]
@@ -1550,7 +1550,7 @@ routes = [:billing, :technical, :default, :billing, :technical]
           end
   create_workflow_execution(
     tenant_id: startup.llm_tenant_id,
-    agent_type: "SupportRouter",
+    agent_type: "SupportRouterWorkflow",
     model_id: "gpt-4o-mini",
     temperature: 0.0,
     parameters: { message: "Customer support message #{i + 1}..." },
@@ -1573,7 +1573,7 @@ routes = [:billing, :technical, :default, :billing, :technical]
     created_at: Time.current - (i * 20).minutes
   )
 end
-puts "  Created 5 SupportRouter (router) executions"
+puts "  Created 5 SupportRouterWorkflow (router) executions"
 
 # =============================================================================
 # EMBEDDER DEMONSTRATIONS
@@ -1762,7 +1762,7 @@ puts "\nImage Generator Executions:"
 end
 
 puts "\nWorkflow Executions:"
-%w[ContentAnalyzer ContentPipeline SupportRouter].each do |workflow|
+%w[ContentAnalyzerWorkflow ContentPipelineWorkflow SupportRouterWorkflow].each do |workflow|
   count = RubyLLM::Agents::Execution.where(agent_type: workflow).count
   puts "  #{workflow}: #{count} executions" if count > 0
 end
@@ -1798,8 +1798,8 @@ puts "\nImage Generators Available:"
 end
 
 puts "\nWorkflows Available:"
-%w[ContentAnalyzer ContentPipeline SupportRouter].each do |workflow|
-  klass = "Images::#{workflow}".safe_constantize
+%w[ContentAnalyzerWorkflow ContentPipelineWorkflow SupportRouterWorkflow].each do |workflow|
+  klass = workflow.safe_constantize
   puts "  #{workflow}: #{klass.description}" if klass
 end
 

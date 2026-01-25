@@ -21,6 +21,12 @@ module RubyLLM
     #
     # @api public
     class AgentRegistry
+      # Base workflow classes to exclude from listings
+      # These are abstract parent classes, not concrete workflows
+      BASE_WORKFLOW_CLASSES = [
+        "RubyLLM::Agents::Workflow"
+      ].freeze
+
       class << self
         # Returns all unique agent type names
         #
@@ -72,7 +78,10 @@ module RubyLLM
           transcribers = RubyLLM::Agents::Transcriber.descendants.map(&:name).compact
           image_generators = RubyLLM::Agents::ImageGenerator.descendants.map(&:name).compact
 
-          (agents + workflows + embedders + moderators + speakers + transcribers + image_generators).uniq
+          all_agents = (agents + workflows + embedders + moderators + speakers + transcribers + image_generators).uniq
+
+          # Filter out base workflow classes
+          all_agents.reject { |name| BASE_WORKFLOW_CLASSES.include?(name) }
         rescue StandardError => e
           Rails.logger.error("[RubyLLM::Agents] Error loading agents from file system: #{e.message}")
           []
@@ -210,18 +219,12 @@ module RubyLLM
         # Detects the specific workflow type from class hierarchy
         #
         # @param agent_class [Class, nil] The agent class
-        # @return [String, nil] "pipeline", "parallel", "router", or nil
+        # @return [String, nil] "workflow" for DSL workflows, or nil
         def detect_workflow_type(agent_class)
           return nil unless agent_class
 
-          ancestors = agent_class.ancestors.map { |a| a.name.to_s }
-
-          if ancestors.include?("RubyLLM::Agents::Workflow::Pipeline")
-            "pipeline"
-          elsif ancestors.include?("RubyLLM::Agents::Workflow::Parallel")
-            "parallel"
-          elsif ancestors.include?("RubyLLM::Agents::Workflow::Router")
-            "router"
+          if agent_class.respond_to?(:step_configs) && agent_class.step_configs.any?
+            "workflow"
           end
         end
 

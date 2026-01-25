@@ -4,13 +4,13 @@
 # Processes content through sequential steps: extract -> classify -> format
 #
 # Usage:
-#   result = ContentPipeline.call(text: "Your content here")
+#   result = ContentPipelineWorkflow.call(text: "Your content here")
 #   result.steps[:extract].content   # Extracted data
 #   result.steps[:classify].content  # Classification result
 #   result.steps[:format].content    # Formatted output
 #   result.total_cost                # Total cost of all steps
 #
-class ContentPipeline < RubyLLM::Agents::Workflow
+class ContentPipelineWorkflow < RubyLLM::Agents::Workflow
   description "Processes content through sequential steps: extraction, classification, and formatting"
   version "1.0"
   timeout 60.seconds

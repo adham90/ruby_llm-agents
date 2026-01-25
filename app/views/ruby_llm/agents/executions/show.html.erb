@@ -217,28 +217,17 @@
 <% if (@execution.workflow_type.present? || @execution.workflow_step.present? || @execution.routed_to.present?) && !(@execution.respond_to?(:root_workflow?) && @execution.root_workflow?) %>
   <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-5 mb-6">
     <div class="flex items-center gap-2 mb-4">
-      <% case @execution.workflow_type
-         when "pipeline" %>
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300">
-          <span class="text-base">→</span> Pipeline Workflow
+      <% if @execution.workflow_type.present? %>
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">
+          <span class="text-base">◈</span> Workflow
         </span>
-      <% when "parallel" %>
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300">
-          <span class="text-base">⫴</span> Parallel Workflow
+      <% elsif @execution.workflow_step.present? %>
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+          </svg>
+          Workflow Step
         </span>
-      <% when "router" %>
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300">
-          <span class="text-base">⑂</span> Router Workflow
-        </span>
-      <% else %>
-        <% if @execution.workflow_step.present? %>
-          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
-            </svg>
-            Workflow Step
-          </span>
-        <% end %>
       <% end %>
       <% if @execution.workflow_id.present? %>
         <span class="text-xs text-gray-400 dark:text-gray-500 font-mono" title="Workflow ID: <%= @execution.workflow_id %>">

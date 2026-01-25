@@ -62,26 +62,15 @@ module RubyLLM
 
       private
 
-      # Detects the workflow type kind (pipeline, parallel, router, dsl)
+      # Detects the workflow type kind
       #
-      # DSL workflows are those that use the new step/parallel DSL directly
-      # on the Workflow base class without inheriting from Pipeline/Parallel/Router.
+      # All workflows now use the DSL and return "workflow" type.
       #
       # @return [String, nil] The workflow type kind
       def detect_workflow_type_kind
         if @workflow_class
-          ancestors = @workflow_class.ancestors.map { |a| a.name.to_s }
-
-          # Check for legacy workflow types first
-          if ancestors.include?("RubyLLM::Agents::Workflow::Pipeline")
-            "pipeline"
-          elsif ancestors.include?("RubyLLM::Agents::Workflow::Parallel")
-            "parallel"
-          elsif ancestors.include?("RubyLLM::Agents::Workflow::Router")
-            "router"
-          elsif @workflow_class.respond_to?(:step_configs) && @workflow_class.step_configs.any?
-            # New DSL-based workflow
-            "dsl"
+          if @workflow_class.respond_to?(:step_configs) && @workflow_class.step_configs.any?
+            "workflow"
           end
         else
           # Fallback to execution history
@@ -180,7 +169,6 @@ module RubyLLM
       # @return [void]
       def load_step_stats
         @step_stats = calculate_step_stats
-        @route_distribution = calculate_route_distribution if @workflow_type_kind == "router"
       end
 
       # Calculates per-step/branch performance statistics
@@ -238,29 +226,6 @@ module RubyLLM
         end.compact
       end
 
-      # Calculates route distribution for router workflows
-      #
-      # @return [Hash] Route distribution data
-      def calculate_route_distribution
-        # Get route distribution from routed_to field
-        distribution = Execution.by_agent(@workflow_type)
-                                .where("created_at > ?", 30.days.ago)
-                                .where.not(routed_to: nil)
-                                .group(:routed_to)
-                                .count
-
-        total = distribution.values.sum
-        return {} if total.zero?
-
-        # Add percentage and sorting
-        distribution.transform_values do |count|
-          {
-            count: count,
-            percentage: (count.to_f / total * 100).round(1)
-          }
-        end.sort_by { |_k, v| -v[:count] }.to_h
-      end
-
       # Loads the current workflow class configuration
       #
       # @return [void]
@@ -278,65 +243,22 @@ module RubyLLM
       end
 
       # Loads unified workflow configuration for all workflow types
-      # Normalizes pipeline, parallel, router, and DSL workflows to a common format
       #
       # @return [void]
       def load_unified_workflow_config
         @parallel_groups = []
         @input_schema_fields = {}
 
-        case @workflow_type_kind
-        when "pipeline"
-          @steps = extract_steps(@workflow_class)
-          @config[:steps_count] = @steps.size
-        when "parallel"
-          branches = extract_branches(@workflow_class)
-          # Convert parallel branches to steps in a parallel group
-          @steps = branches.map do |branch|
-            branch.merge(parallel: true, parallel_group: :main)
-          end
-          @parallel_groups = [{ name: :main, step_names: branches.map { |b| b[:name] }, fail_fast: safe_call(@workflow_class, :fail_fast?) }]
-          @config[:branches_count] = branches.size
-          @config[:fail_fast] = safe_call(@workflow_class, :fail_fast?)
-        when "router"
-          routes = extract_routes(@workflow_class)
-          # Convert router to a classify step followed by routing step
-          @steps = [
-            { name: :classify, agent: "Classifier", routing: false, description: "Classifies input to determine route" },
-            { name: :route, agent: nil, routing: true, routes: routes, description: "Routes to specialized agent" }
-          ]
-          @config[:routes_count] = routes.size
-          @config[:routes] = routes
-          @config[:classifier_model] = safe_call(@workflow_class, :classifier_model)
-          @config[:classifier_temperature] = safe_call(@workflow_class, :classifier_temperature)
-        else
-          # DSL-based workflow (default)
-          @steps = extract_dsl_steps(@workflow_class)
-          @parallel_groups = extract_parallel_groups(@workflow_class)
-          @config[:steps_count] = @steps.size
-          @config[:parallel_groups_count] = @parallel_groups.size
-          @config[:has_routing] = @steps.any? { |s| s[:routing] }
-          @config[:has_input_schema] = @workflow_class.respond_to?(:input_schema) && @workflow_class.input_schema.present?
+        # All workflows use DSL
+        @steps = extract_dsl_steps(@workflow_class)
+        @parallel_groups = extract_parallel_groups(@workflow_class)
+        @config[:steps_count] = @steps.size
+        @config[:parallel_groups_count] = @parallel_groups.size
+        @config[:has_routing] = @steps.any? { |s| s[:routing] }
+        @config[:has_input_schema] = @workflow_class.respond_to?(:input_schema) && @workflow_class.input_schema.present?
 
-          if @config[:has_input_schema]
-            @input_schema_fields = @workflow_class.input_schema.fields.transform_values(&:to_h)
-          end
-        end
-      end
-
-      # Extracts steps from a pipeline workflow class
-      #
-      # @param klass [Class] The workflow class
-      # @return [Array<Hash>] Array of step hashes
-      def extract_steps(klass)
-        return [] unless klass.respond_to?(:steps)
-
-        klass.steps.map do |name, config|
-          {
-            name: name,
-            agent: config[:agent]&.name,
-            optional: config[:continue_on_error] || false
-          }
+        if @config[:has_input_schema]
+          @input_schema_fields = @workflow_class.input_schema.fields.transform_values(&:to_h)
         end
       end
 
@@ -370,39 +292,6 @@ module RubyLLM
         return [] unless klass.respond_to?(:parallel_groups)
 
         klass.parallel_groups.map(&:to_h)
-      end
-
-      # Extracts branches from a parallel workflow class
-      #
-      # @param klass [Class] The workflow class
-      # @return [Array<Hash>] Array of branch hashes
-      def extract_branches(klass)
-        return [] unless klass.respond_to?(:branches)
-
-        klass.branches.map do |name, config|
-          {
-            name: name,
-            agent: config[:agent]&.name,
-            optional: config[:optional] || false
-          }
-        end
-      end
-
-      # Extracts routes from a router workflow class
-      #
-      # @param klass [Class] The workflow class
-      # @return [Array<Hash>] Array of route hashes
-      def extract_routes(klass)
-        return [] unless klass.respond_to?(:routes)
-
-        klass.routes.map do |name, config|
-          {
-            name: name,
-            agent: config[:agent]&.name,
-            description: config[:description],
-            default: config[:default] || false
-          }
-        end
       end
 
       # Safely calls a method on a class, returning nil if method doesn't exist
