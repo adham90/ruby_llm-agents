@@ -148,16 +148,74 @@
 <% end %>
 
 <!-- Workflow Structure -->
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-  <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-    Workflow Structure
-  </h3>
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6" x-data="{ expanded: true }">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+      Workflow Structure
+    </h3>
 
-  <%= render "ruby_llm/agents/workflows/workflow_diagram",
-      steps: @steps || [],
-      parallel_groups: @parallel_groups || [],
-      input_schema_fields: @input_schema_fields || {},
-      lifecycle_hooks: @lifecycle_hooks || {} %>
+    <button @click="expanded = !expanded" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer">
+      <span x-text="expanded ? 'Collapse' : 'Expand'">Collapse</span>
+      <svg class="w-4 h-4 transition-transform duration-200" :class="expanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Collapsed: Compact Flow Summary -->
+  <div x-show="!expanded" x-collapse class="py-4">
+    <div class="flex items-center justify-center gap-2 flex-wrap">
+      <!-- Start -->
+      <span class="px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 text-sm font-medium">
+        Start
+      </span>
+
+      <% (@steps || []).each_with_index do |step, idx| %>
+        <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+
+        <%
+          step_bg = if step[:workflow]
+            "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300"
+          elsif step[:iteration]
+            "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300"
+          elsif step[:routing]
+            "bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300"
+          elsif step[:parallel_group]
+            "bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300"
+          else
+            "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+          end
+        %>
+        <span class="px-3 py-1 rounded-full <%= step_bg %> text-sm font-medium">
+          <%= step[:name].to_s.titleize.truncate(20) %>
+        </span>
+      <% end %>
+
+      <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+      </svg>
+
+      <!-- End -->
+      <span class="px-3 py-1 rounded-full bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 text-sm font-medium">
+        End
+      </span>
+    </div>
+
+    <p class="text-center text-xs text-gray-500 dark:text-gray-400 mt-3">
+      Click "Expand" to see full diagram with details
+    </p>
+  </div>
+
+  <!-- Expanded: Full Diagram -->
+  <div x-show="expanded" x-collapse>
+    <%= render "ruby_llm/agents/workflows/workflow_diagram",
+        steps: @steps || [],
+        parallel_groups: @parallel_groups || [],
+        input_schema_fields: @input_schema_fields || {},
+        lifecycle_hooks: @lifecycle_hooks || {} %>
+  </div>
 </div>
 
 <!-- Stats Grid -->
@@ -209,26 +267,41 @@
 <% end %>
 
 <!-- Charts Section -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-  <!-- Executions Over Time -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 overflow-hidden">
-    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-      Executions (30 days)
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6"
+     x-data="{ expanded: false, chartsInitialized: false }"
+     x-effect="if (expanded && !chartsInitialized) { $nextTick(() => { window.initWorkflowCharts && window.initWorkflowCharts(); chartsInitialized = true; }); }">
+  <div class="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+      Trends (30 days)
     </h3>
-    <div id="executions-chart" style="height: 220px;"></div>
+
+    <button @click="expanded = !expanded" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer">
+      <span x-text="expanded ? 'Hide Charts' : 'Show Charts'">Show Charts</span>
+      <svg class="w-4 h-4 transition-transform duration-200" :class="expanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+      </svg>
+    </button>
   </div>
 
-  <!-- Cost Over Time -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 overflow-hidden">
-    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-      Cost (30 days)
-    </h3>
-    <div id="cost-chart" style="height: 220px;"></div>
+  <div x-show="expanded" x-collapse>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
+      <!-- Executions Over Time -->
+      <div>
+        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Executions</h4>
+        <div id="executions-chart" style="height: 200px;"></div>
+      </div>
+
+      <!-- Cost Over Time -->
+      <div>
+        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Cost</h4>
+        <div id="cost-chart" style="height: 200px;"></div>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
-(function() {
+window.initWorkflowCharts = function() {
   const trendData = <%= raw @trend_data.to_json %>;
   const categories = trendData.map(d => d.date.split('-').slice(1).join('/'));
 
@@ -255,7 +328,7 @@
     tooltip: { valuePrefix: '$' },
     series: [{ name: 'Cost', color: '#10B981', data: trendData.map(d => parseFloat(d.total_cost) || 0) }]
   });
-})();
+};
 </script>
 
 <!-- Finish Reason Distribution -->
