@@ -9,9 +9,180 @@
 <% if @workflows.empty? %>
   <%= render "ruby_llm/agents/agents/empty_state", type: "workflows" %>
 <% else %>
-  <div class="space-y-3 sm:space-y-4">
-    <% @workflows.each do |workflow| %>
-      <%= render partial: "ruby_llm/agents/agents/workflow", locals: { workflow: workflow } %>
-    <% end %>
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead class="bg-gray-50 dark:bg-gray-900">
+          <tr>
+            <%= render "ruby_llm/agents/agents/sortable_header",
+                column: "name", label: "Name",
+                current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
+
+            <%= render "ruby_llm/agents/agents/sortable_header",
+                column: "workflow_type", label: "Type",
+                current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
+
+            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              Status
+            </th>
+
+            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 hidden md:table-cell">
+              Steps
+            </th>
+
+            <%= render "ruby_llm/agents/agents/sortable_header",
+                column: "execution_count", label: "Executions",
+                current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
+
+            <%= render "ruby_llm/agents/agents/sortable_header",
+                column: "total_cost", label: "Cost",
+                current_sort: @sort_params[:column], current_direction: @sort_params[:direction],
+                th_class: "hidden md:table-cell" %>
+
+            <%= render "ruby_llm/agents/agents/sortable_header",
+                column: "success_rate", label: "Success",
+                current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
+
+            <%= render "ruby_llm/agents/agents/sortable_header",
+                column: "last_executed", label: "Last Run",
+                current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
+          </tr>
+        </thead>
+
+        <% @workflows.each_with_index do |workflow, index| %>
+          <%
+            row_bg = index.even? ? '' : 'bg-gray-50/50 dark:bg-gray-900/30'
+            success_rate = workflow[:success_rate] || 0
+            steps_count = workflow[:workflow_children]&.size || 0
+            has_steps = workflow[:workflow_children].present? && workflow[:workflow_children].any?
+          %>
+          <tbody x-data="{ expanded: false }" class="<%= index > 0 ? 'border-t border-gray-100/50 dark:border-gray-700/50' : '' %>">
+            <tr class="<%= row_bg %> hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-colors">
+              <!-- Name -->
+              <td class="px-4 py-3">
+                <a href="<%= ruby_llm_agents.workflow_path(ERB::Util.url_encode(workflow[:name])) %>" class="block">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <% name_parts = workflow[:name].split('::') %>
+                      <% if name_parts.length > 1 %>
+                        <span class="text-gray-400 dark:text-gray-500 font-normal"><%= name_parts[0..-2].join('::') %>::</span>
+                      <% end %>
+                      <%= name_parts.last %>
+                    </span>
+                    <span class="hidden lg:inline text-xs text-gray-400 dark:text-gray-500">v<%= workflow[:version] %></span>
+                  </div>
+                  <% if workflow[:description].present? %>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-64 mt-0.5" title="<%= workflow[:description] %>">
+                      <%= workflow[:description] %>
+                    </p>
+                  <% end %>
+                </a>
+              </td>
+
+              <!-- Type -->
+              <td class="px-4 py-3 whitespace-nowrap">
+                <%= render "ruby_llm/agents/shared/workflow_type_badge", workflow_type: workflow[:workflow_type], size: :sm %>
+              </td>
+
+              <!-- Status -->
+              <td class="px-4 py-3 whitespace-nowrap">
+                <% if workflow[:active] %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300">
+                    Active
+                  </span>
+                <% else %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+                    Deleted
+                  </span>
+                <% end %>
+              </td>
+
+              <!-- Steps -->
+              <td class="px-4 py-3 whitespace-nowrap hidden md:table-cell">
+                <% if steps_count > 0 %>
+                  <button
+                    type="button"
+                    @click.stop="expanded = !expanded"
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-colors"
+                  >
+                    <%= steps_count %> steps
+                    <svg class="w-3 h-3 transition-transform duration-200" :class="{ 'rotate-180': expanded }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                  </button>
+                <% else %>
+                  <span class="text-sm text-gray-400 dark:text-gray-500">-</span>
+                <% end %>
+              </td>
+
+              <!-- Executions -->
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-mono">
+                <%= number_with_delimiter(workflow[:execution_count] || 0) %>
+              </td>
+
+              <!-- Cost -->
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-mono hidden md:table-cell">
+                $<%= number_with_precision(workflow[:total_cost] || 0, precision: 4) %>
+              </td>
+
+              <!-- Success Rate -->
+              <td class="px-4 py-3 whitespace-nowrap">
+                <div class="flex items-center gap-1.5">
+                  <% if success_rate >= 95 %>
+                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                    <span class="text-sm text-green-600 dark:text-green-400"><%= success_rate %>%</span>
+                  <% elsif success_rate >= 80 %>
+                    <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+                    <span class="text-sm text-yellow-600 dark:text-yellow-400"><%= success_rate %>%</span>
+                  <% else %>
+                    <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                    <span class="text-sm text-red-600 dark:text-red-400"><%= success_rate %>%</span>
+                  <% end %>
+                </div>
+              </td>
+
+              <!-- Last Executed -->
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                <% if workflow[:last_executed] %>
+                  <%= time_ago_in_words(workflow[:last_executed]) %> ago
+                <% else %>
+                  <span class="text-gray-400 dark:text-gray-500">Never</span>
+                <% end %>
+              </td>
+            </tr>
+
+            <!-- Expandable Steps Row -->
+            <% if has_steps %>
+              <tr
+                x-show="expanded"
+                x-cloak
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                class="bg-gray-50/80 dark:bg-gray-900/50"
+              >
+                <td colspan="8" class="px-4 py-3">
+                  <div class="flex flex-wrap gap-2">
+                    <% workflow[:workflow_children].each_with_index do |child, step_index| %>
+                      <div class="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs">
+                        <span class="w-4 h-4 flex items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300 text-[10px] font-medium">
+                          <%= step_index + 1 %>
+                        </span>
+                        <span class="font-medium text-gray-700 dark:text-gray-300"><%= child[:name] %></span>
+                        <span class="text-gray-400 dark:text-gray-500">-></span>
+                        <span class="text-gray-500 dark:text-gray-400 font-mono"><%= child[:agent] %></span>
+                        <% if child[:optional] %>
+                          <span class="text-gray-400 dark:text-gray-500 italic">(optional)</span>
+                        <% end %>
+                      </div>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        <% end %>
+      </table>
+    </div>
   </div>
 <% end %>

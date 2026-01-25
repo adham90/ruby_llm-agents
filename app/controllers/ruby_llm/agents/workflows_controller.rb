@@ -20,11 +20,14 @@ module RubyLLM
       #
       # Uses AgentRegistry to discover workflows from both file system
       # and execution history. Separates workflows by type for sub-tabs.
+      # Supports sorting by various columns.
       #
       # @return [void]
       def index
         all_items = AgentRegistry.all_with_details
         @workflows = all_items.select { |a| a[:is_workflow] }
+        @sort_params = parse_sort_params
+        @workflows = sort_workflows(@workflows)
       rescue StandardError => e
         Rails.logger.error("[RubyLLM::Agents] Error loading workflows: #{e.message}")
         @workflows = []
@@ -427,6 +430,43 @@ module RubyLLM
         klass.public_send(method_name)
       rescue StandardError
         nil
+      end
+
+      # Parses and validates sort parameters from request
+      #
+      # @return [Hash] Hash with :column and :direction keys
+      def parse_sort_params
+        allowed_columns = %w[name workflow_type execution_count total_cost success_rate last_executed]
+        column = params[:sort]
+        direction = params[:direction]
+
+        {
+          column: allowed_columns.include?(column) ? column : "name",
+          direction: %w[asc desc].include?(direction) ? direction : "asc"
+        }
+      end
+
+      # Sorts workflows array by the specified column and direction
+      #
+      # @param workflows [Array<Hash>] Array of workflow hashes
+      # @return [Array<Hash>] Sorted array
+      def sort_workflows(workflows)
+        column = @sort_params[:column].to_sym
+        direction = @sort_params[:direction]
+
+        sorted = workflows.sort_by do |w|
+          value = w[column]
+          case column
+          when :name
+            value.to_s.downcase
+          when :last_executed
+            value || Time.at(0)
+          else
+            value || 0
+          end
+        end
+
+        direction == "desc" ? sorted.reverse : sorted
       end
     end
   end

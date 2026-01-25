@@ -39,6 +39,50 @@ RSpec.describe RubyLLM::Agents::WorkflowsController, type: :controller do
       expect(assigns(:workflows).all? { |w| w[:is_workflow] }).to be true
     end
 
+    it "assigns @sort_params with defaults" do
+      get :index
+      expect(assigns(:sort_params)).to eq({ column: "name", direction: "asc" })
+    end
+
+    context "with sorting parameters" do
+      before do
+        allow(RubyLLM::Agents::AgentRegistry).to receive(:all_with_details).and_return([
+          { name: "ZWorkflow", is_workflow: true, execution_count: 10, total_cost: 0.5 },
+          { name: "AWorkflow", is_workflow: true, execution_count: 5, total_cost: 1.0 }
+        ])
+      end
+
+      it "sorts by name ascending by default" do
+        get :index
+        expect(assigns(:workflows).first[:name]).to eq("AWorkflow")
+      end
+
+      it "sorts by name descending" do
+        get :index, params: { sort: "name", direction: "desc" }
+        expect(assigns(:workflows).first[:name]).to eq("ZWorkflow")
+      end
+
+      it "sorts by execution_count" do
+        get :index, params: { sort: "execution_count", direction: "desc" }
+        expect(assigns(:workflows).first[:execution_count]).to eq(10)
+      end
+
+      it "sorts by total_cost" do
+        get :index, params: { sort: "total_cost", direction: "desc" }
+        expect(assigns(:workflows).first[:total_cost]).to eq(1.0)
+      end
+
+      it "ignores invalid sort columns" do
+        get :index, params: { sort: "invalid_column", direction: "asc" }
+        expect(assigns(:sort_params)[:column]).to eq("name")
+      end
+
+      it "ignores invalid sort directions" do
+        get :index, params: { sort: "name", direction: "invalid" }
+        expect(assigns(:sort_params)[:direction]).to eq("asc")
+      end
+    end
+
     context "when an error occurs" do
       before do
         allow(RubyLLM::Agents::AgentRegistry).to receive(:all_with_details)
