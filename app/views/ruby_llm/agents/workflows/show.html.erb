@@ -148,7 +148,7 @@
 <% end %>
 
 <!-- Workflow Structure -->
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6" x-data="{ expanded: true }">
+<div id="structure" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6 scroll-mt-16" x-data="{ expanded: false }">
   <div class="flex items-center justify-between mb-4">
     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
       Workflow Structure
@@ -222,7 +222,7 @@
 <% success_rate = @stats[:success_rate] || 0 %>
 <% success_rate_color = success_rate >= 95 ? 'text-green-600' : success_rate >= 80 ? 'text-yellow-600' : 'text-red-600' %>
 
-<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+<div id="stats" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6 scroll-mt-16">
   <%= render "ruby_llm/agents/shared/stat_card",
       title: "Executions",
       value: number_with_delimiter(@stats[:count]),
@@ -261,13 +261,15 @@
 
 <!-- Step Performance -->
 <% if @step_stats.present? %>
-  <%= render "ruby_llm/agents/workflows/step_performance",
-      workflow_type: @workflow_type_kind,
-      step_stats: @step_stats %>
+  <div id="performance" class="scroll-mt-16">
+    <%= render "ruby_llm/agents/workflows/step_performance",
+        workflow_type: @workflow_type_kind,
+        step_stats: @step_stats %>
+  </div>
 <% end %>
 
 <!-- Charts Section -->
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6"
+<div id="trends" class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6 scroll-mt-16"
      x-data="{ expanded: false, chartsInitialized: false }"
      x-effect="if (expanded && !chartsInitialized) { $nextTick(() => { window.initWorkflowCharts && window.initWorkflowCharts(); chartsInitialized = true; }); }">
   <div class="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700">
@@ -366,7 +368,7 @@ window.initWorkflowCharts = function() {
 
 
 <!-- Executions -->
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+<div id="executions" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 scroll-mt-16">
   <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
     Executions
   </h3>
