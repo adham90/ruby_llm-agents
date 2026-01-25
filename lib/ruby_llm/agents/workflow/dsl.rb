@@ -6,6 +6,7 @@ require_relative "dsl/route_builder"
 require_relative "dsl/parallel_group"
 require_relative "dsl/input_schema"
 require_relative "dsl/step_executor"
+require_relative "dsl/iteration_executor"
 
 module RubyLLM
   module Agents
@@ -304,8 +305,11 @@ module RubyLLM
                   optional: config.optional?,
                   timeout: config.timeout,
                   routing: config.routing?,
-                  parallel: false
-                }]
+                  parallel: false,
+                  workflow: config.workflow?,
+                  iteration: config.iteration?,
+                  iteration_concurrency: config.iteration_concurrency
+                }.compact]
               when ParallelGroup
                 item.step_names.map do |step_name|
                   config = step_configs[step_name]
@@ -318,8 +322,11 @@ module RubyLLM
                     timeout: config.timeout,
                     routing: config.routing?,
                     parallel: true,
-                    parallel_group: item.name
-                  }
+                    parallel_group: item.name,
+                    workflow: config.workflow?,
+                    iteration: config.iteration?,
+                    iteration_concurrency: config.iteration_concurrency
+                  }.compact
                 end
               end
             end

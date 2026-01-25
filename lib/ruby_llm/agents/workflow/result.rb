@@ -385,6 +385,208 @@ module RubyLLM
           { skipped: true, step_name: step_name, reason: reason }
         end
       end
+
+      # Result wrapper for sub-workflow execution
+      #
+      # Wraps a nested workflow result while providing access to
+      # aggregate metrics and the underlying workflow result.
+      #
+      # @api public
+      class SubWorkflowResult
+        attr_reader :content, :sub_workflow_result, :workflow_type, :step_name
+
+        def initialize(content:, sub_workflow_result:, workflow_type:, step_name:)
+          @content = content
+          @sub_workflow_result = sub_workflow_result
+          @workflow_type = workflow_type
+          @step_name = step_name
+        end
+
+        def success?
+          sub_workflow_result.respond_to?(:success?) ? sub_workflow_result.success? : true
+        end
+
+        def error?
+          sub_workflow_result.respond_to?(:error?) ? sub_workflow_result.error? : false
+        end
+
+        def skipped?
+          false
+        end
+
+        # Delegate metrics to sub-workflow result
+        def input_tokens
+          sub_workflow_result.respond_to?(:input_tokens) ? sub_workflow_result.input_tokens : 0
+        end
+
+        def output_tokens
+          sub_workflow_result.respond_to?(:output_tokens) ? sub_workflow_result.output_tokens : 0
+        end
+
+        def total_tokens
+          input_tokens + output_tokens
+        end
+
+        def cached_tokens
+          sub_workflow_result.respond_to?(:cached_tokens) ? sub_workflow_result.cached_tokens : 0
+        end
+
+        def input_cost
+          sub_workflow_result.respond_to?(:input_cost) ? sub_workflow_result.input_cost : 0.0
+        end
+
+        def output_cost
+          sub_workflow_result.respond_to?(:output_cost) ? sub_workflow_result.output_cost : 0.0
+        end
+
+        def total_cost
+          sub_workflow_result.respond_to?(:total_cost) ? sub_workflow_result.total_cost : 0.0
+        end
+
+        # Access sub-workflow steps
+        def steps
+          sub_workflow_result.respond_to?(:steps) ? sub_workflow_result.steps : {}
+        end
+
+        def to_h
+          {
+            content: content,
+            workflow_type: workflow_type,
+            step_name: step_name,
+            sub_workflow: sub_workflow_result.respond_to?(:to_h) ? sub_workflow_result.to_h : sub_workflow_result,
+            input_tokens: input_tokens,
+            output_tokens: output_tokens,
+            total_cost: total_cost
+          }
+        end
+
+        # Delegate hash access to content
+        def [](key)
+          content.is_a?(Hash) ? content[key] : nil
+        end
+
+        def dig(*keys)
+          content.is_a?(Hash) ? content.dig(*keys) : nil
+        end
+      end
+
+      # Result wrapper for iteration execution
+      #
+      # Tracks results for each item in an iteration with
+      # aggregate success/failure counts and metrics.
+      #
+      # @api public
+      class IterationResult
+        attr_reader :step_name, :item_results, :errors
+
+        def initialize(step_name:, item_results: [], errors: {})
+          @step_name = step_name
+          @item_results = item_results
+          @errors = errors
+        end
+
+        def content
+          item_results.map do |result|
+            result.respond_to?(:content) ? result.content : result
+          end
+        end
+
+        def success?
+          errors.empty? && item_results.all? do |r|
+            !r.respond_to?(:error?) || !r.error?
+          end
+        end
+
+        def error?
+          !success?
+        end
+
+        def partial?
+          errors.any? && item_results.any? do |r|
+            !r.respond_to?(:error?) || !r.error?
+          end
+        end
+
+        def skipped?
+          false
+        end
+
+        def successful_count
+          item_results.count { |r| !r.respond_to?(:error?) || !r.error? }
+        end
+
+        def failed_count
+          errors.size + item_results.count { |r| r.respond_to?(:error?) && r.error? }
+        end
+
+        def total_count
+          item_results.size + errors.size
+        end
+
+        # Aggregate metrics across all items
+        def input_tokens
+          item_results.sum { |r| r.respond_to?(:input_tokens) ? r.input_tokens : 0 }
+        end
+
+        def output_tokens
+          item_results.sum { |r| r.respond_to?(:output_tokens) ? r.output_tokens : 0 }
+        end
+
+        def total_tokens
+          input_tokens + output_tokens
+        end
+
+        def cached_tokens
+          item_results.sum { |r| r.respond_to?(:cached_tokens) ? r.cached_tokens : 0 }
+        end
+
+        def input_cost
+          item_results.sum { |r| r.respond_to?(:input_cost) ? r.input_cost : 0.0 }
+        end
+
+        def output_cost
+          item_results.sum { |r| r.respond_to?(:output_cost) ? r.output_cost : 0.0 }
+        end
+
+        def total_cost
+          item_results.sum { |r| r.respond_to?(:total_cost) ? r.total_cost : 0.0 }
+        end
+
+        def to_h
+          {
+            step_name: step_name,
+            total_count: total_count,
+            successful_count: successful_count,
+            failed_count: failed_count,
+            success: success?,
+            items: item_results.map { |r| r.respond_to?(:to_h) ? r.to_h : r },
+            errors: errors.transform_values { |e| { class: e.class.name, message: e.message } },
+            input_tokens: input_tokens,
+            output_tokens: output_tokens,
+            total_cost: total_cost
+          }
+        end
+
+        # Access individual item results by index
+        def [](index)
+          item_results[index]
+        end
+
+        def each(&block)
+          item_results.each(&block)
+        end
+
+        def map(&block)
+          item_results.map(&block)
+        end
+
+        include Enumerable
+
+        # Empty iteration result factory
+        def self.empty(step_name)
+          new(step_name: step_name, item_results: [], errors: {})
+        end
+      end
     end
   end
 end

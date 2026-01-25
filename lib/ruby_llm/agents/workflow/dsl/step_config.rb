@@ -61,6 +61,55 @@ module RubyLLM
             options[:optional] == true
           end
 
+          # Returns whether this step executes a sub-workflow
+          #
+          # @return [Boolean]
+          def workflow?
+            return false unless agent.present?
+            return false unless agent.is_a?(Class)
+
+            # agent < Workflow returns nil if agent is not a subclass
+            (agent < RubyLLM::Agents::Workflow) == true
+          rescue TypeError, ArgumentError
+            # agent < Workflow raises TypeError/ArgumentError if agent is not a valid Class
+            false
+          end
+
+          # Returns whether this step uses iteration
+          #
+          # @return [Boolean]
+          def iteration?
+            options[:each].present?
+          end
+
+          # Returns the source for iteration items
+          #
+          # @return [Proc, nil]
+          def each_source
+            options[:each]
+          end
+
+          # Returns the concurrency level for iteration
+          #
+          # @return [Integer, nil]
+          def iteration_concurrency
+            options[:concurrency]
+          end
+
+          # Returns whether iteration should fail fast on first error
+          #
+          # @return [Boolean]
+          def iteration_fail_fast?
+            options[:fail_fast] == true
+          end
+
+          # Returns whether iteration should continue on individual item errors
+          #
+          # @return [Boolean]
+          def continue_on_error?
+            options[:continue_on_error] == true
+          end
+
           # Returns whether this step is critical (fails workflow on error)
           #
           # @return [Boolean]
@@ -211,7 +260,11 @@ module RubyLLM
               retry_config: retry_config,
               fallbacks: fallbacks.map(&:name),
               tags: tags,
-              ui_label: ui_label
+              ui_label: ui_label,
+              workflow: workflow?,
+              iteration: iteration?,
+              iteration_concurrency: iteration_concurrency,
+              iteration_fail_fast: iteration_fail_fast?
             }.compact
           end
 

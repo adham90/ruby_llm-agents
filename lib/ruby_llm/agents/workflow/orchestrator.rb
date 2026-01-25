@@ -77,6 +77,10 @@ module RubyLLM
         #   @return [String, nil] Description of the workflow
         attr_accessor :_description
 
+        # @!attribute [rw] max_recursion_depth
+        #   @return [Integer] Maximum recursion depth for self-referential workflows
+        attr_accessor :_max_recursion_depth
+
         # Sets or returns the workflow version
         #
         # @param value [String, nil] Version string to set
@@ -125,6 +129,18 @@ module RubyLLM
           end
         end
 
+        # Sets or returns the maximum recursion depth
+        #
+        # @param value [Integer, nil] Max depth to set
+        # @return [Integer] The current max recursion depth (default: 10)
+        def max_recursion_depth(value = nil)
+          if value
+            self._max_recursion_depth = value.to_i
+          else
+            _max_recursion_depth || 10
+          end
+        end
+
         # Factory method to instantiate and execute a workflow
         #
         # Supports both hash and keyword argument styles:
@@ -160,6 +176,10 @@ module RubyLLM
       #   @return [Hash<Symbol, Result>] Results from executed steps
       attr_reader :step_results
 
+      # @!attribute [r] recursion_depth
+      #   @return [Integer] Current recursion depth for self-referential workflows
+      attr_reader :recursion_depth
+
       # Creates a new workflow instance
       #
       # @param kwargs [Hash] Parameters for the workflow
@@ -170,6 +190,15 @@ module RubyLLM
         @accumulated_cost = 0.0
         @step_results = {}
         @validated_input = nil
+
+        # Extract recursion context from execution_metadata
+        metadata = kwargs[:execution_metadata] || {}
+        @recursion_depth = metadata[:recursion_depth] || 0
+        @remaining_timeout = metadata[:remaining_timeout]
+        @remaining_cost_budget = metadata[:remaining_cost_budget]
+
+        # Check recursion depth
+        check_recursion_depth!
       end
 
       # Executes the workflow
@@ -302,13 +331,29 @@ module RubyLLM
       #
       # @raise [WorkflowCostExceededError] If cost exceeds max_cost
       def check_cost_threshold!
-        return unless self.class.max_cost
-        return if @accumulated_cost <= self.class.max_cost
+        # Check against remaining budget if we're in a sub-workflow
+        effective_max = @remaining_cost_budget || self.class.max_cost
+        return unless effective_max
+        return if @accumulated_cost <= effective_max
 
         raise WorkflowCostExceededError.new(
-          "Workflow cost ($#{@accumulated_cost.round(4)}) exceeded maximum ($#{self.class.max_cost})",
+          "Workflow cost ($#{@accumulated_cost.round(4)}) exceeded maximum ($#{effective_max})",
           accumulated_cost: @accumulated_cost,
-          max_cost: self.class.max_cost
+          max_cost: effective_max
+        )
+      end
+
+      # Checks if recursion depth exceeds the maximum
+      #
+      # @raise [RecursionDepthExceededError] If depth exceeds max
+      def check_recursion_depth!
+        max_depth = self.class.max_recursion_depth
+        return if @recursion_depth <= max_depth
+
+        raise RecursionDepthExceededError.new(
+          "Workflow recursion depth (#{@recursion_depth}) exceeded maximum (#{max_depth})",
+          current_depth: @recursion_depth,
+          max_depth: max_depth
         )
       end
 
@@ -354,6 +399,17 @@ module RubyLLM
         super(message)
         @accumulated_cost = accumulated_cost
         @max_cost = max_cost
+      end
+    end
+
+    # Error raised when workflow recursion depth exceeds the maximum
+    class RecursionDepthExceededError < StandardError
+      attr_reader :current_depth, :max_depth
+
+      def initialize(message, current_depth:, max_depth:)
+        super(message)
+        @current_depth = current_depth
+        @max_depth = max_depth
       end
     end
   end

@@ -81,6 +81,10 @@ module RubyLLM
           def execute_agent_or_block(previous_result, &block)
             if config.routing?
               execute_routed_step(previous_result, &block)
+            elsif config.iteration?
+              execute_iteration_step(previous_result, &block)
+            elsif config.workflow?
+              execute_workflow_step(previous_result, &block)
             elsif config.custom_block?
               execute_block_step(previous_result)
             else
@@ -120,6 +124,77 @@ module RubyLLM
           def execute_agent_step(previous_result, &block)
             step_input = config.resolve_input(workflow, previous_result)
             workflow.send(:execute_agent, config.agent, step_input, step_name: config.name, &block)
+          end
+
+          def execute_workflow_step(previous_result, &block)
+            step_input = config.resolve_input(workflow, previous_result)
+
+            # Build execution metadata for the sub-workflow
+            parent_metadata = {
+              parent_execution_id: workflow.execution_id,
+              root_execution_id: workflow.send(:root_execution_id),
+              workflow_id: workflow.workflow_id,
+              workflow_type: workflow.class.name,
+              workflow_step: config.name.to_s,
+              remaining_timeout: calculate_remaining_timeout,
+              remaining_cost_budget: calculate_remaining_cost_budget,
+              recursion_depth: (workflow.instance_variable_get(:@recursion_depth) || 0) + (self_referential_workflow? ? 1 : 0)
+            }.compact
+
+            # Merge execution metadata into input
+            merged_input = step_input.merge(
+              execution_metadata: parent_metadata.merge(step_input[:execution_metadata] || {})
+            )
+
+            # Execute the sub-workflow
+            result = config.agent.call(**merged_input, &block)
+
+            # Track accumulated cost
+            if result.respond_to?(:total_cost) && result.total_cost
+              workflow.instance_variable_set(
+                :@accumulated_cost,
+                (workflow.instance_variable_get(:@accumulated_cost) || 0.0) + result.total_cost
+              )
+              workflow.send(:check_cost_threshold!)
+            end
+
+            # Wrap in SubWorkflowResult for proper tracking
+            SubWorkflowResult.new(
+              content: result.content,
+              sub_workflow_result: result,
+              workflow_type: config.agent.name,
+              step_name: config.name
+            )
+          end
+
+          def execute_iteration_step(previous_result, &block)
+            executor = IterationExecutor.new(workflow, config, previous_result)
+            executor.execute(&block)
+          end
+
+          def calculate_remaining_timeout
+            workflow_timeout = workflow.class.timeout
+            return nil unless workflow_timeout
+
+            started_at = workflow.instance_variable_get(:@workflow_started_at)
+            return workflow_timeout unless started_at
+
+            elapsed = Time.current - started_at
+            remaining = workflow_timeout - elapsed
+            remaining > 0 ? remaining.to_i : 1
+          end
+
+          def calculate_remaining_cost_budget
+            max_cost = workflow.class.max_cost
+            return nil unless max_cost
+
+            accumulated = workflow.instance_variable_get(:@accumulated_cost) || 0.0
+            remaining = max_cost - accumulated
+            remaining > 0 ? remaining : 0.0
+          end
+
+          def self_referential_workflow?
+            config.agent == workflow.class
           end
 
           def handle_step_error(error, previous_result, &block)
