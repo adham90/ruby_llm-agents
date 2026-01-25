@@ -66,6 +66,32 @@
           <span>max cost $<%= @config[:max_cost] %></span>
         <% end %>
       </div>
+
+      <!-- Workflow Features Summary -->
+      <% if @config %>
+        <div class="flex flex-wrap gap-2 mt-3">
+          <% if @config[:has_lifecycle_hooks] %>
+            <span class="text-xs px-2 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">
+              Lifecycle Hooks
+            </span>
+          <% end %>
+          <% if @config[:has_conditions] %>
+            <span class="text-xs px-2 py-1 rounded-full bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300">
+              Conditional Steps
+            </span>
+          <% end %>
+          <% if @config[:has_retries] %>
+            <span class="text-xs px-2 py-1 rounded-full bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300">
+              Retry Logic
+            </span>
+          <% end %>
+          <% if @config[:has_fallbacks] %>
+            <span class="text-xs px-2 py-1 rounded-full bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300">
+              Fallback Agents
+            </span>
+          <% end %>
+        </div>
+      <% end %>
     </div>
 
     <div class="text-right">
@@ -132,7 +158,8 @@
   <%= render "ruby_llm/agents/workflows/workflow_diagram",
       steps: @steps || [],
       parallel_groups: @parallel_groups || [],
-      input_schema_fields: @input_schema_fields || {} %>
+      input_schema_fields: @input_schema_fields || {},
+      lifecycle_hooks: @lifecycle_hooks || {} %>
 </div>
 
 <!-- Stats Grid -->
