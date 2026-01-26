@@ -83,103 +83,107 @@ RSpec.describe RubyLLM::Agents::Workflow::Notifiers::Webhook do
 
   describe "#notify" do
     let(:notifier) { described_class.new(url: "https://api.example.com/approvals") }
+    let(:mock_http) { instance_double(Net::HTTP) }
+    let(:mock_response) { instance_double(Net::HTTPResponse) }
+
+    before do
+      allow(Net::HTTP).to receive(:new).and_return(mock_http)
+      allow(mock_http).to receive(:use_ssl=)
+      allow(mock_http).to receive(:open_timeout=)
+      allow(mock_http).to receive(:read_timeout=)
+    end
 
     context "successful request" do
-      it "sends POST request with approval data" do
-        stub_request(:post, "https://api.example.com/approvals")
-          .to_return(status: 200, body: "OK")
+      before do
+        allow(mock_response).to receive(:code).and_return("200")
+        allow(mock_response).to receive(:body).and_return("OK")
+        allow(mock_http).to receive(:request).and_return(mock_response)
+      end
 
+      it "sends POST request with approval data" do
         result = notifier.notify(approval, "Please approve this request")
 
         expect(result).to be true
-        expect(WebMock).to have_requested(:post, "https://api.example.com/approvals")
+        expect(mock_http).to have_received(:request) do |request|
+          expect(request).to be_a(Net::HTTP::Post)
+        end
       end
 
       it "includes all approval data in payload" do
-        stub_request(:post, "https://api.example.com/approvals")
-          .to_return(status: 200, body: "OK")
-
         notifier.notify(approval, "Please approve")
 
-        expect(WebMock).to have_requested(:post, "https://api.example.com/approvals")
-          .with { |req|
-            body = JSON.parse(req.body)
+        expect(mock_http).to have_received(:request) do |request|
+          body = JSON.parse(request.body)
 
-            expect(body["event"]).to eq("approval_requested")
-            expect(body["message"]).to eq("Please approve")
-            expect(body["timestamp"]).to be_present
+          expect(body["event"]).to eq("approval_requested")
+          expect(body["message"]).to eq("Please approve")
+          expect(body["timestamp"]).to be_present
 
-            approval_data = body["approval"]
-            expect(approval_data["id"]).to eq(approval.id)
-            expect(approval_data["workflow_id"]).to eq("order-123")
-            expect(approval_data["workflow_type"]).to eq("OrderApprovalWorkflow")
-            expect(approval_data["name"]).to eq("manager_approval")
-            expect(approval_data["status"]).to eq("pending")
-            expect(approval_data["approvers"]).to eq(["manager@example.com"])
-            expect(approval_data["metadata"]["order_total"]).to eq(5000)
-
-            true
-          }
+          approval_data = body["approval"]
+          expect(approval_data["id"]).to eq(approval.id)
+          expect(approval_data["workflow_id"]).to eq("order-123")
+          expect(approval_data["workflow_type"]).to eq("OrderApprovalWorkflow")
+          expect(approval_data["name"]).to eq("manager_approval")
+          expect(approval_data["status"]).to eq("pending")
+          expect(approval_data["approvers"]).to eq(["manager@example.com"])
+          expect(approval_data["metadata"]["order_total"]).to eq(5000)
+        end
       end
 
       it "sets Content-Type header to JSON" do
-        stub_request(:post, "https://api.example.com/approvals")
-          .to_return(status: 200, body: "OK")
-
         notifier.notify(approval, "Please approve")
 
-        expect(WebMock).to have_requested(:post, "https://api.example.com/approvals")
-          .with(headers: { "Content-Type" => "application/json" })
+        expect(mock_http).to have_received(:request) do |request|
+          expect(request["Content-Type"]).to eq("application/json")
+        end
       end
 
       it "includes custom headers" do
-        notifier = described_class.new(
+        custom_notifier = described_class.new(
           url: "https://api.example.com/approvals",
           headers: { "Authorization" => "Bearer token123" }
         )
 
-        stub_request(:post, "https://api.example.com/approvals")
-          .to_return(status: 200, body: "OK")
+        custom_notifier.notify(approval, "Please approve")
 
-        notifier.notify(approval, "Please approve")
-
-        expect(WebMock).to have_requested(:post, "https://api.example.com/approvals")
-          .with(headers: { "Authorization" => "Bearer token123" })
+        expect(mock_http).to have_received(:request) do |request|
+          expect(request["Authorization"]).to eq("Bearer token123")
+        end
       end
     end
 
     context "response status codes" do
       it "returns true for 200" do
-        stub_request(:post, "https://api.example.com/approvals")
-          .to_return(status: 200)
+        allow(mock_response).to receive(:code).and_return("200")
+        allow(mock_http).to receive(:request).and_return(mock_response)
 
         expect(notifier.notify(approval, "test")).to be true
       end
 
       it "returns true for 201" do
-        stub_request(:post, "https://api.example.com/approvals")
-          .to_return(status: 201)
+        allow(mock_response).to receive(:code).and_return("201")
+        allow(mock_http).to receive(:request).and_return(mock_response)
 
         expect(notifier.notify(approval, "test")).to be true
       end
 
       it "returns true for 204" do
-        stub_request(:post, "https://api.example.com/approvals")
-          .to_return(status: 204)
+        allow(mock_response).to receive(:code).and_return("204")
+        allow(mock_http).to receive(:request).and_return(mock_response)
 
         expect(notifier.notify(approval, "test")).to be true
       end
 
       it "returns false for 400" do
-        stub_request(:post, "https://api.example.com/approvals")
-          .to_return(status: 400)
+        allow(mock_response).to receive(:code).and_return("400")
+        allow(mock_http).to receive(:request).and_return(mock_response)
 
         expect(notifier.notify(approval, "test")).to be false
       end
 
       it "returns false for 500" do
-        stub_request(:post, "https://api.example.com/approvals")
-          .to_return(status: 500)
+        allow(mock_response).to receive(:code).and_return("500")
+        allow(mock_http).to receive(:request).and_return(mock_response)
 
         expect(notifier.notify(approval, "test")).to be false
       end
@@ -195,8 +199,7 @@ RSpec.describe RubyLLM::Agents::Workflow::Notifiers::Webhook do
 
     context "on error" do
       it "handles connection errors" do
-        stub_request(:post, "https://api.example.com/approvals")
-          .to_raise(Errno::ECONNREFUSED)
+        allow(mock_http).to receive(:request).and_raise(Errno::ECONNREFUSED)
 
         result = notifier.notify(approval, "test")
 
@@ -204,8 +207,7 @@ RSpec.describe RubyLLM::Agents::Workflow::Notifiers::Webhook do
       end
 
       it "handles timeout errors" do
-        stub_request(:post, "https://api.example.com/approvals")
-          .to_timeout
+        allow(mock_http).to receive(:request).and_raise(Net::ReadTimeout)
 
         result = notifier.notify(approval, "test")
 
@@ -215,27 +217,33 @@ RSpec.describe RubyLLM::Agents::Workflow::Notifiers::Webhook do
   end
 
   describe "HTTPS support" do
+    let(:mock_http) { instance_double(Net::HTTP) }
+    let(:mock_response) { instance_double(Net::HTTPResponse) }
+
+    before do
+      allow(Net::HTTP).to receive(:new).and_return(mock_http)
+      allow(mock_http).to receive(:open_timeout=)
+      allow(mock_http).to receive(:read_timeout=)
+      allow(mock_response).to receive(:code).and_return("200")
+      allow(mock_http).to receive(:request).and_return(mock_response)
+    end
+
     it "uses SSL for https URLs" do
+      allow(mock_http).to receive(:use_ssl=)
+
       notifier = described_class.new(url: "https://secure.example.com/approvals")
-
-      stub_request(:post, "https://secure.example.com/approvals")
-        .to_return(status: 200)
-
       notifier.notify(approval, "test")
 
-      # WebMock automatically handles SSL verification in tests
-      expect(WebMock).to have_requested(:post, "https://secure.example.com/approvals")
+      expect(mock_http).to have_received(:use_ssl=).with(true)
     end
 
     it "does not use SSL for http URLs" do
+      allow(mock_http).to receive(:use_ssl=)
+
       notifier = described_class.new(url: "http://insecure.example.com/approvals")
-
-      stub_request(:post, "http://insecure.example.com/approvals")
-        .to_return(status: 200)
-
       notifier.notify(approval, "test")
 
-      expect(WebMock).to have_requested(:post, "http://insecure.example.com/approvals")
+      expect(mock_http).to have_received(:use_ssl=).with(false)
     end
   end
 end

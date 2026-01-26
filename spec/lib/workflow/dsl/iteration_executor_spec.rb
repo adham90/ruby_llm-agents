@@ -12,17 +12,44 @@ RSpec.describe RubyLLM::Agents::Workflow::DSL::IterationExecutor do
   end
 
   let(:workflow) do
-    double("workflow").tap do |w|
-      allow(w).to receive(:instance_exec) { |&block| block&.call }
-      allow(w).to receive(:send)
-      allow(w).to receive(:input).and_return(OpenStruct.new(items: [1, 2, 3]))
-      allow(w).to receive(:execution_id).and_return("exec-123")
-      allow(w).to receive(:workflow_id).and_return("wf-123")
-      allow(w).to receive(:class).and_return(double(name: "TestWorkflow"))
-      allow(w).to receive(:instance_variable_get).with(:@recursion_depth).and_return(0)
-      allow(w).to receive(:instance_variable_get).with(:@accumulated_cost).and_return(0.0)
-      allow(w).to receive(:instance_variable_set)
+    workflow_class = Class.new do
+      attr_accessor :input, :execute_agent_handler
+
+      def initialize
+        @input = OpenStruct.new(items: [1, 2, 3])
+        @execute_agent_handler = nil
+        @recursion_depth = 0
+        @accumulated_cost = 0.0
+      end
+
+      def execution_id
+        "exec-123"
+      end
+
+      def workflow_id
+        "wf-123"
+      end
+
+      def self.name
+        "TestWorkflow"
+      end
+
+      def instance_exec(*args, &block)
+        block&.call(*args)
+      end
+
+      private
+
+      def execute_agent(agent, input, **opts, &block)
+        if @execute_agent_handler
+          @execute_agent_handler.call(agent, input, opts)
+        else
+          RubyLLM::Agents::Result.new(content: "default result", model_id: "test")
+        end
+      end
     end
+
+    workflow_class.new
   end
 
   describe "#execute" do
@@ -52,11 +79,11 @@ RSpec.describe RubyLLM::Agents::Workflow::DSL::IterationExecutor do
         )
 
         results = []
-        allow(workflow).to receive(:send).with(:execute_agent, mock_agent, anything, anything) do |_, input, _|
+        workflow.execute_agent_handler = ->(agent, input, opts) {
           item = input[:item] || input.values.first
           results << item
           RubyLLM::Agents::Result.new(content: "processed #{item}", model_id: "test")
-        end
+        }
 
         executor = described_class.new(workflow, config, nil)
         result = executor.execute
@@ -76,12 +103,12 @@ RSpec.describe RubyLLM::Agents::Workflow::DSL::IterationExecutor do
         )
 
         processed = []
-        allow(workflow).to receive(:send).with(:execute_agent, mock_agent, anything, anything) do |_, input, _|
+        workflow.execute_agent_handler = ->(agent, input, opts) {
           item = input[:item] || input.values.first
           processed << item
           raise StandardError, "failed on #{item}" if item == 2
           RubyLLM::Agents::Result.new(content: "processed #{item}", model_id: "test")
-        end
+        }
 
         executor = described_class.new(workflow, config, nil)
         result = executor.execute
@@ -100,11 +127,11 @@ RSpec.describe RubyLLM::Agents::Workflow::DSL::IterationExecutor do
           }
         )
 
-        allow(workflow).to receive(:send).with(:execute_agent, mock_agent, anything, anything) do |_, input, _|
+        workflow.execute_agent_handler = ->(agent, input, opts) {
           item = input[:item] || input.values.first
           raise StandardError, "failed" if item == 2
           RubyLLM::Agents::Result.new(content: "processed #{item}", model_id: "test")
-        end
+        }
 
         executor = described_class.new(workflow, config, nil)
         result = executor.execute
@@ -125,10 +152,10 @@ RSpec.describe RubyLLM::Agents::Workflow::DSL::IterationExecutor do
           }
         )
 
-        allow(workflow).to receive(:send).with(:execute_agent, mock_agent, anything, anything) do |_, input, _|
+        workflow.execute_agent_handler = ->(agent, input, opts) {
           item = input[:item] || input.values.first
           RubyLLM::Agents::Result.new(content: "processed #{item}", model_id: "test")
-        end
+        }
 
         executor = described_class.new(workflow, config, nil)
         result = executor.execute
@@ -171,7 +198,7 @@ RSpec.describe RubyLLM::Agents::Workflow::DSL::IterationExecutor do
         )
 
         captured_inputs = []
-        allow(workflow).to receive(:send).with(:execute_agent, mock_agent, anything, anything) do |_, input, _|
+        allow(workflow).to receive(:execute_agent).with(mock_agent, anything, anything) do |_, input, _|
           captured_inputs << input
           RubyLLM::Agents::Result.new(content: "result", model_id: "test")
         end

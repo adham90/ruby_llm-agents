@@ -80,7 +80,7 @@ RSpec.describe RubyLLM::Agents::Embedder do
 
     it "raises when neither text nor texts provided" do
       expect {
-        embedder_class.new({}).send(:normalize_input)
+        embedder_class.new.send(:normalize_input)
       }.to raise_error(ArgumentError, /Provide either text: or texts:/)
     end
   end
