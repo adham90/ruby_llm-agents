@@ -3,26 +3,54 @@
 require "rails_helper"
 
 RSpec.describe RubyLLM::Agents::Workflow::DSL::Executor do
+  # Create a mock agent that can be controlled in tests
+  let(:mock_agent) do
+    agent = Class.new do
+      class << self
+        attr_accessor :call_handler, :call_count, :call_args
+
+        def name
+          "MockAgent"
+        end
+
+        def call(**input, &block)
+          @call_count ||= 0
+          @call_count += 1
+          @call_args ||= []
+          @call_args << input
+
+          if @call_handler
+            @call_handler.call(input, block)
+          else
+            RubyLLM::Agents::Result.new(content: "mock result", model_id: "test")
+          end
+        end
+
+        def reset!
+          @call_handler = nil
+          @call_count = 0
+          @call_args = []
+        end
+      end
+    end
+    agent.reset!
+    agent
+  end
+
+  # Create a workflow class that includes the DSL and has proper method definitions
   let(:workflow_class) do
+    agent = mock_agent
     Class.new(RubyLLM::Agents::Workflow) do
-      def self.name
-        "TestWorkflow"
-      end
+      include RubyLLM::Agents::Workflow::DSL
 
-      def self.step_order
-        @step_order ||= []
-      end
+      @mock_agent = agent
 
-      def self.step_configs
-        @step_configs ||= {}
-      end
+      class << self
+        attr_accessor :mock_agent
 
-      def self.input_schema
-        nil
-      end
-
-      def self.output_schema
-        nil
+        def name
+          "TestWorkflow"
+        end
       end
 
       def self.timeout
@@ -32,43 +60,52 @@ RSpec.describe RubyLLM::Agents::Workflow::DSL::Executor do
       def self.max_cost
         nil
       end
-    end
-  end
 
-  let(:mock_agent) do
-    Class.new do
-      def self.name
-        "MockAgent"
+      attr_accessor :execution_id, :workflow_id, :hook_calls, :execute_agent_handler
+
+      def initialize(**options)
+        @options = options
+        @step_results = {}
+        @hook_calls = []
+        @accumulated_cost = 0.0
+        @execution_id = "exec-123"
+        @workflow_id = "wf-123"
+        @execute_agent_handler = nil
+      end
+
+      def options
+        @options
+      end
+
+      protected
+
+      def run_hooks(hook_name, *args)
+        @hook_calls << { hook: hook_name, args: args }
+        super
+      end
+
+      private
+
+      def execute_agent(agent_class, input, step_name: nil, &block)
+        if @execute_agent_handler
+          @execute_agent_handler.call(agent_class, input, step_name)
+        else
+          agent_class.call(**input, &block)
+        end
+      end
+
+      def root_execution_id
+        @execution_id
+      end
+
+      def check_cost_threshold!
+        # No-op for tests
       end
     end
   end
 
   let(:workflow) do
-    instance = workflow_class.new
-    instance.instance_variable_set(:@step_results, {})
-
-    # Define the execute_agent method on this instance
-    instance.define_singleton_method(:execute_agent) do |agent, input, **opts, &block|
-      @execute_agent_result || RubyLLM::Agents::Result.new(content: "result", model_id: "test")
-    end
-
-    # Define the run_hooks method on this instance
-    instance.define_singleton_method(:run_hooks) do |hook_name|
-      # No-op for tests
-    end
-
-    # Add a way to set custom execute_agent results
-    instance.define_singleton_method(:set_execute_agent_result) do |result|
-      @execute_agent_result = result
-    end
-
-    instance.define_singleton_method(:set_execute_agent_handler) do |handler|
-      instance.define_singleton_method(:execute_agent) do |agent, input, **opts, &block|
-        handler.call(agent, input, opts)
-      end
-    end
-
-    instance
+    workflow_class.new
   end
 
   describe "#initialize" do
@@ -153,14 +190,32 @@ RSpec.describe RubyLLM::Agents::Workflow::DSL::Executor do
       end
 
       it "executes steps in order" do
-        # This test requires deeper integration with the Workflow class
-        # The executor calls workflow.send(:execute_agent, ...) which requires
-        # a real workflow instance with properly configured private methods
-        skip "Requires integration test setup"
+        mock_agent.call_handler = ->(input, block) {
+          RubyLLM::Agents::Result.new(content: "step1 result", model_id: "test")
+        }
+
+        executor = described_class.new(workflow)
+        result = executor.execute
+
+        expect(result.status).to eq("success")
+        expect(result.steps[:step1]).to be_present
+        expect(result.steps[:step1].content).to eq("step1 result")
+        expect(mock_agent.call_count).to eq(1)
       end
 
       it "runs before and after hooks" do
-        skip "Requires integration test setup"
+        mock_agent.call_handler = ->(input, block) {
+          RubyLLM::Agents::Result.new(content: "result", model_id: "test")
+        }
+
+        executor = described_class.new(workflow)
+        executor.execute
+
+        hook_names = workflow.hook_calls.map { |h| h[:hook] }
+        expect(hook_names).to include(:before_workflow)
+        expect(hook_names).to include(:after_workflow)
+        expect(hook_names).to include(:before_step)
+        expect(hook_names).to include(:after_step)
       end
     end
 
@@ -185,7 +240,22 @@ RSpec.describe RubyLLM::Agents::Workflow::DSL::Executor do
       end
 
       it "executes steps in parallel" do
-        skip "Requires integration test setup"
+        call_order = []
+        mutex = Mutex.new
+
+        mock_agent.call_handler = ->(input, block) {
+          mutex.synchronize { call_order << Thread.current.object_id }
+          sleep(0.01) # Small delay to allow parallelism
+          RubyLLM::Agents::Result.new(content: "parallel result", model_id: "test")
+        }
+
+        executor = described_class.new(workflow)
+        result = executor.execute
+
+        expect(result.status).to eq("success")
+        expect(result.steps[:step1]).to be_present
+        expect(result.steps[:step2]).to be_present
+        expect(mock_agent.call_count).to eq(2)
       end
     end
 
@@ -243,11 +313,41 @@ RSpec.describe RubyLLM::Agents::Workflow::DSL::Executor do
       end
 
       it "handles step errors" do
-        skip "Requires integration test setup"
+        mock_agent.call_handler = ->(input, block) {
+          raise StandardError, "step failed"
+        }
+
+        executor = described_class.new(workflow)
+        result = executor.execute
+
+        expect(result.status).to eq("error")
+        expect(result.errors[:failing_step]).to be_present
       end
 
       it "halts on critical step failure" do
-        skip "Requires integration test setup"
+        # Add a second step that should not run
+        step2_config = RubyLLM::Agents::Workflow::DSL::StepConfig.new(
+          name: :step2,
+          agent: mock_agent
+        )
+
+        allow(workflow.class).to receive(:step_order).and_return([:failing_step, :step2])
+        allow(workflow.class).to receive(:step_configs).and_return({
+          failing_step: step_config,
+          step2: step2_config
+        })
+
+        mock_agent.call_handler = ->(input, block) {
+          raise StandardError, "critical failure"
+        }
+
+        executor = described_class.new(workflow)
+        result = executor.execute
+
+        expect(result.status).to eq("error")
+        # The second step should not have been executed
+        expect(result.steps[:step2]).to be_nil
+        expect(mock_agent.call_count).to eq(1)
       end
     end
 
@@ -276,7 +376,28 @@ RSpec.describe RubyLLM::Agents::Workflow::DSL::Executor do
       end
 
       it "continues after optional step failure with partial status" do
-        skip "Requires integration test setup"
+        call_count = 0
+
+        mock_agent.call_handler = ->(input, block) {
+          call_count += 1
+          if call_count == 1
+            raise StandardError, "optional step failed"
+          else
+            RubyLLM::Agents::Result.new(content: "next step result", model_id: "test")
+          end
+        }
+
+        executor = described_class.new(workflow)
+        result = executor.execute
+
+        expect(result.status).to eq("partial")
+        # The optional step returns an ErrorResult (not added to errors hash)
+        expect(result.steps[:optional_step]).to be_present
+        expect(result.steps[:optional_step]).to respond_to(:error?)
+        expect(result.steps[:optional_step].error?).to be true
+        # The next step should still execute
+        expect(result.steps[:next_step]).to be_present
+        expect(result.steps[:next_step].content).to eq("next step result")
       end
     end
 
@@ -294,7 +415,14 @@ RSpec.describe RubyLLM::Agents::Workflow::DSL::Executor do
       end
 
       it "extracts final content from last successful step" do
-        skip "Requires integration test setup"
+        mock_agent.call_handler = ->(input, block) {
+          RubyLLM::Agents::Result.new(content: "final content", model_id: "test")
+        }
+
+        executor = described_class.new(workflow)
+        result = executor.execute
+
+        expect(result.content).to eq("final content")
       end
 
       it "includes timing information" do

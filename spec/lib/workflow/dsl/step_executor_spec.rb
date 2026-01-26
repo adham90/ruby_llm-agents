@@ -268,15 +268,68 @@ RSpec.describe RubyLLM::Agents::Workflow::DSL::StepExecutor do
 
     context "error handlers" do
       it "invokes symbol error handler" do
-        # The error handler invocation requires complex workflow setup
-        # where workflow.send(:handle_error, error) is called
-        skip "Requires integration test setup"
+        handler_called_with = nil
+        workflow.define_singleton_method(:handle_step_error) do |error|
+          handler_called_with = error
+          # Must return a Workflow::Result, not an Agents::Result
+          RubyLLM::Agents::Workflow::Result.new(
+            content: "error handled",
+            workflow_type: "Test",
+            status: "success"
+          )
+        end
+
+        config = RubyLLM::Agents::Workflow::DSL::StepConfig.new(
+          name: :failing_step,
+          agent: mock_agent,
+          options: { on_error: :handle_step_error }
+        )
+
+        workflow.execute_agent_handler = ->(agent, input, opts) {
+          raise StandardError, "step failed"
+        }
+
+        executor = described_class.new(workflow, config)
+        result = executor.execute
+
+        expect(handler_called_with).to be_a(StandardError)
+        expect(handler_called_with.message).to eq("step failed")
+        expect(result.content).to eq("error handled")
       end
 
       it "invokes proc error handler" do
-        # The proc error handler requires workflow.instance_exec(error, &proc)
-        # which needs proper workflow context
-        skip "Requires integration test setup"
+        handler_called_with = nil
+        error_proc = proc do |error|
+          handler_called_with = error
+          # Must return a Workflow::Result, not an Agents::Result
+          RubyLLM::Agents::Workflow::Result.new(
+            content: "proc handled",
+            workflow_type: "Test",
+            status: "success"
+          )
+        end
+
+        config = RubyLLM::Agents::Workflow::DSL::StepConfig.new(
+          name: :failing_step,
+          agent: mock_agent,
+          options: { on_error: error_proc }
+        )
+
+        workflow.execute_agent_handler = ->(agent, input, opts) {
+          raise StandardError, "step error"
+        }
+
+        # Override instance_exec to call the proc with the error
+        workflow.define_singleton_method(:instance_exec) do |error, &block|
+          block.call(error)
+        end
+
+        executor = described_class.new(workflow, config)
+        result = executor.execute
+
+        expect(handler_called_with).to be_a(StandardError)
+        expect(handler_called_with.message).to eq("step error")
+        expect(result.content).to eq("proc handled")
       end
     end
   end
