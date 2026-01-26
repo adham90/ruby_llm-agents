@@ -8,7 +8,7 @@
 # If you're doing a fresh install, use the create_tenants_migration instead.
 #
 # Run with: rails db:migrate
-class RenameTenantBudgetsToTenants < ActiveRecord::Migration<%= migration_version %>
+class RenameTenantBudgetsToTenants < ActiveRecord::Migration[8.1]
   def change
     # Rename the table
     rename_table :ruby_llm_agents_tenant_budgets, :ruby_llm_agents_tenants

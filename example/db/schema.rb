@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_20_214933) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_26_221733) do
   create_table "organizations", force: :cascade do |t|
     t.boolean "active", default: true
     t.string "anthropic_api_key"
@@ -158,13 +158,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_214933) do
     t.index ["workflow_type"], name: "index_ruby_llm_agents_executions_on_workflow_type"
   end
 
-  create_table "ruby_llm_agents_tenant_budgets", force: :cascade do |t|
+  create_table "ruby_llm_agents_tenants", force: :cascade do |t|
+    t.boolean "active", default: true
     t.datetime "created_at", null: false
     t.bigint "daily_execution_limit"
     t.decimal "daily_limit", precision: 12, scale: 6
     t.bigint "daily_token_limit"
     t.string "enforcement", default: "soft"
     t.boolean "inherit_global_defaults", default: true
+    t.json "metadata", default: {}, null: false
     t.bigint "monthly_execution_limit"
     t.decimal "monthly_limit", precision: 12, scale: 6
     t.bigint "monthly_token_limit"
@@ -175,8 +177,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_214933) do
     t.integer "tenant_record_id"
     t.string "tenant_record_type"
     t.datetime "updated_at", null: false
-    t.index ["name"], name: "index_ruby_llm_agents_tenant_budgets_on_name"
-    t.index ["tenant_id"], name: "index_ruby_llm_agents_tenant_budgets_on_tenant_id", unique: true
+    t.index ["active"], name: "index_ruby_llm_agents_tenants_on_active"
+    t.index ["name"], name: "index_ruby_llm_agents_tenants_on_name"
+    t.index ["tenant_id"], name: "index_ruby_llm_agents_tenants_on_tenant_id", unique: true
     t.index ["tenant_record_type", "tenant_record_id"], name: "index_ruby_llm_agents_tenant_budgets_on_tenant_record"
   end
 

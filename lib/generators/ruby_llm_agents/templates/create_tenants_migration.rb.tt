@@ -49,22 +49,6 @@ class CreateRubyLLMAgentsTenants < ActiveRecord::Migration<%= migration_version 
       # Status (for soft-delete/disable)
       t.boolean :active, default: true
 
-      # Rate limiting
-      # - rate_limit_per_minute: max requests per minute
-      # - rate_limit_per_hour: max requests per hour
-      t.integer :rate_limit_per_minute
-      t.integer :rate_limit_per_hour
-
-      # Feature flags (JSON hash)
-      # Format: { "feature_name" => true/false }
-      t.json :feature_flags, null: false, default: {}
-
-      # Model restrictions (JSON arrays)
-      # - allowed_models: whitelist of model IDs (empty = all allowed)
-      # - blocked_models: blacklist of model IDs
-      t.json :allowed_models, null: false, default: []
-      t.json :blocked_models, null: false, default: []
-
       # Extensible metadata (JSON)
       t.json :metadata, null: false, default: {}
 

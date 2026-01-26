@@ -163,17 +163,6 @@ ActiveRecord::Schema.define do
     # Status
     t.boolean :active, default: true
 
-    # Rate limiting (Limitable concern)
-    t.integer :rate_limit_per_minute
-    t.integer :rate_limit_per_hour
-
-    # Feature flags (Limitable concern)
-    t.json :feature_flags, null: false, default: {}
-
-    # Model restrictions (Limitable concern)
-    t.json :allowed_models, null: false, default: []
-    t.json :blocked_models, null: false, default: []
-
     # Extensible metadata
     t.json :metadata, null: false, default: {}
 
