@@ -129,32 +129,50 @@ ActiveRecord::Schema.define do
   # Messages summary index
   add_index :ruby_llm_agents_executions, :messages_count
 
-  # Tenant budgets table
-  create_table :ruby_llm_agents_tenant_budgets, force: :cascade do |t|
+  # Tenants table (renamed from tenant_budgets)
+  create_table :ruby_llm_agents_tenants, force: :cascade do |t|
+    # Identity
     t.string :tenant_id, null: false
     t.string :name
-    t.decimal :daily_limit, precision: 12, scale: 6
-    t.decimal :monthly_limit, precision: 12, scale: 6
-    t.bigint :daily_token_limit
-    t.bigint :monthly_token_limit
-    t.bigint :daily_execution_limit
-    t.bigint :monthly_execution_limit
-    t.json :per_agent_daily, null: false, default: {}
-    t.json :per_agent_monthly, null: false, default: {}
-    t.string :enforcement, default: "soft"
-    t.boolean :inherit_global_defaults, default: true
 
-    # Polymorphic association to tenant model
+    # Polymorphic association to user's tenant model
     # Uses string type for tenant_record_id to support both integer and UUID primary keys
     t.string :tenant_record_type
     t.string :tenant_record_id
 
+    # Budget limits (cost in USD)
+    t.decimal :daily_limit, precision: 12, scale: 6
+    t.decimal :monthly_limit, precision: 12, scale: 6
+
+    # Token limits
+    t.bigint :daily_token_limit
+    t.bigint :monthly_token_limit
+
+    # Execution limits
+    t.bigint :daily_execution_limit
+    t.bigint :monthly_execution_limit
+
+    # Per-agent limits
+    t.json :per_agent_daily, null: false, default: {}
+    t.json :per_agent_monthly, null: false, default: {}
+
+    # Enforcement
+    t.string :enforcement, default: "soft"
+    t.boolean :inherit_global_defaults, default: true
+
+    # Status
+    t.boolean :active, default: true
+
+    # Extensible metadata
+    t.json :metadata, null: false, default: {}
+
     t.timestamps
   end
 
-  add_index :ruby_llm_agents_tenant_budgets, :tenant_id, unique: true
-  add_index :ruby_llm_agents_tenant_budgets, :name
-  add_index :ruby_llm_agents_tenant_budgets, [:tenant_record_type, :tenant_record_id], name: "index_tenant_budgets_on_tenant_record"
+  add_index :ruby_llm_agents_tenants, :tenant_id, unique: true
+  add_index :ruby_llm_agents_tenants, :name
+  add_index :ruby_llm_agents_tenants, :active
+  add_index :ruby_llm_agents_tenants, [:tenant_record_type, :tenant_record_id], name: "index_tenants_on_tenant_record"
 
   # API configurations table for storing encrypted API keys and settings
   create_table :ruby_llm_agents_api_configurations, force: :cascade do |t|

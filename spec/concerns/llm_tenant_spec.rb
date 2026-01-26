@@ -47,8 +47,12 @@ RSpec.describe RubyLLM::Agents::LLMTenant do
       expect(test_model_class.reflect_on_association(:llm_executions)).to be_present
     end
 
-    it "adds llm_budget association" do
-      expect(test_model_class.reflect_on_association(:llm_budget)).to be_present
+    it "adds llm_tenant_record association" do
+      expect(test_model_class.reflect_on_association(:llm_tenant_record)).to be_present
+    end
+
+    it "provides llm_budget as a method for backward compatibility" do
+      expect(test_model_class.instance_methods).to include(:llm_budget)
     end
 
     it "stores options in class attribute with defaults" do

@@ -2,11 +2,12 @@
 
 require "rails_helper"
 
-RSpec.describe RubyLLM::Agents::TenantBudget, type: :model do
+# Tests for the Tenant model (TenantBudget is now an alias)
+RSpec.describe RubyLLM::Agents::Tenant, type: :model do
   # Skip all tests if the table doesn't exist (migration not run)
   before(:all) do
-    unless ActiveRecord::Base.connection.table_exists?(:ruby_llm_agents_tenant_budgets)
-      skip "TenantBudget table not available - run migration first"
+    unless ActiveRecord::Base.connection.table_exists?(:ruby_llm_agents_tenants)
+      skip "Tenant table not available - run migration first"
     end
   end
 
@@ -749,9 +750,107 @@ RSpec.describe RubyLLM::Agents::TenantBudget, type: :model do
     end
   end
 
+  describe "UUID primary key support" do
+    # Create a test model with UUID-like primary keys for testing
+    before(:all) do
+      ActiveRecord::Base.connection.execute <<-SQL
+        CREATE TABLE IF NOT EXISTS uuid_test_organizations (
+          id VARCHAR(36) PRIMARY KEY,
+          name VARCHAR(255),
+          created_at DATETIME,
+          updated_at DATETIME
+        )
+      SQL
+
+      unless Object.const_defined?(:UuidTestOrganization)
+        Object.const_set(:UuidTestOrganization, Class.new(ActiveRecord::Base) do
+          self.table_name = "uuid_test_organizations"
+          self.primary_key = "id"
+
+          include RubyLLM::Agents::LLMTenant
+
+          # Simulate UUID generation for new records
+          before_create do
+            self.id ||= SecureRandom.uuid
+          end
+        end)
+      end
+    end
+
+    after(:all) do
+      ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS uuid_test_organizations")
+      Object.send(:remove_const, :UuidTestOrganization) if Object.const_defined?(:UuidTestOrganization)
+    end
+
+    let(:uuid_org) { UuidTestOrganization.create!(name: "UUID Organization") }
+
+    it "stores UUID tenant_record_id as string" do
+      budget = described_class.create!(
+        tenant_id: "uuid_tenant_#{uuid_org.id}",
+        tenant_record: uuid_org,
+        daily_limit: 100.0
+      )
+
+      expect(budget.tenant_record_id).to be_a(String)
+      expect(budget.tenant_record_id).to match(/\A[0-9a-f-]{36}\z/i)
+      expect(budget.tenant_record_id).to eq(uuid_org.id)
+    end
+
+    it "persists and retrieves UUID polymorphic association correctly" do
+      budget = described_class.create!(
+        tenant_id: "uuid_persist_#{uuid_org.id}",
+        tenant_record: uuid_org,
+        daily_limit: 75.0
+      )
+
+      reloaded = described_class.find(budget.id)
+      expect(reloaded.tenant_record).to eq(uuid_org)
+      expect(reloaded.tenant_record_id).to eq(uuid_org.id)
+      expect(reloaded.tenant_record_type).to eq("UuidTestOrganization")
+    end
+
+    it "finds budget by UUID polymorphic tenant_record via .for_tenant" do
+      described_class.create!(
+        tenant_id: uuid_org.id.to_s,
+        tenant_record: uuid_org,
+        daily_limit: 50.0
+      )
+
+      found = described_class.for_tenant(uuid_org)
+      expect(found).to be_present
+      expect(found.daily_limit).to eq(50.0)
+      expect(found.tenant_record).to eq(uuid_org)
+    end
+
+    it "handles mixed integer and UUID lookups in same table" do
+      # Create budget with UUID org
+      uuid_budget = described_class.create!(
+        tenant_id: "uuid_#{uuid_org.id}",
+        tenant_record: uuid_org,
+        daily_limit: 100.0
+      )
+
+      # Create budget with string tenant_id (simulating integer-based system)
+      string_budget = described_class.create!(
+        tenant_id: "integer_12345",
+        daily_limit: 50.0
+      )
+
+      # Both should be retrievable
+      expect(described_class.for_tenant(uuid_org)).to eq(uuid_budget)
+      expect(described_class.for_tenant("integer_12345")).to eq(string_budget)
+    end
+  end
+
   describe "table name" do
     it "uses the correct table name" do
-      expect(described_class.table_name).to eq("ruby_llm_agents_tenant_budgets")
+      expect(described_class.table_name).to eq("ruby_llm_agents_tenants")
+    end
+  end
+
+  describe "TenantBudget alias" do
+    it "TenantBudget is an alias for Tenant" do
+      expect(RubyLLM::Agents::TenantBudget).to eq(RubyLLM::Agents::Tenant)
     end
   end
 end

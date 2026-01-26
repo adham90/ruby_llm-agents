@@ -12,21 +12,25 @@ module RubyLLM
     #
     # @example Basic usage
     #   class Organization < ApplicationRecord
+    #     include RubyLLM::Agents::LLMTenant
     #     llm_tenant
     #   end
     #
     # @example With custom ID method
     #   class Organization < ApplicationRecord
+    #     include RubyLLM::Agents::LLMTenant
     #     llm_tenant id: :slug
     #   end
     #
     # @example With auto-created budget
     #   class Organization < ApplicationRecord
+    #     include RubyLLM::Agents::LLMTenant
     #     llm_tenant id: :slug, budget: true
     #   end
     #
     # @example With limits (auto-creates budget)
     #   class Organization < ApplicationRecord
+    #     include RubyLLM::Agents::LLMTenant
     #     llm_tenant(
     #       id: :slug,
     #       name: :company_name,
@@ -41,6 +45,7 @@ module RubyLLM
     #
     # @example With API keys from model columns/methods
     #   class Organization < ApplicationRecord
+    #     include RubyLLM::Agents::LLMTenant
     #     encrypts :openai_api_key, :anthropic_api_key  # Rails 7+ encryption
     #
     #     llm_tenant(
@@ -57,7 +62,7 @@ module RubyLLM
     #     end
     #   end
     #
-    # @see RubyLLM::Agents::TenantBudget
+    # @see RubyLLM::Agents::Tenant
     # @api public
     module LLMTenant
       extend ActiveSupport::Concern
@@ -69,11 +74,15 @@ module RubyLLM
                  as: :tenant_record,
                  dependent: :nullify
 
-        # Budget association (optional)
-        has_one :llm_budget,
-                class_name: "RubyLLM::Agents::TenantBudget",
+        # Link to gem's Tenant model (new name)
+        has_one :llm_tenant_record,
+                class_name: "RubyLLM::Agents::Tenant",
                 as: :tenant_record,
                 dependent: :destroy
+
+        # Backward compatible alias (llm_budget points to same Tenant record)
+        # @deprecated Use llm_tenant_record instead
+        alias_method :llm_budget_association, :llm_tenant_record
 
         # Store options at class level
         class_attribute :llm_tenant_options, default: {}
@@ -84,7 +93,7 @@ module RubyLLM
         #
         # @param id [Symbol] Method to call for tenant_id string (default: :id)
         # @param name [Symbol] Method for budget display name (default: :to_s)
-        # @param budget [Boolean] Auto-create TenantBudget on model creation (default: false)
+        # @param budget [Boolean] Auto-create Tenant record on model creation (default: false)
         # @param limits [Hash] Default budget limits (implies budget: true)
         # @param enforcement [Symbol] Budget enforcement mode (:none, :soft, :hard)
         # @param inherit_global [Boolean] Inherit from global config (default: true)
@@ -101,8 +110,8 @@ module RubyLLM
             api_keys: api_keys
           }
 
-          # Auto-create budget callback
-          after_create :create_default_llm_budget if llm_tenant_options[:budget]
+          # Auto-create tenant record callback
+          after_create :create_default_llm_tenant if llm_tenant_options[:budget]
         end
 
         private
@@ -152,13 +161,42 @@ module RubyLLM
         end.compact
       end
 
+      # Returns or builds the associated Tenant record
+      #
+      # @return [Tenant] The tenant record
+      def llm_tenant
+        llm_tenant_record || build_llm_tenant_record(tenant_id: llm_tenant_id)
+      end
+
+      # Backward compatible alias for llm_tenant
+      # @deprecated Use llm_tenant instead
+      alias_method :llm_budget, :llm_tenant
+
+      # Configure tenant with a block
+      #
+      # @yield [tenant] The tenant to configure
+      # @return [Tenant] The saved tenant
+      def llm_configure(&block)
+        tenant = llm_tenant
+        yield(tenant) if block_given?
+        tenant.save!
+        tenant
+      end
+
+      # Backward compatible alias
+      # @deprecated Use llm_configure instead
+      alias_method :llm_configure_budget, :llm_configure
+
+      # Tracking methods using llm_executions association
+      # These query executions via the polymorphic tenant_record association
+
       # Returns cost for a given period
       #
       # @param period [Symbol, Range, nil] Time period (:today, :this_month, etc.)
       # @return [BigDecimal] Total cost
       def llm_cost(period: nil)
         scope = llm_executions
-        scope = apply_period_scope(scope, period) if period
+        scope = apply_llm_period_scope(scope, period) if period
         scope.sum(:total_cost) || 0
       end
 
@@ -182,7 +220,7 @@ module RubyLLM
       # @return [Integer] Total tokens
       def llm_tokens(period: nil)
         scope = llm_executions
-        scope = apply_period_scope(scope, period) if period
+        scope = apply_llm_period_scope(scope, period) if period
         scope.sum(:total_tokens) || 0
       end
 
@@ -206,7 +244,7 @@ module RubyLLM
       # @return [Integer] Execution count
       def llm_execution_count(period: nil)
         scope = llm_executions
-        scope = apply_period_scope(scope, period) if period
+        scope = apply_llm_period_scope(scope, period) if period
         scope.count
       end
 
@@ -237,29 +275,13 @@ module RubyLLM
         }
       end
 
-      # Returns or builds the associated TenantBudget
-      #
-      # @return [TenantBudget] The budget record
-      def llm_budget
-        super || build_llm_budget(tenant_id: llm_tenant_id)
-      end
-
-      # Configure budget with a block
-      #
-      # @yield [budget] The budget to configure
-      # @return [TenantBudget] The saved budget
-      def llm_configure_budget
-        budget = llm_budget
-        yield(budget) if block_given?
-        budget.save!
-        budget
-      end
+      # Delegate budget methods to the Tenant record
 
       # Returns the budget status from BudgetTracker
       #
       # @return [Hash] Budget status
       def llm_budget_status
-        BudgetTracker.status(tenant_id: llm_tenant_id)
+        llm_tenant.budget_status
       end
 
       # Checks if within budget for a given limit type
@@ -267,11 +289,7 @@ module RubyLLM
       # @param type [Symbol] Limit type (:daily_cost, :monthly_cost, :daily_tokens, etc.)
       # @return [Boolean] true if within budget
       def llm_within_budget?(type: :daily_cost)
-        status = llm_budget_status
-        return true unless status[:enabled]
-
-        key = budget_status_key(type)
-        status.dig(key, :percentage_used).to_f < 100
+        llm_tenant.within_budget?(type: type)
       end
 
       # Returns remaining budget for a given limit type
@@ -279,9 +297,7 @@ module RubyLLM
       # @param type [Symbol] Limit type
       # @return [Numeric, nil] Remaining amount
       def llm_remaining_budget(type: :daily_cost)
-        status = llm_budget_status
-        key = budget_status_key(type)
-        status.dig(key, :remaining)
+        llm_tenant.remaining_budget(type: type)
       end
 
       # Raises an error if over budget
@@ -289,7 +305,7 @@ module RubyLLM
       # @raise [BudgetExceededError] if budget is exceeded
       # @return [void]
       def llm_check_budget!
-        BudgetTracker.check_budget!(self.class.name, tenant_id: llm_tenant_id)
+        llm_tenant.check_budget!(self.class.name)
       end
 
       private
@@ -299,7 +315,7 @@ module RubyLLM
       # @param scope [ActiveRecord::Relation] The query scope
       # @param period [Symbol, Range] The period to filter by
       # @return [ActiveRecord::Relation] Filtered scope
-      def apply_period_scope(scope, period)
+      def apply_llm_period_scope(scope, period)
         case period
         when :today then scope.where(created_at: Time.current.all_day)
         when :yesterday then scope.where(created_at: 1.day.ago.all_day)
@@ -310,34 +326,18 @@ module RubyLLM
         end
       end
 
-      # Maps user-friendly type to budget status key
-      #
-      # @param type [Symbol] User-friendly type
-      # @return [Symbol] Status key
-      def budget_status_key(type)
-        case type
-        when :daily_cost then :global_daily
-        when :monthly_cost then :global_monthly
-        when :daily_tokens then :global_daily_tokens
-        when :monthly_tokens then :global_monthly_tokens
-        when :daily_executions then :global_daily_executions
-        when :monthly_executions then :global_monthly_executions
-        else :global_daily
-        end
-      end
-
-      # Creates the default budget on model creation
+      # Creates the default tenant record on model creation
       #
       # @return [void]
-      def create_default_llm_budget
+      def create_default_llm_tenant
         return if self.class.llm_tenant_options.blank?
-        return if llm_budget&.persisted?
+        return if llm_tenant_record&.persisted?
 
         options = self.class.llm_tenant_options
         limits = options[:limits] || {}
         name_method = options[:name] || :to_s
 
-        budget = build_llm_budget(
+        tenant = build_llm_tenant_record(
           tenant_id: llm_tenant_id,
           name: send(name_method).to_s,
           daily_limit: limits[:daily_cost],
@@ -350,8 +350,8 @@ module RubyLLM
           inherit_global_defaults: options.fetch(:inherit_global, true)
         )
 
-        budget.tenant_record = self
-        budget.save!
+        tenant.tenant_record = self
+        tenant.save!
       end
     end
   end
