@@ -434,7 +434,15 @@ RSpec.describe RubyLLM::Agents::LLMTenant do
     end
 
     it "filters by this week" do
-      expect(organization.llm_cost(period: :this_week)).to eq(1.5)
+      # Note: 1.day.ago might not be in the same week if today is Monday
+      # all_week uses Monday as start of week by default
+      if 1.day.ago.all_week == Time.current.all_week
+        expect(organization.llm_cost(period: :this_week)).to eq(1.5)
+      else
+        # If yesterday was in a different week (e.g., today is Monday),
+        # only today's execution should be counted
+        expect(organization.llm_cost(period: :this_week)).to eq(0.5)
+      end
     end
   end
 
