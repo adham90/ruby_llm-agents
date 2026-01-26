@@ -282,48 +282,65 @@ module RubyLLM
         step_configs = klass.step_configs
 
         klass.step_metadata.map do |meta|
-          config = step_configs[meta[:name]]
-          step_hash = {
-            name: meta[:name],
-            agent: meta[:agent],
-            description: meta[:description],
-            ui_label: meta[:ui_label],
-            optional: meta[:optional],
-            timeout: meta[:timeout],
-            routing: meta[:routing],
-            parallel: meta[:parallel],
-            parallel_group: meta[:parallel_group],
-            custom_block: config&.custom_block?,
-            # New composition features
-            workflow: meta[:workflow],
-            iteration: meta[:iteration],
-            iteration_concurrency: meta[:iteration_concurrency]
-          }
+          # Handle wait steps - they have type: :wait and aren't in step_configs
+          if meta[:type] == :wait
+            {
+              name: meta[:name],
+              type: :wait,
+              wait_type: meta[:wait_type],
+              ui_label: meta[:ui_label],
+              timeout: meta[:timeout],
+              duration: meta[:duration],
+              poll_interval: meta[:poll_interval],
+              on_timeout: meta[:on_timeout],
+              notify: meta[:notify],
+              approvers: meta[:approvers],
+              parallel: false
+            }.compact
+          else
+            config = step_configs[meta[:name]]
+            step_hash = {
+              name: meta[:name],
+              agent: meta[:agent],
+              description: meta[:description],
+              ui_label: meta[:ui_label],
+              optional: meta[:optional],
+              timeout: meta[:timeout],
+              routing: meta[:routing],
+              parallel: meta[:parallel],
+              parallel_group: meta[:parallel_group],
+              custom_block: config&.custom_block?,
+              # New composition features
+              workflow: meta[:workflow],
+              iteration: meta[:iteration],
+              iteration_concurrency: meta[:iteration_concurrency]
+            }
 
-          # Add extended configuration from StepConfig
-          if config
-            step_hash.merge!(
-              retry_config: extract_retry_config(config),
-              fallbacks: config.fallbacks.map(&:name),
-              if_condition: describe_condition(config.if_condition),
-              unless_condition: describe_condition(config.unless_condition),
-              has_input_mapper: config.input_mapper.present?,
-              pick_fields: config.pick_fields,
-              pick_from: config.pick_from,
-              default_value: config.default_value,
-              routes: extract_routes(config),
-              # Iteration error handling
-              iteration_fail_fast: config.iteration_fail_fast?,
-              continue_on_error: config.continue_on_error?
-            )
+            # Add extended configuration from StepConfig
+            if config
+              step_hash.merge!(
+                retry_config: extract_retry_config(config),
+                fallbacks: config.fallbacks.map(&:name),
+                if_condition: describe_condition(config.if_condition),
+                unless_condition: describe_condition(config.unless_condition),
+                has_input_mapper: config.input_mapper.present?,
+                pick_fields: config.pick_fields,
+                pick_from: config.pick_from,
+                default_value: config.default_value,
+                routes: extract_routes(config),
+                # Iteration error handling
+                iteration_fail_fast: config.iteration_fail_fast?,
+                continue_on_error: config.continue_on_error?
+              )
 
-            # Add sub-workflow metadata for nested workflow steps
-            if config.workflow? && config.agent
-              step_hash[:sub_workflow] = extract_sub_workflow_metadata(config.agent)
+              # Add sub-workflow metadata for nested workflow steps
+              if config.workflow? && config.agent
+                step_hash[:sub_workflow] = extract_sub_workflow_metadata(config.agent)
+              end
             end
-          end
 
-          step_hash.compact
+            step_hash.compact
+          end
         end
       end
 

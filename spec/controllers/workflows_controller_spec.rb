@@ -247,4 +247,75 @@ RSpec.describe RubyLLM::Agents::WorkflowsController, type: :controller do
       end
     end
   end
+
+  describe "#extract_dsl_steps" do
+    # Create a mock agent for testing
+    let(:mock_agent) do
+      Class.new(RubyLLM::Agents::Base) do
+        model "gpt-4o"
+
+        def self.name
+          "MockAgent"
+        end
+
+        def user_prompt
+          "test"
+        end
+      end
+    end
+
+    # Create a test workflow class with wait steps
+    let(:test_workflow_class) do
+      agent = mock_agent
+      Class.new(RubyLLM::Agents::Workflow) do
+        step :first_step, agent, "First step"
+        wait 5.seconds
+        wait_for :approval, approvers: ["manager@example.com"], timeout: 1.hour
+        wait_until -> { true }, poll_interval: 10.seconds
+        step :last_step, agent, "Last step"
+      end
+    end
+
+    it "extracts regular steps" do
+      steps = controller.send(:extract_dsl_steps, test_workflow_class)
+      regular_steps = steps.reject { |s| s[:type] == :wait }
+      expect(regular_steps.size).to eq(2)
+      expect(regular_steps.map { |s| s[:name] }).to eq([:first_step, :last_step])
+    end
+
+    it "extracts wait steps with type :wait" do
+      steps = controller.send(:extract_dsl_steps, test_workflow_class)
+      wait_steps = steps.select { |s| s[:type] == :wait }
+      expect(wait_steps.size).to eq(3)
+    end
+
+    it "extracts delay wait step with duration" do
+      steps = controller.send(:extract_dsl_steps, test_workflow_class)
+      delay_step = steps.find { |s| s[:wait_type] == :delay }
+      expect(delay_step).to be_present
+      expect(delay_step[:type]).to eq(:wait)
+      expect(delay_step[:duration]).to eq(5)
+    end
+
+    it "extracts approval wait step with approvers" do
+      steps = controller.send(:extract_dsl_steps, test_workflow_class)
+      approval_step = steps.find { |s| s[:wait_type] == :approval }
+      expect(approval_step).to be_present
+      expect(approval_step[:name]).to eq(:approval)
+      expect(approval_step[:approvers]).to include("manager@example.com")
+    end
+
+    it "extracts poll wait step with poll_interval" do
+      steps = controller.send(:extract_dsl_steps, test_workflow_class)
+      poll_step = steps.find { |s| s[:wait_type] == :until }
+      expect(poll_step).to be_present
+      expect(poll_step[:poll_interval]).to eq(10)
+    end
+
+    it "preserves step order including wait steps" do
+      steps = controller.send(:extract_dsl_steps, test_workflow_class)
+      names_and_types = steps.map { |s| s[:type] == :wait ? s[:wait_type] : s[:name] }
+      expect(names_and_types).to eq([:first_step, :delay, :approval, :until, :last_step])
+    end
+  end
 end
