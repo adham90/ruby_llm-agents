@@ -1,8 +1,39 @@
-# Upgrading RubyLLM::Agents: v0.5.0 → v1.0.0
+# Upgrading RubyLLM::Agents
 
 > Reference guide for AI coding agents to assist with upgrades
 
-## Quick Reference
+## Upgrading to v1.1.0
+
+### From v1.0.0
+
+v1.1.0 is a backwards-compatible release with new features. No breaking changes.
+
+```ruby
+# Update Gemfile
+gem "ruby_llm-agents", "~> 1.1.0"
+```
+
+```bash
+bundle update ruby_llm-agents
+rails generate ruby_llm_agents:upgrade
+rails db:migrate
+```
+
+#### New Features in v1.1.0
+
+- **Wait Steps** - Human-in-the-loop workflows with `wait`, `wait_until`, `wait_for`
+- **Sub-Workflows** - Compose workflows by nesting other workflows
+- **Iteration** - Process collections with `each:` option
+- **Notifications** - Slack, Email, Webhook notifications for approvals
+- **New Agents** - `SpecialistAgent` and `ValidatorAgent`
+
+See [CHANGELOG](CHANGELOG.md) for full details.
+
+---
+
+## Upgrading from v0.5.0 → v1.0.0
+
+### Quick Reference
 
 | Aspect | Status |
 |--------|--------|
@@ -12,14 +43,14 @@
 | `cache` DSL | Deprecated → use `cache_for` |
 | Result access | `result[:key]` deprecated → `result.content[:key]` |
 
-## Step 1: Update Gemfile
+### Step 1: Update Gemfile
 
 ```ruby
 # Before
 gem "ruby_llm-agents", "~> 0.5.0"
 
 # After
-gem "ruby_llm-agents", "~> 1.0.0"
+gem "ruby_llm-agents", "~> 1.1.0"
 ```
 
 Then run:
@@ -116,6 +147,36 @@ grep -rn "Generator\.call\|Analyzer\.call\|Pipeline\.call" app/ lib/ --include="
 ```
 
 ## New Features Available After Upgrade
+
+### Workflow DSL with Wait Steps (v1.1.0+)
+
+Build human-in-the-loop workflows:
+
+```ruby
+class ApprovalWorkflow < RubyLLM::Agents::Workflow
+  step :analyze, AnalyzerAgent
+
+  # Wait for human approval
+  wait_for :manager_approval,
+    timeout: 24.hours,
+    notify: [:slack, :email],
+    on_timeout: :skip_next
+
+  step :execute, ExecutorAgent
+end
+```
+
+### Sub-Workflows and Iteration (v1.1.0+)
+
+```ruby
+class BatchWorkflow < RubyLLM::Agents::Workflow
+  # Nest another workflow
+  step :preprocess, PreprocessWorkflow
+
+  # Iterate over collections
+  step :process, ProcessorAgent, each: ->(ctx) { ctx[:items] }
+end
+```
 
 ### Extended Thinking (Claude models)
 ```ruby

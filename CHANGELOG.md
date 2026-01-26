@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-01-26
+
+### Added
+
+- **Human Approval & Wait Steps** - New workflow DSL for human-in-the-loop workflows:
+  - `wait` - Delay execution for a specified duration
+  - `wait_until` - Wait until a condition is met with configurable timeout
+  - `wait_for` - Wait for human approval with notifications (Slack, Email, Webhook)
+- **Sub-Workflow Support** - Compose workflows by nesting other workflows as steps
+- **Iteration Support** - Process collections with `each:` option on steps
+- **Recursion Support** - Workflows can call themselves with depth limits
+- **New Specialized Agents** - `SpecialistAgent` and `ValidatorAgent` for common patterns
+- **Email Alerts** - `AlertMailer` for workflow notifications and alerts
+- **Refined Workflow DSL** - Declarative workflow definitions with cleaner syntax
+- **Workflows Index Page** - Dashboard page with filtering and navigation for workflows
+- **Sortable Columns** - Sortable tables across agents, executions, and workflows views
+- **Model Stats Dashboard** - Cost breakdown and model statistics in dashboard
+- **Upgrade Guide** - Documentation for upgrading from v0.5.0 to v1.0.0
+
+### Changed
+
+- **Directory Structure** - Default root directory changed from `app/llm` to `app/agents`
+- **Simplified Namespacing** - Removed `Llm` module nesting from agent and tool classes
+- **Image Module Rename** - Renamed `llm/image` modules to `agents/images`
+- **Unified Workflow Types** - All workflow types consolidated into single "workflow" category
+- **Redesigned Workflow Diagram** - New vertical layout with improved details view
+- **Simplified Agent Display** - Removed type badges and colors from agent views
+
+### Fixed
+
+- Added missing `Pipeline::ErrorResult` class for proper optional step failure handling
+
 ## [1.0.0-beta.1] - 2026-01-20
 
 ### Added
@@ -300,6 +332,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[1.1.0]: https://github.com/adham90/ruby_llm-agents/compare/v1.0.0...v1.1.0
 [1.0.0-beta.1]: https://github.com/adham90/ruby_llm-agents/compare/v0.5.0...v1.0.0-beta.1
 [0.5.0]: https://github.com/adham90/ruby_llm-agents/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/adham90/ruby_llm-agents/compare/v0.3.6...v0.4.0

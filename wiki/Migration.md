@@ -1,8 +1,73 @@
-# Migration Guide: v0.5.0 to v1.0.0
+# Migration Guide
 
-This guide helps you upgrade your application from RubyLLM::Agents v0.5.0 to v1.0.0.
+This guide helps you upgrade your application between RubyLLM::Agents versions.
 
-## Quick Summary
+---
+
+## Upgrading to v1.1.0
+
+### From v1.0.0
+
+v1.1.0 is a backwards-compatible release with new features. No breaking changes.
+
+```ruby
+# Update Gemfile
+gem "ruby_llm-agents", "~> 1.1.0"
+```
+
+```bash
+bundle update ruby_llm-agents
+rails generate ruby_llm_agents:upgrade
+rails db:migrate
+```
+
+### New Features in v1.1.0
+
+- **Wait Steps** - Human-in-the-loop workflows with `wait`, `wait_until`, `wait_for`
+- **Sub-Workflows** - Compose workflows by nesting other workflows as steps
+- **Iteration** - Process collections with `each:` option on steps
+- **Recursion** - Workflows can call themselves with depth limits
+- **Notifications** - Slack, Email, Webhook notifications for workflow approvals
+- **New Agents** - `SpecialistAgent` and `ValidatorAgent` for common patterns
+- **Workflows Index** - Dashboard page with filtering and navigation
+
+#### Workflow DSL Examples (v1.1.0+)
+
+Build human-in-the-loop workflows:
+
+```ruby
+class ApprovalWorkflow < RubyLLM::Agents::Workflow
+  step :analyze, AnalyzerAgent
+
+  # Wait for human approval
+  wait_for :manager_approval,
+    timeout: 24.hours,
+    notify: [:slack, :email],
+    on_timeout: :skip_next
+
+  step :execute, ExecutorAgent
+end
+```
+
+Sub-workflows and iteration:
+
+```ruby
+class BatchWorkflow < RubyLLM::Agents::Workflow
+  # Nest another workflow
+  step :preprocess, PreprocessWorkflow
+
+  # Iterate over collections
+  step :process, ProcessorAgent, each: ->(ctx) { ctx[:items] }
+end
+```
+
+See [CHANGELOG](../CHANGELOG.md) for full details.
+
+---
+
+## Upgrading from v0.5.0 to v1.0.0
+
+### Quick Summary
 
 | Change | v0.5.0 | v1.0.0 |
 |--------|--------|--------|
@@ -116,7 +181,7 @@ value = result.content[:key]
 gem "ruby_llm-agents", "~> 0.5.0"
 
 # After
-gem "ruby_llm-agents", "~> 1.0.0"
+gem "ruby_llm-agents", "~> 1.1.0"
 ```
 
 Then run:
