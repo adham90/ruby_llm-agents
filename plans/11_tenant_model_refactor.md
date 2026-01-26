@@ -973,10 +973,13 @@ end
 - [x] Deprecation notices for `TenantBudget` (added to Multi-Tenancy wiki)
 - [x] Migration guide for existing users (`wiki/Generators.md` updated)
 
-### Phase 4: Future Concerns (Later)
-- [ ] Implement `Configurable` concern (API keys)
-- [ ] Implement `Limitable` concern (rate limits, feature flags)
-- [ ] Add model restrictions
+### Phase 4: Advanced Features ✅ COMPLETE
+- [x] Implement `Configurable` concern (API keys)
+- [x] Implement `Limitable` concern (rate limits, feature flags)
+- [x] Add model restrictions (allowed/blocked models)
+- [x] Add specs for `Configurable` (`spec/models/tenant_configurable_spec.rb`)
+- [x] Add specs for `Limitable` (`spec/models/tenant_limitable_spec.rb`)
+- [x] Update documentation (`wiki/Multi-Tenancy.md`)
 
 ---
 

@@ -7,12 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Per-Tenant API Configuration** - New `Configurable` concern for tenant-specific API keys:
+  - `configure_api` - Block syntax for configuring tenant API settings
+  - `api_key_for(:provider)` - Get API key for a specific provider
+  - `has_custom_api_keys?` - Check if tenant has custom API keys
+  - `effective_api_configuration` - Get resolved config with fallbacks
+  - `configured_providers` - List all configured providers
+
+- **Rate Limiting** - New `Limitable` concern for per-tenant request limits:
+  - `rate_limit_per_minute` / `rate_limit_per_hour` columns
+  - `can_make_request?` - Check if request is within rate limits
+  - `requests_this_minute` / `requests_this_hour` - Current request counts
+  - `remaining_requests_this_minute` / `remaining_requests_this_hour` - Remaining quota
+
+- **Feature Flags** - Per-tenant feature toggles via `Limitable` concern:
+  - `enable_feature!(:name)` / `disable_feature!(:name)` - Toggle features
+  - `feature_enabled?(:name)` - Check if feature is enabled
+  - `enabled_features` / `disabled_features` - List all features
+
+- **Model Restrictions** - Per-tenant model access control via `Limitable` concern:
+  - `allow_model!("model-id")` / `block_model!("model-id")` - Manage restrictions
+  - `model_allowed?("model-id")` - Check if model is allowed
+  - `has_model_restrictions?` - Check if any restrictions are set
+
 ### Changed
 
 - **Tenant Model Refactor** - Unified tenant management with organized concerns:
   - Renamed `TenantBudget` model to `Tenant` as the central entity for all tenant functionality
   - Added `Budgetable` concern for budget limits and enforcement
   - Added `Trackable` concern for usage tracking (cost, tokens, executions)
+  - Added `Configurable` concern for per-tenant API configuration
+  - Added `Limitable` concern for rate limits, feature flags, and model restrictions
   - New tracking methods: `usage_by_agent`, `usage_by_model`, `usage_by_day`, `recent_executions`, `failed_executions`
   - New status methods: `active?`, `linked?`, `activate!`, `deactivate!`
   - `TenantBudget` is now an alias for backward compatibility (deprecated, will be removed in future major version)

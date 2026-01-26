@@ -7,8 +7,8 @@ module RubyLLM
     # Encapsulates all tenant-related functionality:
     # - Budget limits and enforcement (via Budgetable concern)
     # - Usage tracking: cost, tokens, executions (via Trackable concern)
-    # - API configuration (via Configurable concern - future)
-    # - Rate limiting (via Limitable concern - future)
+    # - API configuration per tenant (via Configurable concern)
+    # - Rate limiting, feature flags, model restrictions (via Limitable concern)
     #
     # @example Creating a tenant
     #   Tenant.create!(
@@ -29,8 +29,22 @@ module RubyLLM
     #   tenant = Tenant.for(organization)
     #   tenant = Tenant.for("acme_corp")
     #
+    # @example Rate limiting
+    #   tenant.rate_limit_per_minute = 60
+    #   tenant.can_make_request?  # => true
+    #
+    # @example Feature flags
+    #   tenant.enable_feature!(:streaming)
+    #   tenant.feature_enabled?(:streaming)  # => true
+    #
+    # @example Model restrictions
+    #   tenant.block_model!("gpt-3.5-turbo")
+    #   tenant.model_allowed?("gpt-4o")  # => true
+    #
     # @see Tenant::Budgetable
     # @see Tenant::Trackable
+    # @see Tenant::Configurable
+    # @see Tenant::Limitable
     # @see LLMTenant
     # @api public
     class Tenant < ::ActiveRecord::Base
@@ -39,8 +53,8 @@ module RubyLLM
       # Include concerns for organized functionality
       include Tenant::Budgetable
       include Tenant::Trackable
-      # include Tenant::Configurable  # Future
-      # include Tenant::Limitable     # Future
+      include Tenant::Configurable
+      include Tenant::Limitable
 
       # Polymorphic association to user's tenant model (optional)
       # Allows linking to Organization, Account, or any ActiveRecord model

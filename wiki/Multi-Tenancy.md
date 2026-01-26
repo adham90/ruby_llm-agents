@@ -61,10 +61,10 @@ You can bypass the tenant resolver by passing the tenant explicitly to `.call()`
 
 ```ruby
 # Pass tenant_id explicitly (bypasses resolver, uses DB or config_resolver)
-LLM::MyAgent.call(query: "Analyze this data", tenant: "acme_corp")
+MyAgent.call(query: "Analyze this data", tenant: "acme_corp")
 
 # Pass full config as a hash (runtime override, no DB lookup)
-LLM::MyAgent.call(query: "Analyze this data", tenant: {
+MyAgent.call(query: "Analyze this data", tenant: {
   id: "acme_corp",
   daily_limit: 100.0,
   monthly_limit: 1000.0,
@@ -550,11 +550,9 @@ RubyLLM::Agents::Execution
 When multi-tenancy is enabled, circuit breakers are isolated per tenant. This prevents one tenant's failures from affecting other tenants.
 
 ```ruby
-module LLM
-  class MyAgent < ApplicationAgent
-    model "gpt-4o"
-    circuit_breaker errors: 10, within: 60, cooldown: 300
-  end
+class MyAgent < ApplicationAgent
+  model "gpt-4o"
+  circuit_breaker errors: 10, within: 60, cooldown: 300
 end
 ```
 
@@ -568,13 +566,13 @@ With multi-tenancy enabled:
 ```ruby
 # Check if circuit is open for current tenant
 RubyLLM::Agents::CircuitBreaker.open_for?(
-  agent: LLM::MyAgent,
+  agent: MyAgent,
   tenant_id: Current.tenant_id
 )
 
 # Check for specific tenant
 RubyLLM::Agents::CircuitBreaker.open_for?(
-  agent: LLM::MyAgent,
+  agent: MyAgent,
   tenant_id: "tenant_123"
 )
 ```
@@ -584,17 +582,15 @@ RubyLLM::Agents::CircuitBreaker.open_for?(
 Include tenant information in execution metadata:
 
 ```ruby
-module LLM
-  class TenantAwareAgent < ApplicationAgent
-    model "gpt-4o"
+class TenantAwareAgent < ApplicationAgent
+  model "gpt-4o"
 
-    def execution_metadata
-      {
-        tenant_id: Current.tenant_id,
-        tenant_name: Current.tenant&.name,
-        tenant_plan: Current.tenant&.plan
-      }
-    end
+  def execution_metadata
+    {
+      tenant_id: Current.tenant_id,
+      tenant_name: Current.tenant&.name,
+      tenant_plan: Current.tenant&.plan
+    }
   end
 end
 ```
@@ -633,7 +629,7 @@ Execution is blocked if **any** limit is exceeded (when using `"hard"` enforceme
 
 ```ruby
 begin
-  result = LLM::MyAgent.call(query: params[:query])
+  result = MyAgent.call(query: params[:query])
 rescue RubyLLM::Agents::BudgetExceededError => e
   if e.tenant_budget?
     # Tenant-specific budget exceeded
@@ -702,11 +698,11 @@ When an agent executes, API keys are resolved in this order:
 ```ruby
 # Tenant's API keys are automatically applied when agent executes
 org = Organization.find_by(slug: "acme-corp")
-result = LLM::MyAgent.call(query: "Hello", tenant: org)
+result = MyAgent.call(query: "Hello", tenant: org)
 # Uses org.openai_api_key for OpenAI requests
 
 # Runtime hash also supports api_keys
-result = LLM::MyAgent.call(
+result = MyAgent.call(
   query: "Hello",
   tenant: {
     id: "acme-corp",
@@ -800,7 +796,7 @@ end
 class AiController < ApplicationController
   def analyze
     # Pass the organization as tenant - API keys and budget are automatic
-    result = LLM::AnalysisAgent.call(
+    result = AnalysisAgent.call(
       query: params[:query],
       tenant: Current.organization
     )
@@ -818,6 +814,243 @@ org.llm_usage_summary(period: :this_month)
 org.llm_within_budget?(type: :monthly_cost)  # => true
 org.llm_remaining_budget(type: :monthly_cost) # => 549.50
 ```
+
+## Rate Limiting
+
+The `Tenant` model supports per-tenant rate limiting to control request frequency:
+
+```ruby
+tenant = RubyLLM::Agents::Tenant.for("tenant_123")
+
+# Configure rate limits
+tenant.update!(
+  rate_limit_per_minute: 60,   # Max 60 requests per minute
+  rate_limit_per_hour: 1000    # Max 1000 requests per hour
+)
+
+# Check if a request can be made
+if tenant.can_make_request?
+  result = MyAgent.call(query: "Hello", tenant: tenant)
+else
+  render json: { error: "Rate limit exceeded" }, status: 429
+end
+
+# Query rate limit status
+tenant.rate_limited?                    # => true (has limits configured)
+tenant.requests_this_minute             # => 45
+tenant.requests_this_hour               # => 892
+tenant.within_minute_limit?             # => true
+tenant.within_hour_limit?               # => true
+tenant.remaining_requests_this_minute   # => 15
+tenant.remaining_requests_this_hour     # => 108
+```
+
+### Integration Example
+
+```ruby
+class AiController < ApplicationController
+  before_action :check_rate_limit
+
+  def analyze
+    result = AnalysisAgent.call(query: params[:query], tenant: Current.organization)
+    render json: result.response
+  end
+
+  private
+
+  def check_rate_limit
+    return unless Current.organization.llm_tenant&.rate_limited?
+    return if Current.organization.llm_tenant.can_make_request?
+
+    render json: {
+      error: "Rate limit exceeded",
+      retry_after: 60,
+      remaining_this_hour: Current.organization.llm_tenant.remaining_requests_this_hour
+    }, status: 429
+  end
+end
+```
+
+## Feature Flags
+
+Enable or disable features on a per-tenant basis:
+
+```ruby
+tenant = RubyLLM::Agents::Tenant.for("tenant_123")
+
+# Enable features
+tenant.enable_feature!(:streaming)
+tenant.enable_feature!(:tool_use)
+tenant.enable_feature!(:caching)
+
+# Check feature status
+tenant.feature_enabled?(:streaming)   # => true
+tenant.feature_enabled?(:beta_models) # => false
+
+# Disable features
+tenant.disable_feature!(:caching)
+
+# Set feature to specific value
+tenant.set_feature!(:debug_mode, Rails.env.development?)
+
+# Query all features
+tenant.enabled_features   # => ["streaming", "tool_use"]
+tenant.disabled_features  # => ["caching"]
+```
+
+### Agent Feature Gating
+
+```ruby
+class StreamingAgent < ApplicationAgent
+  model "gpt-4o"
+
+  def call
+    tenant = RubyLLM::Agents::Tenant.for(tenant_id)
+
+    unless tenant&.feature_enabled?(:streaming)
+      raise FeatureDisabledError, "Streaming is not enabled for this tenant"
+    end
+
+    # Execute with streaming
+    chat(streaming: true)
+  end
+end
+```
+
+## Model Restrictions
+
+Control which LLM models each tenant can access:
+
+```ruby
+tenant = RubyLLM::Agents::Tenant.for("tenant_123")
+
+# Allowlist approach (only these models permitted)
+tenant.allow_model!("gpt-4o")
+tenant.allow_model!("claude-3-5-sonnet-latest")
+
+# Blocklist approach (block specific models)
+tenant.block_model!("gpt-3.5-turbo")
+
+# Check model access
+tenant.model_allowed?("gpt-4o")          # => true
+tenant.model_allowed?("gpt-3.5-turbo")   # => false (blocked)
+tenant.model_allowed?("gemini-2.0-flash") # => false (not in allowlist)
+
+# Check if explicitly blocked
+tenant.model_blocked?("gpt-3.5-turbo")   # => true
+
+# Remove restrictions
+tenant.disallow_model!("gpt-4o")      # Remove from allowlist
+tenant.unblock_model!("gpt-3.5-turbo") # Remove from blocklist
+
+# Query restrictions
+tenant.has_model_restrictions?        # => true
+tenant.explicitly_allowed_models      # => ["gpt-4o", "claude-3-5-sonnet-latest"]
+tenant.explicitly_blocked_models      # => ["gpt-3.5-turbo"]
+```
+
+### Model Restriction Rules
+
+1. If `blocked_models` contains the model → **denied**
+2. If `allowed_models` is empty → **allowed** (no restrictions)
+3. If `allowed_models` has entries → model must be in the list
+
+### Agent Integration
+
+```ruby
+class ModelRestrictedAgent < ApplicationAgent
+  model "gpt-4o"
+
+  before_call :check_model_access
+
+  private
+
+  def check_model_access
+    tenant = RubyLLM::Agents::Tenant.for(tenant_id)
+    return unless tenant&.has_model_restrictions?
+
+    unless tenant.model_allowed?(model_id)
+      raise ModelNotAllowedError, "Model #{model_id} is not available for this tenant"
+    end
+  end
+end
+```
+
+## Per-Tenant API Configuration
+
+The `Configurable` concern allows storing tenant-specific API keys and settings in the database through the `ApiConfiguration` model.
+
+### Setting Up API Keys
+
+```ruby
+tenant = RubyLLM::Agents::Tenant.for("tenant_123")
+
+# Configure API keys using block syntax
+tenant.configure_api do |config|
+  config.openai_api_key = "sk-tenant-specific-key"
+  config.anthropic_api_key = "sk-ant-tenant-key"
+  config.default_model = "gpt-4o"
+end
+
+# Or access configuration directly
+config = tenant.api_configuration!
+config.update!(
+  gemini_api_key: "gemini-key",
+  default_embedding_model: "text-embedding-3-small"
+)
+```
+
+### Querying API Keys
+
+```ruby
+tenant = RubyLLM::Agents::Tenant.for("tenant_123")
+
+# Check if tenant has custom keys
+tenant.has_custom_api_keys?           # => true
+
+# Get specific provider key
+tenant.api_key_for(:openai)           # => "sk-tenant-specific-key"
+tenant.api_key_for(:anthropic)        # => "sk-ant-tenant-key"
+
+# Check provider configuration
+tenant.provider_configured?(:openai)  # => true
+tenant.provider_configured?(:gemini)  # => false
+
+# List all configured providers
+tenant.configured_providers           # => [:openai, :anthropic]
+
+# Get default models
+tenant.default_model                  # => "gpt-4o"
+tenant.default_embedding_model        # => "text-embedding-3-small"
+```
+
+### Effective Configuration Resolution
+
+The `effective_api_configuration` method returns a resolved configuration that merges tenant settings with global defaults:
+
+```ruby
+# Get resolved configuration (tenant → global DB → RubyLLM config)
+config = tenant.effective_api_configuration
+
+# All settings are resolved with proper fallbacks
+config.openai_api_key        # Tenant's key or global fallback
+config.default_model         # Tenant's default or global
+config.request_timeout       # Tenant's setting or global default
+
+# Apply to RubyLLM for the next request
+config.apply_to_ruby_llm!
+```
+
+### Configuration vs DSL API Keys
+
+There are two ways to configure per-tenant API keys:
+
+| Approach | Storage | Best For |
+|----------|---------|----------|
+| `api_keys:` DSL | Model columns | Keys managed in your application |
+| `Configurable` concern | ApiConfiguration table | Separate key management |
+
+Both can be used together - DSL-configured keys take precedence.
 
 ## Related Pages
 
