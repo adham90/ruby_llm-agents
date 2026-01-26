@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-01-27
+
 ### Added
 
 - **Per-Tenant API Configuration** - New `Configurable` concern for tenant-specific API keys:
@@ -16,21 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `effective_api_configuration` - Get resolved config with fallbacks
   - `configured_providers` - List all configured providers
 
-- **Rate Limiting** - New `Limitable` concern for per-tenant request limits:
-  - `rate_limit_per_minute` / `rate_limit_per_hour` columns
-  - `can_make_request?` - Check if request is within rate limits
-  - `requests_this_minute` / `requests_this_hour` - Current request counts
-  - `remaining_requests_this_minute` / `remaining_requests_this_hour` - Remaining quota
-
-- **Feature Flags** - Per-tenant feature toggles via `Limitable` concern:
-  - `enable_feature!(:name)` / `disable_feature!(:name)` - Toggle features
-  - `feature_enabled?(:name)` - Check if feature is enabled
-  - `enabled_features` / `disabled_features` - List all features
-
-- **Model Restrictions** - Per-tenant model access control via `Limitable` concern:
-  - `allow_model!("model-id")` / `block_model!("model-id")` - Manage restrictions
-  - `model_allowed?("model-id")` - Check if model is allowed
-  - `has_model_restrictions?` - Check if any restrictions are set
+- **Polymorphic Tenant Support** - Flexible tenant associations for any model
 
 ### Changed
 
@@ -39,16 +27,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `Budgetable` concern for budget limits and enforcement
   - Added `Trackable` concern for usage tracking (cost, tokens, executions)
   - Added `Configurable` concern for per-tenant API configuration
-  - Added `Limitable` concern for rate limits, feature flags, and model restrictions
   - New tracking methods: `usage_by_agent`, `usage_by_model`, `usage_by_day`, `recent_executions`, `failed_executions`
   - New status methods: `active?`, `linked?`, `activate!`, `deactivate!`
   - `TenantBudget` is now an alias for backward compatibility (deprecated, will be removed in future major version)
+  - Added tenant table rename to upgrade generator for seamless migration
 
 ### Deprecated
 
 - `RubyLLM::Agents::TenantBudget` - Use `RubyLLM::Agents::Tenant` instead
 - `llm_budget` association in LLMTenant concern - Use `llm_tenant_record` instead
 - `llm_configure_budget` method - Use `llm_configure` instead
+
+### Removed
+
+- `Limitable` concern - Rate limiting, feature flags, and model restrictions removed (may return in a future release)
 
 ## [1.1.0] - 2026-01-26
 
@@ -377,6 +369,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[1.2.0]: https://github.com/adham90/ruby_llm-agents/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/adham90/ruby_llm-agents/compare/v1.0.0...v1.1.0
 [1.0.0-beta.1]: https://github.com/adham90/ruby_llm-agents/compare/v0.5.0...v1.0.0-beta.1
 [0.5.0]: https://github.com/adham90/ruby_llm-agents/compare/v0.4.0...v0.5.0
