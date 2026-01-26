@@ -34,18 +34,14 @@ Convert audio files to text using speech recognition models.
 # Generate a transcriber
 rails generate ruby_llm_agents:transcriber meeting
 
-# app/llm/audio/transcribers/meeting_transcriber.rb
-module LLM
-  module Audio
-    class MeetingTranscriber < ApplicationTranscriber
-      model "whisper-1"
-      language "en"
-    end
-  end
+# app/agents/audio/meeting_transcriber.rb
+class MeetingTranscriber < ApplicationTranscriber
+  model "whisper-1"
+  language "en"
 end
 
 # Usage
-result = LLM::Audio::MeetingTranscriber.call(audio: "meeting.mp3")
+result = Audio::MeetingTranscriber.call(audio: "meeting.mp3")
 result.text           # "Hello, welcome to the meeting..."
 result.audio_duration # 120.5 (seconds)
 result.total_cost     # 0.012
@@ -54,9 +50,7 @@ result.total_cost     # 0.012
 ### Transcriber DSL
 
 ```ruby
-module LLM
-  module Audio
-    class MyTranscriber < ApplicationTranscriber
+class MyTranscriber < ApplicationTranscriber
   # Model selection
   model "whisper-1"              # Default transcription model
   # Alternatives: "gpt-4o-transcribe", "gpt-4o-mini-transcribe"
@@ -80,13 +74,11 @@ module LLM
   end
 
   # Optional: Post-process transcription
-      def postprocess_text(text)
-        text
-          .gsub(/\bum\b/i, '')       # Remove filler words
-          .gsub(/\buh\b/i, '')
-          .squeeze(' ')
-      end
-    end
+  def postprocess_text(text)
+    text
+      .gsub(/\bum\b/i, '')       # Remove filler words
+      .gsub(/\buh\b/i, '')
+      .squeeze(' ')
   end
 end
 ```
@@ -95,40 +87,36 @@ end
 
 ```ruby
 # From file path
-result = LLM::Audio::MeetingTranscriber.call(audio: "meeting.mp3")
+result = Audio::MeetingTranscriber.call(audio: "meeting.mp3")
 
 # From URL
-result = LLM::Audio::MeetingTranscriber.call(audio: "https://example.com/audio.mp3")
+result = Audio::MeetingTranscriber.call(audio: "https://example.com/audio.mp3")
 
 # From File object
-result = LLM::Audio::MeetingTranscriber.call(audio: File.open("meeting.mp3"))
+result = Audio::MeetingTranscriber.call(audio: File.open("meeting.mp3"))
 
 # From binary data with format hint
-result = LLM::Audio::MeetingTranscriber.call(audio: audio_blob, format: :mp3)
+result = Audio::MeetingTranscriber.call(audio: audio_blob, format: :mp3)
 ```
 
 ### Reliability Configuration
 
 ```ruby
-module LLM
-  module Audio
-    class ReliableTranscriber < ApplicationTranscriber
-      model "gpt-4o-transcribe"
+class ReliableTranscriber < ApplicationTranscriber
+  model "gpt-4o-transcribe"
 
-      reliability do
-        retry_on_failure max_attempts: 3
-      end
-
-      fallback_models "whisper-1", "gpt-4o-mini-transcribe"
-    end
+  reliability do
+    retry_on_failure max_attempts: 3
   end
+
+  fallback_models "whisper-1", "gpt-4o-mini-transcribe"
 end
 ```
 
 ### TranscriptionResult
 
 ```ruby
-result = LLM::Audio::MeetingTranscriber.call(audio: "meeting.mp3")
+result = Audio::MeetingTranscriber.call(audio: "meeting.mp3")
 
 # Text content
 result.text              # Full transcription text
@@ -166,16 +154,12 @@ result.text_between(10, 60)    # Get text in time range
 ### Subtitle Generation
 
 ```ruby
-module LLM
-  module Audio
-    class SubtitleTranscriber < ApplicationTranscriber
-      model "whisper-1"
-      include_timestamps :segment
-    end
-  end
+class SubtitleTranscriber < ApplicationTranscriber
+  model "whisper-1"
+  include_timestamps :segment
 end
 
-result = LLM::Audio::SubtitleTranscriber.call(audio: "video.mp4")
+result = Audio::SubtitleTranscriber.call(audio: "video.mp4")
 
 # Save as SRT (for video players)
 File.write("captions.srt", result.srt)
@@ -218,19 +202,15 @@ Generate natural speech audio from text.
 # Generate a speaker
 rails generate ruby_llm_agents:speaker narrator
 
-# app/llm/audio/speakers/narrator_speaker.rb
-module LLM
-  module Audio
-    class NarratorSpeaker < ApplicationSpeaker
-      provider :openai
-      model "tts-1"
-      voice "nova"
-    end
-  end
+# app/agents/audio/narrator_speaker.rb
+class NarratorSpeaker < ApplicationSpeaker
+  provider :openai
+  model "tts-1"
+  voice "nova"
 end
 
 # Usage
-result = LLM::Audio::NarratorSpeaker.call(text: "Hello, world!")
+result = Audio::NarratorSpeaker.call(text: "Hello, world!")
 result.audio          # Binary audio data
 result.save_to("output.mp3")
 ```
@@ -238,9 +218,7 @@ result.save_to("output.mp3")
 ### Speaker DSL
 
 ```ruby
-module LLM
-  module Audio
-    class MyNarrator < ApplicationSpeaker
+class MyNarrator < ApplicationSpeaker
   # Provider selection
   provider :openai              # :openai, :elevenlabs
 
@@ -264,13 +242,11 @@ module LLM
   cache_for 7.days              # Enable caching
 
   # Custom pronunciation lexicon
-      lexicon do
-        pronounce "API", "A P I"
-        pronounce "SQL", "sequel"
-        pronounce "RubyLLM", "ruby L L M"
-        pronounce "nginx", "engine-X"
-      end
-    end
+  lexicon do
+    pronounce "API", "A P I"
+    pronounce "SQL", "sequel"
+    pronounce "RubyLLM", "ruby L L M"
+    pronounce "nginx", "engine-X"
   end
 end
 ```
@@ -278,7 +254,7 @@ end
 ### SpeechResult
 
 ```ruby
-result = LLM::Audio::ArticleNarrator.call(text: "Hello!")
+result = Audio::ArticleNarrator.call(text: "Hello!")
 
 # Audio data
 result.audio          # Binary audio data
@@ -310,23 +286,19 @@ result.success?       # true if no error
 ### Streaming Audio
 
 ```ruby
-module LLM
-  module Audio
-    class StreamingNarrator < ApplicationSpeaker
-      provider :elevenlabs
-      voice "Rachel"
-      streaming true
-    end
-  end
+class StreamingNarrator < ApplicationSpeaker
+  provider :elevenlabs
+  voice "Rachel"
+  streaming true
 end
 
 # Stream to audio player
-LLM::Audio::StreamingNarrator.stream(text: "Long article...") do |chunk|
+Audio::StreamingNarrator.stream(text: "Long article...") do |chunk|
   audio_player.play(chunk.audio)
 end
 
 # Force streaming on any speaker
-LLM::Audio::ArticleNarrator.stream(text: "Hello!") do |chunk|
+Audio::ArticleNarrator.stream(text: "Hello!") do |chunk|
   buffer << chunk.audio
 end
 ```
@@ -334,21 +306,17 @@ end
 ### ElevenLabs Configuration
 
 ```ruby
-module LLM
-  module Audio
-    class PremiumNarrator < ApplicationSpeaker
-      provider :elevenlabs
-      model "eleven_multilingual_v2"
-      voice_id "21m00Tcm4TlvDq8ikWAM"
+class PremiumNarrator < ApplicationSpeaker
+  provider :elevenlabs
+  model "eleven_multilingual_v2"
+  voice_id "21m00Tcm4TlvDq8ikWAM"
 
-      # Voice settings specific to ElevenLabs
-      voice_settings do
-        stability 0.5            # 0-1: Lower = more expressive
-        similarity_boost 0.75    # 0-1: Higher = closer to original voice
-        style 0.5                # 0-1: Style exaggeration
-        speaker_boost true       # Enhance speaker clarity
-      end
-    end
+  # Voice settings specific to ElevenLabs
+  voice_settings do
+    stability 0.5            # 0-1: Lower = more expressive
+    similarity_boost 0.75    # 0-1: Higher = closer to original voice
+    style 0.5                # 0-1: Style exaggeration
+    speaker_boost true       # Enhance speaker clarity
   end
 end
 ```
@@ -356,19 +324,15 @@ end
 ### Reliability Configuration
 
 ```ruby
-module LLM
-  module Audio
-    class ReliableSpeaker < ApplicationSpeaker
-      provider :elevenlabs
-      voice "Rachel"
+class ReliableSpeaker < ApplicationSpeaker
+  provider :elevenlabs
+  voice "Rachel"
 
-      reliability do
-        retry_on_failure max_attempts: 3
-      end
-
-      fallback_models "tts-1-hd", "tts-1"
-    end
+  reliability do
+    retry_on_failure max_attempts: 3
   end
+
+  fallback_models "tts-1-hd", "tts-1"
 end
 ```
 
@@ -390,8 +354,8 @@ rails generate ruby_llm_agents:transcriber meeting --cache 30.days
 ```
 
 This creates:
-- `app/llm/audio/transcribers/application_transcriber.rb` (if not exists)
-- `app/llm/audio/transcribers/meeting_transcriber.rb`
+- `app/agents/audio/application_transcriber.rb` (if not exists)
+- `app/agents/audio/meeting_transcriber.rb`
 
 ### Generate a Speaker
 
@@ -408,8 +372,8 @@ rails generate ruby_llm_agents:speaker narrator --cache 7.days
 ```
 
 This creates:
-- `app/llm/audio/speakers/application_speaker.rb` (if not exists)
-- `app/llm/audio/speakers/narrator_speaker.rb`
+- `app/agents/audio/application_speaker.rb` (if not exists)
+- `app/agents/audio/narrator_speaker.rb`
 
 ---
 
@@ -481,17 +445,17 @@ Audio operations fully support multi-tenancy:
 
 ```ruby
 # Using resolver
-result = LLM::Audio::MeetingTranscriber.call(audio: "meeting.mp3")
+result = Audio::MeetingTranscriber.call(audio: "meeting.mp3")
 # Automatically uses Current.tenant if configured
 
 # Explicit tenant
-result = LLM::Audio::MeetingTranscriber.call(
+result = Audio::MeetingTranscriber.call(
   audio: "meeting.mp3",
   tenant: "acme_corp"
 )
 
 # Tenant with budget limits
-result = LLM::Audio::ArticleNarrator.call(
+result = Audio::ArticleNarrator.call(
   text: "Hello world",
   tenant: {
     id: "acme_corp",
@@ -508,28 +472,24 @@ result = LLM::Audio::ArticleNarrator.call(
 ### Meeting Transcription
 
 ```ruby
-module LLM
-  module Audio
-    class MeetingTranscriber < ApplicationTranscriber
-      model "whisper-1"
-      language "en"
-      include_timestamps :segment
+class MeetingTranscriber < ApplicationTranscriber
+  model "whisper-1"
+  language "en"
+  include_timestamps :segment
 
-      def prompt
-        "Business meeting with technical discussions about software"
-      end
+  def prompt
+    "Business meeting with technical discussions about software"
+  end
 
-      def postprocess_text(text)
-        text
-          .gsub(/\bum\b/i, '')
-          .gsub(/\buh\b/i, '')
-          .squeeze(' ')
-      end
-    end
+  def postprocess_text(text)
+    text
+      .gsub(/\bum\b/i, '')
+      .gsub(/\buh\b/i, '')
+      .squeeze(' ')
   end
 end
 
-result = LLM::Audio::MeetingTranscriber.call(audio: "meeting.mp3")
+result = Audio::MeetingTranscriber.call(audio: "meeting.mp3")
 puts result.text
 puts "Duration: #{result.audio_duration} seconds"
 puts "Cost: $#{result.total_cost}"
@@ -538,23 +498,19 @@ puts "Cost: $#{result.total_cost}"
 ### Article Narration
 
 ```ruby
-module LLM
-  module Audio
-    class ArticleNarrator < ApplicationSpeaker
-      provider :openai
-      model "tts-1-hd"
-      voice "nova"
-      speed 1.1
+class ArticleNarrator < ApplicationSpeaker
+  provider :openai
+  model "tts-1-hd"
+  voice "nova"
+  speed 1.1
 
-      lexicon do
-        pronounce "API", "A P I"
-        pronounce "JSON", "jay-son"
-      end
-    end
+  lexicon do
+    pronounce "API", "A P I"
+    pronounce "JSON", "jay-son"
   end
 end
 
-result = LLM::Audio::ArticleNarrator.call(text: article_content)
+result = Audio::ArticleNarrator.call(text: article_content)
 result.save_to("article_audio.mp3")
 puts "Duration: #{result.duration} seconds"
 puts "Cost: $#{result.total_cost}"
@@ -566,13 +522,13 @@ puts "Cost: $#{result.total_cost}"
 class VoiceAssistant
   def process_query(audio_file)
     # 1. Transcribe user's voice
-    transcription = LLM::Audio::QueryTranscriber.call(audio: audio_file)
+    transcription = Audio::QueryTranscriber.call(audio: audio_file)
 
     # 2. Process with AI agent
     response = LLM::AssistantAgent.call(query: transcription.text)
 
     # 3. Convert response to speech
-    speech = LLM::Audio::ResponseSpeaker.call(text: response.content)
+    speech = Audio::ResponseSpeaker.call(text: response.content)
 
     {
       transcription: transcription,

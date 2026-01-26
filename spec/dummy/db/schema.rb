@@ -90,8 +90,9 @@ ActiveRecord::Schema.define do
     t.string :tenant_id
 
     # Polymorphic association to tenant model (for llm_tenant DSL)
+    # Uses string type for tenant_record_id to support both integer and UUID primary keys
     t.string :tenant_record_type
-    t.bigint :tenant_record_id
+    t.string :tenant_record_id
 
     # Messages summary for conversation context
     t.integer :messages_count, null: false, default: 0
@@ -144,8 +145,9 @@ ActiveRecord::Schema.define do
     t.boolean :inherit_global_defaults, default: true
 
     # Polymorphic association to tenant model
+    # Uses string type for tenant_record_id to support both integer and UUID primary keys
     t.string :tenant_record_type
-    t.bigint :tenant_record_id
+    t.string :tenant_record_id
 
     t.timestamps
   end

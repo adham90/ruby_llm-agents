@@ -1,12 +1,13 @@
 # frozen_string_literal: true
 
-# Migration to add tenant_id column to executions for multi-tenancy support
+# Migration to add tenant columns to executions for multi-tenancy support
 #
-# This migration adds a tenant_id column to track which tenant each execution
+# This migration adds tenant columns to track which tenant each execution
 # belongs to, enabling:
 # - Filtering executions by tenant
 # - Tenant-scoped analytics and reporting
 # - Per-tenant budget tracking and circuit breakers
+# - Polymorphic association with tenant models (e.g., Organization, Account)
 #
 # Run with: rails db:migrate
 class AddTenantIdToRubyLLMAgentsExecutions < ActiveRecord::Migration<%= migration_version %>
@@ -14,10 +15,20 @@ class AddTenantIdToRubyLLMAgentsExecutions < ActiveRecord::Migration<%= migratio
     # Add tenant_id column (nullable for backward compatibility)
     add_column :ruby_llm_agents_executions, :tenant_id, :string
 
+    # Polymorphic association to tenant model (for llm_tenant DSL)
+    # Uses string type for tenant_record_id to support both integer and UUID primary keys
+    add_column :ruby_llm_agents_executions, :tenant_record_type, :string
+    add_column :ruby_llm_agents_executions, :tenant_record_id, :string
+
     # Add indexes for efficient tenant-scoped queries
     add_index :ruby_llm_agents_executions, :tenant_id
     add_index :ruby_llm_agents_executions, [:tenant_id, :created_at]
     add_index :ruby_llm_agents_executions, [:tenant_id, :agent_type]
     add_index :ruby_llm_agents_executions, [:tenant_id, :status]
+
+    # Index for polymorphic tenant record lookup
+    add_index :ruby_llm_agents_executions,
+              [:tenant_record_type, :tenant_record_id],
+              name: "index_executions_on_tenant_record"
   end
 end

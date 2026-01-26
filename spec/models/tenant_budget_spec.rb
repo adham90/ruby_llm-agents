@@ -635,6 +635,120 @@ RSpec.describe RubyLLM::Agents::TenantBudget, type: :model do
     end
   end
 
+  describe "polymorphic tenant_record association" do
+    # Create a test model class for testing polymorphic associations
+    before(:all) do
+      ActiveRecord::Base.connection.execute <<-SQL
+        CREATE TABLE IF NOT EXISTS budget_test_accounts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name VARCHAR(255),
+          created_at DATETIME,
+          updated_at DATETIME
+        )
+      SQL
+
+      unless Object.const_defined?(:BudgetTestAccount)
+        Object.const_set(:BudgetTestAccount, Class.new(ActiveRecord::Base) do
+          self.table_name = "budget_test_accounts"
+
+          include RubyLLM::Agents::LLMTenant
+        end)
+      end
+    end
+
+    after(:all) do
+      ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS budget_test_accounts")
+      Object.send(:remove_const, :BudgetTestAccount) if Object.const_defined?(:BudgetTestAccount)
+    end
+
+    let(:account) { BudgetTestAccount.create!(name: "Test Account") }
+
+    it "can be created with a polymorphic tenant_record" do
+      budget = described_class.create!(
+        tenant_id: "account_#{account.id}",
+        tenant_record: account,
+        daily_limit: 100.0
+      )
+
+      expect(budget.tenant_record_type).to eq("BudgetTestAccount")
+      # tenant_record_id is stored as string to support both integer and UUID primary keys
+      expect(budget.tenant_record_id).to eq(account.id.to_s)
+      expect(budget.tenant_record).to eq(account)
+    end
+
+    it "persists and loads the polymorphic association correctly" do
+      budget = described_class.create!(
+        tenant_id: "persist_test_#{account.id}",
+        tenant_record: account,
+        daily_limit: 50.0
+      )
+
+      reloaded = described_class.find(budget.id)
+      expect(reloaded.tenant_record).to eq(account)
+      expect(reloaded.tenant_record_type).to eq("BudgetTestAccount")
+      # tenant_record_id is stored as string to support both integer and UUID primary keys
+      expect(reloaded.tenant_record_id).to eq(account.id.to_s)
+    end
+
+    describe ".for_tenant with polymorphic record" do
+      let(:account_with_budget) { BudgetTestAccount.create!(name: "Account With Budget") }
+
+      before do
+        described_class.create!(
+          tenant_id: account_with_budget.id.to_s,
+          tenant_record: account_with_budget,
+          daily_limit: 75.0
+        )
+      end
+
+      it "finds budget by polymorphic tenant_record" do
+        found = described_class.for_tenant(account_with_budget)
+        expect(found).to be_present
+        expect(found.daily_limit).to eq(75.0)
+        expect(found.tenant_record).to eq(account_with_budget)
+      end
+
+      it "queries polymorphic association first" do
+        # Verify that for_tenant queries the polymorphic association before tenant_id
+        # by checking the order of find_by calls
+        expect(described_class).to receive(:find_by).with(tenant_record: account_with_budget).and_call_original
+
+        found = described_class.for_tenant(account_with_budget)
+        expect(found).to be_present
+        expect(found.tenant_record).to eq(account_with_budget)
+      end
+
+      it "falls back to tenant_id when no polymorphic match exists" do
+        other_account = BudgetTestAccount.create!(name: "Other Account")
+
+        # Create budget with only tenant_id (no polymorphic association)
+        described_class.create!(
+          tenant_id: other_account.id.to_s,
+          tenant_record: nil,
+          daily_limit: 30.0
+        )
+
+        found = described_class.for_tenant(other_account)
+        expect(found).to be_present
+        expect(found.daily_limit).to eq(30.0)
+        expect(found.tenant_record).to be_nil
+      end
+    end
+
+    it "allows budget without polymorphic association (tenant_id only)" do
+      budget = described_class.create!(
+        tenant_id: "standalone_tenant",
+        tenant_record: nil,
+        daily_limit: 200.0
+      )
+
+      expect(budget).to be_persisted
+      expect(budget.tenant_record).to be_nil
+      expect(budget.tenant_record_type).to be_nil
+      expect(budget.tenant_record_id).to be_nil
+    end
+  end
+
   describe "table name" do
     it "uses the correct table name" do
       expect(described_class.table_name).to eq("ruby_llm_agents_tenant_budgets")

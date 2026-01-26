@@ -19,15 +19,11 @@ The `Embedder` base class provides a DSL for creating embedding generators with:
 rails generate ruby_llm_agents:embedder Document
 ```
 
-This creates `app/llm/text/embedders/document_embedder.rb`:
+This creates `app/agents/embedders/document_embedder.rb`:
 
 ```ruby
-module LLM
-  module Text
-    class DocumentEmbedder < ApplicationEmbedder
-      model "text-embedding-3-small"
-    end
-  end
+class DocumentEmbedder < ApplicationEmbedder
+  model "text-embedding-3-small"
 end
 ```
 
@@ -35,14 +31,14 @@ end
 
 ```ruby
 # Single text
-result = LLM::Text::DocumentEmbedder.call(text: "Ruby is a great language")
+result = Embedders::DocumentEmbedder.call(text: "Ruby is a great language")
 result.vector        # [0.123, -0.456, 0.789, ...]
 result.dimensions    # 1536
 result.input_tokens  # 6
 result.total_cost    # 0.00001
 
 # Multiple texts (batch)
-result = LLM::Text::DocumentEmbedder.call(texts: [
+result = Embedders::DocumentEmbedder.call(texts: [
   "First document",
   "Second document",
   "Third document"
@@ -56,16 +52,12 @@ result.count    # 3
 ### Model Selection
 
 ```ruby
-module LLM
-  module Text
-    class DocumentEmbedder < ApplicationEmbedder
-      model "text-embedding-3-small"  # OpenAI small
-      # or
-      model "text-embedding-3-large"  # OpenAI large
-      # or
-      model "text-embedding-004"      # Google
-    end
-  end
+class DocumentEmbedder < ApplicationEmbedder
+  model "text-embedding-3-small"  # OpenAI small
+  # or
+  model "text-embedding-3-large"  # OpenAI large
+  # or
+  model "text-embedding-004"      # Google
 end
 ```
 
@@ -74,13 +66,9 @@ end
 Some models support reducing dimensions for more efficient storage:
 
 ```ruby
-module LLM
-  module Text
-    class CompactEmbedder < ApplicationEmbedder
-      model "text-embedding-3-small"
-      dimensions 512  # Reduce from 1536 to 512
-    end
-  end
+class CompactEmbedder < ApplicationEmbedder
+  model "text-embedding-3-small"
+  dimensions 512  # Reduce from 1536 to 512
 end
 ```
 
@@ -89,13 +77,9 @@ end
 Control how many texts are sent per API call:
 
 ```ruby
-module LLM
-  module Text
-    class BulkEmbedder < ApplicationEmbedder
-      model "text-embedding-3-small"
-      batch_size 50  # Default is 100
-    end
-  end
+class BulkEmbedder < ApplicationEmbedder
+  model "text-embedding-3-small"
+  batch_size 50  # Default is 100
 end
 ```
 
@@ -104,13 +88,9 @@ end
 Same text always produces the same embedding, so caching is very effective:
 
 ```ruby
-module LLM
-  module Text
-    class CachedEmbedder < ApplicationEmbedder
-      model "text-embedding-3-small"
-      cache_for 1.week
-    end
-  end
+class CachedEmbedder < ApplicationEmbedder
+  model "text-embedding-3-small"
+  cache_for 1.week
 end
 ```
 
@@ -119,19 +99,15 @@ end
 Override the `preprocess` method to normalize text before embedding:
 
 ```ruby
-module LLM
-  module Text
-    class CleanEmbedder < ApplicationEmbedder
-      model "text-embedding-3-small"
+class CleanEmbedder < ApplicationEmbedder
+  model "text-embedding-3-small"
 
-      def preprocess(text)
-        text
-          .strip
-          .downcase
-          .gsub(/\s+/, ' ')
-          .truncate(8000)  # Model limit
-      end
-    end
+  def preprocess(text)
+    text
+      .strip
+      .downcase
+      .gsub(/\s+/, ' ')
+      .truncate(8000)  # Model limit
   end
 end
 ```
@@ -141,7 +117,7 @@ end
 The result object provides access to vectors and metadata:
 
 ```ruby
-result = LLM::Text::MyEmbedder.call(text: "Hello world")
+result = Embedders::MyEmbedder.call(text: "Hello world")
 
 # Vectors
 result.vector           # Single vector (for single text)
@@ -172,8 +148,8 @@ Built-in cosine similarity for comparing embeddings:
 
 ```ruby
 # Compare two results
-result1 = LLM::Text::MyEmbedder.call(text: "Ruby programming")
-result2 = LLM::Text::MyEmbedder.call(text: "Python programming")
+result1 = Embedders::MyEmbedder.call(text: "Ruby programming")
+result2 = Embedders::MyEmbedder.call(text: "Python programming")
 
 similarity = result1.similarity(result2)
 # => 0.85 (high similarity)
@@ -188,7 +164,7 @@ batch.similarity(other, index: 2)
 ### Finding Similar Items
 
 ```ruby
-query = LLM::Text::MyEmbedder.call(text: "How to deploy Rails apps?")
+query = Embedders::MyEmbedder.call(text: "How to deploy Rails apps?")
 document_vectors = documents.map(&:embedding)
 
 similar = query.most_similar(document_vectors, limit: 5)
@@ -202,7 +178,7 @@ For large datasets, use the block form for progress tracking:
 ```ruby
 texts = Article.pluck(:content)  # 10,000 documents
 
-result = LLM::Text::BulkEmbedder.call(texts: texts) do |batch_result, index|
+result = Embedders::BulkEmbedder.call(texts: texts) do |batch_result, index|
   puts "Processed batch #{index}: #{batch_result.count} texts"
   # Update progress bar, etc.
 end
@@ -217,19 +193,19 @@ Override class settings at call time:
 
 ```ruby
 # Override model
-result = LLM::Text::DocumentEmbedder.call(
+result = Embedders::DocumentEmbedder.call(
   text: "Hello",
   model: "text-embedding-3-large"
 )
 
 # Override dimensions
-result = LLM::Text::DocumentEmbedder.call(
+result = Embedders::DocumentEmbedder.call(
   text: "Hello",
   dimensions: 256
 )
 
 # With tenant for multi-tenancy
-result = LLM::Text::DocumentEmbedder.call(
+result = Embedders::DocumentEmbedder.call(
   text: "Hello",
   tenant: current_organization
 )
@@ -238,25 +214,21 @@ result = LLM::Text::DocumentEmbedder.call(
 ## Semantic Search Example
 
 ```ruby
-module LLM
-  module Text
-    class SearchEmbedder < ApplicationEmbedder
-      model "text-embedding-3-small"
-      dimensions 512
-      cache_for 1.day
-    end
-  end
+class SearchEmbedder < ApplicationEmbedder
+  model "text-embedding-3-small"
+  dimensions 512
+  cache_for 1.day
 end
 
 # Index documents (run once)
 Document.find_each do |doc|
-  result = LLM::Text::SearchEmbedder.call(text: doc.content)
+  result = Embedders::SearchEmbedder.call(text: doc.content)
   doc.update!(embedding: result.vector)
 end
 
 # Search
 def search(query)
-  query_result = LLM::Text::SearchEmbedder.call(text: query)
+  query_result = Embedders::SearchEmbedder.call(text: query)
 
   # Using pgvector
   Document
@@ -268,44 +240,38 @@ end
 ## RAG Pipeline Example
 
 ```ruby
-module LLM
-  module Text
-    class RAGEmbedder < ApplicationEmbedder
-      model "text-embedding-3-small"
+class RAGEmbedder < ApplicationEmbedder
+  model "text-embedding-3-small"
 
-      def preprocess(text)
-        text.strip.gsub(/\s+/, ' ').truncate(8000)
-      end
-    end
+  def preprocess(text)
+    text.strip.gsub(/\s+/, ' ').truncate(8000)
   end
 end
 
-module LLM
-  class RAGAgent < ApplicationAgent
-    model 'gpt-4o'
-    param :question, required: true
+class RAGAgent < ApplicationAgent
+  model 'gpt-4o'
+  param :question, required: true
 
-    def system_prompt
-      context = retrieve_context(question)
-      <<~PROMPT
-        Answer based on this context:
-        #{context}
+  def system_prompt
+    context = retrieve_context(question)
+    <<~PROMPT
+      Answer based on this context:
+      #{context}
 
-        If the answer isn't in the context, say "I don't know."
-      PROMPT
-    end
+      If the answer isn't in the context, say "I don't know."
+    PROMPT
+  end
 
-    private
+  private
 
-    def retrieve_context(question)
-      embedding = LLM::Text::RAGEmbedder.call(text: question)
+  def retrieve_context(question)
+    embedding = Embedders::RAGEmbedder.call(text: question)
 
-      chunks = KnowledgeChunk
-        .nearest_neighbors(:embedding, embedding.vector, distance: :cosine)
-        .limit(5)
+    chunks = KnowledgeChunk
+      .nearest_neighbors(:embedding, embedding.vector, distance: :cosine)
+      .limit(5)
 
-      chunks.map(&:content).join("\n\n")
-    end
+    chunks.map(&:content).join("\n\n")
   end
 end
 ```

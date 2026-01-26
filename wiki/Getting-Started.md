@@ -39,7 +39,7 @@ rails db:migrate
 This creates:
 - `db/migrate/xxx_create_ruby_llm_agents_executions.rb` - Database table for tracking
 - `config/initializers/ruby_llm_agents.rb` - Configuration file
-- `app/llm/agents/application_agent.rb` - Base class for your agents
+- `app/agents/application_agent.rb` - Base class for your agents
 - Route mount at `/agents` for the dashboard
 
 ### Step 4: Configure API Keys
@@ -76,34 +76,32 @@ google:
 rails generate ruby_llm_agents:agent Summarizer text:required max_length:500
 ```
 
-This creates `app/llm/agents/summarizer_agent.rb`:
+This creates `app/agents/summarizer_agent.rb`:
 
 ```ruby
-module LLM
-  class SummarizerAgent < ApplicationAgent
-    model "gemini-2.0-flash"
-    temperature 0.0
-    version "1.0"
+class SummarizerAgent < ApplicationAgent
+  model "gemini-2.0-flash"
+  temperature 0.0
+  version "1.0"
 
-    param :text, required: true
-    param :max_length, default: 500
+  param :text, required: true
+  param :max_length, default: 500
 
-    private
+  private
 
-    def system_prompt
-      <<~PROMPT
-        You are a summarization assistant. Create concise summaries
-        that capture the key points while staying under the word limit.
-      PROMPT
-    end
+  def system_prompt
+    <<~PROMPT
+      You are a summarization assistant. Create concise summaries
+      that capture the key points while staying under the word limit.
+    PROMPT
+  end
 
-    def user_prompt
-      <<~PROMPT
-        Summarize the following text in under #{max_length} words:
+  def user_prompt
+    <<~PROMPT
+      Summarize the following text in under #{max_length} words:
 
-        #{text}
-      PROMPT
-    end
+      #{text}
+    PROMPT
   end
 end
 ```
@@ -112,7 +110,7 @@ end
 
 ```ruby
 # In your Rails console or controller
-result = LLM::SummarizerAgent.call(
+result = SummarizerAgent.call(
   text: "Long article text here...",
   max_length: 200
 )

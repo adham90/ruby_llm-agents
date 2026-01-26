@@ -4,72 +4,38 @@ RubyLLM::Agents provides Rails generators to quickly scaffold agents, embedders,
 
 ## Directory Structure
 
-All generated files are organized under a customizable root directory (default: `llm`):
+All generated files are organized under `app/agents/`:
 
 ```
 app/
-└── llm/                              # Root directory (customizable via --root)
-    ├── agents/                       # Core agents
-    │   ├── application_agent.rb
-    │   └── search_agent.rb
+└── agents/                           # Root directory
+    ├── application_agent.rb          # Core agents
+    ├── search_agent.rb
     ├── audio/                        # Audio operations
-    │   ├── speakers/
-    │   │   ├── application_speaker.rb
-    │   │   └── narrator_speaker.rb
-    │   └── transcribers/
-    │       ├── application_transcriber.rb
-    │       └── meeting_transcriber.rb
-    ├── text/                         # Text operations
-    │   └── embedders/
-    │       ├── application_embedder.rb
-    │       └── document_embedder.rb
-    └── image/                        # Image operations
-        ├── generators/
-        │   ├── application_image_generator.rb
-        │   └── logo_generator.rb
-        ├── analyzers/
-        │   ├── application_image_analyzer.rb
-        │   └── product_analyzer.rb
-        ├── editors/
-        │   ├── application_image_editor.rb
-        │   └── photo_editor.rb
-        ├── transformers/
-        │   ├── application_image_transformer.rb
-        │   └── anime_transformer.rb
-        ├── upscalers/
-        │   ├── application_image_upscaler.rb
-        │   └── photo_upscaler.rb
-        ├── variators/
-        │   ├── application_image_variator.rb
-        │   └── logo_variator.rb
-        ├── background_removers/
-        │   ├── application_background_remover.rb
-        │   └── product_background_remover.rb
-        └── pipelines/
-            ├── application_image_pipeline.rb
-            └── product_pipeline.rb
-```
-
-## Customizing the Root Directory
-
-You can customize the root directory using the `--root` option:
-
-```bash
-# Use 'ai' as root (creates app/ai/agents/...)
-rails generate ruby_llm_agents:agent Search --root=ai
-
-# Use 'ml' as root (creates app/ml/agents/...)
-rails generate ruby_llm_agents:agent Search --root=ml
-```
-
-Or configure it globally:
-
-```ruby
-# config/initializers/ruby_llm_agents.rb
-RubyLLM::Agents.configure do |config|
-  config.root_directory = "ai"     # Default: "llm"
-  config.root_namespace = "AI"     # Default: "LLM"
-end
+    │   ├── application_speaker.rb
+    │   ├── narrator_speaker.rb
+    │   ├── application_transcriber.rb
+    │   └── meeting_transcriber.rb
+    ├── embedders/                    # Text embeddings
+    │   ├── application_embedder.rb
+    │   └── document_embedder.rb
+    └── images/                       # Image operations
+        ├── application_image_generator.rb
+        ├── logo_generator.rb
+        ├── application_image_analyzer.rb
+        ├── product_analyzer.rb
+        ├── application_image_editor.rb
+        ├── photo_editor.rb
+        ├── application_image_transformer.rb
+        ├── anime_transformer.rb
+        ├── application_image_upscaler.rb
+        ├── photo_upscaler.rb
+        ├── application_image_variator.rb
+        ├── logo_variator.rb
+        ├── application_background_remover.rb
+        ├── product_background_remover.rb
+        ├── application_image_pipeline.rb
+        └── product_pipeline.rb
 ```
 
 ## Installation Generator
@@ -83,7 +49,7 @@ rails generate ruby_llm_agents:install
 This creates:
 - `db/migrate/xxx_create_ruby_llm_agents_executions.rb` - Execution tracking table
 - `config/initializers/ruby_llm_agents.rb` - Configuration file
-- `app/llm/agents/application_agent.rb` - Base class for agents
+- `app/agents/application_agent.rb` - Base class for agents
 - Mounts dashboard at `/agents` in routes
 
 ## Agent Generator
@@ -99,9 +65,6 @@ rails generate ruby_llm_agents:agent search query:required limit:10
 
 # Nested agent (creates chat/support_agent.rb)
 rails generate ruby_llm_agents:agent chat/support message:required
-
-# With custom root directory
-rails generate ruby_llm_agents:agent search --root=ai
 ```
 
 **Options:**
@@ -112,8 +75,6 @@ rails generate ruby_llm_agents:agent search --root=ai
 | `--temperature` | Temperature (0.0-2.0) | `--temperature 0.7` |
 | `--streaming` | Enable streaming | `--streaming` |
 | `--cache` | Cache duration | `--cache 1.hour` |
-| `--root` | Root directory | `--root=ai` |
-| `--namespace` | Root namespace | `--namespace=AI` |
 
 **Parameter syntax:**
 - `name` - Optional parameter
@@ -143,8 +104,8 @@ rails generate ruby_llm_agents:agent chat \
 ```
 
 **Creates:**
-- `app/llm/agents/application_agent.rb` (if not exists)
-- `app/llm/agents/[name]_agent.rb`
+- `app/agents/application_agent.rb` (if not exists)
+- `app/agents/[name]_agent.rb`
 
 ## Embedder Generator
 
@@ -158,7 +119,6 @@ rails generate ruby_llm_agents:embedder document
 rails generate ruby_llm_agents:embedder document --model text-embedding-3-large
 rails generate ruby_llm_agents:embedder document --dimensions 512
 rails generate ruby_llm_agents:embedder document --cache 1.week
-rails generate ruby_llm_agents:embedder document --root=ai
 ```
 
 **Options:**
@@ -169,12 +129,10 @@ rails generate ruby_llm_agents:embedder document --root=ai
 | `--dimensions` | Vector dimensions | Model default |
 | `--batch-size` | Texts per API call | `100` |
 | `--cache` | Cache duration | None |
-| `--root` | Root directory | `llm` |
-| `--namespace` | Root namespace | `LLM` |
 
 **Creates:**
-- `app/llm/text/embedders/application_embedder.rb` (if not exists)
-- `app/llm/text/embedders/[name]_embedder.rb`
+- `app/agents/embedders/application_embedder.rb` (if not exists)
+- `app/agents/embedders/[name]_embedder.rb`
 
 ## Transcriber Generator
 
@@ -189,7 +147,6 @@ rails generate ruby_llm_agents:transcriber meeting --model gpt-4o-transcribe
 rails generate ruby_llm_agents:transcriber meeting --language es
 rails generate ruby_llm_agents:transcriber meeting --output-format srt
 rails generate ruby_llm_agents:transcriber meeting --cache 30.days
-rails generate ruby_llm_agents:transcriber meeting --root=ai
 ```
 
 **Options:**
@@ -201,15 +158,13 @@ rails generate ruby_llm_agents:transcriber meeting --root=ai
 | `--output-format` | Output format | `text` |
 | `--timestamps` | Timestamp granularity | `none` |
 | `--cache` | Cache duration | None |
-| `--root` | Root directory | `llm` |
-| `--namespace` | Root namespace | `LLM` |
 
 **Output formats:** `text`, `json`, `srt`, `vtt`
 **Timestamp options:** `none`, `segment`, `word`
 
 **Creates:**
-- `app/llm/audio/transcribers/application_transcriber.rb` (if not exists)
-- `app/llm/audio/transcribers/[name]_transcriber.rb`
+- `app/agents/audio/application_transcriber.rb` (if not exists)
+- `app/agents/audio/[name]_transcriber.rb`
 
 ## Speaker Generator
 
@@ -225,7 +180,6 @@ rails generate ruby_llm_agents:speaker narrator --voice alloy
 rails generate ruby_llm_agents:speaker narrator --speed 1.25
 rails generate ruby_llm_agents:speaker narrator --format wav
 rails generate ruby_llm_agents:speaker narrator --cache 7.days
-rails generate ruby_llm_agents:speaker narrator --root=ai
 ```
 
 **Options:**
@@ -239,16 +193,14 @@ rails generate ruby_llm_agents:speaker narrator --root=ai
 | `--format` | Output format | `mp3` |
 | `--streaming` | Enable streaming | `false` |
 | `--cache` | Cache duration | None |
-| `--root` | Root directory | `llm` |
-| `--namespace` | Root namespace | `LLM` |
 
 **Providers:** `openai`, `elevenlabs`
 **OpenAI voices:** `alloy`, `echo`, `fable`, `nova`, `onyx`, `shimmer`
 **Formats:** `mp3`, `wav`, `ogg`, `flac`
 
 **Creates:**
-- `app/llm/audio/speakers/application_speaker.rb` (if not exists)
-- `app/llm/audio/speakers/[name]_speaker.rb`
+- `app/agents/audio/application_speaker.rb` (if not exists)
+- `app/agents/audio/[name]_speaker.rb`
 
 ## Image Operations Generators
 
@@ -266,7 +218,6 @@ rails generate ruby_llm_agents:image_generator logo
 rails generate ruby_llm_agents:image_generator product --model gpt-image-1 --size 1024x1024
 rails generate ruby_llm_agents:image_generator avatar --quality hd --style vivid
 rails generate ruby_llm_agents:image_generator banner --cache 1.day
-rails generate ruby_llm_agents:image_generator logo --root=ai
 ```
 
 **Options:**
@@ -279,12 +230,10 @@ rails generate ruby_llm_agents:image_generator logo --root=ai
 | `--style` | Style (vivid, natural) | `vivid` |
 | `--content_policy` | Content policy level | `standard` |
 | `--cache` | Cache duration | None |
-| `--root` | Root directory | `llm` |
-| `--namespace` | Root namespace | `LLM` |
 
 **Creates:**
-- `app/llm/image/generators/application_image_generator.rb` (if not exists)
-- `app/llm/image/generators/[name]_generator.rb`
+- `app/agents/images/application_image_generator.rb` (if not exists)
+- `app/agents/images/[name]_generator.rb`
 
 ### Image Variator Generator
 
@@ -307,12 +256,10 @@ rails generate ruby_llm_agents:image_variator avatar --variation_strength 0.3
 | `--size` | Output image size | `1024x1024` |
 | `--variation_strength` | Variation strength (0.0-1.0) | `0.5` |
 | `--cache` | Cache duration | None |
-| `--root` | Root directory | `llm` |
-| `--namespace` | Root namespace | `LLM` |
 
 **Creates:**
-- `app/llm/image/variators/application_image_variator.rb` (if not exists)
-- `app/llm/image/variators/[name]_variator.rb`
+- `app/agents/images/application_image_variator.rb` (if not exists)
+- `app/agents/images/[name]_variator.rb`
 
 ### Image Editor Generator
 
@@ -335,12 +282,10 @@ rails generate ruby_llm_agents:image_editor photo --content_policy strict
 | `--size` | Output image size | `1024x1024` |
 | `--content_policy` | Content policy level | `standard` |
 | `--cache` | Cache duration | None |
-| `--root` | Root directory | `llm` |
-| `--namespace` | Root namespace | `LLM` |
 
 **Creates:**
-- `app/llm/image/editors/application_image_editor.rb` (if not exists)
-- `app/llm/image/editors/[name]_editor.rb`
+- `app/agents/images/application_image_editor.rb` (if not exists)
+- `app/agents/images/[name]_editor.rb`
 
 ### Image Transformer Generator
 
@@ -365,12 +310,10 @@ rails generate ruby_llm_agents:image_transformer oil --template "oil painting, {
 | `--template` | Prompt template | None |
 | `--content_policy` | Content policy level | `standard` |
 | `--cache` | Cache duration | None |
-| `--root` | Root directory | `llm` |
-| `--namespace` | Root namespace | `LLM` |
 
 **Creates:**
-- `app/llm/image/transformers/application_image_transformer.rb` (if not exists)
-- `app/llm/image/transformers/[name]_transformer.rb`
+- `app/agents/images/application_image_transformer.rb` (if not exists)
+- `app/agents/images/[name]_transformer.rb`
 
 ### Image Upscaler Generator
 
@@ -393,12 +336,10 @@ rails generate ruby_llm_agents:image_upscaler face --face_enhance
 | `--scale` | Upscale factor (2, 4, 8) | `4` |
 | `--face_enhance` | Enable face enhancement | `false` |
 | `--cache` | Cache duration | None |
-| `--root` | Root directory | `llm` |
-| `--namespace` | Root namespace | `LLM` |
 
 **Creates:**
-- `app/llm/image/upscalers/application_image_upscaler.rb` (if not exists)
-- `app/llm/image/upscalers/[name]_upscaler.rb`
+- `app/agents/images/application_image_upscaler.rb` (if not exists)
+- `app/agents/images/[name]_upscaler.rb`
 
 ### Image Analyzer Generator
 
@@ -425,14 +366,12 @@ rails generate ruby_llm_agents:image_analyzer document --extract_text
 | `--extract_text` | Enable OCR | `false` |
 | `--max_tags` | Maximum tags to return | `10` |
 | `--cache` | Cache duration | None |
-| `--root` | Root directory | `llm` |
-| `--namespace` | Root namespace | `LLM` |
 
 **Analysis types:** `caption`, `detailed`, `tags`, `objects`, `colors`, `all`
 
 **Creates:**
-- `app/llm/image/analyzers/application_image_analyzer.rb` (if not exists)
-- `app/llm/image/analyzers/[name]_analyzer.rb`
+- `app/agents/images/application_image_analyzer.rb` (if not exists)
+- `app/agents/images/[name]_analyzer.rb`
 
 ### Background Remover Generator
 
@@ -457,12 +396,10 @@ rails generate ruby_llm_agents:background_remover photo --refine_edges --return_
 | `--alpha_matting` | Enable alpha matting | `false` |
 | `--return_mask` | Also return segmentation mask | `false` |
 | `--cache` | Cache duration | None |
-| `--root` | Root directory | `llm` |
-| `--namespace` | Root namespace | `LLM` |
 
 **Creates:**
-- `app/llm/image/background_removers/application_background_remover.rb` (if not exists)
-- `app/llm/image/background_removers/[name]_background_remover.rb`
+- `app/agents/images/application_background_remover.rb` (if not exists)
+- `app/agents/images/[name]_background_remover.rb`
 
 ### Image Pipeline Generator
 
@@ -485,14 +422,12 @@ rails generate ruby_llm_agents:image_pipeline full --steps generate,upscale,tran
 | `--steps` | Pipeline steps (comma-separated) | `generate,upscale` |
 | `--stop_on_error` | Stop on first error | `true` |
 | `--cache` | Cache duration | None |
-| `--root` | Root directory | `llm` |
-| `--namespace` | Root namespace | `LLM` |
 
 **Available steps:** `generate`, `upscale`, `transform`, `analyze`, `remove_background`
 
 **Creates:**
-- `app/llm/image/pipelines/application_image_pipeline.rb` (if not exists)
-- `app/llm/image/pipelines/[name]_pipeline.rb`
+- `app/agents/images/application_image_pipeline.rb` (if not exists)
+- `app/agents/images/[name]_pipeline.rb`
 
 ## Upgrade Generator
 
@@ -507,34 +442,27 @@ This adds any missing columns to the executions table for new features.
 
 ## Restructure Generator
 
-Migrate existing apps from the old flat directory structure to the new organized structure:
+Migrate existing apps from the old directory structure to the new organized structure:
 
 ```bash
 rails generate ruby_llm_agents:restructure
 ```
 
 This migrates files from:
-- `app/agents/` → `app/llm/agents/`
-- `app/embedders/` → `app/llm/text/embedders/`
-- `app/speakers/` → `app/llm/audio/speakers/`
-- `app/transcribers/` → `app/llm/audio/transcribers/`
-- `app/image_generators/` → `app/llm/image/generators/`
-- `app/image_variators/` → `app/llm/image/variators/`
-- `app/image_editors/` → `app/llm/image/editors/`
-- `app/image_transformers/` → `app/llm/image/transformers/`
-- `app/image_upscalers/` → `app/llm/image/upscalers/`
-- `app/image_analyzers/` → `app/llm/image/analyzers/`
-- `app/background_removers/` → `app/llm/image/background_removers/`
-- `app/image_pipelines/` → `app/llm/image/pipelines/`
+- `app/llm/agents/` → `app/agents/`
+- `app/llm/text/embedders/` → `app/agents/embedders/`
+- `app/llm/audio/speakers/` → `app/agents/audio/`
+- `app/llm/audio/transcribers/` → `app/agents/audio/`
+- `app/llm/image/generators/` → `app/agents/images/`
+- `app/llm/image/variators/` → `app/agents/images/`
+- `app/llm/image/editors/` → `app/agents/images/`
+- `app/llm/image/transformers/` → `app/agents/images/`
+- `app/llm/image/upscalers/` → `app/agents/images/`
+- `app/llm/image/analyzers/` → `app/agents/images/`
+- `app/llm/image/background_removers/` → `app/agents/images/`
+- `app/llm/image/pipelines/` → `app/agents/images/`
 
-**Options:**
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--root` | New root directory | `llm` |
-| `--namespace` | New root namespace | `LLM` |
-
-**Note:** The restructure generator adds proper namespacing to your classes and updates file paths. Review the changes before committing.
+**Note:** The restructure generator removes the `module LLM` wrapper from classes and updates file paths. Review the changes before committing.
 
 ## Multi-Tenancy Generator
 

@@ -85,7 +85,12 @@ module RubyLLM
 
         if tenant.respond_to?(:llm_tenant_id)
           # Object with llm_tenant DSL - try polymorphic first, then tenant_id
-          find_by(tenant_record: tenant) || find_by(tenant_id: tenant.llm_tenant_id)
+          # Only use polymorphic query if tenant is an ActiveRecord model
+          if tenant.is_a?(::ActiveRecord::Base)
+            find_by(tenant_record: tenant) || find_by(tenant_id: tenant.llm_tenant_id)
+          else
+            find_by(tenant_id: tenant.llm_tenant_id)
+          end
         else
           # String tenant_id
           find_by(tenant_id: tenant.to_s)

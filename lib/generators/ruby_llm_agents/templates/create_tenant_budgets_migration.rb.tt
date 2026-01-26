@@ -36,10 +36,21 @@ class CreateRubyLLMAgentsTenantBudgets < ActiveRecord::Migration<%= migration_ve
       # Whether to inherit from global config for unset limits
       t.boolean :inherit_global_defaults, default: true
 
+      # Polymorphic association to tenant model (e.g., Organization, Account)
+      # Allows direct association with ActiveRecord models using llm_tenant DSL
+      # Uses string type for tenant_record_id to support both integer and UUID primary keys
+      t.string :tenant_record_type
+      t.string :tenant_record_id
+
       t.timestamps
     end
 
     # Ensure unique tenant IDs
     add_index :ruby_llm_agents_tenant_budgets, :tenant_id, unique: true
+
+    # Index for polymorphic tenant record lookup
+    add_index :ruby_llm_agents_tenant_budgets,
+              [:tenant_record_type, :tenant_record_id],
+              name: "index_tenant_budgets_on_tenant_record"
   end
 end

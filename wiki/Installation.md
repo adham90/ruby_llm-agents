@@ -48,7 +48,7 @@ This creates:
 ```
 create  db/migrate/xxx_create_ruby_llm_agents_executions.rb
 create  config/initializers/ruby_llm_agents.rb
-create  app/llm/agents/application_agent.rb
+create  app/agents/application_agent.rb
 insert  config/routes.rb
 ```
 
@@ -113,17 +113,15 @@ You should see the RubyLLM::Agents dashboard.
 
 ```ruby
 # rails console
-module LLM
-  class TestAgent < ApplicationAgent
-    model "gpt-4o-mini"
-    param :message, required: true
-    def user_prompt
-      message
-    end
+class TestAgent < ApplicationAgent
+  model "gpt-4o-mini"
+  param :message, required: true
+  def user_prompt
+    message
   end
 end
 
-result = LLM::TestAgent.call(message: "Hello!")
+result = TestAgent.call(message: "Hello!")
 puts result.content
 ```
 
