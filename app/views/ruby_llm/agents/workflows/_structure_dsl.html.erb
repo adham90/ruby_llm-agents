@@ -11,12 +11,16 @@
   <div class="py-4 overflow-x-auto">
     <div class="flex items-start justify-center gap-2 min-w-max px-4">
       <%
-        # Group steps: sequential steps and parallel groups
+        # Group steps: sequential steps, parallel groups, and wait steps
         current_parallel_group = nil
         grouped_items = []
 
         steps.each do |step|
-          if step[:parallel_group].present?
+          # Check if this is a wait step
+          if step[:type] == :wait
+            current_parallel_group = nil
+            grouped_items << { type: :wait, step: step }
+          elsif step[:parallel_group].present?
             pg = parallel_groups.find { |g| g[:name] == step[:parallel_group] }
             if current_parallel_group != step[:parallel_group]
               current_parallel_group = step[:parallel_group]
@@ -32,7 +36,68 @@
       %>
 
       <% grouped_items.each_with_index do |item, index| %>
-        <% if item[:type] == :step %>
+        <% if item[:type] == :wait %>
+          <!-- Wait Step Box -->
+          <% step = item[:step] %>
+          <%
+            wait_type = step[:wait_type]
+            case wait_type
+            when :delay
+              border_color = "border-teal-300 dark:border-teal-600"
+              bg_color = "bg-teal-50 dark:bg-teal-900/30"
+              text_color = "text-teal-700 dark:text-teal-300"
+              icon_svg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
+              type_label = "delay"
+            when :until
+              border_color = "border-cyan-300 dark:border-cyan-600"
+              bg_color = "bg-cyan-50 dark:bg-cyan-900/30"
+              text_color = "text-cyan-700 dark:text-cyan-300"
+              icon_svg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>'
+              type_label = "poll"
+            when :schedule
+              border_color = "border-indigo-300 dark:border-indigo-600"
+              bg_color = "bg-indigo-50 dark:bg-indigo-900/30"
+              text_color = "text-indigo-700 dark:text-indigo-300"
+              icon_svg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>'
+              type_label = "scheduled"
+            when :approval
+              border_color = "border-orange-300 dark:border-orange-600"
+              bg_color = "bg-orange-50 dark:bg-orange-900/30"
+              text_color = "text-orange-700 dark:text-orange-300"
+              icon_svg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
+              type_label = "approval"
+            else
+              border_color = "border-gray-300 dark:border-gray-600"
+              bg_color = "bg-gray-50 dark:bg-gray-900/30"
+              text_color = "text-gray-700 dark:text-gray-300"
+              icon_svg = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
+              type_label = "wait"
+            end
+          %>
+          <div class="flex flex-col items-center">
+            <div class="w-28 h-16 flex flex-col items-center justify-center rounded-lg border-2 border-dashed <%= border_color %> <%= bg_color %> relative">
+              <!-- Wait type icon -->
+              <div class="absolute -top-2 -right-2 <%= text_color %>">
+                <%= raw icon_svg %>
+              </div>
+              <span class="text-sm font-semibold <%= text_color %> truncate max-w-24 px-1">
+                <%= step[:ui_label] || step[:name].to_s.gsub(/_/, ' ').titleize %>
+              </span>
+              <% if step[:duration] %>
+                <span class="text-[10px] text-gray-500 dark:text-gray-400">
+                  <%= step[:duration].is_a?(Numeric) ? "#{step[:duration]}s" : step[:duration] %>
+                </span>
+              <% elsif step[:timeout] %>
+                <span class="text-[10px] text-gray-500 dark:text-gray-400">
+                  timeout: <%= step[:timeout].is_a?(Numeric) ? "#{step[:timeout]}s" : step[:timeout] %>
+                </span>
+              <% end %>
+            </div>
+            <span class="text-xs <%= text_color %> mt-1">
+              <%= type_label %>
+            </span>
+          </div>
+        <% elsif item[:type] == :step %>
           <% step = item[:step] %>
           <!-- Single Step Box -->
           <div class="flex flex-col items-center">
@@ -180,7 +245,25 @@
       <% steps.each_with_index do |step, index| %>
         <%
           # Determine row styling
-          if step[:routing]
+          if step[:type] == :wait
+            case step[:wait_type]
+            when :delay
+              badge_bg = "bg-teal-100 dark:bg-teal-900/50"
+              badge_text = "text-teal-600 dark:text-teal-300"
+            when :until
+              badge_bg = "bg-cyan-100 dark:bg-cyan-900/50"
+              badge_text = "text-cyan-600 dark:text-cyan-300"
+            when :schedule
+              badge_bg = "bg-indigo-100 dark:bg-indigo-900/50"
+              badge_text = "text-indigo-600 dark:text-indigo-300"
+            when :approval
+              badge_bg = "bg-orange-100 dark:bg-orange-900/50"
+              badge_text = "text-orange-600 dark:text-orange-300"
+            else
+              badge_bg = "bg-gray-100 dark:bg-gray-900/50"
+              badge_text = "text-gray-600 dark:text-gray-300"
+            end
+          elsif step[:routing]
             badge_bg = "bg-amber-100 dark:bg-amber-900/50"
             badge_text = "text-amber-600 dark:text-amber-300"
           elsif step[:parallel_group]
@@ -200,12 +283,18 @@
               <span class="font-medium text-gray-700 dark:text-gray-300">
                 <%= step[:name] %>
               </span>
-              <span class="text-gray-400 dark:text-gray-500 text-sm">-></span>
-              <% if step[:agent] %>
+              <% if step[:type] == :wait %>
+                <span class="text-gray-400 dark:text-gray-500 text-sm">-></span>
+                <span class="text-sm <%= badge_text %> italic">
+                  (<%= step[:wait_type] %> wait)
+                </span>
+              <% elsif step[:agent] %>
+                <span class="text-gray-400 dark:text-gray-500 text-sm">-></span>
                 <code class="text-sm font-mono text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded truncate max-w-xs">
                   <%= step[:agent] %>
                 </code>
               <% else %>
+                <span class="text-gray-400 dark:text-gray-500 text-sm">-></span>
                 <span class="text-sm text-gray-500 dark:text-gray-400 italic">
                   (block)
                 </span>
@@ -241,8 +330,52 @@
                   <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
                   </svg>
-                  <%= step[:timeout] %>s
+                  <%= step[:timeout].is_a?(Numeric) ? "#{step[:timeout]}s" : step[:timeout] %>
                 </span>
+              <% end %>
+
+              <% if step[:type] == :wait %>
+                <% if step[:duration] %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300">
+                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <%= step[:duration].is_a?(Numeric) ? "#{step[:duration]}s" : step[:duration] %>
+                  </span>
+                <% end %>
+
+                <% if step[:poll_interval] %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300">
+                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    poll: <%= step[:poll_interval].is_a?(Numeric) ? "#{step[:poll_interval]}s" : step[:poll_interval] %>
+                  </span>
+                <% end %>
+
+                <% if step[:on_timeout] %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300">
+                    on_timeout: <%= step[:on_timeout] %>
+                  </span>
+                <% end %>
+
+                <% if step[:notify].present? %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
+                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                    </svg>
+                    notify: <%= Array(step[:notify]).join(", ") %>
+                  </span>
+                <% end %>
+
+                <% if step[:approvers].present? %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300">
+                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                    </svg>
+                    <%= Array(step[:approvers]).size %> approver(s)
+                  </span>
+                <% end %>
               <% end %>
             </div>
 
@@ -299,6 +432,100 @@
                   </span>
                 <% end %>
               </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Wait Steps Summary -->
+  <% wait_steps = steps.select { |s| s[:type] == :wait } %>
+  <% if wait_steps.present? %>
+    <div class="border-t border-gray-100 dark:border-gray-700 pt-4 mt-4">
+      <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+        Wait Steps
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <% wait_steps.each do |wait_step| %>
+          <%
+            case wait_step[:wait_type]
+            when :delay
+              bg_color = "bg-teal-50 dark:bg-teal-900/20"
+              border_color = "border-teal-200 dark:border-teal-800"
+              icon_color = "text-teal-600 dark:text-teal-300"
+              icon_bg = "bg-teal-100 dark:bg-teal-900/50"
+              type_label = "Delay"
+            when :until
+              bg_color = "bg-cyan-50 dark:bg-cyan-900/20"
+              border_color = "border-cyan-200 dark:border-cyan-800"
+              icon_color = "text-cyan-600 dark:text-cyan-300"
+              icon_bg = "bg-cyan-100 dark:bg-cyan-900/50"
+              type_label = "Poll Until"
+            when :schedule
+              bg_color = "bg-indigo-50 dark:bg-indigo-900/20"
+              border_color = "border-indigo-200 dark:border-indigo-800"
+              icon_color = "text-indigo-600 dark:text-indigo-300"
+              icon_bg = "bg-indigo-100 dark:bg-indigo-900/50"
+              type_label = "Scheduled"
+            when :approval
+              bg_color = "bg-orange-50 dark:bg-orange-900/20"
+              border_color = "border-orange-200 dark:border-orange-800"
+              icon_color = "text-orange-600 dark:text-orange-300"
+              icon_bg = "bg-orange-100 dark:bg-orange-900/50"
+              type_label = "Approval"
+            else
+              bg_color = "bg-gray-50 dark:bg-gray-900/20"
+              border_color = "border-gray-200 dark:border-gray-800"
+              icon_color = "text-gray-600 dark:text-gray-300"
+              icon_bg = "bg-gray-100 dark:bg-gray-900/50"
+              type_label = "Wait"
+            end
+          %>
+          <div class="flex items-start gap-3 py-2 px-3 rounded-lg <%= bg_color %> border <%= border_color %>">
+            <span class="w-6 h-6 flex items-center justify-center rounded-full <%= icon_bg %> text-xs font-medium <%= icon_color %>">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </span>
+            <div class="flex-1">
+              <div class="flex items-center gap-2">
+                <span class="font-medium <%= icon_color %>">
+                  <%= wait_step[:ui_label] || wait_step[:name] %>
+                </span>
+                <span class="text-xs px-1.5 py-0.5 rounded <%= icon_bg %> <%= icon_color %>">
+                  <%= type_label %>
+                </span>
+              </div>
+              <div class="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                <% if wait_step[:duration] %>
+                  <span>duration: <%= wait_step[:duration].is_a?(Numeric) ? "#{wait_step[:duration]}s" : wait_step[:duration] %></span>
+                <% end %>
+                <% if wait_step[:poll_interval] %>
+                  <span>poll: <%= wait_step[:poll_interval].is_a?(Numeric) ? "#{wait_step[:poll_interval]}s" : wait_step[:poll_interval] %></span>
+                <% end %>
+                <% if wait_step[:timeout] %>
+                  <span>timeout: <%= wait_step[:timeout].is_a?(Numeric) ? "#{wait_step[:timeout]}s" : wait_step[:timeout] %></span>
+                <% end %>
+                <% if wait_step[:on_timeout] %>
+                  <span>on_timeout: <%= wait_step[:on_timeout] %></span>
+                <% end %>
+              </div>
+              <% if wait_step[:notify].present? || wait_step[:approvers].present? %>
+                <div class="flex flex-wrap gap-1 mt-1">
+                  <% if wait_step[:notify].present? %>
+                    <span class="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300 px-1.5 py-0.5 rounded">
+                      notify: <%= Array(wait_step[:notify]).join(", ") %>
+                    </span>
+                  <% end %>
+                  <% if wait_step[:approvers].present? %>
+                    <span class="text-xs bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-300 px-1.5 py-0.5 rounded">
+                      <%= Array(wait_step[:approvers]).size %> approver(s)
+                    </span>
+                  <% end %>
+                </div>
+              <% end %>
             </div>
           </div>
         <% end %>

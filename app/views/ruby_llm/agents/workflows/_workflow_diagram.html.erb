@@ -15,13 +15,17 @@
   input_schema_fields = local_assigns[:input_schema_fields] || {}
   lifecycle_hooks = local_assigns[:lifecycle_hooks] || {}
 
-  # Group steps into sequential items and parallel groups
+  # Group steps into sequential items, parallel groups, and wait steps
   def group_steps(steps, parallel_groups)
     current_parallel_group = nil
     grouped_items = []
 
     steps.each do |step|
-      if step[:parallel_group].present?
+      # Check if this is a wait step
+      if step[:type] == :wait
+        current_parallel_group = nil
+        grouped_items << { type: :wait, step: step }
+      elsif step[:parallel_group].present?
         pg = parallel_groups.find { |g| g[:name].to_s == step[:parallel_group].to_s }
         if current_parallel_group != step[:parallel_group]
           current_parallel_group = step[:parallel_group]
@@ -83,7 +87,124 @@
 
     <!-- Steps Flow -->
     <% grouped_items.each_with_index do |item, index| %>
-      <% if item[:type] == :step %>
+      <% if item[:type] == :wait %>
+        <!-- Wait Step -->
+        <% step = item[:step] %>
+        <%
+          wait_type = step[:wait_type]
+          case wait_type
+          when :delay
+            border_class = "border-teal-400 dark:border-teal-500"
+            bg_class = "bg-teal-50 dark:bg-teal-900/30"
+            text_class = "text-teal-800 dark:text-teal-200"
+            type_label = "Delay"
+            type_icon = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
+          when :until
+            border_class = "border-cyan-400 dark:border-cyan-500"
+            bg_class = "bg-cyan-50 dark:bg-cyan-900/30"
+            text_class = "text-cyan-800 dark:text-cyan-200"
+            type_label = "Poll Until"
+            type_icon = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>'
+          when :schedule
+            border_class = "border-indigo-400 dark:border-indigo-500"
+            bg_class = "bg-indigo-50 dark:bg-indigo-900/30"
+            text_class = "text-indigo-800 dark:text-indigo-200"
+            type_label = "Scheduled"
+            type_icon = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>'
+          when :approval
+            border_class = "border-orange-400 dark:border-orange-500"
+            bg_class = "bg-orange-50 dark:bg-orange-900/30"
+            text_class = "text-orange-800 dark:text-orange-200"
+            type_label = "Approval"
+            type_icon = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
+          else
+            border_class = "border-gray-400 dark:border-gray-500"
+            bg_class = "bg-gray-50 dark:bg-gray-900/30"
+            text_class = "text-gray-800 dark:text-gray-200"
+            type_label = "Wait"
+            type_icon = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
+          end
+        %>
+
+        <!-- Wait Step Card -->
+        <div class="w-full max-w-lg group/step">
+          <div class="relative rounded-xl border-2 border-dashed <%= border_class %> <%= bg_class %> shadow-sm hover:shadow-lg hover:scale-[1.01] transition-all duration-200 p-4">
+            <!-- Wait Type Badge -->
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="w-7 h-7 flex items-center justify-center rounded-full <%= bg_class %> border <%= border_class %>">
+                  <%= raw type_icon %>
+                </span>
+                <span class="font-bold <%= text_class %> text-lg uppercase tracking-tight">
+                  <%= step[:ui_label] || step[:name].to_s.titleize %>
+                </span>
+              </div>
+
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium <%= bg_class %> border <%= border_class %> <%= text_class %>">
+                <%= raw type_icon %>
+                <%= type_label %>
+              </span>
+            </div>
+
+            <!-- Wait Details -->
+            <div class="space-y-2 text-sm">
+              <% if step[:duration] %>
+                <div class="flex items-center gap-2 <%= text_class %>">
+                  <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <span>Duration: <strong><%= step[:duration].is_a?(Numeric) ? "#{step[:duration]}s" : step[:duration] %></strong></span>
+                </div>
+              <% end %>
+
+              <% if step[:poll_interval] %>
+                <div class="flex items-center gap-2 <%= text_class %>">
+                  <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                  <span>Poll every: <strong><%= step[:poll_interval].is_a?(Numeric) ? "#{step[:poll_interval]}s" : step[:poll_interval] %></strong></span>
+                </div>
+              <% end %>
+
+              <% if step[:timeout] %>
+                <div class="flex items-center gap-2 <%= text_class %>">
+                  <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                  <span>Timeout: <strong><%= step[:timeout].is_a?(Numeric) ? "#{step[:timeout]}s" : step[:timeout] %></strong></span>
+                </div>
+              <% end %>
+            </div>
+
+            <!-- Status Indicators -->
+            <div class="flex flex-wrap gap-2 text-xs mt-3">
+              <% if step[:on_timeout] %>
+                <%
+                  timeout_colors = case step[:on_timeout].to_s
+                  when "continue" then "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800"
+                  when "fail" then "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800"
+                  when "skip_next" then "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800"
+                  when "escalate" then "bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800"
+                  else "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600"
+                  end
+                %>
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md <%= timeout_colors %> border">
+                  On timeout: <%= step[:on_timeout] %>
+                </span>
+              <% end %>
+
+              <% if step[:notify].present? %>
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                  Notify: <%= Array(step[:notify]).join(", ") %>
+                </span>
+              <% end %>
+
+              <% if step[:approvers].present? %>
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                  <%= Array(step[:approvers]).size %> approver(s)
+                </span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+      <% elsif item[:type] == :step %>
         <% step = item[:step] %>
         <%
           # Determine step type and styling
@@ -719,6 +840,30 @@
         <div class="flex items-center gap-1.5">
           <div class="w-4 h-4 rounded border-2 border-violet-400 dark:border-violet-500 bg-violet-50 dark:bg-violet-900/30"></div>
           <span>Block</span>
+        </div>
+      <% end %>
+      <% if steps.any? { |s| s[:type] == :wait && s[:wait_type] == :delay } %>
+        <div class="flex items-center gap-1.5">
+          <div class="w-4 h-4 rounded border-2 border-dashed border-teal-400 dark:border-teal-500 bg-teal-50 dark:bg-teal-900/30"></div>
+          <span>Delay</span>
+        </div>
+      <% end %>
+      <% if steps.any? { |s| s[:type] == :wait && s[:wait_type] == :until } %>
+        <div class="flex items-center gap-1.5">
+          <div class="w-4 h-4 rounded border-2 border-dashed border-cyan-400 dark:border-cyan-500 bg-cyan-50 dark:bg-cyan-900/30"></div>
+          <span>Poll Until</span>
+        </div>
+      <% end %>
+      <% if steps.any? { |s| s[:type] == :wait && s[:wait_type] == :schedule } %>
+        <div class="flex items-center gap-1.5">
+          <div class="w-4 h-4 rounded border-2 border-dashed border-indigo-400 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30"></div>
+          <span>Scheduled</span>
+        </div>
+      <% end %>
+      <% if steps.any? { |s| s[:type] == :wait && s[:wait_type] == :approval } %>
+        <div class="flex items-center gap-1.5">
+          <div class="w-4 h-4 rounded border-2 border-dashed border-orange-400 dark:border-orange-500 bg-orange-50 dark:bg-orange-900/30"></div>
+          <span>Approval</span>
         </div>
       <% end %>
       <% if steps.any? { |s| s[:optional] } %>
