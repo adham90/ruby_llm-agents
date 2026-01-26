@@ -1,5 +1,11 @@
 # frozen_string_literal: true
 
+require_relative "../wait_result"
+require_relative "../throttle_manager"
+require_relative "../approval"
+require_relative "../approval_store"
+require_relative "../notifiers"
+
 module RubyLLM
   module Agents
     class Workflow
@@ -21,6 +27,9 @@ module RubyLLM
             @errors = {}
             @status = "success"
             @halted = false
+            @skip_next_step = false
+            @throttle_manager = ThrottleManager.new
+            @wait_results = {}
           end
 
           # Executes all workflow steps
@@ -74,11 +83,21 @@ module RubyLLM
             workflow.class.step_order.each do |item|
               break if @halted
 
+              # Handle skip_next from wait timeout
+              if @skip_next_step
+                @skip_next_step = false
+                next if item.is_a?(Symbol)
+              end
+
               case item
               when Symbol
                 previous_result = execute_single_step(item, previous_result, &block)
               when ParallelGroup
                 previous_result = execute_parallel_group(item, &block)
+              when WaitConfig
+                wait_result = execute_wait_step(item)
+                @wait_results[item.object_id] = wait_result
+                handle_wait_result(wait_result)
               end
             end
           end
@@ -86,6 +105,9 @@ module RubyLLM
           def execute_single_step(step_name, previous_result, &block)
             config = workflow.class.step_configs[step_name]
             return previous_result unless config
+
+            # Apply throttling if configured
+            apply_throttle(step_name, config)
 
             run_hooks(:before_step, step_name, workflow.step_results)
             run_hooks(:on_step_start, step_name, config.resolve_input(workflow, previous_result))
@@ -198,6 +220,60 @@ module RubyLLM
             end
           end
 
+          # Executes a wait step
+          #
+          # @param wait_config [WaitConfig] The wait configuration
+          # @return [WaitResult] The wait result
+          def execute_wait_step(wait_config)
+            executor = WaitExecutor.new(wait_config, workflow)
+            executor.execute
+          rescue StandardError => e
+            # Return a failed result instead of crashing
+            Workflow::WaitResult.timeout(
+              wait_config.type,
+              0,
+              :fail,
+              error: "#{e.class}: #{e.message}"
+            )
+          end
+
+          # Handles the result of a wait step
+          #
+          # @param wait_result [WaitResult] The wait result
+          # @return [void]
+          def handle_wait_result(wait_result)
+            if wait_result.timeout? && wait_result.timeout_action == :fail
+              @status = "error"
+              @halted = true
+              @errors[:wait] = "Wait timed out: #{wait_result.type}"
+            elsif wait_result.rejected?
+              @status = "error"
+              @halted = true
+              @errors[:wait] = "Approval rejected: #{wait_result.rejection_reason}"
+            elsif wait_result.should_skip_next?
+              @skip_next_step = true
+            end
+          end
+
+          # Applies throttling for a step if configured
+          #
+          # @param step_name [Symbol] The step name
+          # @param config [StepConfig] The step configuration
+          # @return [void]
+          def apply_throttle(step_name, config)
+            return unless config.throttled?
+
+            if config.throttle
+              @throttle_manager.throttle("step:#{step_name}", config.throttle)
+            elsif config.rate_limit
+              @throttle_manager.rate_limit(
+                "step:#{step_name}",
+                calls: config.rate_limit[:calls],
+                per: config.rate_limit[:per]
+              )
+            end
+          end
+
           def handle_step_error(step_name, error, config)
             @errors[step_name] = error
 
@@ -307,6 +383,9 @@ module RubyLLM
                   group_content[step_name] = result.respond_to?(:content) ? result.content : result
                 end
                 return group_content if group_content.any?
+              when WaitConfig
+                # Wait steps don't contribute content, skip them
+                next
               end
             end
 

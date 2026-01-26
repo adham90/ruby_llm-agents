@@ -203,6 +203,30 @@ module RubyLLM
             Array(options[:tags])
           end
 
+          # Returns the throttle duration for this step
+          #
+          # @return [Integer, Float, nil] Minimum seconds between executions
+          def throttle
+            value = options[:throttle]
+            return nil unless value
+
+            value.respond_to?(:to_f) ? value.to_f : value
+          end
+
+          # Returns the rate limit configuration for this step
+          #
+          # @return [Hash, nil] Rate limit config with :calls and :per keys
+          def rate_limit
+            options[:rate_limit]
+          end
+
+          # Returns whether this step has throttling enabled
+          #
+          # @return [Boolean]
+          def throttled?
+            throttle.present? || rate_limit.present?
+          end
+
           # Resolves the input for this step
           #
           # @param workflow [Workflow] The workflow instance
@@ -264,7 +288,9 @@ module RubyLLM
               workflow: workflow?,
               iteration: iteration?,
               iteration_concurrency: iteration_concurrency,
-              iteration_fail_fast: iteration_fail_fast?
+              iteration_fail_fast: iteration_fail_fast?,
+              throttle: throttle,
+              rate_limit: rate_limit
             }.compact
           end
 

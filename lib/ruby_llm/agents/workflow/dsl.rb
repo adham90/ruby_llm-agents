@@ -7,6 +7,9 @@ require_relative "dsl/parallel_group"
 require_relative "dsl/input_schema"
 require_relative "dsl/step_executor"
 require_relative "dsl/iteration_executor"
+require_relative "dsl/wait_config"
+require_relative "dsl/wait_executor"
+require_relative "dsl/schedule_helpers"
 
 module RubyLLM
   module Agents
@@ -86,6 +89,13 @@ module RubyLLM
             @parallel_groups ||= []
           end
 
+          # Returns wait step configurations
+          #
+          # @return [Array<WaitConfig>]
+          def wait_configs
+            @wait_configs ||= []
+          end
+
           # Returns the input schema
           #
           # @return [InputSchema, nil]
@@ -106,6 +116,7 @@ module RubyLLM
             subclass.instance_variable_set(:@step_order, step_order.dup)
             subclass.instance_variable_set(:@step_configs, step_configs.dup)
             subclass.instance_variable_set(:@parallel_groups, parallel_groups.dup)
+            subclass.instance_variable_set(:@wait_configs, wait_configs.dup)
             subclass.instance_variable_set(:@input_schema, input_schema&.dup)
             subclass.instance_variable_set(:@output_schema, output_schema&.dup)
             subclass.instance_variable_set(:@lifecycle_hooks, @lifecycle_hooks&.dup || {})
@@ -199,6 +210,73 @@ module RubyLLM
             step_order << group
 
             @_defining_parallel = false
+          end
+
+          # Defines a simple delay wait step
+          #
+          # @param duration [ActiveSupport::Duration, Integer, Float] Duration to wait
+          # @param options [Hash] Wait options (if:, unless:)
+          # @return [void]
+          #
+          # @example Simple delay
+          #   wait 5.seconds
+          #
+          # @example Conditional delay
+          #   wait 5.seconds, if: :needs_cooldown?
+          def wait(duration, **options)
+            config = WaitConfig.new(type: :delay, duration: duration, **options)
+            wait_configs << config
+            step_order << config
+          end
+
+          # Defines a conditional wait step that polls until a condition is met
+          #
+          # @param condition [Proc, nil] Lambda that returns true when ready to proceed
+          # @param time [Proc, Time, nil] Time to wait until (for scheduled waits)
+          # @param options [Hash] Wait options (poll_interval:, timeout:, on_timeout:, backoff:)
+          # @yield Block as condition (alternative to condition param)
+          # @return [void]
+          #
+          # @example Wait until condition
+          #   wait_until -> { payment.confirmed? }, poll_interval: 5.seconds, timeout: 10.minutes
+          #
+          # @example With block
+          #   wait_until(poll_interval: 1.second) { order.ready? }
+          #
+          # @example Wait until specific time
+          #   wait_until time: -> { next_weekday_at(9, 0) }
+          def wait_until(condition = nil, time: nil, **options, &block)
+            condition ||= block
+
+            if time
+              config = WaitConfig.new(type: :schedule, condition: time, **options)
+            else
+              config = WaitConfig.new(type: :until, condition: condition, **options)
+            end
+
+            wait_configs << config
+            step_order << config
+          end
+
+          # Defines a human-in-the-loop approval wait step
+          #
+          # @param name [Symbol] Identifier for the approval point
+          # @param options [Hash] Approval options (notify:, message:, timeout:, approvers:, etc.)
+          # @return [void]
+          #
+          # @example Simple approval
+          #   wait_for :manager_approval
+          #
+          # @example With notifications and timeout
+          #   wait_for :review,
+          #     notify: [:email, :slack],
+          #     message: -> { "Please review: #{draft.title}" },
+          #     timeout: 24.hours,
+          #     reminder_after: 4.hours
+          def wait_for(name, **options)
+            config = WaitConfig.new(type: :approval, name: name, **options)
+            wait_configs << config
+            step_order << config
           end
 
           # Defines the input schema
@@ -308,7 +386,9 @@ module RubyLLM
                   parallel: false,
                   workflow: config.workflow?,
                   iteration: config.iteration?,
-                  iteration_concurrency: config.iteration_concurrency
+                  iteration_concurrency: config.iteration_concurrency,
+                  throttle: config.throttle,
+                  rate_limit: config.rate_limit
                 }.compact]
               when ParallelGroup
                 item.step_names.map do |step_name|
@@ -325,9 +405,25 @@ module RubyLLM
                     parallel_group: item.name,
                     workflow: config.workflow?,
                     iteration: config.iteration?,
-                    iteration_concurrency: config.iteration_concurrency
+                    iteration_concurrency: config.iteration_concurrency,
+                    throttle: config.throttle,
+                    rate_limit: config.rate_limit
                   }.compact
                 end
+              when WaitConfig
+                [{
+                  name: item.name || "wait_#{item.type}",
+                  type: :wait,
+                  wait_type: item.type,
+                  ui_label: item.ui_label,
+                  timeout: item.timeout,
+                  parallel: false,
+                  duration: item.duration,
+                  poll_interval: item.poll_interval,
+                  on_timeout: item.on_timeout,
+                  notify: item.notify_channels,
+                  approvers: item.approvers
+                }.compact]
               end
             end
           end
