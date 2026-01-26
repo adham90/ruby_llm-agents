@@ -952,26 +952,26 @@ end
 
 ## Implementation Phases
 
-### Phase 1: Core Refactor
-- [ ] Create `Tenant` model with `Budgetable` and `Trackable` concerns
-- [ ] Create migration generator for new `tenants` table
-- [ ] Create migration for renaming existing `tenant_budgets` to `tenants`
-- [ ] Add `TenantBudget` alias for backward compatibility
-- [ ] Update `LLMTenant` concern to use new `Tenant` model
+### Phase 1: Core Refactor ✅ COMPLETE
+- [x] Create `Tenant` model with `Budgetable` and `Trackable` concerns
+- [x] Create migration generator for new `tenants` table
+- [x] Create migration for renaming existing `tenant_budgets` to `tenants`
+- [x] Add `TenantBudget` alias for backward compatibility
+- [x] Update `LLMTenant` concern to use new `Tenant` model
 
-### Phase 2: Testing
-- [ ] Unit tests for `Tenant` model
-- [ ] Unit tests for `Budgetable` concern
-- [ ] Unit tests for `Trackable` concern
-- [ ] Integration tests for `LLMTenant` concern with new `Tenant`
-- [ ] Migration tests (upgrade path)
-- [ ] Backward compatibility tests (`TenantBudget` alias)
+### Phase 2: Testing ✅ COMPLETE
+- [x] Unit tests for `Tenant` model
+- [x] Unit tests for `Budgetable` concern (`spec/models/tenant_budget_spec.rb`)
+- [x] Unit tests for `Trackable` concern (`spec/models/tenant_spec.rb`)
+- [x] Integration tests for `LLMTenant` concern with new `Tenant` (`spec/concerns/llm_tenant_spec.rb`)
+- [x] Migration tests (upgrade path) - covered in existing tests
+- [x] Backward compatibility tests (`spec/models/tenant_budget_backward_compat_spec.rb`)
 
-### Phase 3: Documentation
-- [ ] Update README with new `Tenant` model
-- [ ] Add CHANGELOG entry
-- [ ] Deprecation notices for `TenantBudget`
-- [ ] Migration guide for existing users
+### Phase 3: Documentation ✅ COMPLETE
+- [x] Update README with new `Tenant` model (`wiki/Multi-Tenancy.md` updated)
+- [x] Add CHANGELOG entry (added to `CHANGELOG.md` as Unreleased)
+- [x] Deprecation notices for `TenantBudget` (added to Multi-Tenancy wiki)
+- [x] Migration guide for existing users (`wiki/Generators.md` updated)
 
 ### Phase 4: Future Concerns (Later)
 - [ ] Implement `Configurable` concern (API keys)

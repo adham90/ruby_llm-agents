@@ -98,8 +98,8 @@ end
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `id:` | Symbol | `:id` | Method to call for tenant_id string |
-| `name:` | Symbol | `:to_s` | Method for budget display name |
-| `budget:` | Boolean | `false` | Auto-create TenantBudget on model creation |
+| `name:` | Symbol | `:to_s` | Method for tenant display name |
+| `budget:` | Boolean | `false` | Auto-create Tenant record on model creation |
 | `limits:` | Hash | `nil` | Default budget limits (implies `budget: true`) |
 | `enforcement:` | Symbol | `nil` | `:none`, `:soft`, or `:hard` |
 | `inherit_global:` | Boolean | `true` | Inherit from global config for unset limits |
@@ -125,9 +125,11 @@ limits: {
 When you include `LLMTenant`, the following associations are added:
 
 ```ruby
-has_many :llm_executions   # All agent executions for this tenant
-has_one :llm_budget        # The tenant's budget record
+has_many :llm_executions       # All agent executions for this tenant
+has_one :llm_tenant_record     # The gem's Tenant model (budget + tracking)
 ```
+
+For backward compatibility, `llm_budget` is available as an alias for `llm_tenant_record`.
 
 ### Instance Methods
 
@@ -166,8 +168,10 @@ has_one :llm_budget        # The tenant's budget record
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `llm_budget` | TenantBudget | Get or build budget record |
-| `llm_configure_budget { }` | TenantBudget | Configure and save budget with block |
+| `llm_tenant` | Tenant | Get or build tenant record |
+| `llm_budget` | Tenant | Alias for `llm_tenant` (backward compatible) |
+| `llm_configure { }` | Tenant | Configure and save tenant with block |
+| `llm_configure_budget { }` | Tenant | Alias for `llm_configure` (backward compatible) |
 | `llm_budget_status` | Hash | Full budget status from BudgetTracker |
 | `llm_within_budget?(type:)` | Boolean | Check if within budget for limit type |
 | `llm_remaining_budget(type:)` | Numeric | Remaining budget for limit type |
@@ -329,13 +333,15 @@ budget = org.llm_budget
 budget.update(monthly_limit: 1000.0)
 ```
 
-## TenantBudget Model
+## Tenant Model
 
-The `TenantBudget` model stores per-tenant spending limits:
+The `Tenant` model is the central entity for managing multi-tenant LLM usage. It encapsulates:
+- **Budget management** (limits and enforcement) via the `Budgetable` concern
+- **Usage tracking** (cost, tokens, executions) via the `Trackable` concern
 
 ```ruby
-# Create a tenant budget
-RubyLLM::Agents::TenantBudget.create!(
+# Create a tenant
+RubyLLM::Agents::Tenant.create!(
   tenant_id: "tenant_123",
   name: "Acme Corporation",
   daily_limit: 50.0,
@@ -362,53 +368,134 @@ RubyLLM::Agents::TenantBudget.create!(
 | `monthly_execution_limit` | integer | Monthly agent call limit |
 | `enforcement` | string | `"none"`, `"soft"` (warn), or `"hard"` (block) |
 | `inherit_global_defaults` | boolean | Fall back to global config for unset limits |
+| `active` | boolean | Whether tenant is active (default: true) |
+| `metadata` | json | Extensible metadata storage |
 
-### Managing Tenant Budgets
+### Managing Tenants
 
 ```ruby
 # Find or create with defaults
-budget = RubyLLM::Agents::TenantBudget.find_or_create_by(tenant_id: tenant_id) do |b|
-  b.name = "Acme Corp"
-  b.daily_limit = 25.0
-  b.monthly_limit = 250.0
-  b.daily_execution_limit = 200
-  b.enforcement = "hard"
-end
+tenant = RubyLLM::Agents::Tenant.for!("tenant_123", name: "Acme Corp")
 
 # Update limits
-budget.update(daily_limit: 50.0)
+tenant.update(daily_limit: 50.0)
 
 # Query effective limits (includes inheritance from global config)
-budget.effective_daily_limit           # => 50.0 (cost)
-budget.effective_monthly_limit         # => 250.0 (cost)
-budget.effective_daily_token_limit     # => 500_000 (tokens)
-budget.effective_monthly_token_limit   # => 5_000_000 (tokens)
-budget.effective_daily_execution_limit # => 200 (executions)
-budget.effective_monthly_execution_limit # => nil (not set)
+tenant.effective_daily_limit           # => 50.0 (cost)
+tenant.effective_monthly_limit         # => 250.0 (cost)
+tenant.effective_daily_token_limit     # => 500_000 (tokens)
+tenant.effective_monthly_token_limit   # => 5_000_000 (tokens)
+tenant.effective_daily_execution_limit # => 200 (executions)
+tenant.effective_monthly_execution_limit # => nil (not set)
 
 # Check enforcement mode
-budget.effective_enforcement  # => :hard
-budget.budgets_enabled?       # => true
+tenant.effective_enforcement  # => :hard
+tenant.budgets_enabled?       # => true
 
 # Get display name
-budget.display_name  # => "Acme Corp" (or tenant_id if name not set)
+tenant.display_name  # => "Acme Corp" (or tenant_id if name not set)
+
+# Check status
+tenant.active?     # => true
+tenant.linked?     # => false (no polymorphic association)
+
+# Deactivate/activate tenant
+tenant.deactivate!
+tenant.activate!
 
 # Convert to budget config hash (used by BudgetTracker)
-budget.to_budget_config
+tenant.to_budget_config
 # => { enabled: true, enforcement: :hard, global_daily: 50.0, ... }
 ```
 
-### Finding Budgets
+### Finding Tenants
 
 ```ruby
 # By tenant_id string
-budget = RubyLLM::Agents::TenantBudget.for_tenant("tenant_123")
+tenant = RubyLLM::Agents::Tenant.for("tenant_123")
 
 # By tenant object (uses polymorphic association or llm_tenant_id)
-budget = RubyLLM::Agents::TenantBudget.for_tenant(organization)
+tenant = RubyLLM::Agents::Tenant.for(organization)
 
 # Find or create with name
-budget = RubyLLM::Agents::TenantBudget.for_tenant!("tenant_123", name: "Acme")
+tenant = RubyLLM::Agents::Tenant.for!("tenant_123", name: "Acme")
+```
+
+### Usage Tracking (Trackable Concern)
+
+The `Tenant` model provides rich usage tracking methods:
+
+```ruby
+tenant = RubyLLM::Agents::Tenant.for("tenant_123")
+
+# Cost tracking
+tenant.cost                        # => Total cost
+tenant.cost_today                  # => Today's cost
+tenant.cost_yesterday              # => Yesterday's cost
+tenant.cost_this_week              # => This week's cost
+tenant.cost_this_month             # => This month's cost
+tenant.cost(period: 7.days.ago..Time.current)  # Custom range
+
+# Token tracking
+tenant.tokens                      # => Total tokens
+tenant.tokens_today                # => Today's tokens
+tenant.tokens_this_month           # => This month's tokens
+
+# Execution tracking
+tenant.execution_count             # => Total executions
+tenant.executions_today            # => Today's executions
+tenant.executions_this_month       # => This month's executions
+
+# Usage summary
+tenant.usage_summary(period: :this_month)
+# => { tenant_id: "tenant_123", name: "Acme", period: :this_month,
+#      cost: 150.50, tokens: 1_500_000, executions: 500 }
+
+# Usage by agent type
+tenant.usage_by_agent(period: :this_month)
+# => { "ChatAgent" => { cost: 100.0, tokens: 1_000_000, count: 300 },
+#      "SummaryAgent" => { cost: 50.50, tokens: 500_000, count: 200 } }
+
+# Usage by model
+tenant.usage_by_model(period: :this_month)
+# => { "gpt-4o" => { cost: 120.0, tokens: 800_000, count: 400 },
+#      "claude-3-5-sonnet" => { cost: 30.50, tokens: 700_000, count: 100 } }
+
+# Usage by day
+tenant.usage_by_day(period: :this_month)
+# => { Date.current => { cost: 10.0, tokens: 100_000, count: 50 }, ... }
+
+# Recent and failed executions
+tenant.recent_executions(limit: 10)
+tenant.failed_executions(limit: 5, period: :today)
+```
+
+### Scopes
+
+```ruby
+# Filter by status
+RubyLLM::Agents::Tenant.active
+RubyLLM::Agents::Tenant.inactive
+
+# Filter by linkage
+RubyLLM::Agents::Tenant.linked    # Has polymorphic tenant_record
+RubyLLM::Agents::Tenant.unlinked  # Standalone tenants
+```
+
+## TenantBudget (Deprecated)
+
+> **Deprecation Notice**: `TenantBudget` is now an alias for `Tenant`. All functionality has been moved to the `Tenant` model. `TenantBudget` will be removed in a future major version.
+
+For backward compatibility, you can still use `TenantBudget`:
+
+```ruby
+# Old usage (still works, deprecated)
+RubyLLM::Agents::TenantBudget.for_tenant("tenant_123")
+RubyLLM::Agents::TenantBudget.for_tenant!("tenant_123", name: "Acme")
+
+# New usage (preferred)
+RubyLLM::Agents::Tenant.for("tenant_123")
+RubyLLM::Agents::Tenant.for!("tenant_123", name: "Acme")
 ```
 
 ## Execution Filtering by Tenant

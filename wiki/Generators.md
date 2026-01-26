@@ -475,7 +475,10 @@ rails db:migrate
 
 This creates:
 - `db/migrate/xxx_add_tenant_to_executions.rb` - Adds tenant_id column
-- `db/migrate/xxx_create_tenant_budgets.rb` - Per-tenant budget table
+- `db/migrate/xxx_create_ruby_llm_agents_tenants.rb` - Tenant table for budget and tracking
+
+For upgrades from older versions with `tenant_budgets` table:
+- `db/migrate/xxx_rename_tenant_budgets_to_tenants.rb` - Migrates to new table name
 
 ## Tips
 

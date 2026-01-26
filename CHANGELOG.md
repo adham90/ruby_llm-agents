@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **Tenant Model Refactor** - Unified tenant management with organized concerns:
+  - Renamed `TenantBudget` model to `Tenant` as the central entity for all tenant functionality
+  - Added `Budgetable` concern for budget limits and enforcement
+  - Added `Trackable` concern for usage tracking (cost, tokens, executions)
+  - New tracking methods: `usage_by_agent`, `usage_by_model`, `usage_by_day`, `recent_executions`, `failed_executions`
+  - New status methods: `active?`, `linked?`, `activate!`, `deactivate!`
+  - `TenantBudget` is now an alias for backward compatibility (deprecated, will be removed in future major version)
+
+### Deprecated
+
+- `RubyLLM::Agents::TenantBudget` - Use `RubyLLM::Agents::Tenant` instead
+- `llm_budget` association in LLMTenant concern - Use `llm_tenant_record` instead
+- `llm_configure_budget` method - Use `llm_configure` instead
+
 ## [1.1.0] - 2026-01-26
 
 ### Added
