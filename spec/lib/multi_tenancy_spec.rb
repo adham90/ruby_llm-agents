@@ -152,7 +152,9 @@ RSpec.describe "Multi-tenancy support" do
     end
 
     def tenant_budget_table_exists?
-      ActiveRecord::Base.connection.table_exists?(:ruby_llm_agents_tenant_budgets)
+      # Check for new table name (tenants) or old table name (tenant_budgets) for backward compatibility
+      ActiveRecord::Base.connection.table_exists?(:ruby_llm_agents_tenants) ||
+        ActiveRecord::Base.connection.table_exists?(:ruby_llm_agents_tenant_budgets)
     rescue StandardError
       false
     end

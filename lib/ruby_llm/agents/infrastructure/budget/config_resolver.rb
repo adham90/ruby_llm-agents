@@ -125,13 +125,15 @@ module RubyLLM
             nil
           end
 
-          # Checks if the tenant_budgets table exists
+          # Checks if the tenants table exists (supports old and new table names)
           #
           # @return [Boolean] true if table exists
           def tenant_budget_table_exists?
             return @tenant_budget_table_exists if defined?(@tenant_budget_table_exists)
 
-            @tenant_budget_table_exists = ::ActiveRecord::Base.connection.table_exists?(:ruby_llm_agents_tenant_budgets)
+            # Check for new table name (tenants) or old table name (tenant_budgets) for backward compatibility
+            @tenant_budget_table_exists = ::ActiveRecord::Base.connection.table_exists?(:ruby_llm_agents_tenants) ||
+                                          ::ActiveRecord::Base.connection.table_exists?(:ruby_llm_agents_tenant_budgets)
           rescue StandardError
             @tenant_budget_table_exists = false
           end

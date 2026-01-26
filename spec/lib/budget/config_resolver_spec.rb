@@ -270,15 +270,16 @@ RSpec.describe RubyLLM::Agents::Budget::ConfigResolver do
     end
 
     it "memoizes the result" do
+      # Stub both table name checks (new name checked first, then old name for backward compatibility)
       allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-        .with(:ruby_llm_agents_tenant_budgets)
+        .with(:ruby_llm_agents_tenants)
         .and_return(true)
-        .once
 
       described_class.tenant_budget_table_exists?
       described_class.tenant_budget_table_exists?
 
-      expect(ActiveRecord::Base.connection).to have_received(:table_exists?).once
+      # Should only call table_exists? once due to memoization
+      expect(ActiveRecord::Base.connection).to have_received(:table_exists?).with(:ruby_llm_agents_tenants).once
     end
 
     it "returns false on database errors" do
