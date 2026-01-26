@@ -13,13 +13,21 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
     # Stub configuration to use "llm" as root_directory for migration tests
     allow(RubyLLM::Agents.configuration).to receive(:root_directory).and_return("llm")
     allow(RubyLLM::Agents.configuration).to receive(:root_namespace).and_return("Llm")
+
+    # Default tenant table checks to avoid migration generation for most tests
+    # (tests that need tenant migration behavior should override these)
+    allow(ActiveRecord::Base.connection).to receive(:table_exists?)
+      .with(:ruby_llm_agents_tenants)
+      .and_return(true)  # New table "exists" by default
+    allow(ActiveRecord::Base.connection).to receive(:table_exists?)
+      .with(:ruby_llm_agents_tenant_budgets)
+      .and_return(false)  # Old table doesn't exist
   end
 
   describe "when table does not exist" do
     before do
-      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-        .with(:ruby_llm_agents_executions)
-        .and_return(false)
+      # Default all tables to not exist
+      allow(ActiveRecord::Base.connection).to receive(:table_exists?).and_return(false)
 
       run_generator
     end
@@ -90,9 +98,8 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
 
   describe "migration content" do
     before do
-      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-        .with(:ruby_llm_agents_executions)
-        .and_return(false)
+      # Default all tables to not exist
+      allow(ActiveRecord::Base.connection).to receive(:table_exists?).and_return(false)
 
       run_generator
     end

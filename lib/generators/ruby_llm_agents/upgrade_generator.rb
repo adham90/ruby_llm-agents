@@ -147,6 +147,26 @@ module RubyLlmAgents
       )
     end
 
+    def create_rename_tenant_budgets_migration
+      # Skip if already using new table name
+      if table_exists?(:ruby_llm_agents_tenants)
+        say_status :skip, "ruby_llm_agents_tenants table already exists", :yellow
+        return
+      end
+
+      # Only run if old table exists (needs upgrade)
+      unless table_exists?(:ruby_llm_agents_tenant_budgets)
+        say_status :skip, "No tenant_budgets table to upgrade", :yellow
+        return
+      end
+
+      say_status :upgrade, "Renaming tenant_budgets to tenants", :blue
+      migration_template(
+        "rename_tenant_budgets_to_tenants_migration.rb.tt",
+        File.join(db_migrate_path, "rename_tenant_budgets_to_tenants.rb")
+      )
+    end
+
     def migrate_agents_directory
       root_dir = RubyLLM::Agents.configuration.root_directory
       namespace = RubyLLM::Agents.configuration.root_namespace
@@ -207,6 +227,12 @@ module RubyLlmAgents
       return false unless ActiveRecord::Base.connection.table_exists?(table)
 
       ActiveRecord::Base.connection.column_exists?(table, column)
+    rescue StandardError
+      false
+    end
+
+    def table_exists?(table)
+      ActiveRecord::Base.connection.table_exists?(table)
     rescue StandardError
       false
     end
