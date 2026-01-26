@@ -232,16 +232,21 @@ RSpec.describe "Workflow DSL" do
         end
       end
 
-      it "times out slow steps", skip: "Timeout behavior tested in integration" do
+      it "times out slow steps" do
         slow = slow_agent
 
         workflow = Class.new(RubyLLM::Agents::Workflow) do
           step :slow, slow, timeout: 1
         end
 
+        # Mock Timeout.timeout to raise Timeout::Error immediately
+        # This tests the error handling without actually waiting
+        allow(Timeout).to receive(:timeout).and_raise(Timeout::Error, "execution expired")
+
         result = workflow.call
 
-        expect(result.error?).to be true
+        expect(result.status).to eq("error")
+        expect(result.errors[:slow]).to be_a(Timeout::Error)
       end
     end
 
