@@ -21,20 +21,18 @@ Extended thinking (also known as reasoning or chain-of-thought) allows LLM model
 Configure thinking at the agent class level:
 
 ```ruby
-module LLM
-  class ReasoningAgent < ApplicationAgent
-    model "claude-opus-4-5-20250514"
-    thinking effort: :high, budget: 10000
+class ReasoningAgent < ApplicationAgent
+  model "claude-opus-4-5-20250514"
+  thinking effort: :high, budget: 10000
 
-    param :query, required: true
+  param :query, required: true
 
-    def system_prompt
-      "You are a reasoning assistant. Show your work step by step."
-    end
+  def system_prompt
+    "You are a reasoning assistant. Show your work step by step."
+  end
 
-    def user_prompt
-      query
-    end
+  def user_prompt
+    query
   end
 end
 ```
@@ -42,7 +40,7 @@ end
 ### Calling the Agent
 
 ```ruby
-result = LLM::ReasoningAgent.call(query: "What is 127 * 43?")
+result = ReasoningAgent.call(query: "What is 127 * 43?")
 
 # Access the reasoning/thinking content
 puts "Thinking:"
@@ -71,14 +69,12 @@ The `effort` option controls how much "thinking" the model does:
 | `:high` | Deep reasoning, best for complex problems |
 
 ```ruby
-module LLM
-  class QuickAgent < ApplicationAgent
-    thinking effort: :low  # Fast, light reasoning
-  end
+class QuickAgent < ApplicationAgent
+  thinking effort: :low  # Fast, light reasoning
+end
 
-  class DeepAgent < ApplicationAgent
-    thinking effort: :high  # Thorough, detailed reasoning
-  end
+class DeepAgent < ApplicationAgent
+  thinking effort: :high  # Thorough, detailed reasoning
 end
 ```
 
@@ -87,10 +83,8 @@ end
 The `budget` option caps the maximum tokens used for thinking:
 
 ```ruby
-module LLM
-  class BudgetedAgent < ApplicationAgent
-    thinking effort: :high, budget: 5000  # Max 5000 tokens for thinking
-  end
+class BudgetedAgent < ApplicationAgent
+  thinking effort: :high, budget: 5000  # Max 5000 tokens for thinking
 end
 ```
 
@@ -102,19 +96,19 @@ Override thinking configuration at call time:
 
 ```ruby
 # Override effort and budget
-result = LLM::MyAgent.call(
+result = MyAgent.call(
   query: "Complex problem...",
   thinking: { effort: :high, budget: 15000 }
 )
 
 # Disable thinking for this call
-result = LLM::MyAgent.call(
+result = MyAgent.call(
   query: "Simple question",
   thinking: false
 )
 
 # Use lower effort for speed
-result = LLM::MyAgent.call(
+result = MyAgent.call(
   query: "Quick question",
   thinking: { effort: :low }
 )
@@ -125,7 +119,7 @@ result = LLM::MyAgent.call(
 The Result object includes thinking-related accessors:
 
 ```ruby
-result = LLM::ThinkingAgent.call(query: "Solve this problem")
+result = ThinkingAgent.call(query: "Solve this problem")
 
 # Thinking content
 result.thinking_text       # String - the reasoning content
@@ -139,7 +133,7 @@ result.has_thinking?       # Boolean - whether thinking was used
 When streaming, thinking chunks typically arrive before content chunks:
 
 ```ruby
-LLM::ThinkingAgent.stream(query: "Analyze this data...") do |chunk|
+ThinkingAgent.stream(query: "Analyze this data...") do |chunk|
   if chunk.thinking&.text
     # Display thinking in a collapsible UI element
     print "[Thinking] #{chunk.thinking.text}"
@@ -170,16 +164,14 @@ end
 For Claude, the thinking signature enables continuity across conversation turns:
 
 ```ruby
-module LLM
-  class ConversationAgent < ApplicationAgent
-    model "claude-opus-4-5-20250514"
-    thinking effort: :high
+class ConversationAgent < ApplicationAgent
+  model "claude-opus-4-5-20250514"
+  thinking effort: :high
 
-    def messages
-      # Include thinking signature from previous turns
-      # for context continuity
-      conversation_history_with_signatures
-    end
+  def messages
+    # Include thinking signature from previous turns
+    # for context continuity
+    conversation_history_with_signatures
   end
 end
 ```
@@ -215,7 +207,7 @@ end
 
 ```ruby
 # Verify thinking configuration
-result = LLM::MyAgent.call(query: "test", dry_run: true)
+result = MyAgent.call(query: "test", dry_run: true)
 # Check the configuration in result.content
 ```
 
@@ -224,33 +216,31 @@ result = LLM::MyAgent.call(query: "test", dry_run: true)
 See the complete example in your Rails app:
 
 ```ruby
-# app/llm/agents/thinking_agent.rb
-module LLM
-  class ThinkingAgent < ApplicationAgent
-    description "Demonstrates extended thinking/reasoning support"
-    version "1.0"
+# app/agents/thinking_agent.rb
+class ThinkingAgent < ApplicationAgent
+  description "Demonstrates extended thinking/reasoning support"
+  version "1.0"
 
-    model "claude-opus-4-5-20250514"
-    temperature 0.0
-    thinking effort: :high, budget: 10000
+  model "claude-opus-4-5-20250514"
+  temperature 0.0
+  thinking effort: :high, budget: 10000
 
-    param :query, required: true
+  param :query, required: true
 
-    def system_prompt
-      <<~PROMPT
-        You are a reasoning assistant that excels at step-by-step problem solving.
+  def system_prompt
+    <<~PROMPT
+      You are a reasoning assistant that excels at step-by-step problem solving.
 
-        When given a problem:
-        1. Break it down into smaller steps
-        2. Work through each step carefully
-        3. Verify your work
-        4. Provide a clear final answer
-      PROMPT
-    end
+      When given a problem:
+      1. Break it down into smaller steps
+      2. Work through each step carefully
+      3. Verify your work
+      4. Provide a clear final answer
+    PROMPT
+  end
 
-    def user_prompt
-      query
-    end
+  def user_prompt
+    query
   end
 end
 ```
@@ -260,12 +250,10 @@ end
 If you use the thinking DSL with a provider that doesn't support thinking, the configuration is silently ignored. This allows you to write agents that work across providers without conditional logic.
 
 ```ruby
-module LLM
-  class FlexibleAgent < ApplicationAgent
-    model "gpt-4o"  # Doesn't support visible thinking
-    thinking effort: :medium  # Silently ignored
+class FlexibleAgent < ApplicationAgent
+  model "gpt-4o"  # Doesn't support visible thinking
+  thinking effort: :medium  # Silently ignored
 
-    # Agent works normally without thinking
-  end
+  # Agent works normally without thinking
 end
 ```

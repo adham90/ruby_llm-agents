@@ -21,27 +21,25 @@ RubyLLM::Agents provides three layers of protection:
 ## Quick Start
 
 ```ruby
-module LLM
-  class ReliableAgent < ApplicationAgent
-    model "gpt-4o"
+class ReliableAgent < ApplicationAgent
+  model "gpt-4o"
 
-    # Retry up to 3 times with exponential backoff
-    retries max: 3, backoff: :exponential
+  # Retry up to 3 times with exponential backoff
+  retries max: 3, backoff: :exponential
 
-    # Fall back to alternative models
-    fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
+  # Fall back to alternative models
+  fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
 
-    # Prevent cascading failures
-    circuit_breaker errors: 10, within: 60, cooldown: 300
+  # Prevent cascading failures
+  circuit_breaker errors: 10, within: 60, cooldown: 300
 
-    # Maximum total time
-    total_timeout 30
+  # Maximum total time
+  total_timeout 30
 
-    param :query, required: true
+  param :query, required: true
 
-    def user_prompt
-      query
-    end
+  def user_prompt
+    query
   end
 end
 ```
@@ -74,7 +72,7 @@ When you call an agent with reliability features:
 The execution record captures all attempts:
 
 ```ruby
-result = LLM::ReliableAgent.call(query: "test")
+result = ReliableAgent.call(query: "test")
 
 # Check what happened
 result.attempts_count    # => 3 (total attempts)
@@ -104,40 +102,34 @@ The dashboard shows:
 ### High Availability
 
 ```ruby
-module LLM
-  class HighAvailabilityAgent < ApplicationAgent
-    model "gpt-4o"
-    retries max: 5, backoff: :exponential, max_delay: 30.0
-    fallback_models "gpt-4o-mini", "claude-3-5-sonnet", "gemini-2.0-flash"
-    circuit_breaker errors: 5, within: 30, cooldown: 120
-    total_timeout 60
-  end
+class HighAvailabilityAgent < ApplicationAgent
+  model "gpt-4o"
+  retries max: 5, backoff: :exponential, max_delay: 30.0
+  fallback_models "gpt-4o-mini", "claude-3-5-sonnet", "gemini-2.0-flash"
+  circuit_breaker errors: 5, within: 30, cooldown: 120
+  total_timeout 60
 end
 ```
 
 ### Fast Fail
 
 ```ruby
-module LLM
-  class FastFailAgent < ApplicationAgent
-    model "gpt-4o"
-    retries max: 1
-    total_timeout 5
-    # No fallbacks - fail fast
-  end
+class FastFailAgent < ApplicationAgent
+  model "gpt-4o"
+  retries max: 1
+  total_timeout 5
+  # No fallbacks - fail fast
 end
 ```
 
 ### Cost-Optimized
 
 ```ruby
-module LLM
-  class CostOptimizedAgent < ApplicationAgent
-    model "gpt-4o-mini"  # Start with cheaper model
-    retries max: 2
-    fallback_models "gpt-3.5-turbo"  # Even cheaper fallback
-    # No circuit breaker - rely on rate limiting
-  end
+class CostOptimizedAgent < ApplicationAgent
+  model "gpt-4o-mini"  # Start with cheaper model
+  retries max: 2
+  fallback_models "gpt-3.5-turbo"  # Even cheaper fallback
+  # No circuit breaker - rely on rate limiting
 end
 ```
 
@@ -163,14 +155,12 @@ These errors trigger retries automatically:
 Add your own error types:
 
 ```ruby
-module LLM
-  class MyAgent < ApplicationAgent
-    retries max: 3, on: [
-      Timeout::Error,
-      MyCustomError,
-      ServiceUnavailableError
-    ]
-  end
+class MyAgent < ApplicationAgent
+  retries max: 3, on: [
+    Timeout::Error,
+    MyCustomError,
+    ServiceUnavailableError
+  ]
 end
 ```
 

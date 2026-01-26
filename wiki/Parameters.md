@@ -9,16 +9,14 @@ Parameters define the inputs your agent accepts. They provide validation, defaul
 Parameters that must be provided:
 
 ```ruby
-module LLM
-  class MyAgent < ApplicationAgent
-    param :query, required: true
-    param :user_id, required: true
-  end
+class MyAgent < ApplicationAgent
+  param :query, required: true
+  param :user_id, required: true
 end
 
 # This raises ArgumentError
-LLM::MyAgent.call(query: "test")
-# => ArgumentError: LLM::SearchAgent missing required params: [:user_id]
+MyAgent.call(query: "test")
+# => ArgumentError: SearchAgent missing required params: [:user_id]
 ```
 
 ### Optional Parameters with Defaults
@@ -26,17 +24,15 @@ LLM::MyAgent.call(query: "test")
 Parameters that have fallback values:
 
 ```ruby
-module LLM
-  class MyAgent < ApplicationAgent
-    param :limit, default: 10
-    param :format, default: "json"
-    param :include_metadata, default: false
-  end
+class MyAgent < ApplicationAgent
+  param :limit, default: 10
+  param :format, default: "json"
+  param :include_metadata, default: false
 end
 
 # These are equivalent
-LLM::MyAgent.call(query: "test")
-LLM::MyAgent.call(query: "test", limit: 10, format: "json", include_metadata: false)
+MyAgent.call(query: "test")
+MyAgent.call(query: "test", limit: 10, format: "json", include_metadata: false)
 ```
 
 ### Optional Parameters without Defaults
@@ -44,11 +40,9 @@ LLM::MyAgent.call(query: "test", limit: 10, format: "json", include_metadata: fa
 Parameters that default to `nil`:
 
 ```ruby
-module LLM
-  class MyAgent < ApplicationAgent
-    param :filters      # nil if not provided
-    param :context      # nil if not provided
-  end
+class MyAgent < ApplicationAgent
+  param :filters      # nil if not provided
+  param :context      # nil if not provided
 end
 ```
 
@@ -57,18 +51,16 @@ end
 Parameters become instance methods:
 
 ```ruby
-module LLM
-  class SearchAgent < ApplicationAgent
-    param :query, required: true
-    param :limit, default: 10
-    param :filters
+class SearchAgent < ApplicationAgent
+  param :query, required: true
+  param :limit, default: 10
+  param :filters
 
-    def user_prompt
-      prompt = "Search: #{query}"
-      prompt += " (limit: #{limit})" if limit
-      prompt += " with filters: #{filters.join(', ')}" if filters&.any?
-      prompt
-    end
+  def user_prompt
+    prompt = "Search: #{query}"
+    prompt += " (limit: #{limit})" if limit
+    prompt += " with filters: #{filters.join(', ')}" if filters&.any?
+    prompt
   end
 end
 ```
@@ -78,31 +70,29 @@ end
 Parameters can be any Ruby type:
 
 ```ruby
-module LLM
-  class MyAgent < ApplicationAgent
-    # Strings
-    param :query, required: true
+class MyAgent < ApplicationAgent
+  # Strings
+  param :query, required: true
 
-    # Numbers
-    param :limit, default: 10
-    param :threshold, default: 0.5
+  # Numbers
+  param :limit, default: 10
+  param :threshold, default: 0.5
 
-    # Booleans
-    param :include_metadata, default: false
+  # Booleans
+  param :include_metadata, default: false
 
-    # Arrays
-    param :tags, default: []
+  # Arrays
+  param :tags, default: []
 
-    # Hashes
-    param :options, default: {}
+  # Hashes
+  param :options, default: {}
 
-    # Complex objects
-    param :user  # Pass ActiveRecord models, etc.
-  end
+  # Complex objects
+  param :user  # Pass ActiveRecord models, etc.
 end
 
 # Usage
-LLM::MyAgent.call(
+MyAgent.call(
   query: "search term",
   limit: 20,
   threshold: 0.8,
@@ -163,21 +153,19 @@ end
 Add custom validation in the agent:
 
 ```ruby
-module LLM
-  class MyAgent < ApplicationAgent
-    param :limit, default: 10
+class MyAgent < ApplicationAgent
+  param :limit, default: 10
 
-    def call
-      validate_parameters!
-      super
-    end
+  def call
+    validate_parameters!
+    super
+  end
 
-    private
+  private
 
-    def validate_parameters!
-      raise ArgumentError, "limit must be positive" if limit <= 0
-      raise ArgumentError, "limit cannot exceed 100" if limit > 100
-    end
+  def validate_parameters!
+    raise ArgumentError, "limit must be positive" if limit <= 0
+    raise ArgumentError, "limit cannot exceed 100" if limit > 100
   end
 end
 ```
@@ -205,12 +193,10 @@ RubyLLM::Agents::Execution
 Sensitive parameters are automatically redacted in logs:
 
 ```ruby
-module LLM
-  class MyAgent < ApplicationAgent
-    param :api_key, required: true  # Redacted by default
-    param :password, required: true # Redacted by default
-    param :secret_token             # Redacted by default
-  end
+class MyAgent < ApplicationAgent
+  param :api_key, required: true  # Redacted by default
+  param :password, required: true # Redacted by default
+  param :secret_token             # Redacted by default
 end
 ```
 
@@ -221,18 +207,16 @@ See [PII Redaction](PII-Redaction) for configuring redaction.
 By default, all parameters are included in cache keys. Customize with `cache_key_data`:
 
 ```ruby
-module LLM
-  class MyAgent < ApplicationAgent
-    param :query, required: true
-    param :user_id, required: true
-    param :request_id  # Don't include in cache key
+class MyAgent < ApplicationAgent
+  param :query, required: true
+  param :user_id, required: true
+  param :request_id  # Don't include in cache key
 
-    cache 1.hour
+  cache 1.hour
 
-    def cache_key_data
-      # Only these affect caching
-      { query: query, user_id: user_id }
-    end
+  def cache_key_data
+    # Only these affect caching
+    { query: query, user_id: user_id }
   end
 end
 ```
@@ -242,13 +226,13 @@ end
 ### Standard Call
 
 ```ruby
-LLM::MyAgent.call(query: "test", limit: 20)
+MyAgent.call(query: "test", limit: 20)
 ```
 
 ### With Options
 
 ```ruby
-LLM::MyAgent.call(
+MyAgent.call(
   query: "test",
   dry_run: true,      # Debug mode
   skip_cache: true    # Bypass cache
@@ -258,7 +242,7 @@ LLM::MyAgent.call(
 ### With Streaming Block
 
 ```ruby
-LLM::MyAgent.call(query: "test") do |chunk|
+MyAgent.call(query: "test") do |chunk|
   print chunk
 end
 ```
@@ -266,7 +250,7 @@ end
 ### With Attachments
 
 ```ruby
-LLM::MyAgent.call(
+MyAgent.call(
   query: "Describe this image",
   with: "photo.jpg"
 )
@@ -291,36 +275,32 @@ param :ia, default: false
 ### Group Related Parameters
 
 ```ruby
-module LLM
-  class SearchAgent < ApplicationAgent
-    # Search parameters
-    param :query, required: true
-    param :filters
+class SearchAgent < ApplicationAgent
+  # Search parameters
+  param :query, required: true
+  param :filters
 
-    # Pagination
-    param :page, default: 1
-    param :per_page, default: 20
+  # Pagination
+  param :page, default: 1
+  param :per_page, default: 20
 
-    # User context
-    param :user_id, required: true
-    param :locale, default: "en"
-  end
+  # User context
+  param :user_id, required: true
+  param :locale, default: "en"
 end
 ```
 
 ### Document Complex Parameters
 
 ```ruby
-module LLM
-  class MyAgent < ApplicationAgent
-    # Array of filter strings in format "field:operator:value"
-    # Example: ["price:lt:100", "category:eq:electronics"]
-    param :filters, default: []
+class MyAgent < ApplicationAgent
+  # Array of filter strings in format "field:operator:value"
+  # Example: ["price:lt:100", "category:eq:electronics"]
+  param :filters, default: []
 
-    # Hash of sort options
-    # Example: { field: "created_at", direction: "desc" }
-    param :sort_options
-  end
+  # Hash of sort options
+  # Example: { field: "created_at", direction: "desc" }
+  param :sort_options
 end
 ```
 

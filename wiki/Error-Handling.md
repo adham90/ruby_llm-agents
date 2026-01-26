@@ -63,14 +63,12 @@ Raised when agent configuration is invalid:
 
 ```ruby
 # Missing required configuration
-module LLM
-  class BadAgent < ApplicationAgent
-    # No model specified
-    param :query, required: true
-  end
+class BadAgent < ApplicationAgent
+  # No model specified
+  param :query, required: true
 end
 
-LLM::BadAgent.call(query: "test")
+BadAgent.call(query: "test")
 # => Raises ConfigurationError: "Model must be configured"
 ```
 
@@ -96,13 +94,11 @@ end
 Raised when parameter validation fails:
 
 ```ruby
-module LLM
-  class TypedAgent < ApplicationAgent
-    param :count, type: :integer, required: true
-  end
+class TypedAgent < ApplicationAgent
+  param :count, type: :integer, required: true
 end
 
-LLM::TypedAgent.call(count: "not a number")
+TypedAgent.call(count: "not a number")
 # => Raises ValidationError: "Parameter 'count' must be Integer, got String"
 ```
 

@@ -61,28 +61,26 @@ agent.with_messages([
 Override the `messages` method in your agent class:
 
 ```ruby
-module LLM
-  class CustomerSupportAgent < ApplicationAgent
-    model "gpt-4o"
+class CustomerSupportAgent < ApplicationAgent
+  model "gpt-4o"
 
-    param :conversation_id, required: true
-    param :message, required: true
+  param :conversation_id, required: true
+  param :message, required: true
 
-    def user_prompt
-      message
-    end
+  def user_prompt
+    message
+  end
 
-    # Template method - override to provide conversation history
-    def messages
-      Conversation.find(conversation_id).messages.map do |msg|
-        { role: msg.role.to_sym, content: msg.content }
-      end
+  # Template method - override to provide conversation history
+  def messages
+    Conversation.find(conversation_id).messages.map do |msg|
+      { role: msg.role.to_sym, content: msg.content }
     end
   end
 end
 
 # Usage
-LLM::CustomerSupportAgent.call(
+CustomerSupportAgent.call(
   conversation_id: 123,
   message: "I need help with my order"
 )
@@ -130,22 +128,20 @@ When messages are specified in multiple places, this priority applies:
 3. **Template method** - Default (class definition)
 
 ```ruby
-module LLM
-  class MyAgent < ApplicationAgent
-    def messages
-      [{ role: :user, content: "Default history" }]  # Priority 3
-    end
+class MyAgent < ApplicationAgent
+  def messages
+    [{ role: :user, content: "Default history" }]  # Priority 3
   end
 end
 
 # Call-time messages override template method
-LLM::MyAgent.call(
+MyAgent.call(
   query: "test",
   messages: [{ role: :user, content: "Call-time history" }]  # Priority 2
 )
 
 # with_messages overrides everything
-agent = LLM::MyAgent.new(query: "test")
+agent = MyAgent.new(query: "test")
 agent.with_messages([{ role: :user, content: "Override history" }])  # Priority 1
 agent.call
 ```
@@ -155,40 +151,38 @@ agent.call
 ### ChatBot with Database Persistence
 
 ```ruby
-module LLM
-  class ChatAgent < ApplicationAgent
-    model "gpt-4o"
-    temperature 0.7
+class ChatAgent < ApplicationAgent
+  model "gpt-4o"
+  temperature 0.7
 
-    param :conversation_id, required: true
-    param :user_message, required: true
+  param :conversation_id, required: true
+  param :user_message, required: true
 
-    def system_prompt
-      "You are a helpful assistant. Be concise and friendly."
+  def system_prompt
+    "You are a helpful assistant. Be concise and friendly."
+  end
+
+  def user_prompt
+    user_message
+  end
+
+  def messages
+    conversation.chat_messages.order(:created_at).map do |msg|
+      { role: msg.role.to_sym, content: msg.content }
     end
+  end
 
-    def user_prompt
-      user_message
-    end
+  private
 
-    def messages
-      conversation.chat_messages.order(:created_at).map do |msg|
-        { role: msg.role.to_sym, content: msg.content }
-      end
-    end
-
-    private
-
-    def conversation
-      @conversation ||= Conversation.find(conversation_id)
-    end
+  def conversation
+    @conversation ||= Conversation.find(conversation_id)
   end
 end
 
 # In your controller
 class ChatsController < ApplicationController
   def create
-    result = LLM::ChatAgent.call(
+    result = ChatAgent.call(
       conversation_id: params[:conversation_id],
       user_message: params[:message]
     )
@@ -205,37 +199,35 @@ end
 ### Context-Aware Agent
 
 ```ruby
-module LLM
-  class ContextAwareAgent < ApplicationAgent
-    param :context_type, required: true
-    param :query, required: true
+class ContextAwareAgent < ApplicationAgent
+  param :context_type, required: true
+  param :query, required: true
 
-    def messages
-      case context_type
-      when :technical
-        technical_context
-      when :billing
-        billing_context
-      else
-        []
-      end
+  def messages
+    case context_type
+    when :technical
+      technical_context
+    when :billing
+      billing_context
+    else
+      []
     end
+  end
 
-    private
+  private
 
-    def technical_context
-      [
-        { role: :system, content: "User is asking about technical issues" },
-        { role: :assistant, content: "I can help with technical questions." }
-      ]
-    end
+  def technical_context
+    [
+      { role: :system, content: "User is asking about technical issues" },
+      { role: :assistant, content: "I can help with technical questions." }
+    ]
+  end
 
-    def billing_context
-      [
-        { role: :system, content: "User is asking about billing" },
-        { role: :assistant, content: "I can help with billing inquiries." }
-      ]
-    end
+  def billing_context
+    [
+      { role: :system, content: "User is asking about billing" },
+      { role: :assistant, content: "I can help with billing inquiries." }
+    ]
   end
 end
 ```
@@ -243,19 +235,17 @@ end
 ### Session-Based Conversations
 
 ```ruby
-module LLM
-  class SessionChatAgent < ApplicationAgent
-    param :session_messages, default: []
-    param :query, required: true
+class SessionChatAgent < ApplicationAgent
+  param :session_messages, default: []
+  param :query, required: true
 
-    def user_prompt
-      query
-    end
+  def user_prompt
+    query
+  end
 
-    def messages
-      session_messages.map do |msg|
-        { role: msg[:role].to_sym, content: msg[:content] }
-      end
+  def messages
+    session_messages.map do |msg|
+      { role: msg[:role].to_sym, content: msg[:content] }
     end
   end
 end
@@ -265,7 +255,7 @@ class ChatController < ApplicationController
   def chat
     session[:messages] ||= []
 
-    result = LLM::SessionChatAgent.call(
+    result = SessionChatAgent.call(
       query: params[:message],
       session_messages: session[:messages]
     )

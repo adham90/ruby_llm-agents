@@ -150,20 +150,18 @@ class LLM::AnalysisWorkflow < RubyLLM::Agents::Workflow::Parallel
 end
 
 # Agent that wraps the sub-workflow
-module LLM
-  class AnalysisAgent < ApplicationAgent
-    param :text, required: true
+class AnalysisAgent < ApplicationAgent
+  param :text, required: true
 
-    def call
-      LLM::AnalysisWorkflow.call(text: text)
-    end
+  def call
+    LLM::AnalysisWorkflow.call(text: text)
   end
 end
 
 # Main pipeline using the nested workflow
 class LLM::MainPipeline < RubyLLM::Agents::Workflow::Pipeline
   step :preprocess, agent: LLM::PreprocessorAgent
-  step :analyze,    agent: LLM::AnalysisAgent    # Nested workflow
+  step :analyze,    agent: AnalysisAgent    # Nested workflow
   step :summarize,  agent: LLM::SummaryAgent
 end
 ```

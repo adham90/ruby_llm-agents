@@ -31,11 +31,9 @@ Request N → Try again → Success → Circuit CLOSES
 ## Basic Configuration
 
 ```ruby
-module LLM
-  class MyAgent < ApplicationAgent
-    model "gpt-4o"
-    circuit_breaker errors: 10, within: 60, cooldown: 300
-  end
+class MyAgent < ApplicationAgent
+  model "gpt-4o"
+  circuit_breaker errors: 10, within: 60, cooldown: 300
 end
 ```
 
@@ -83,12 +81,10 @@ CLOSED ──(too many errors)──► OPEN
 Each model has its own circuit breaker:
 
 ```ruby
-module LLM
-  class MyAgent < ApplicationAgent
-    model "gpt-4o"
-    fallback_models "claude-3-5-sonnet"
-    circuit_breaker errors: 5, within: 60, cooldown: 120
-  end
+class MyAgent < ApplicationAgent
+  model "gpt-4o"
+  fallback_models "claude-3-5-sonnet"
+  circuit_breaker errors: 5, within: 60, cooldown: 120
 end
 
 # gpt-4o breaker opens → try claude-3-5-sonnet
@@ -173,16 +169,14 @@ circuit_breaker errors: 50, within: 300, cooldown: 600
 ### Per-Agent Tuning
 
 ```ruby
-module LLM
-  # Critical agent: Lower threshold
-  class CriticalAgent < ApplicationAgent
-    circuit_breaker errors: 5, within: 60, cooldown: 120
-  end
+# Critical agent: Lower threshold
+class CriticalAgent < ApplicationAgent
+  circuit_breaker errors: 5, within: 60, cooldown: 120
+end
 
-  # Background agent: Higher tolerance
-  class BackgroundAgent < ApplicationAgent
-    circuit_breaker errors: 20, within: 300, cooldown: 600
-  end
+# Background agent: Higher tolerance
+class BackgroundAgent < ApplicationAgent
+  circuit_breaker errors: 20, within: 300, cooldown: 600
 end
 ```
 
@@ -191,12 +185,10 @@ end
 Circuit breakers work well with fallbacks:
 
 ```ruby
-module LLM
-  class ResilientAgent < ApplicationAgent
-    model "gpt-4o"
-    fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
-    circuit_breaker errors: 5, within: 60, cooldown: 120
-  end
+class ResilientAgent < ApplicationAgent
+  model "gpt-4o"
+  fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
+  circuit_breaker errors: 5, within: 60, cooldown: 120
 end
 ```
 

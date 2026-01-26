@@ -86,19 +86,17 @@ end
 Register tools at the class level using the `tools` DSL:
 
 ```ruby
-module LLM
-  class ProductAgent < ApplicationAgent
-    tools [SearchTool, GetProductTool, CompareTool]
+class ProductAgent < ApplicationAgent
+  tools [SearchTool, GetProductTool, CompareTool]
 
-    param :query, required: true
+  param :query, required: true
 
-    def system_prompt
-      "You are a helpful shopping assistant."
-    end
+  def system_prompt
+    "You are a helpful shopping assistant."
+  end
 
-    def user_prompt
-      "Help the user with: #{query}"
-    end
+  def user_prompt
+    "Help the user with: #{query}"
   end
 end
 ```
@@ -108,25 +106,23 @@ end
 For runtime tool selection, override `tools` as an instance method:
 
 ```ruby
-module LLM
-  class SmartAgent < ApplicationAgent
-    param :query, required: true
-    param :user_role
+class SmartAgent < ApplicationAgent
+  param :query, required: true
+  param :user_role
 
-    def tools
-      base_tools = [SearchTool, GetInfoTool]
+  def tools
+    base_tools = [SearchTool, GetInfoTool]
 
-      # Add admin tools for admin users
-      if user_role == "admin"
-        base_tools + [DeleteTool, UpdateTool]
-      else
-        base_tools
-      end
+    # Add admin tools for admin users
+    if user_role == "admin"
+      base_tools + [DeleteTool, UpdateTool]
+    else
+      base_tools
     end
+  end
 
-    def user_prompt
-      query
-    end
+  def user_prompt
+    query
   end
 end
 ```
@@ -161,7 +157,7 @@ Final Response
 After execution, you can inspect which tools were called:
 
 ```ruby
-result = LLM::ProductAgent.call(query: "Find red shoes under $100")
+result = ProductAgent.call(query: "Find red shoes under $100")
 
 result.tool_calls         # Array of tool call records
 result.tool_calls_count   # Number of tools called
@@ -252,33 +248,31 @@ end
 ### Agent Using Tools
 
 ```ruby
-# app/llm/agents/shopping_agent.rb
-module LLM
-  class ShoppingAgent < ApplicationAgent
-    model "gpt-4o"
-    tools [Product::SearchTool, Product::GetTool]
+# app/agents/shopping_agent.rb
+class ShoppingAgent < ApplicationAgent
+  model "gpt-4o"
+  tools [Product::SearchTool, Product::GetTool]
 
-    param :query, required: true
-    param :user_id
+  param :query, required: true
+  param :user_id
 
-    def system_prompt
-      <<~PROMPT
-        You are a helpful shopping assistant. Use the available tools to:
-        - Search for products matching user requests
-        - Get detailed product information
-        - Compare products when asked
+  def system_prompt
+    <<~PROMPT
+      You are a helpful shopping assistant. Use the available tools to:
+      - Search for products matching user requests
+      - Get detailed product information
+      - Compare products when asked
 
-        Always be helpful and provide specific product recommendations.
-      PROMPT
-    end
+      Always be helpful and provide specific product recommendations.
+    PROMPT
+  end
 
-    def user_prompt
-      query
-    end
+  def user_prompt
+    query
+  end
 
-    def execution_metadata
-      { user_id: user_id }
-    end
+  def execution_metadata
+    { user_id: user_id }
   end
 end
 ```
@@ -286,7 +280,7 @@ end
 ### Usage
 
 ```ruby
-result = LLM::ShoppingAgent.call(
+result = ShoppingAgent.call(
   query: "I'm looking for red sneakers under $150",
   user_id: current_user.id
 )

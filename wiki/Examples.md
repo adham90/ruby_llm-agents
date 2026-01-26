@@ -7,69 +7,65 @@ Real-world agent patterns and use cases.
 ### Search Intent Extraction
 
 ```ruby
-module LLM
-  class SearchIntentAgent < ApplicationAgent
-    model "gpt-4o-mini"
-    temperature 0.0
-    cache 30.minutes
+class SearchIntentAgent < ApplicationAgent
+  model "gpt-4o-mini"
+  temperature 0.0
+  cache 30.minutes
 
-    param :query, required: true
+  param :query, required: true
 
-    def user_prompt
-      "Extract search intent from: #{query}"
-    end
+  def user_prompt
+    "Extract search intent from: #{query}"
+  end
 
-    def schema
-      @schema ||= RubyLLM::Schema.create do
-        string :refined_query, description: "Cleaned search query"
-        array :filters, of: :string, description: "Filters as type:value"
-        integer :category_id, nullable: true
-        number :confidence
-      end
+  def schema
+    @schema ||= RubyLLM::Schema.create do
+      string :refined_query, description: "Cleaned search query"
+      array :filters, of: :string, description: "Filters as type:value"
+      integer :category_id, nullable: true
+      number :confidence
     end
   end
 end
 
 # Usage
-result = LLM::SearchIntentAgent.call(query: "red dress under $50")
+result = SearchIntentAgent.call(query: "red dress under $50")
 # => { refined_query: "red dress", filters: ["color:red", "price:<50"], ... }
 ```
 
 ### Email Classifier
 
 ```ruby
-module LLM
-  class EmailClassifierAgent < ApplicationAgent
-    model "gpt-4o-mini"
-    temperature 0.0
+class EmailClassifierAgent < ApplicationAgent
+  model "gpt-4o-mini"
+  temperature 0.0
 
-    param :subject, required: true
-    param :body, required: true
-    param :sender
+  param :subject, required: true
+  param :body, required: true
+  param :sender
 
-    def system_prompt
-      <<~PROMPT
-        You are an email classification system. Categorize emails
-        based on content, urgency, and required action.
-      PROMPT
-    end
+  def system_prompt
+    <<~PROMPT
+      You are an email classification system. Categorize emails
+      based on content, urgency, and required action.
+    PROMPT
+  end
 
-    def user_prompt
-      <<~PROMPT
-        Subject: #{subject}
-        From: #{sender}
-        Body: #{body}
-      PROMPT
-    end
+  def user_prompt
+    <<~PROMPT
+      Subject: #{subject}
+      From: #{sender}
+      Body: #{body}
+    PROMPT
+  end
 
-    def schema
-      @schema ||= RubyLLM::Schema.create do
-        string :category, enum: %w[urgent important routine spam]
-        string :department, enum: %w[sales support billing general]
-        boolean :requires_response
-        integer :priority, description: "1-5, 5 being highest"
-        array :tags, of: :string
-      end
+  def schema
+    @schema ||= RubyLLM::Schema.create do
+      string :category, enum: %w[urgent important routine spam]
+      string :department, enum: %w[sales support billing general]
+      boolean :requires_response
+      integer :priority, description: "1-5, 5 being highest"
+      array :tags, of: :string
     end
   end
 end
@@ -80,44 +76,42 @@ end
 ### Blog Post Generator
 
 ```ruby
-module LLM
-  class BlogPostAgent < ApplicationAgent
-    model "gpt-4o"
-    temperature 0.7
-    timeout 120
+class BlogPostAgent < ApplicationAgent
+  model "gpt-4o"
+  temperature 0.7
+  timeout 120
 
-    param :topic, required: true
-    param :tone, default: "professional"
-    param :word_count, default: 800
+  param :topic, required: true
+  param :tone, default: "professional"
+  param :word_count, default: 800
 
-    def system_prompt
-      <<~PROMPT
-        You are an expert content writer. Write engaging, well-structured
-        blog posts that are SEO-friendly and informative.
-      PROMPT
-    end
+  def system_prompt
+    <<~PROMPT
+      You are an expert content writer. Write engaging, well-structured
+      blog posts that are SEO-friendly and informative.
+    PROMPT
+  end
 
-    def user_prompt
-      <<~PROMPT
-        Write a #{word_count}-word blog post about: #{topic}
+  def user_prompt
+    <<~PROMPT
+      Write a #{word_count}-word blog post about: #{topic}
 
-        Tone: #{tone}
+      Tone: #{tone}
 
-        Requirements:
-        - Engaging introduction
-        - 3-5 main sections with headers
-        - Practical examples or tips
-        - Strong conclusion with call-to-action
-      PROMPT
-    end
+      Requirements:
+      - Engaging introduction
+      - 3-5 main sections with headers
+      - Practical examples or tips
+      - Strong conclusion with call-to-action
+    PROMPT
+  end
 
-    def schema
-      @schema ||= RubyLLM::Schema.create do
-        string :title
-        string :meta_description, description: "SEO meta description, 150 chars"
-        string :content, description: "Full blog post in Markdown"
-        array :tags, of: :string
-      end
+  def schema
+    @schema ||= RubyLLM::Schema.create do
+      string :title
+      string :meta_description, description: "SEO meta description, 150 chars"
+      string :content, description: "Full blog post in Markdown"
+      array :tags, of: :string
     end
   end
 end
@@ -126,32 +120,30 @@ end
 ### Product Description Writer
 
 ```ruby
-module LLM
-  class ProductDescriptionAgent < ApplicationAgent
-    model "gpt-4o"
-    temperature 0.6
+class ProductDescriptionAgent < ApplicationAgent
+  model "gpt-4o"
+  temperature 0.6
 
-    param :product_name, required: true
-    param :features, required: true
-    param :target_audience, default: "general consumers"
+  param :product_name, required: true
+  param :features, required: true
+  param :target_audience, default: "general consumers"
 
-    def user_prompt
-      <<~PROMPT
-        Create a compelling product description for:
+  def user_prompt
+    <<~PROMPT
+      Create a compelling product description for:
 
-        Product: #{product_name}
-        Features: #{features.join(", ")}
-        Target Audience: #{target_audience}
-      PROMPT
-    end
+      Product: #{product_name}
+      Features: #{features.join(", ")}
+      Target Audience: #{target_audience}
+    PROMPT
+  end
 
-    def schema
-      @schema ||= RubyLLM::Schema.create do
-        string :headline, description: "Attention-grabbing headline"
-        string :short_description, description: "50-word summary"
-        string :full_description, description: "Detailed description"
-        array :bullet_points, of: :string, description: "Key selling points"
-      end
+  def schema
+    @schema ||= RubyLLM::Schema.create do
+      string :headline, description: "Attention-grabbing headline"
+      string :short_description, description: "50-word summary"
+      string :full_description, description: "Detailed description"
+      array :bullet_points, of: :string, description: "Key selling points"
     end
   end
 end
@@ -162,46 +154,44 @@ end
 ### Invoice Parser
 
 ```ruby
-module LLM
-  class InvoiceParserAgent < ApplicationAgent
-    model "gpt-4o"  # Vision capable
+class InvoiceParserAgent < ApplicationAgent
+  model "gpt-4o"  # Vision capable
 
-    param :invoice_path, required: true
+  param :invoice_path, required: true
 
-    def user_prompt
-      "Extract all invoice details from this document."
-    end
+  def user_prompt
+    "Extract all invoice details from this document."
+  end
 
-    def schema
-      @schema ||= RubyLLM::Schema.create do
-        string :invoice_number
-        string :date
-        string :due_date, nullable: true
-        object :vendor do
-          string :name
-          string :address, nullable: true
-        end
-        object :customer do
-          string :name
-          string :address, nullable: true
-        end
-        array :line_items, of: :object do
-          string :description
-          integer :quantity
-          number :unit_price
-          number :total
-        end
-        number :subtotal
-        number :tax, nullable: true
-        number :total
-        string :currency, default: "USD"
+  def schema
+    @schema ||= RubyLLM::Schema.create do
+      string :invoice_number
+      string :date
+      string :due_date, nullable: true
+      object :vendor do
+        string :name
+        string :address, nullable: true
       end
+      object :customer do
+        string :name
+        string :address, nullable: true
+      end
+      array :line_items, of: :object do
+        string :description
+        integer :quantity
+        number :unit_price
+        number :total
+      end
+      number :subtotal
+      number :tax, nullable: true
+      number :total
+      string :currency, default: "USD"
     end
   end
 end
 
 # Usage with attachment
-result = LLM::InvoiceParserAgent.call(
+result = InvoiceParserAgent.call(
   invoice_path: "path",
   with: "invoice.pdf"
 )
@@ -210,42 +200,40 @@ result = LLM::InvoiceParserAgent.call(
 ### Resume Parser
 
 ```ruby
-module LLM
-  class ResumeParserAgent < ApplicationAgent
-    model "gpt-4o"
+class ResumeParserAgent < ApplicationAgent
+  model "gpt-4o"
 
-    param :resume_text, required: true
+  param :resume_text, required: true
 
-    def user_prompt
-      <<~PROMPT
-        Parse this resume and extract structured information:
+  def user_prompt
+    <<~PROMPT
+      Parse this resume and extract structured information:
 
-        #{resume_text}
-      PROMPT
-    end
+      #{resume_text}
+    PROMPT
+  end
 
-    def schema
-      @schema ||= RubyLLM::Schema.create do
-        object :contact do
-          string :name
-          string :email, nullable: true
-          string :phone, nullable: true
-          string :location, nullable: true
-        end
-        string :summary, nullable: true
-        array :experience, of: :object do
-          string :company
-          string :title
-          string :dates
-          array :responsibilities, of: :string
-        end
-        array :education, of: :object do
-          string :institution
-          string :degree
-          string :year, nullable: true
-        end
-        array :skills, of: :string
+  def schema
+    @schema ||= RubyLLM::Schema.create do
+      object :contact do
+        string :name
+        string :email, nullable: true
+        string :phone, nullable: true
+        string :location, nullable: true
       end
+      string :summary, nullable: true
+      array :experience, of: :object do
+        string :company
+        string :title
+        string :dates
+        array :responsibilities, of: :string
+      end
+      array :education, of: :object do
+        string :institution
+        string :degree
+        string :year, nullable: true
+      end
+      array :skills, of: :string
     end
   end
 end
@@ -256,46 +244,44 @@ end
 ### Customer Support Bot
 
 ```ruby
-module LLM
-  class SupportAgent < ApplicationAgent
-    model "gpt-4o"
-    temperature 0.3
+class SupportAgent < ApplicationAgent
+  model "gpt-4o"
+  temperature 0.3
 
-    param :message, required: true
-    param :conversation_history, default: []
-    param :customer_info, default: {}
+  param :message, required: true
+  param :conversation_history, default: []
+  param :customer_info, default: {}
 
-    def system_prompt
-      <<~PROMPT
-        You are a helpful customer support agent for TechStore.
+  def system_prompt
+    <<~PROMPT
+      You are a helpful customer support agent for TechStore.
 
-        Key information:
-        - Return policy: 30 days, unopened items
-        - Shipping: Free over $50
-        - Support hours: 9 AM - 9 PM EST
+      Key information:
+      - Return policy: 30 days, unopened items
+      - Shipping: Free over $50
+      - Support hours: 9 AM - 9 PM EST
 
-        Customer info: #{customer_info.to_json}
+      Customer info: #{customer_info.to_json}
 
-        Be helpful, professional, and concise. If you can't help,
-        offer to escalate to a human agent.
-      PROMPT
-    end
+      Be helpful, professional, and concise. If you can't help,
+      offer to escalate to a human agent.
+    PROMPT
+  end
 
-    def user_prompt
-      history = conversation_history.map do |msg|
-        "#{msg[:role].capitalize}: #{msg[:content]}"
-      end.join("\n")
+  def user_prompt
+    history = conversation_history.map do |msg|
+      "#{msg[:role].capitalize}: #{msg[:content]}"
+    end.join("\n")
 
-      "#{history}\nCustomer: #{message}"
-    end
+    "#{history}\nCustomer: #{message}"
+  end
 
-    def schema
-      @schema ||= RubyLLM::Schema.create do
-        string :response
-        boolean :needs_escalation
-        string :escalation_reason, nullable: true
-        array :suggested_actions, of: :string
-      end
+  def schema
+    @schema ||= RubyLLM::Schema.create do
+      string :response
+      boolean :needs_escalation
+      string :escalation_reason, nullable: true
+      array :suggested_actions, of: :string
     end
   end
 end
@@ -306,62 +292,60 @@ end
 ### Content Pipeline
 
 ```ruby
-module LLM
-  # Step 1: Research
-  class ResearchAgent < ApplicationAgent
-    model "gpt-4o"
-    param :topic, required: true
+# Step 1: Research
+class ResearchAgent < ApplicationAgent
+  model "gpt-4o"
+  param :topic, required: true
 
-    def user_prompt
-      "Research key points about: #{topic}"
+  def user_prompt
+    "Research key points about: #{topic}"
+  end
+
+  def schema
+    @schema ||= RubyLLM::Schema.create do
+      array :key_points, of: :string
+      array :sources, of: :string
     end
+  end
+end
 
-    def schema
-      @schema ||= RubyLLM::Schema.create do
-        array :key_points, of: :string
-        array :sources, of: :string
+# Step 2: Outline
+class OutlineAgent < ApplicationAgent
+  model "gpt-4o-mini"
+  param :key_points, required: true
+
+  def user_prompt
+    "Create an outline from: #{key_points.join(', ')}"
+  end
+
+  def schema
+    @schema ||= RubyLLM::Schema.create do
+      array :sections, of: :object do
+        string :title
+        array :points, of: :string
       end
     end
   end
+end
 
-  # Step 2: Outline
-  class OutlineAgent < ApplicationAgent
-    model "gpt-4o-mini"
-    param :key_points, required: true
+# Step 3: Write
+class WriterAgent < ApplicationAgent
+  model "gpt-4o"
+  param :outline, required: true
 
-    def user_prompt
-      "Create an outline from: #{key_points.join(', ')}"
-    end
-
-    def schema
-      @schema ||= RubyLLM::Schema.create do
-        array :sections, of: :object do
-          string :title
-          array :points, of: :string
-        end
-      end
-    end
-  end
-
-  # Step 3: Write
-  class WriterAgent < ApplicationAgent
-    model "gpt-4o"
-    param :outline, required: true
-
-    def user_prompt
-      "Write content following this outline: #{outline.to_json}"
-    end
+  def user_prompt
+    "Write content following this outline: #{outline.to_json}"
   end
 end
 
 # Pipeline
 content_pipeline = RubyLLM::Agents::Workflow.pipeline(
-  LLM::ResearchAgent,
-  LLM::OutlineAgent,
-  LLM::WriterAgent,
+  ResearchAgent,
+  OutlineAgent,
+  WriterAgent,
   before_step: {
-    LLM::OutlineAgent => ->(prev, _) { { key_points: prev[:key_points] } },
-    LLM::WriterAgent => ->(prev, _) { { outline: prev[:sections] } }
+    OutlineAgent => ->(prev, _) { { key_points: prev[:key_points] } },
+    WriterAgent => ->(prev, _) { { outline: prev[:sections] } }
   }
 )
 
@@ -390,33 +374,31 @@ result = analysis_workflow.call(text: document_content)
 ### Intent Router
 
 ```ruby
-module LLM
-  class IntentClassifier < ApplicationAgent
-    model "gpt-4o-mini"
-    temperature 0.0
-    param :message, required: true
+class IntentClassifier < ApplicationAgent
+  model "gpt-4o-mini"
+  temperature 0.0
+  param :message, required: true
 
-    def user_prompt
-      "Classify intent: #{message}"
-    end
+  def user_prompt
+    "Classify intent: #{message}"
+  end
 
-    def schema
-      @schema ||= RubyLLM::Schema.create do
-        string :intent, enum: %w[support sales billing general]
-        number :confidence
-      end
+  def schema
+    @schema ||= RubyLLM::Schema.create do
+      string :intent, enum: %w[support sales billing general]
+      number :confidence
     end
   end
 end
 
 support_router = RubyLLM::Agents::Workflow.router(
-  classifier: LLM::IntentClassifier,
+  classifier: IntentClassifier,
   routes: {
-    "support" => LLM::TechnicalSupportAgent,
-    "sales" => LLM::SalesAgent,
-    "billing" => LLM::BillingAgent
+    "support" => TechnicalSupportAgent,
+    "sales" => SalesAgent,
+    "billing" => BillingAgent
   },
-  default: LLM::GeneralHelpAgent,
+  default: GeneralHelpAgent,
   confidence_threshold: 0.7
 )
 
@@ -428,7 +410,7 @@ result = support_router.call(message: "How do I reset my password?")
 ### RSpec Example
 
 ```ruby
-RSpec.describe LLM::SearchIntentAgent do
+RSpec.describe SearchIntentAgent do
   describe ".call" do
     it "extracts search intent" do
       result = described_class.call(
@@ -437,7 +419,7 @@ RSpec.describe LLM::SearchIntentAgent do
       )
 
       expect(result[:dry_run]).to be true
-      expect(result[:agent]).to eq("LLM::SearchIntentAgent")
+      expect(result[:agent]).to eq("SearchIntentAgent")
     end
 
     context "with mocked response" do
@@ -469,7 +451,7 @@ end
 # app/controllers/api/v1/search_controller.rb
 class Api::V1::SearchController < ApplicationController
   def search
-    result = LLM::SearchIntentAgent.call(
+    result = SearchIntentAgent.call(
       query: params[:q],
       user_id: current_user.id
     )
@@ -515,7 +497,7 @@ class ContentGenerationJob < ApplicationJob
   def perform(article_id)
     article = Article.find(article_id)
 
-    result = LLM::ContentGeneratorAgent.call(
+    result = ContentGeneratorAgent.call(
       topic: article.topic,
       tone: article.tone,
       word_count: article.target_word_count
@@ -544,22 +526,20 @@ ContentGenerationJob.perform_later(article.id)
 ### Streaming with Action Cable
 
 ```ruby
-# app/llm/agents/streaming_chat_agent.rb
-module LLM
-  class StreamingChatAgent < ApplicationAgent
-    model "gpt-4o"
-    streaming true
+# app/agents/streaming_chat_agent.rb
+class StreamingChatAgent < ApplicationAgent
+  model "gpt-4o"
+  streaming true
 
-    param :message, required: true
-    param :channel, required: true
+  param :message, required: true
+  param :channel, required: true
 
-    def user_prompt
-      message
-    end
+  def user_prompt
+    message
+  end
 
-    def on_chunk(chunk)
-      channel.broadcast_chunk(chunk)
-    end
+  def on_chunk(chunk)
+    channel.broadcast_chunk(chunk)
   end
 end
 
@@ -570,7 +550,7 @@ class ChatChannel < ApplicationCable::Channel
   end
 
   def receive(data)
-    LLM::StreamingChatAgent.call(
+    StreamingChatAgent.call(
       message: data["message"],
       channel: self
     )
@@ -588,40 +568,38 @@ end
 ### Multi-Tenant Agent with Execution Metadata
 
 ```ruby
-# app/llm/agents/tenant_aware_agent.rb
-module LLM
-  class TenantAwareAgent < ApplicationAgent
-    model "gpt-4o"
-    description "Processes queries with tenant isolation"
+# app/agents/tenant_aware_agent.rb
+class TenantAwareAgent < ApplicationAgent
+  model "gpt-4o"
+  description "Processes queries with tenant isolation"
 
-    reliability do
-      retries max: 3, backoff: :exponential
-      fallback_models "gpt-4o-mini"
-      circuit_breaker errors: 5, within: 60, cooldown: 180
-    end
+  reliability do
+    retries max: 3, backoff: :exponential
+    fallback_models "gpt-4o-mini"
+    circuit_breaker errors: 5, within: 60, cooldown: 180
+  end
 
-    param :query, required: true
+  param :query, required: true
 
-    def user_prompt
-      query
-    end
+  def user_prompt
+    query
+  end
 
-    def execution_metadata
-      {
-        tenant_id: Current.tenant_id,
-        tenant_name: Current.tenant&.name,
-        user_id: Current.user&.id,
-        request_id: Current.request_id,
-        source: "web"
-      }
-    end
+  def execution_metadata
+    {
+      tenant_id: Current.tenant_id,
+      tenant_name: Current.tenant&.name,
+      user_id: Current.user&.id,
+      request_id: Current.request_id,
+      source: "web"
+    }
   end
 end
 
 # Usage in controller
 class QueriesController < ApplicationController
   def create
-    result = LLM::TenantAwareAgent.call(query: params[:query])
+    result = TenantAwareAgent.call(query: params[:query])
 
     respond_to do |format|
       format.json { render json: result.content }
@@ -640,7 +618,7 @@ namespace :agents do
     Article.pending.find_each do |article|
       print "Processing article #{article.id}..."
 
-      result = LLM::ContentGeneratorAgent.call(
+      result = ContentGeneratorAgent.call(
         topic: article.topic,
         dry_run: ENV["DRY_RUN"].present?
       )
@@ -729,7 +707,7 @@ class ResilientAgentService
 end
 
 # Usage
-service = ResilientAgentService.new(LLM::SearchAgent)
+service = ResilientAgentService.new(SearchAgent)
 result = service.call(query: "test")
 
 case result

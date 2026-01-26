@@ -242,46 +242,40 @@ end
 
 ```ruby
 # Step 1: Extract text from document
-module LLM
-  class TextExtractorAgent < ApplicationAgent
-    model "gpt-4o"
-    param :document, required: true
+class TextExtractorAgent < ApplicationAgent
+  model "gpt-4o"
+  param :document, required: true
 
-    def user_prompt
-      "Extract all text content from this document"
-    end
+  def user_prompt
+    "Extract all text content from this document"
   end
 end
 
 # Step 2: Classify the content
-module LLM
-  class ContentClassifierAgent < ApplicationAgent
-    model "gpt-4o-mini"
-    param :text, required: true
+class ContentClassifierAgent < ApplicationAgent
+  model "gpt-4o-mini"
+  param :text, required: true
 
-    def user_prompt
-      "Classify this content: #{text}"
-    end
+  def user_prompt
+    "Classify this content: #{text}"
+  end
 
-    def schema
-      @schema ||= RubyLLM::Schema.create do
-        string :category, enum: ["article", "report", "memo", "other"]
-        array :topics, of: :string
-      end
+  def schema
+    @schema ||= RubyLLM::Schema.create do
+      string :category, enum: ["article", "report", "memo", "other"]
+      array :topics, of: :string
     end
   end
 end
 
 # Step 3: Generate summary
-module LLM
-  class SummarizerAgent < ApplicationAgent
-    model "gpt-4o"
-    param :text, required: true
-    param :category
+class SummarizerAgent < ApplicationAgent
+  model "gpt-4o"
+  param :text, required: true
+  param :category
 
-    def user_prompt
-      "Summarize this #{category}: #{text}"
-    end
+  def user_prompt
+    "Summarize this #{category}: #{text}"
   end
 end
 
@@ -291,9 +285,9 @@ class LLM::DocumentPipeline < RubyLLM::Agents::Workflow::Pipeline
   timeout 120.seconds
   max_cost 0.50
 
-  step :extract,   agent: LLM::TextExtractorAgent
-  step :classify,  agent: LLM::ContentClassifierAgent
-  step :summarize, agent: LLM::SummarizerAgent
+  step :extract,   agent: TextExtractorAgent
+  step :classify,  agent: ContentClassifierAgent
+  step :summarize, agent: SummarizerAgent
 
   def before_classify(context)
     { text: context[:extract].content }
@@ -353,17 +347,13 @@ end
 
 ```ruby
 # Classification: Fast, cheap model
-module LLM
-  class ClassifierAgent < ApplicationAgent
-    model "gpt-4o-mini"
-  end
+class ClassifierAgent < ApplicationAgent
+  model "gpt-4o-mini"
 end
 
 # Generation: Better model
-module LLM
-  class GeneratorAgent < ApplicationAgent
-    model "gpt-4o"
-  end
+class GeneratorAgent < ApplicationAgent
+  model "gpt-4o"
 end
 ```
 

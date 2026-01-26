@@ -81,19 +81,17 @@ RubyLLM::Agents::Execution.this_month
 Add application-specific data to executions:
 
 ```ruby
-module LLM
-  class MyAgent < ApplicationAgent
-    param :query, required: true
-    param :user_id, required: true
+class MyAgent < ApplicationAgent
+  param :query, required: true
+  param :user_id, required: true
 
-    def execution_metadata
-      {
-        user_id: user_id,
-        source: "web",
-        request_id: Current.request_id,
-        feature_flags: current_flags
-      }
-    end
+  def execution_metadata
+    {
+      user_id: user_id,
+      source: "web",
+      request_id: Current.request_id,
+      feature_flags: current_flags
+    }
   end
 end
 ```

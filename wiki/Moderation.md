@@ -34,25 +34,23 @@ OpenAI's moderation endpoint checks for these categories:
 Check user input before making the LLM call:
 
 ```ruby
-module LLM
-  class SafeAgent < ApplicationAgent
-    model "gpt-4o"
-    moderation :input
+class SafeAgent < ApplicationAgent
+  model "gpt-4o"
+  moderation :input
 
-    param :message, required: true
+  param :message, required: true
 
-    def user_prompt
-      message
-    end
+  def user_prompt
+    message
   end
 end
 
 # Safe content proceeds normally
-result = LLM::SafeAgent.call(message: "Hello!")
+result = SafeAgent.call(message: "Hello!")
 result.content  # => "Hi there! How can I help?"
 
 # Flagged content is blocked before LLM call
-result = LLM::SafeAgent.call(message: "harmful content")
+result = SafeAgent.call(message: "harmful content")
 result.moderation_flagged?  # => true
 result.moderation_phase     # => :input
 result.content              # => nil
@@ -64,20 +62,18 @@ result.status               # => :input_moderation_blocked
 Check LLM output before returning to the user:
 
 ```ruby
-module LLM
-  class ContentGenerator < ApplicationAgent
-    model "gpt-4o"
-    moderation :output
+class ContentGenerator < ApplicationAgent
+  model "gpt-4o"
+  moderation :output
 
-    param :topic, required: true
+  param :topic, required: true
 
-    def user_prompt
-      "Write a story about #{topic}"
-    end
+  def user_prompt
+    "Write a story about #{topic}"
   end
 end
 
-result = LLM::ContentGenerator.call(topic: "adventure")
+result = ContentGenerator.call(topic: "adventure")
 result.moderation_flagged?  # => false if output is clean
 
 # If output contains flagged content
@@ -87,16 +83,14 @@ result.status  # => :output_moderation_blocked
 ### Both Input and Output
 
 ```ruby
-module LLM
-  class FullyModeratedAgent < ApplicationAgent
-    model "gpt-4o"
-    moderation :both  # or: moderation :input, :output
+class FullyModeratedAgent < ApplicationAgent
+  model "gpt-4o"
+  moderation :both  # or: moderation :input, :output
 
-    param :message, required: true
+  param :message, required: true
 
-    def user_prompt
-      message
-    end
+  def user_prompt
+    message
   end
 end
 ```
@@ -108,10 +102,8 @@ end
 Set a score threshold (0.0-1.0) - content is only flagged if the max score meets or exceeds the threshold:
 
 ```ruby
-module LLM
-  class ThresholdAgent < ApplicationAgent
-    moderation :input, threshold: 0.8  # Only flag high-confidence matches
-  end
+class ThresholdAgent < ApplicationAgent
+  moderation :input, threshold: 0.8  # Only flag high-confidence matches
 end
 ```
 
@@ -120,11 +112,9 @@ end
 Only flag specific categories:
 
 ```ruby
-module LLM
-  class CategoryFilteredAgent < ApplicationAgent
-    moderation :input, categories: [:hate, :violence, :harassment]
-    # Sexual content won't trigger moderation
-  end
+class CategoryFilteredAgent < ApplicationAgent
+  moderation :input, categories: [:hate, :violence, :harassment]
+  # Sexual content won't trigger moderation
 end
 ```
 
@@ -133,10 +123,8 @@ end
 Specify the moderation model:
 
 ```ruby
-module LLM
-  class CustomModelAgent < ApplicationAgent
-    moderation :input, model: "omni-moderation-latest"
-  end
+class CustomModelAgent < ApplicationAgent
+  moderation :input, model: "omni-moderation-latest"
 end
 ```
 
@@ -145,20 +133,18 @@ end
 Configure what happens when content is flagged:
 
 ```ruby
-module LLM
-  class ConfiguredAgent < ApplicationAgent
-    # :block - Return early with moderation result (default)
-    moderation :input, on_flagged: :block
+class ConfiguredAgent < ApplicationAgent
+  # :block - Return early with moderation result (default)
+  moderation :input, on_flagged: :block
 
-    # :raise - Raise ModerationError exception
-    moderation :input, on_flagged: :raise
+  # :raise - Raise ModerationError exception
+  moderation :input, on_flagged: :raise
 
-    # :warn - Log warning but continue
-    moderation :input, on_flagged: :warn
+  # :warn - Log warning but continue
+  moderation :input, on_flagged: :warn
 
-    # :log - Log info but continue
-    moderation :input, on_flagged: :log
-  end
+  # :log - Log info but continue
+  moderation :input, on_flagged: :log
 end
 ```
 
@@ -167,26 +153,24 @@ end
 Implement custom moderation logic:
 
 ```ruby
-module LLM
-  class CustomHandlerAgent < ApplicationAgent
-    moderation :input, custom_handler: :review_moderation
+class CustomHandlerAgent < ApplicationAgent
+  moderation :input, custom_handler: :review_moderation
 
-    param :message, required: true
+  param :message, required: true
 
-    def user_prompt
-      message
-    end
+  def user_prompt
+    message
+  end
 
-    private
+  private
 
-    def review_moderation(result, phase)
-      # Log for review
-      Rails.logger.warn("Content flagged: #{result.flagged_categories}")
+  def review_moderation(result, phase)
+    # Log for review
+    Rails.logger.warn("Content flagged: #{result.flagged_categories}")
 
-      # Return :continue to proceed anyway, :block to stop
-      max_score = result.category_scores.values.max
-      max_score > 0.9 ? :block : :continue
-    end
+    # Return :continue to proceed anyway, :block to stop
+    max_score = result.category_scores.values.max
+    max_score > 0.9 ? :block : :continue
   end
 end
 ```
@@ -196,23 +180,21 @@ end
 For complex configurations, use the block syntax:
 
 ```ruby
-module LLM
-  class AdvancedModerationAgent < ApplicationAgent
-    model "gpt-4o"
+class AdvancedModerationAgent < ApplicationAgent
+  model "gpt-4o"
 
-    moderation do
-      input enabled: true, threshold: 0.7
-      output enabled: true, threshold: 0.9
-      model "omni-moderation-latest"
-      categories :hate, :violence, :harassment
-      on_flagged :block
-    end
+  moderation do
+    input enabled: true, threshold: 0.7
+    output enabled: true, threshold: 0.9
+    model "omni-moderation-latest"
+    categories :hate, :violence, :harassment
+    on_flagged :block
+  end
 
-    param :message, required: true
+  param :message, required: true
 
-    def user_prompt
-      message
-    end
+  def user_prompt
+    message
   end
 end
 ```
@@ -223,16 +205,16 @@ Override moderation settings at call time:
 
 ```ruby
 # Disable moderation for specific call
-result = LLM::SafeAgent.call(message: "test", moderation: false)
+result = SafeAgent.call(message: "test", moderation: false)
 
 # Override threshold
-result = LLM::SafeAgent.call(
+result = SafeAgent.call(
   message: "content",
   moderation: { threshold: 0.95 }
 )
 
 # Override action
-result = LLM::SafeAgent.call(
+result = SafeAgent.call(
   message: "content",
   moderation: { on_flagged: :warn }
 )
@@ -243,7 +225,7 @@ result = LLM::SafeAgent.call(
 The Result object includes moderation-related accessors:
 
 ```ruby
-result = LLM::ModeratedAgent.call(message: "test")
+result = ModeratedAgent.call(message: "test")
 
 # Status
 result.status               # :success, :input_moderation_blocked, or :output_moderation_blocked
@@ -263,7 +245,7 @@ When using `on_flagged: :raise`, catch the exception:
 
 ```ruby
 begin
-  result = LLM::StrictAgent.call(message: user_input)
+  result = StrictAgent.call(message: user_input)
 rescue RubyLLM::Agents::ModerationError => e
   puts "Content blocked: #{e.flagged_categories.join(', ')}"
   puts "Phase: #{e.phase}"
@@ -348,7 +330,7 @@ end
 Moderation respects multi-tenancy - uses tenant's API keys if configured:
 
 ```ruby
-result = LLM::ModeratedAgent.call(
+result = ModeratedAgent.call(
   message: user_input,
   tenant: current_organization  # Uses tenant's OpenAI key
 )
@@ -388,28 +370,26 @@ OpenAI's moderation API is very inexpensive:
 See the complete example:
 
 ```ruby
-# app/llm/agents/moderated_agent.rb
-module LLM
-  class ModeratedAgent < ApplicationAgent
-    description "Demonstrates content moderation support"
-    version "1.0"
+# app/agents/moderated_agent.rb
+class ModeratedAgent < ApplicationAgent
+  description "Demonstrates content moderation support"
+  version "1.0"
 
-    model "gpt-4o"
-    temperature 0.7
+  model "gpt-4o"
+  temperature 0.7
 
-    moderation :input,
-      threshold: 0.7,
-      categories: [:hate, :violence, :harassment]
+  moderation :input,
+    threshold: 0.7,
+    categories: [:hate, :violence, :harassment]
 
-    param :message, required: true
+  param :message, required: true
 
-    def system_prompt
-      "You are a helpful and friendly assistant."
-    end
+  def system_prompt
+    "You are a helpful and friendly assistant."
+  end
 
-    def user_prompt
-      message
-    end
+  def user_prompt
+    message
   end
 end
 ```

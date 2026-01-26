@@ -38,9 +38,9 @@ require 'async'
 Async do
   # These run concurrently, not sequentially
   results = [
-    Async { LLM::SentimentAgent.call(input: "I love this!") },
-    Async { LLM::SummaryAgent.call(input: "Long text...") },
-    Async { LLM::CategoryAgent.call(input: "Product review") }
+    Async { SentimentAgent.call(input: "I love this!") },
+    Async { SummaryAgent.call(input: "Long text...") },
+    Async { CategoryAgent.call(input: "Product review") }
   ].map(&:wait)
 end
 ```
@@ -54,9 +54,9 @@ require 'async'
 
 Async do
   results = RubyLLM::Agents::Async.batch([
-    [LLM::SentimentAgent, { input: "Text 1" }],
-    [LLM::SentimentAgent, { input: "Text 2" }],
-    [LLM::SentimentAgent, { input: "Text 3" }]
+    [SentimentAgent, { input: "Text 1" }],
+    [SentimentAgent, { input: "Text 2" }],
+    [SentimentAgent, { input: "Text 3" }]
   ], max_concurrent: 5)
 end
 ```
@@ -68,7 +68,7 @@ Async do
   reviews = ["Great!", "Terrible!", "Okay"]
 
   results = RubyLLM::Agents::Async.each(reviews, max_concurrent: 10) do |review|
-    LLM::SentimentAgent.call(input: review)
+    SentimentAgent.call(input: review)
   end
 end
 ```
@@ -119,15 +119,15 @@ BEFORE (Threads):              AFTER (Fibers):
 Parallel workflows automatically use fibers when in async context:
 
 ```ruby
-class LLM::ReviewAnalyzer < RubyLLM::Agents::Workflow::Parallel
-  branch :sentiment,  agent: LLM::SentimentAgent
-  branch :summary,    agent: LLM::SummaryAgent
-  branch :categories, agent: LLM::CategoryAgent
+class ReviewAnalyzer < RubyLLM::Agents::Workflow::Parallel
+  branch :sentiment,  agent: SentimentAgent
+  branch :summary,    agent: SummaryAgent
+  branch :categories, agent: CategoryAgent
 end
 
 # In async context, uses fibers instead of threads
 Async do
-  result = LLM::ReviewAnalyzer.call(text: "Great product!")
+  result = ReviewAnalyzer.call(text: "Great product!")
 end
 ```
 
@@ -136,12 +136,10 @@ end
 Retry delays are automatically non-blocking in async context:
 
 ```ruby
-module LLM
-  class ReliableAgent < ApplicationAgent
-    retries max: 3, backoff: :exponential
+class ReliableAgent < ApplicationAgent
+  retries max: 3, backoff: :exponential
 
-    # In async context, sleep doesn't block other fibers
-  end
+  # In async context, sleep doesn't block other fibers
 end
 ```
 
@@ -189,14 +187,14 @@ RubyLLM::Agents::Async.batch(agents, max_concurrent: 10)
 # Good: Rate-limited batch processing
 Async do
   RubyLLM::Agents::Async.batch(
-    items.map { |item| [LLM::ProcessorAgent, { input: item }] },
+    items.map { |item| [ProcessorAgent, { input: item }] },
     max_concurrent: 20
   )
 end
 
 # Avoid: Spawning unlimited concurrent tasks
 Async do
-  items.map { |item| Async { LLM::ProcessorAgent.call(input: item) } }.map(&:wait)
+  items.map { |item| Async { ProcessorAgent.call(input: item) } }.map(&:wait)
 end
 ```
 
@@ -240,11 +238,11 @@ Existing code works unchanged:
 
 ```ruby
 # Still works exactly the same (synchronous)
-result = LLM::MyAgent.call(input: "Hello")
+result = MyAgent.call(input: "Hello")
 
 # Opt-in to async
 Async do
-  result = LLM::MyAgent.call(input: "Hello")  # Now non-blocking
+  result = MyAgent.call(input: "Hello")  # Now non-blocking
 end
 ```
 

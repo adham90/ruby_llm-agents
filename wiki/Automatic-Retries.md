@@ -5,11 +5,9 @@ Configure automatic retry behavior for handling transient failures.
 ## Basic Configuration
 
 ```ruby
-module LLM
-  class MyAgent < ApplicationAgent
-    model "gpt-4o"
-    retries max: 3  # Retry up to 3 times
-  end
+class MyAgent < ApplicationAgent
+  model "gpt-4o"
+  retries max: 3  # Retry up to 3 times
 end
 ```
 
@@ -58,15 +56,13 @@ Jitter is automatically added to prevent thundering herd:
 Specify which errors should trigger retries:
 
 ```ruby
-module LLM
-  class MyAgent < ApplicationAgent
-    retries max: 3, on: [
-      Timeout::Error,
-      Net::ReadTimeout,
-      Faraday::TimeoutError,
-      MyCustomError
-    ]
-  end
+class MyAgent < ApplicationAgent
+  retries max: 3, on: [
+    Timeout::Error,
+    Net::ReadTimeout,
+    Faraday::TimeoutError,
+    MyCustomError
+  ]
 end
 ```
 
@@ -101,11 +97,9 @@ OpenSSL::SSL::SSLError
 Set a maximum time for all attempts:
 
 ```ruby
-module LLM
-  class MyAgent < ApplicationAgent
-    retries max: 5
-    total_timeout 30  # Abort everything after 30 seconds
-  end
+class MyAgent < ApplicationAgent
+  retries max: 5
+  total_timeout 30  # Abort everything after 30 seconds
 end
 ```
 
@@ -141,7 +135,7 @@ Without `total_timeout`, 5 retries with exponential backoff could take several m
 ## Viewing Retry Details
 
 ```ruby
-result = LLM::MyAgent.call(query: "test")
+result = MyAgent.call(query: "test")
 
 # Number of attempts (including initial)
 result.attempts_count  # => 3
@@ -162,47 +156,39 @@ end
 ### High Reliability
 
 ```ruby
-module LLM
-  class HighReliabilityAgent < ApplicationAgent
-    model "gpt-4o"
-    retries max: 5, backoff: :exponential, base: 1.0, max_delay: 30.0
-    total_timeout 120  # 2 minutes max
-  end
+class HighReliabilityAgent < ApplicationAgent
+  model "gpt-4o"
+  retries max: 5, backoff: :exponential, base: 1.0, max_delay: 30.0
+  total_timeout 120  # 2 minutes max
 end
 ```
 
 ### Fast Response
 
 ```ruby
-module LLM
-  class FastAgent < ApplicationAgent
-    model "gpt-4o"
-    retries max: 2, backoff: :constant, base: 0.5
-    total_timeout 10
-  end
+class FastAgent < ApplicationAgent
+  model "gpt-4o"
+  retries max: 2, backoff: :constant, base: 0.5
+  total_timeout 10
 end
 ```
 
 ### Background Jobs
 
 ```ruby
-module LLM
-  class BackgroundAgent < ApplicationAgent
-    model "gpt-4o"
-    retries max: 10, backoff: :exponential, max_delay: 60.0
-    total_timeout 300  # 5 minutes OK for background
-  end
+class BackgroundAgent < ApplicationAgent
+  model "gpt-4o"
+  retries max: 10, backoff: :exponential, max_delay: 60.0
+  total_timeout 300  # 5 minutes OK for background
 end
 ```
 
 ### No Retries
 
 ```ruby
-module LLM
-  class NoRetryAgent < ApplicationAgent
-    model "gpt-4o"
-    # No retries configuration = fail immediately
-  end
+class NoRetryAgent < ApplicationAgent
+  model "gpt-4o"
+  # No retries configuration = fail immediately
 end
 ```
 
@@ -211,12 +197,10 @@ end
 Retries work with fallback models:
 
 ```ruby
-module LLM
-  class MyAgent < ApplicationAgent
-    model "gpt-4o"
-    retries max: 2
-    fallback_models "gpt-4o-mini"
-  end
+class MyAgent < ApplicationAgent
+  model "gpt-4o"
+  retries max: 2
+  fallback_models "gpt-4o-mini"
 end
 
 # Flow:

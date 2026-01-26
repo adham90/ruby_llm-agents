@@ -192,7 +192,7 @@ Pre-populate cache for common queries:
 namespace :llm do
   task warm_cache: :environment do
     CommonQueries.each do |query|
-      LLM::SearchAgent.call(query: query)
+      SearchAgent.call(query: query)
     end
   end
 end
@@ -204,15 +204,13 @@ end
 
 ```ruby
 # Add to agents for APM integration
-module LLM
-  class ApplicationAgent < RubyLLM::Agents::Base
-    def call
-      NewRelic::Agent::Tracer.in_transaction(
-        name: "LLM/#{self.class.name}",
-        category: :task
-      ) do
-        super
-      end
+class ApplicationAgent < RubyLLM::Agents::Base
+  def call
+    NewRelic::Agent::Tracer.in_transaction(
+      name: "LLM/#{self.class.name}",
+      category: :task
+    ) do
+      super
     end
   end
 end
@@ -236,7 +234,7 @@ end
 class HealthController < ApplicationController
   def llm
     # Check LLM connectivity
-    result = LLM::HealthCheckAgent.call(message: "ping", timeout: 5)
+    result = HealthCheckAgent.call(message: "ping", timeout: 5)
 
     if result.success?
       render json: { status: "ok", latency_ms: result.duration_ms }
@@ -289,12 +287,10 @@ spec:
 Configure retry behavior for rate limits:
 
 ```ruby
-module LLM
-  class ProductionAgent < ApplicationAgent
-    retries max: 5, backoff: :exponential, max_delay: 60.0
-    fallback_models "gpt-4o-mini", "claude-3-haiku"
-    circuit_breaker errors: 10, within: 60, cooldown: 300
-  end
+class ProductionAgent < ApplicationAgent
+  retries max: 5, backoff: :exponential, max_delay: 60.0
+  fallback_models "gpt-4o-mini", "claude-3-haiku"
+  circuit_breaker errors: 10, within: 60, cooldown: 300
 end
 ```
 
@@ -372,11 +368,9 @@ pg_dump -t ruby_llm_agents_executions > backup.sql
 Configure multiple providers:
 
 ```ruby
-module LLM
-  class CriticalAgent < ApplicationAgent
-    model "gpt-4o"
-    fallback_models "claude-3-5-sonnet", "gemini-2.0-flash"
-  end
+class CriticalAgent < ApplicationAgent
+  model "gpt-4o"
+  fallback_models "claude-3-5-sonnet", "gemini-2.0-flash"
 end
 ```
 

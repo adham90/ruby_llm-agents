@@ -133,14 +133,12 @@ config.persist_responses = false
 ### Parameters
 
 ```ruby
-module LLM
-  class MyAgent < ApplicationAgent
-    param :user_email, required: true
-    param :credit_card, required: true
-  end
+class MyAgent < ApplicationAgent
+  param :user_email, required: true
+  param :credit_card, required: true
 end
 
-LLM::MyAgent.call(
+MyAgent.call(
   user_email: "john@example.com",
   credit_card: "4111111111111111"
 )
@@ -176,27 +174,25 @@ end
 ### Per-Agent Redaction
 
 ```ruby
-module LLM
-  class SensitiveAgent < ApplicationAgent
-    param :ssn, required: true
+class SensitiveAgent < ApplicationAgent
+  param :ssn, required: true
 
-    def execution_metadata
-      {
-        ssn_provided: true,
-        # Don't include actual SSN
-      }
-    end
+  def execution_metadata
+    {
+      ssn_provided: true,
+      # Don't include actual SSN
+    }
+  end
 
-    # Override parameter sanitization
-    def sanitized_parameters
-      super.merge(ssn: mask_ssn(ssn))
-    end
+  # Override parameter sanitization
+  def sanitized_parameters
+    super.merge(ssn: mask_ssn(ssn))
+  end
 
-    private
+  private
 
-    def mask_ssn(ssn)
-      "XXX-XX-#{ssn[-4..]}"  # Show only last 4
-    end
+  def mask_ssn(ssn)
+    "XXX-XX-#{ssn[-4..]}"  # Show only last 4
   end
 end
 ```

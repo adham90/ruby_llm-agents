@@ -34,11 +34,9 @@ end
 Invalidate cache when agent logic changes:
 
 ```ruby
-module LLM
-  class SearchAgent < ApplicationAgent
-    version "2.1"  # Bump when changing prompts or logic
-    cache_for 1.hour
-  end
+class SearchAgent < ApplicationAgent
+  version "2.1"  # Bump when changing prompts or logic
+  cache_for 1.hour
 end
 ```
 
@@ -47,12 +45,10 @@ end
 Catch type errors early:
 
 ```ruby
-module LLM
-  class MyAgent < ApplicationAgent
-    param :query, type: String, required: true
-    param :limit, type: Integer, default: 10
-    param :filters, type: Hash, default: {}
-  end
+class MyAgent < ApplicationAgent
+  param :query, type: String, required: true
+  param :limit, type: Integer, default: 10
+  param :filters, type: Hash, default: {}
 end
 ```
 
@@ -77,16 +73,14 @@ end
 Don't rely on single requests:
 
 ```ruby
-module LLM
-  class ProductionAgent < ApplicationAgent
-    model "gpt-4o"
+class ProductionAgent < ApplicationAgent
+  model "gpt-4o"
 
-    reliability do
-      retries max: 3, backoff: :exponential
-      fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
-      circuit_breaker errors: 10, within: 60, cooldown: 300
-      total_timeout 30
-    end
+  reliability do
+    retries max: 3, backoff: :exponential
+    fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
+    circuit_breaker errors: 10, within: 60, cooldown: 300
+    total_timeout 30
   end
 end
 ```
@@ -131,14 +125,12 @@ end
 Reduce API calls:
 
 ```ruby
-module LLM
-  class ExpensiveAgent < ApplicationAgent
-    cache_for 2.hours
+class ExpensiveAgent < ApplicationAgent
+  cache_for 2.hours
 
-    # Custom cache key to maximize hits
-    def cache_key_data
-      { query: query.downcase.strip }
-    end
+  # Custom cache key to maximize hits
+  def cache_key_data
+    { query: query.downcase.strip }
   end
 end
 ```
@@ -202,7 +194,7 @@ config.alerts = {
 Debug prompts without API calls:
 
 ```ruby
-result = LLM::MyAgent.call(query: "test", dry_run: true)
+result = MyAgent.call(query: "test", dry_run: true)
 puts result.content[:user_prompt]
 puts result.content[:system_prompt]
 ```
@@ -265,12 +257,10 @@ config.persist_responses = false
 Block harmful content:
 
 ```ruby
-module LLM
-  class SafeAgent < ApplicationAgent
-    moderation :both,
-      threshold: 0.7,
-      on_flagged: :block
-  end
+class SafeAgent < ApplicationAgent
+  moderation :both,
+    threshold: 0.7,
+    on_flagged: :block
 end
 ```
 
@@ -281,13 +271,11 @@ end
 Better UX for chat interfaces:
 
 ```ruby
-module LLM
-  class ChatAgent < ApplicationAgent
-    streaming true
-  end
+class ChatAgent < ApplicationAgent
+  streaming true
 end
 
-LLM::ChatAgent.call(message: msg) do |chunk|
+ChatAgent.call(message: msg) do |chunk|
   stream << chunk.content
 end
 ```
@@ -297,24 +285,22 @@ end
 Match model to task:
 
 ```ruby
-module LLM
-  # Classification - fast, cheap, deterministic
-  class ClassifierAgent < ApplicationAgent
-    model "gpt-4o-mini"
-    temperature 0.0
-  end
+# Classification - fast, cheap, deterministic
+class ClassifierAgent < ApplicationAgent
+  model "gpt-4o-mini"
+  temperature 0.0
+end
 
-  # Creative writing - more capable
-  class WriterAgent < ApplicationAgent
-    model "gpt-4o"
-    temperature 0.8
-  end
+# Creative writing - more capable
+class WriterAgent < ApplicationAgent
+  model "gpt-4o"
+  temperature 0.8
+end
 
-  # Simple extraction - fastest
-  class ExtractorAgent < ApplicationAgent
-    model "gemini-2.0-flash"
-    temperature 0.0
-  end
+# Simple extraction - fastest
+class ExtractorAgent < ApplicationAgent
+  model "gemini-2.0-flash"
+  temperature 0.0
 end
 ```
 
