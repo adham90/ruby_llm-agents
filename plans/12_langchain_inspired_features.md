@@ -2,7 +2,7 @@
 
 ## Overview
 
-This plan outlines features inspired by LangChain/LangGraph that would enhance ruby_llm-agents. After analyzing both frameworks, we've identified six key areas where LangChain patterns could improve our library while maintaining Ruby/Rails idioms.
+This plan outlines features inspired by LangChain/LangGraph that would enhance ruby_llm-agents. After analyzing both frameworks, we've identified four key areas where LangChain patterns could improve our library while maintaining Ruby/Rails idioms.
 
 ---
 
@@ -10,11 +10,12 @@ This plan outlines features inspired by LangChain/LangGraph that would enhance r
 
 1. **Smarter Memory Management** - Multiple conversation memory strategies to handle long conversations
 2. **RAG Pipeline** - First-class retrieval-augmented generation support
-3. **Reusable Prompt Templates** - Composable, parameterized prompts
-4. **Typed Workflow State** - Explicit state schemas for predictable workflows
-5. **Checkpoint & Time Travel** - Branch and replay workflow executions
+3. **Typed Workflow State** - Explicit state schemas for predictable workflows
+4. **Checkpoint & Time Travel** - Branch and replay workflow executions
 
-> **Note**: Output Parsers (a LangChain feature) are intentionally excluded. Ruby_llm-agents already supports provider-enforced structured output via `RubyLLM::Schema`, which is sent to the LLM API and guarantees valid JSON responses. Post-hoc parsing is unnecessary when using native schema support.
+> **Note**: Some LangChain features are intentionally excluded:
+> - **Output Parsers** - Ruby_llm-agents already supports provider-enforced structured output via `RubyLLM::Schema`
+> - **Prompt Templates** - The existing `system_prompt` and `user_prompt` methods provide full Ruby flexibility (conditionals, loops, interpolation) which is more powerful than template DSLs
 
 ---
 
@@ -563,175 +564,7 @@ lib/ruby_llm/agents/rag/
 
 ---
 
-## Feature 3: Prompt Templates
-
-### Problem
-
-Prompts are often duplicated across agents. Common patterns:
-- Few-shot examples injection
-- Conditional sections based on context
-- Variable substitution
-- Output format instructions
-
-### Proposed Design
-
-#### Template Classes
-
-```ruby
-module RubyLLM
-  module Agents
-    module Prompts
-      class Template
-        attr_reader :template, :input_variables
-
-        def initialize(template, input_variables: [])
-          @template = template
-          @input_variables = input_variables
-        end
-
-        def format(**variables)
-          result = template.dup
-
-          variables.each do |key, value|
-            result.gsub!("{#{key}}", value.to_s)
-          end
-
-          # Handle conditionals: {{#if condition}}...{{/if}}
-          result.gsub!(/\{\{#if (\w+)\}\}(.*?)\{\{\/if\}\}/m) do
-            condition, content = $1, $2
-            variables[condition.to_sym] ? content : ""
-          end
-
-          result
-        end
-
-        def +(other)
-          CompositeTemplate.new(self, other)
-        end
-      end
-
-      class CompositeTemplate
-        def initialize(*templates)
-          @templates = templates.flatten
-        end
-
-        def format(**variables)
-          @templates.map { |t| t.format(**variables) }.join("\n\n")
-        end
-
-        def +(other)
-          CompositeTemplate.new(@templates + [other])
-        end
-      end
-
-      class FewShotTemplate
-        def initialize(examples:, example_template:, prefix: "", suffix: "")
-          @examples = examples
-          @example_template = example_template
-          @prefix = prefix
-          @suffix = suffix
-        end
-
-        def format(**variables)
-          formatted_examples = @examples.map do |example|
-            @example_template.format(**example)
-          end.join("\n\n")
-
-          [
-            @prefix,
-            formatted_examples,
-            @suffix
-          ].reject(&:blank?).join("\n\n")
-        end
-      end
-
-      # Built-in templates
-      module Library
-        JSON_OUTPUT = Template.new(<<~PROMPT)
-          Respond with valid JSON matching this schema:
-          {schema}
-
-          Do not include any text outside the JSON object.
-        PROMPT
-
-        STEP_BY_STEP = Template.new(<<~PROMPT)
-          Think through this step by step:
-          1. First, understand what is being asked
-          2. Break down the problem into parts
-          3. Solve each part
-          4. Combine into final answer
-        PROMPT
-
-        EXPERT_PERSONA = Template.new(<<~PROMPT)
-          You are an expert {domain} specialist with {years} years of experience.
-          Your expertise includes: {expertise}.
-        PROMPT
-      end
-    end
-  end
-end
-```
-
-#### Usage in Agents
-
-```ruby
-class AnalysisAgent < ApplicationAgent
-  model "gpt-4o"
-
-  # Use built-in template
-  include_template Prompts::Library::STEP_BY_STEP
-
-  # Use custom template
-  prompt_template Prompts::Template.new(<<~PROMPT)
-    Analyze the following {type}:
-
-    {content}
-
-    {{#if include_metrics}}
-    Include quantitative metrics in your analysis.
-    {{/if}}
-  PROMPT
-
-  def system_prompt
-    self.class.compiled_template.format(
-      type: options[:type] || "text",
-      content: input,
-      include_metrics: options[:include_metrics]
-    )
-  end
-end
-
-# Few-shot example
-class SentimentAgent < ApplicationAgent
-  model "gpt-4o-mini"
-
-  prompt_template Prompts::FewShotTemplate.new(
-    prefix: "Classify the sentiment of the text as positive, negative, or neutral.",
-    examples: [
-      { input: "I love this product!", output: "positive" },
-      { input: "This is terrible.", output: "negative" },
-      { input: "The package arrived.", output: "neutral" }
-    ],
-    example_template: Prompts::Template.new("Input: {input}\nSentiment: {output}"),
-    suffix: "Now classify:\nInput: {input}\nSentiment:"
-  )
-end
-```
-
-### Files to Create
-
-```
-lib/ruby_llm/agents/prompts/
-├── template.rb
-├── composite_template.rb
-├── few_shot_template.rb
-├── chat_template.rb
-└── library.rb
-```
-
----
-
-## Feature 4: Typed Workflow State
+## Feature 3: Typed Workflow State
 
 ### Problem
 
@@ -922,7 +755,7 @@ lib/ruby_llm/agents/workflow/
 
 ---
 
-## Feature 5: Checkpoint & Time Travel
+## Feature 4: Checkpoint & Time Travel
 
 ### Problem
 
@@ -1092,15 +925,7 @@ db/migrate/
 - [ ] Tests for all memory types
 - [ ] Documentation
 
-### Phase 2: Prompt Templates
-- [ ] Create Template class with variable substitution
-- [ ] Create CompositeTemplate for composition
-- [ ] Create FewShotTemplate
-- [ ] Build template library with common patterns
-- [ ] Add DSL integration
-- [ ] Tests and documentation
-
-### Phase 3: Typed Workflow State
+### Phase 2: Typed Workflow State
 - [ ] Create StateSchema class
 - [ ] Create TypedState class
 - [ ] Add state DSL to Workflow
@@ -1108,7 +933,7 @@ db/migrate/
 - [ ] Update orchestrator to use typed state
 - [ ] Tests and documentation
 
-### Phase 4: Checkpointing & Time Travel
+### Phase 3: Checkpointing & Time Travel
 - [ ] Create Checkpoint model and migration
 - [ ] Implement checkpoint saving after steps
 - [ ] Implement restore_from_checkpoint
@@ -1117,7 +942,7 @@ db/migrate/
 - [ ] Dashboard integration (view checkpoints)
 - [ ] Tests and documentation
 
-### Phase 5: RAG Pipeline
+### Phase 4: RAG Pipeline
 - [ ] Create Document class
 - [ ] Implement text splitters
 - [ ] Implement in-memory vector store
@@ -1135,20 +960,18 @@ Based on value and complexity:
 | Feature | Value | Complexity | Priority |
 |---------|-------|------------|----------|
 | Memory Systems | High | Medium | 1 |
-| Prompt Templates | Medium | Low | 2 |
-| Typed Workflow State | Medium | Medium | 3 |
-| Checkpointing | Medium | High | 4 |
-| RAG Pipeline | High | High | 5 |
+| Typed Workflow State | Medium | Medium | 2 |
+| Checkpointing | Medium | High | 3 |
+| RAG Pipeline | High | High | 4 |
 
 ---
 
 ## Success Criteria
 
 1. **Memory**: Long conversations work without context overflow
-2. **Templates**: Common prompt patterns are reusable across agents
-3. **State**: Workflow state is typed, validated, and predictable
-4. **Checkpoints**: Failed workflows can resume from any step
-5. **RAG**: Document-based agents work out of the box
+2. **State**: Workflow state is typed, validated, and predictable
+3. **Checkpoints**: Failed workflows can resume from any step
+4. **RAG**: Document-based agents work out of the box
 
 ---
 
@@ -1166,11 +989,7 @@ Based on value and complexity:
    - Database is simplest for Rails users
    - Redis is faster for high-throughput
 
-4. **Template language**: Simple `{variable}` vs ERB vs Liquid?
-   - Simple is easier to learn
-   - ERB/Liquid more powerful but complex
-
-5. **State schema validation**: Runtime only or also static analysis?
+4. **State schema validation**: Runtime only or also static analysis?
    - Runtime is simpler
    - Static could catch errors earlier
 
@@ -1238,11 +1057,6 @@ lib/ruby_llm/agents/
 │   ├── summary.rb
 │   ├── token_buffer.rb
 │   └── hybrid.rb
-├── prompts/
-│   ├── template.rb
-│   ├── composite_template.rb
-│   ├── few_shot_template.rb
-│   └── library.rb
 ├── rag/
 │   ├── document.rb
 │   ├── loaders/
@@ -1260,7 +1074,6 @@ db/migrate/
 
 spec/
 ├── memory/
-├── prompts/
 ├── rag/
 └── workflow/state_spec.rb
 ```
