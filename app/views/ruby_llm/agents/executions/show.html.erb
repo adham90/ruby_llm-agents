@@ -613,7 +613,7 @@
   </div>
 
   <% if tool_call_count > 0 %>
-    <div class="space-y-4" x-show="expanded" <%= tool_call_count > 3 ? 'x-cloak' : '' %>>
+    <div class="space-y-4" x-show="expanded" x-cloak>
       <% tool_calls.each_with_index do |tool_call, index| %>
         <%
           # Handle both symbol and string keys

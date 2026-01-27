@@ -278,6 +278,56 @@ RSpec.describe RubyLLM::Agents::Execution, type: :model do
       end
     end
 
+    describe "tool_calls attribute" do
+      it "stores and retrieves as JSON array" do
+        tool_calls_data = [
+          { "id" => "call_1", "name" => "search", "arguments" => { "query" => "test" } },
+          { "id" => "call_2", "name" => "format", "arguments" => { "type" => "json" } }
+        ]
+        execution = create(:execution, tool_calls: tool_calls_data)
+        execution.reload
+
+        expect(execution.tool_calls).to be_an(Array)
+        expect(execution.tool_calls.size).to eq(2)
+        expect(execution.tool_calls.first["name"]).to eq("search")
+      end
+
+      it "handles empty array" do
+        execution = create(:execution, tool_calls: [])
+        execution.reload
+
+        expect(execution.tool_calls).to eq([])
+      end
+
+      it "defaults to empty array when not provided" do
+        execution = create(:execution)
+        execution.reload
+
+        expect(execution.tool_calls).to eq([])
+      end
+
+      it "preserves complex nested argument structures" do
+        complex_args = {
+          "filters" => {
+            "date_range" => { "start" => "2024-01-01", "end" => "2024-12-31" },
+            "categories" => ["tech", "science", "health"]
+          },
+          "options" => {
+            "limit" => 100,
+            "include_metadata" => true
+          }
+        }
+        tool_calls_data = [
+          { "id" => "call_complex", "name" => "advanced_search", "arguments" => complex_args }
+        ]
+        execution = create(:execution, tool_calls: tool_calls_data)
+        execution.reload
+
+        expect(execution.tool_calls.first["arguments"]).to eq(complex_args)
+        expect(execution.tool_calls.first["arguments"]["filters"]["categories"]).to eq(["tech", "science", "health"])
+      end
+    end
+
     describe "scopes" do
       describe ".with_tool_calls" do
         it "returns executions with tool calls" do

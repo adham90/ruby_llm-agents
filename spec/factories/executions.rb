@@ -80,6 +80,50 @@ FactoryBot.define do
       finish_reason { "tool_calls" }
     end
 
+    trait :with_many_tool_calls do
+      tool_calls do
+        [
+          { "id" => "call_001", "name" => "tool_one", "arguments" => { "arg" => "value1" } },
+          { "id" => "call_002", "name" => "tool_two", "arguments" => { "arg" => "value2" } },
+          { "id" => "call_003", "name" => "tool_three", "arguments" => { "arg" => "value3" } },
+          { "id" => "call_004", "name" => "tool_four", "arguments" => { "arg" => "value4" } },
+          { "id" => "call_005", "name" => "tool_five", "arguments" => { "arg" => "value5" } }
+        ]
+      end
+      tool_calls_count { 5 }
+      finish_reason { "tool_calls" }
+    end
+
+    trait :with_single_tool_call do
+      tool_calls do
+        [
+          { "id" => "call_single", "name" => "single_tool", "arguments" => { "key" => "value" } }
+        ]
+      end
+      tool_calls_count { 1 }
+      finish_reason { "tool_calls" }
+    end
+
+    trait :with_tool_calls_no_args do
+      tool_calls do
+        [
+          { "id" => "call_no_args", "name" => "tool_without_args", "arguments" => {} }
+        ]
+      end
+      tool_calls_count { 1 }
+      finish_reason { "tool_calls" }
+    end
+
+    trait :with_symbol_key_tool_calls do
+      tool_calls do
+        [
+          { id: "call_sym_123", name: "symbol_tool", arguments: { key: "value" } }
+        ]
+      end
+      tool_calls_count { 1 }
+      finish_reason { "tool_calls" }
+    end
+
     trait :with_tenant do
       sequence(:tenant_id) { |n| "tenant_#{n}" }
     end

@@ -210,6 +210,39 @@ RSpec.describe RubyLLM::Agents::ExecutionsController, type: :controller do
         get :show, params: { id: 999999 }
       }.to raise_error(ActiveRecord::RecordNotFound)
     end
+
+    context "with tool calls" do
+      let(:execution_with_tools) { create(:execution, :with_tool_calls) }
+
+      it "makes tool_calls accessible" do
+        get :show, params: { id: execution_with_tools.id }
+        expect(assigns(:execution).tool_calls).to be_an(Array)
+        expect(assigns(:execution).tool_calls.size).to eq(2)
+      end
+
+      it "includes tool call structure with id, name, and arguments" do
+        get :show, params: { id: execution_with_tools.id }
+        tool_call = assigns(:execution).tool_calls.first
+        expect(tool_call).to include("id", "name", "arguments")
+      end
+
+      it "returns empty array when execution has no tool calls" do
+        get :show, params: { id: execution.id }
+        expect(assigns(:execution).tool_calls).to eq([])
+      end
+
+      it "handles execution with many tool calls" do
+        execution_many = create(:execution, :with_many_tool_calls)
+        get :show, params: { id: execution_many.id }
+        expect(assigns(:execution).tool_calls.size).to eq(5)
+      end
+
+      it "handles tool calls with symbol keys" do
+        execution_symbols = create(:execution, :with_symbol_key_tool_calls)
+        get :show, params: { id: execution_symbols.id }
+        expect(assigns(:execution).tool_calls).to be_present
+      end
+    end
   end
 
 end

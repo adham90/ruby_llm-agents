@@ -331,7 +331,14 @@ puts "  Created 1 custom moderation handler execution"
 create_org_executions(acme, count: 8, agents: %w[SearchAgent SummaryAgent], models: %w[gpt-4o gpt-4o-mini])
 puts "  Created 8 standard agent executions"
 
-# Tool calls execution
+# =============================================================================
+# TOOL CALLS EXECUTIONS
+# =============================================================================
+puts "\n" + "-" * 40
+puts "Creating tool calls executions..."
+puts "-" * 40
+
+# Tool calls execution - Calculator and Weather
 create_execution(
   tenant_id: acme.llm_tenant_id,
   agent_type: "ToolsAgent",
@@ -346,7 +353,177 @@ create_execution(
   response: { content: "25 times 4 is 100, and Tokyo is sunny at 22C." },
   created_at: Time.current - 45.minutes
 )
-puts "  Created 1 tool calls execution"
+
+# Tool calls execution - Database query
+create_execution(
+  tenant_id: acme.llm_tenant_id,
+  agent_type: "ToolsAgent",
+  model_id: "gpt-4o",
+  finish_reason: "tool_calls",
+  tool_calls: [
+    { id: "call_db_001", name: "database_query", arguments: { table: "users", filter: { status: "active" }, limit: 10 } }
+  ],
+  tool_calls_count: 1,
+  parameters: { query: "List 10 active users from the database" },
+  response: { content: "Found 10 active users: Alice, Bob, Charlie..." },
+  metadata: { db_rows_returned: 10 },
+  created_at: Time.current - 50.minutes
+)
+
+# Tool calls execution - File operations
+create_execution(
+  tenant_id: acme.llm_tenant_id,
+  agent_type: "FullFeaturedAgent",
+  model_id: "gpt-4o",
+  finish_reason: "tool_calls",
+  tool_calls: [
+    { id: "call_read_001", name: "read_file", arguments: { path: "/docs/readme.md" } },
+    { id: "call_write_001", name: "write_file", arguments: { path: "/docs/summary.md", content: "# Summary\n\nThis document..." } }
+  ],
+  tool_calls_count: 2,
+  parameters: { query: "Read the readme and create a summary file" },
+  response: { content: "I've read the readme and created a summary at /docs/summary.md" },
+  metadata: { files_read: 1, files_written: 1 },
+  created_at: Time.current - 55.minutes
+)
+
+# Tool calls execution - Web search and scraping
+create_execution(
+  tenant_id: enterprise.llm_tenant_id,
+  agent_type: "SearchAgent",
+  model_id: "gpt-4o",
+  finish_reason: "tool_calls",
+  tool_calls: [
+    { id: "call_search_001", name: "web_search", arguments: { query: "Ruby on Rails best practices 2024", num_results: 5 } },
+    { id: "call_scrape_001", name: "scrape_url", arguments: { url: "https://guides.rubyonrails.org", extract: "headings" } }
+  ],
+  tool_calls_count: 2,
+  parameters: { query: "Find best practices for Rails development" },
+  response: { content: "Here are the top Rails best practices from authoritative sources..." },
+  metadata: { search_results: 5, urls_scraped: 1 },
+  created_at: Time.current - 30.minutes
+)
+
+# Tool calls execution - API calls
+create_execution(
+  tenant_id: enterprise.llm_tenant_id,
+  agent_type: "ToolsAgent",
+  model_id: "gpt-4o",
+  finish_reason: "tool_calls",
+  tool_calls: [
+    { id: "call_api_001", name: "http_request", arguments: { method: "GET", url: "https://api.github.com/repos/ruby/ruby", headers: { "Accept" => "application/json" } } },
+    { id: "call_api_002", name: "http_request", arguments: { method: "GET", url: "https://api.github.com/repos/rails/rails", headers: { "Accept" => "application/json" } } }
+  ],
+  tool_calls_count: 2,
+  parameters: { query: "Get info about Ruby and Rails repositories on GitHub" },
+  response: { content: "Ruby has 21k stars and Rails has 54k stars on GitHub." },
+  metadata: { api_calls: 2, response_time_ms: 450 },
+  created_at: Time.current - 35.minutes
+)
+
+# Tool calls execution - Code execution
+create_execution(
+  tenant_id: startup.llm_tenant_id,
+  agent_type: "ToolsAgent",
+  model_id: "gpt-4o-mini",
+  finish_reason: "tool_calls",
+  tool_calls: [
+    { id: "call_code_001", name: "execute_ruby", arguments: { code: "puts (1..10).map { |n| n * 2 }.inspect" } }
+  ],
+  tool_calls_count: 1,
+  parameters: { query: "Double each number from 1 to 10" },
+  response: { content: "The doubled numbers are: [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]" },
+  metadata: { execution_time_ms: 12 },
+  created_at: Time.current - 25.minutes
+)
+
+# Tool calls execution - Email sending
+create_execution(
+  tenant_id: startup.llm_tenant_id,
+  agent_type: "FullFeaturedAgent",
+  model_id: "gpt-4o-mini",
+  finish_reason: "tool_calls",
+  tool_calls: [
+    { id: "call_email_001", name: "send_email", arguments: { to: "team@example.com", subject: "Weekly Report", body: "Here is this week's summary..." } }
+  ],
+  tool_calls_count: 1,
+  parameters: { query: "Send the weekly report to the team" },
+  response: { content: "I've sent the weekly report email to team@example.com" },
+  metadata: { email_sent: true, recipients: 1 },
+  created_at: Time.current - 20.minutes
+)
+
+# Tool calls execution - Multiple sequential tools
+create_execution(
+  tenant_id: acme.llm_tenant_id,
+  agent_type: "FullFeaturedAgent",
+  model_id: "gpt-4o",
+  finish_reason: "tool_calls",
+  tool_calls: [
+    { id: "call_fetch_001", name: "fetch_data", arguments: { source: "analytics", date_range: "last_7_days" } },
+    { id: "call_calc_002", name: "calculator", arguments: { operation: "average", values: [120, 145, 132, 158, 167, 143, 155] } },
+    { id: "call_chart_001", name: "generate_chart", arguments: { type: "line", data: [120, 145, 132, 158, 167, 143, 155], title: "Weekly Traffic" } }
+  ],
+  tool_calls_count: 3,
+  parameters: { query: "Show me the weekly traffic analytics with a chart" },
+  response: { content: "Here's your weekly traffic report. Average: 145.7 visits/day. Chart generated." },
+  metadata: { data_points: 7, chart_generated: true },
+  created_at: Time.current - 15.minutes
+)
+
+# Tool calls execution - Error during tool execution
+create_execution(
+  tenant_id: demo.llm_tenant_id,
+  agent_type: "ToolsAgent",
+  model_id: "gpt-4o-mini",
+  status: "error",
+  finish_reason: "tool_calls",
+  error_class: "ToolExecutionError",
+  error_message: "Tool 'database_query' failed: Connection timeout after 30s",
+  tool_calls: [
+    { id: "call_db_002", name: "database_query", arguments: { table: "orders", filter: { year: 2024 } }, error: "Connection timeout" }
+  ],
+  tool_calls_count: 1,
+  parameters: { query: "Get all orders from 2024" },
+  metadata: { tool_error: true, retry_count: 3 },
+  created_at: Time.current - 60.minutes
+)
+
+# Tool calls execution - Conversation with context retrieval
+create_execution(
+  tenant_id: acme.llm_tenant_id,
+  agent_type: "ConversationAgent",
+  model_id: "gpt-4o",
+  finish_reason: "tool_calls",
+  tool_calls: [
+    { id: "call_memory_001", name: "retrieve_context", arguments: { query: "previous discussion about project timeline", limit: 3 } },
+    { id: "call_search_002", name: "search_documents", arguments: { query: "project milestones Q1 2024", collection: "project_docs" } }
+  ],
+  tool_calls_count: 2,
+  parameters: { message: "What did we decide about the project timeline?", conversation_id: "conv_123" },
+  response: { content: "Based on our previous discussion, we agreed on a 3-month timeline with milestones at weeks 4, 8, and 12." },
+  metadata: { context_retrieved: true, documents_found: 2 },
+  created_at: Time.current - 10.minutes
+)
+
+# Tool calls execution - Image analysis
+create_execution(
+  tenant_id: enterprise.llm_tenant_id,
+  agent_type: "ToolsAgent",
+  model_id: "gpt-4o",
+  finish_reason: "tool_calls",
+  tool_calls: [
+    { id: "call_vision_001", name: "analyze_image", arguments: { image_url: "https://example.com/chart.png", analysis_type: "data_extraction" } },
+    { id: "call_ocr_001", name: "extract_text", arguments: { image_url: "https://example.com/chart.png" } }
+  ],
+  tool_calls_count: 2,
+  parameters: { query: "Extract data from this chart image" },
+  response: { content: "The chart shows quarterly revenue: Q1 $1.2M, Q2 $1.5M, Q3 $1.8M, Q4 $2.1M" },
+  metadata: { image_analyzed: true, text_extracted: true },
+  created_at: Time.current - 40.minutes
+)
+
+puts "  Created 11 tool calls executions"
 
 # =============================================================================
 # STARTUP INC EXECUTIONS - Budget conscious
