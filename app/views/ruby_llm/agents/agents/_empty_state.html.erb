@@ -1,23 +1,26 @@
-<%
-  type = local_assigns[:type] || "agents"
-  is_workflow = type == "workflows"
-%>
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
-  <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <% if is_workflow %>
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm0 8a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zm12 0a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
-    <% else %>
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-    <% end %>
+<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-8 text-center">
+  <!-- Agent Icon - Blue -->
+  <svg class="mx-auto h-16 w-16 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
   </svg>
-  <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">
-    No <%= type %> found
+
+  <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-gray-100">
+    No agents yet
   </h3>
-  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-    <% if is_workflow %>
-      Create a workflow by subclassing <code class="bg-gray-100 dark:bg-gray-700 dark:text-gray-200 px-1 rounded">Pipeline</code>, <code class="bg-gray-100 dark:bg-gray-700 dark:text-gray-200 px-1 rounded">Parallel</code>, or <code class="bg-gray-100 dark:bg-gray-700 dark:text-gray-200 px-1 rounded">Router</code>
-    <% else %>
-      Create an agent by running <code class="bg-gray-100 dark:bg-gray-700 dark:text-gray-200 px-1 rounded">rails g ruby_llm_agents:agent YourAgentName</code>
-    <% end %>
+
+  <p class="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+    Create an agent by inheriting from <code class="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded font-mono text-xs">ApplicationAgent</code>
   </p>
+
+  <!-- Code Example -->
+  <div class="mt-6 max-w-sm mx-auto">
+    <pre class="bg-gray-900 dark:bg-gray-950 rounded-lg p-4 text-left text-sm overflow-x-auto"><code class="text-gray-300"><span class="text-pink-400">class</span> <span class="text-yellow-300">MyAgent</span> <span class="text-pink-400">&lt;</span> <span class="text-yellow-300">ApplicationAgent</span>
+  <span class="text-purple-400">model</span> <span class="text-green-400">"gpt-4o-mini"</span>
+  <span class="text-purple-400">param</span> <span class="text-blue-400">:query</span>, <span class="text-blue-400">required:</span> <span class="text-orange-400">true</span>
+
+  <span class="text-pink-400">def</span> <span class="text-blue-300">user_prompt</span>
+    <span class="text-gray-300">query</span>
+  <span class="text-pink-400">end</span>
+<span class="text-pink-400">end</span></code></pre>
+  </div>
 </div>

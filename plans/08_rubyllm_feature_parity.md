@@ -102,11 +102,13 @@ RubyLLM v1.8.0 added video file support for multimodal models. Our `ImageAnalyze
 ### Implementation Options
 
 **Option A: Expand ImageAnalyzer (Recommended)**
+
 - Rename internally but keep backward compatibility
 - Update documentation to mention video support
 - Add video-specific options
 
 **Option B: Create Separate VideoAnalyzer**
+
 - New class specifically for video
 - More explicit but adds maintenance burden
 
@@ -350,7 +352,7 @@ RubyLLM v1.11.0 added xAI as a first-class provider with Grok model support. Whi
 
 #### 5.1 Add to Documentation
 
-```markdown
+````markdown
 ## Supported Providers
 
 ruby_llm-agents supports all providers available in RubyLLM:
@@ -374,7 +376,9 @@ class GrokAgent < ApplicationAgent
   end
 end
 ```
-```
+````
+
+````
 
 #### 5.2 Add Integration Test (Optional)
 
@@ -396,35 +400,38 @@ RSpec.describe "xAI Integration", :integration do
     expect(result).to be_present
   end
 end
-```
+````
 
 ---
 
 ## Implementation Order
 
-| Phase | Gap | Effort | Dependencies |
-|-------|-----|--------|--------------|
-| 1 | Gap 1: Diarization | Low | None |
-| 2 | Gap 4: Default Models | Low | None |
-| 3 | Gap 5: xAI Documentation | Low | None |
-| 4 | Gap 3: Prompt Caching | Medium | None |
-| 5 | Gap 2: Video Support | Medium | None |
+| Phase | Gap                      | Effort | Dependencies |
+| ----- | ------------------------ | ------ | ------------ |
+| 1     | Gap 1: Diarization       | Low    | None         |
+| 2     | Gap 4: Default Models    | Low    | None         |
+| 3     | Gap 5: xAI Documentation | Low    | None         |
+| 4     | Gap 3: Prompt Caching    | Medium | None         |
+| 5     | Gap 2: Video Support     | Medium | None         |
 
 ---
 
 ## Testing Strategy
 
 ### Unit Tests
+
 - DSL method tests for new options
 - Result class tests for new accessors
 - Configuration default tests
 
 ### Integration Tests
+
 - Diarization with real audio (if API available)
 - Video analysis with sample video
 - Prompt caching cost verification (manual)
 
 ### Documentation
+
 - Update README with new features
 - Add examples for each new capability
 - Update YARD documentation
@@ -434,6 +441,7 @@ end
 ## Migration Notes
 
 All changes are **additive** and **backward compatible**:
+
 - Existing agents continue to work unchanged
 - New DSL methods have sensible defaults
 - No breaking changes to public API
