@@ -21,6 +21,8 @@ module ChatMockHelpers
     allow(mock_client).to receive(:with_tools).and_return(mock_client)
     allow(mock_client).to receive(:with_thinking).and_return(mock_client)
     allow(mock_client).to receive(:add_message).and_return(mock_client)
+    allow(mock_client).to receive(:on_tool_call).and_return(mock_client)
+    allow(mock_client).to receive(:on_tool_result).and_return(mock_client)
     allow(mock_client).to receive(:messages).and_return([])
 
     # Configure response behavior
