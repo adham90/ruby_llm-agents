@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-01-27
+
+### Added
+
+- **Enhanced Tool Call Tracking** - Comprehensive tool call data capture and display:
+  - Track tool call results, status (success/error), duration, and timestamps
+  - New `tool_result_max_length` configuration option (default: 10,000 characters) for result truncation
+  - Tool tracking callbacks (`on_tool_call`, `on_tool_result`) in BaseAgent
+  - Enhanced execution view with status badges, duration badges, result display, and error sections
+  - Backward compatible with existing tool call data (missing fields handled gracefully)
+  - Example app seeds updated with detailed tool call execution data
+
+### Changed
+
+- Updated `BaseAgent` to capture tool call metadata during execution
+- Updated instrumentation middleware to persist enhanced tool call data
+- Improved execution show view with expandable tool call sections showing detailed timing and results
+
 ## [1.2.3] - 2026-01-27
 
 ### Added
@@ -409,6 +427,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[1.3.0]: https://github.com/adham90/ruby_llm-agents/compare/v1.2.3...v1.3.0
 [1.2.3]: https://github.com/adham90/ruby_llm-agents/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/adham90/ruby_llm-agents/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/adham90/ruby_llm-agents/compare/v1.2.0...v1.2.1
