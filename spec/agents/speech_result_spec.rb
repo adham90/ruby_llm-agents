@@ -163,6 +163,63 @@ RSpec.describe RubyLLM::Agents::SpeechResult do
       result = described_class.new(audio: nil)
       expect(result.to_data_uri).to be_nil
     end
+
+    it "uses correct mime type for flac format" do
+      result = described_class.new(audio: "test audio data", format: :flac)
+      data_uri = result.to_data_uri
+      expect(data_uri).to start_with("data:audio/flac;base64,")
+    end
+
+    it "uses correct mime type for aac format" do
+      result = described_class.new(audio: "test audio data", format: :aac)
+      data_uri = result.to_data_uri
+      expect(data_uri).to start_with("data:audio/aac;base64,")
+    end
+
+    it "uses correct mime type for opus format" do
+      result = described_class.new(audio: "test audio data", format: :opus)
+      data_uri = result.to_data_uri
+      expect(data_uri).to start_with("data:audio/opus;base64,")
+    end
+
+    it "uses correct mime type for pcm format" do
+      result = described_class.new(audio: "test audio data", format: :pcm)
+      data_uri = result.to_data_uri
+      expect(data_uri).to start_with("data:audio/pcm;base64,")
+    end
+
+    it "defaults to mp3 mime type for unknown format" do
+      result = described_class.new(audio: "test audio data", format: :unknown)
+      data_uri = result.to_data_uri
+      expect(data_uri).to start_with("data:audio/mpeg;base64,")
+    end
+  end
+
+  describe "#words_per_second" do
+    it "calculates words per second" do
+      result = described_class.new(
+        audio: "data",
+        text_length: 100,  # ~20 words
+        duration: 10.0     # 10 seconds
+      )
+
+      expect(result.words_per_second).to be_within(0.1).of(2.0)
+    end
+
+    it "returns nil when text_length is missing" do
+      result = described_class.new(audio: "data", duration: 10.0)
+      expect(result.words_per_second).to be_nil
+    end
+
+    it "returns nil when duration is missing" do
+      result = described_class.new(audio: "data", text_length: 100)
+      expect(result.words_per_second).to be_nil
+    end
+
+    it "returns nil when duration is zero" do
+      result = described_class.new(audio: "data", text_length: 100, duration: 0)
+      expect(result.words_per_second).to be_nil
+    end
   end
 
   describe "#to_h" do

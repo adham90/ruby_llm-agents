@@ -386,6 +386,298 @@ RSpec.describe RubyLLM::Agents::ImageGenerationResult do
       expect(cache).to have_key(:cached_at)
     end
   end
+
+  describe "#data" do
+    it "returns base64 data of the first image" do
+      result = described_class.new(
+        images: [base64_image],
+        prompt: "A sunset",
+        model_id: "gpt-image-1",
+        size: "1024x1024",
+        quality: "standard",
+        style: "vivid",
+        started_at: Time.current,
+        completed_at: Time.current,
+        tenant_id: nil,
+        generator_class: "TestGenerator"
+      )
+
+      expect(result.data).to eq(base64_image.data)
+    end
+
+    it "returns nil when no images" do
+      result = described_class.new(
+        images: [],
+        prompt: "A sunset",
+        model_id: "gpt-image-1",
+        size: "1024x1024",
+        quality: "standard",
+        style: "vivid",
+        started_at: Time.current,
+        completed_at: Time.current,
+        tenant_id: nil,
+        generator_class: "TestGenerator"
+      )
+
+      expect(result.data).to be_nil
+    end
+  end
+
+  describe "#datas" do
+    it "returns all base64 data" do
+      image2 = RubyLLM::Agents::TestSupport::MockImage.with_base64("secondbase64data")
+      result = described_class.new(
+        images: [base64_image, image2],
+        prompt: "A sunset",
+        model_id: "gpt-image-1",
+        size: "1024x1024",
+        quality: "standard",
+        style: "vivid",
+        started_at: Time.current,
+        completed_at: Time.current,
+        tenant_id: nil,
+        generator_class: "TestGenerator"
+      )
+
+      expect(result.datas.size).to eq(2)
+    end
+  end
+
+  describe "#mime_type" do
+    it "returns the MIME type of the first image" do
+      result = described_class.new(
+        images: [mock_image],
+        prompt: "A sunset",
+        model_id: "gpt-image-1",
+        size: "1024x1024",
+        quality: "standard",
+        style: "vivid",
+        started_at: Time.current,
+        completed_at: Time.current,
+        tenant_id: nil,
+        generator_class: "TestGenerator"
+      )
+
+      expect(result.mime_type).to eq("image/png")
+    end
+  end
+
+  describe "#revised_prompt" do
+    it "returns the revised prompt of the first image" do
+      result = described_class.new(
+        images: [mock_image],
+        prompt: "A sunset",
+        model_id: "gpt-image-1",
+        size: "1024x1024",
+        quality: "standard",
+        style: "vivid",
+        started_at: Time.current,
+        completed_at: Time.current,
+        tenant_id: nil,
+        generator_class: "TestGenerator"
+      )
+
+      expect(result.revised_prompt).to eq("A beautiful sunset over mountains")
+    end
+  end
+
+  describe "#revised_prompts" do
+    it "returns all revised prompts" do
+      image2 = RubyLLM::Agents::TestSupport::MockImage.with_url(
+        "https://example.com/image2.png",
+        revised_prompt: "Another revised prompt"
+      )
+      result = described_class.new(
+        images: [mock_image, image2],
+        prompt: "A sunset",
+        model_id: "gpt-image-1",
+        size: "1024x1024",
+        quality: "standard",
+        style: "vivid",
+        started_at: Time.current,
+        completed_at: Time.current,
+        tenant_id: nil,
+        generator_class: "TestGenerator"
+      )
+
+      expect(result.revised_prompts).to eq([
+        "A beautiful sunset over mountains",
+        "Another revised prompt"
+      ])
+    end
+  end
+
+  describe "#save" do
+    it "raises error when no image" do
+      result = described_class.new(
+        images: [],
+        prompt: "A sunset",
+        model_id: "gpt-image-1",
+        size: "1024x1024",
+        quality: "standard",
+        style: "vivid",
+        started_at: Time.current,
+        completed_at: Time.current,
+        tenant_id: nil,
+        generator_class: "TestGenerator"
+      )
+
+      expect { result.save("/tmp/test.png") }.to raise_error("No image to save")
+    end
+
+    it "delegates to image.save when image exists" do
+      saveable_image = RubyLLM::Agents::TestSupport::MockImage.with_url("https://example.com/img.png")
+      allow(saveable_image).to receive(:save)
+
+      result = described_class.new(
+        images: [saveable_image],
+        prompt: "A sunset",
+        model_id: "gpt-image-1",
+        size: "1024x1024",
+        quality: "standard",
+        style: "vivid",
+        started_at: Time.current,
+        completed_at: Time.current,
+        tenant_id: nil,
+        generator_class: "TestGenerator"
+      )
+
+      result.save("/tmp/test.png")
+      expect(saveable_image).to have_received(:save).with("/tmp/test.png")
+    end
+  end
+
+  describe "#save_all" do
+    it "saves all images to a directory" do
+      img1 = RubyLLM::Agents::TestSupport::MockImage.with_url("https://example.com/img1.png")
+      img2 = RubyLLM::Agents::TestSupport::MockImage.with_url("https://example.com/img2.png")
+      allow(img1).to receive(:save)
+      allow(img2).to receive(:save)
+
+      result = described_class.new(
+        images: [img1, img2],
+        prompt: "A sunset",
+        model_id: "gpt-image-1",
+        size: "1024x1024",
+        quality: "standard",
+        style: "vivid",
+        started_at: Time.current,
+        completed_at: Time.current,
+        tenant_id: nil,
+        generator_class: "TestGenerator"
+      )
+
+      result.save_all("/tmp/images")
+
+      expect(img1).to have_received(:save).with("/tmp/images/image_1.png")
+      expect(img2).to have_received(:save).with("/tmp/images/image_2.png")
+    end
+
+    it "uses custom prefix" do
+      img1 = RubyLLM::Agents::TestSupport::MockImage.with_url("https://example.com/img1.png")
+      allow(img1).to receive(:save)
+
+      result = described_class.new(
+        images: [img1],
+        prompt: "A sunset",
+        model_id: "gpt-image-1",
+        size: "1024x1024",
+        quality: "standard",
+        style: "vivid",
+        started_at: Time.current,
+        completed_at: Time.current,
+        tenant_id: nil,
+        generator_class: "TestGenerator"
+      )
+
+      result.save_all("/tmp/images", prefix: "sunset")
+
+      expect(img1).to have_received(:save).with("/tmp/images/sunset_1.png")
+    end
+  end
+
+  describe "#to_blob" do
+    it "returns binary data of the first image" do
+      blob_image = RubyLLM::Agents::TestSupport::MockImage.with_url("https://example.com/img.png")
+      allow(blob_image).to receive(:to_blob).and_return("binary_data")
+
+      result = described_class.new(
+        images: [blob_image],
+        prompt: "A sunset",
+        model_id: "gpt-image-1",
+        size: "1024x1024",
+        quality: "standard",
+        style: "vivid",
+        started_at: Time.current,
+        completed_at: Time.current,
+        tenant_id: nil,
+        generator_class: "TestGenerator"
+      )
+
+      expect(result.to_blob).to eq("binary_data")
+    end
+
+    it "returns nil when no images" do
+      result = described_class.new(
+        images: [],
+        prompt: "A sunset",
+        model_id: "gpt-image-1",
+        size: "1024x1024",
+        quality: "standard",
+        style: "vivid",
+        started_at: Time.current,
+        completed_at: Time.current,
+        tenant_id: nil,
+        generator_class: "TestGenerator"
+      )
+
+      expect(result.to_blob).to be_nil
+    end
+  end
+
+  describe "#blobs" do
+    it "returns binary data of all images" do
+      img1 = RubyLLM::Agents::TestSupport::MockImage.with_url("https://example.com/img1.png")
+      img2 = RubyLLM::Agents::TestSupport::MockImage.with_url("https://example.com/img2.png")
+      allow(img1).to receive(:to_blob).and_return("blob1")
+      allow(img2).to receive(:to_blob).and_return("blob2")
+
+      result = described_class.new(
+        images: [img1, img2],
+        prompt: "A sunset",
+        model_id: "gpt-image-1",
+        size: "1024x1024",
+        quality: "standard",
+        style: "vivid",
+        started_at: Time.current,
+        completed_at: Time.current,
+        tenant_id: nil,
+        generator_class: "TestGenerator"
+      )
+
+      expect(result.blobs).to eq(["blob1", "blob2"])
+    end
+  end
+
+  describe "#total_cost" do
+    it "returns 0 for error results" do
+      result = described_class.new(
+        images: [],
+        prompt: "A sunset",
+        model_id: "gpt-image-1",
+        size: "1024x1024",
+        quality: "standard",
+        style: "vivid",
+        started_at: Time.current,
+        completed_at: Time.current,
+        tenant_id: nil,
+        generator_class: "TestGenerator",
+        error_class: "StandardError"
+      )
+
+      expect(result.total_cost).to eq(0)
+    end
+  end
 end
 
 RSpec.describe RubyLLM::Agents::CachedImageGenerationResult do

@@ -285,6 +285,155 @@ RSpec.describe RubyLLM::Agents::ImagePipelineResult do
         expect(successful_result.upscale).to eq(upscaler_result)
       end
     end
+
+    describe "#transform" do
+      it "returns transformer step result" do
+        transformer_result = OpenStruct.new(success?: true, error?: false, total_cost: 0.02)
+        step_results = [
+          { name: :transform, type: :transformer, result: transformer_result }
+        ]
+
+        result = described_class.new(
+          step_results: step_results,
+          started_at: Time.current,
+          completed_at: Time.current,
+          tenant_id: nil,
+          pipeline_class: "TestPipeline",
+          context: {}
+        )
+
+        expect(result.transform).to eq(transformer_result)
+      end
+
+      it "returns nil if no transformer step" do
+        expect(successful_result.transform).to be_nil
+      end
+    end
+
+    describe "#background_removal" do
+      it "returns remover step result" do
+        remover_result = OpenStruct.new(success?: true, error?: false, total_cost: 0.005)
+        step_results = [
+          { name: :remove_bg, type: :remover, result: remover_result }
+        ]
+
+        result = described_class.new(
+          step_results: step_results,
+          started_at: Time.current,
+          completed_at: Time.current,
+          tenant_id: nil,
+          pipeline_class: "TestPipeline",
+          context: {}
+        )
+
+        expect(result.background_removal).to eq(remover_result)
+      end
+
+      it "returns nil if no remover step" do
+        expect(successful_result.background_removal).to be_nil
+      end
+    end
+  end
+
+  describe "#completed?" do
+    it "returns true when pipeline finished with results" do
+      expect(successful_result.completed?).to be true
+    end
+
+    it "returns true when error_class is nil" do
+      result = described_class.new(
+        step_results: [],
+        started_at: Time.current,
+        completed_at: Time.current,
+        tenant_id: nil,
+        pipeline_class: "TestPipeline",
+        context: {}
+      )
+      expect(result.completed?).to be true
+    end
+  end
+
+  describe "#data" do
+    it "returns data from last non-analyzer step" do
+      data_result = OpenStruct.new(
+        success?: true,
+        error?: false,
+        data: "base64data",
+        url: nil,
+        total_cost: 0.01
+      )
+      step_results = [
+        { name: :generate, type: :generator, result: data_result }
+      ]
+
+      result = described_class.new(
+        step_results: step_results,
+        started_at: Time.current,
+        completed_at: Time.current,
+        tenant_id: nil,
+        pipeline_class: "TestPipeline",
+        context: {}
+      )
+
+      expect(result.data).to eq("base64data")
+    end
+
+    it "returns nil when no data available" do
+      expect(successful_result.data).to be_nil
+    end
+  end
+
+  describe "#base64?" do
+    it "returns true when last image step is base64" do
+      base64_result = OpenStruct.new(
+        success?: true,
+        error?: false,
+        base64?: true,
+        total_cost: 0.01
+      )
+      step_results = [
+        { name: :generate, type: :generator, result: base64_result }
+      ]
+
+      result = described_class.new(
+        step_results: step_results,
+        started_at: Time.current,
+        completed_at: Time.current,
+        tenant_id: nil,
+        pipeline_class: "TestPipeline",
+        context: {}
+      )
+
+      expect(result.base64?).to be true
+    end
+
+    it "returns false when URL-based" do
+      expect(successful_result.base64?).to be false
+    end
+  end
+
+  describe "#to_blob" do
+    it "returns binary data from last non-analyzer step" do
+      expect(successful_result.to_blob).to eq("upscaled_blob")
+    end
+
+    it "returns nil when no step has to_blob" do
+      no_blob_result = OpenStruct.new(success?: true, error?: false, total_cost: 0.01)
+      step_results = [
+        { name: :analyze, type: :analyzer, result: no_blob_result }
+      ]
+
+      result = described_class.new(
+        step_results: step_results,
+        started_at: Time.current,
+        completed_at: Time.current,
+        tenant_id: nil,
+        pipeline_class: "TestPipeline",
+        context: {}
+      )
+
+      expect(result.to_blob).to be_nil
+    end
   end
 
   describe "timing" do
