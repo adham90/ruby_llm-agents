@@ -898,8 +898,8 @@ RSpec.describe RubyLLM::Agents::Configuration do
       config.root_namespace = "LLM"
     end
 
-    it "returns LLM for nil category" do
-      expect(config.namespace_for(nil)).to eq("LLM")
+    it "returns nil for nil category (top-level has no namespace)" do
+      expect(config.namespace_for(nil)).to be_nil
     end
 
     it "returns LLM::Images for :images category" do

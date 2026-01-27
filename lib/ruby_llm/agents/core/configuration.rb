@@ -353,21 +353,21 @@ module RubyLLM
       #     config.async_max_concurrency = 20
 
       # @!attribute [rw] root_directory
-      #   The root directory name under app/ for all LLM components.
+      #   The root directory name under app/ for all agent components.
       #   This allows customization of the directory structure.
-      #   @return [String] Directory name (default: "llm")
+      #   @return [String] Directory name (default: "agents")
       #   @example
-      #     config.root_directory = "ai"  # Creates app/ai/ instead of app/llm/
+      #     config.root_directory = "ai"  # Creates app/ai/ instead of app/agents/
 
       # @!attribute [rw] root_namespace
-      #   The root namespace for all LLM component classes.
-      #   This should match the root_directory in camelized form.
-      #   Set to nil or "" to use no namespace (classes at top-level).
-      #   @return [String, nil] Namespace (default: "Llm")
+      #   The root namespace for all agent component classes.
+      #   When set, subdirectory namespaces are prefixed with this.
+      #   Set to nil or "" to use no root namespace.
+      #   @return [String, nil] Namespace (default: nil)
       #   @example Custom namespace
-      #     config.root_namespace = "AI"  # Uses AI:: instead of Llm::
-      #   @example No namespace (top-level classes)
-      #     config.root_namespace = nil   # Uses top-level classes (ApplicationAgent, etc.)
+      #     config.root_namespace = "AI"  # app/agents/embedders -> AI::Embedders
+      #   @example No namespace (default)
+      #     config.root_namespace = nil   # app/agents/embedders -> Embedders
 
       # Attributes without validation (simple accessors)
       attr_accessor :default_model,
@@ -821,27 +821,21 @@ module RubyLLM
 
       # Returns the full namespace for a given category
       #
-      # @param category [Symbol, nil] Category (:audio, :image, :text, or nil for root)
+      # @param category [Symbol, String, nil] Category (e.g., :embedders, :images, or nil for root)
       # @return [String, nil] Full namespace string, or nil if no namespace configured
-      # @example With root_namespace = "Llm"
-      #   namespace_for(:image) #=> "Llm::Image"
-      #   namespace_for(nil)    #=> "Llm"
+      # @example With root_namespace = "AI"
+      #   namespace_for(:embedders) #=> "AI::Embedders"
+      #   namespace_for(nil)        #=> nil
       # @example With no namespace (root_namespace = nil)
-      #   namespace_for(:image) #=> "Image"
-      #   namespace_for(nil)    #=> nil
+      #   namespace_for(:embedders) #=> "Embedders"
+      #   namespace_for(nil)        #=> nil
       def namespace_for(category = nil)
-        category_namespace = case category
-        when :images then "Images"
-        when :audio then "Audio"
-        when :embedders then "Embedders"
-        when :moderators then "Moderators"
-        when :workflows then "Workflows"
-        when :text then "Text"
-        when :image then "Image"
-        end
+        return nil if category.nil?
 
-        if root_namespace
-          category_namespace ? "#{root_namespace}::#{category_namespace}" : root_namespace
+        category_namespace = category.to_s.camelize
+
+        if root_namespace.present?
+          "#{root_namespace}::#{category_namespace}"
         else
           category_namespace
         end

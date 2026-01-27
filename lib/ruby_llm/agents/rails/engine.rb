@@ -170,14 +170,16 @@ module RubyLLM
         g.factory_bot dir: "spec/factories"
       end
 
-      # Adds the host app's LLM directories to Rails autoload paths
+      # Adds the host app's agent directories to Rails autoload paths
       #
-      # This allows agent classes and other LLM components defined in app/llm/
+      # This allows agent classes and other components defined in app/agents/
       # to be automatically loaded without explicit requires.
       #
-      # Supports two structures:
-      # 1. New grouped structure: app/llm/agents/, app/llm/tools/, etc.
-      # 2. Legacy flat structure: app/agents/ (for backwards compatibility)
+      # Supports subdirectory namespacing:
+      # - app/agents/ (top-level, no namespace)
+      # - app/agents/embedders/ -> Embedders namespace
+      # - app/agents/images/ -> Images namespace
+      # - app/workflows/ (top-level, no namespace)
       #
       # @api private
       initializer "ruby_llm_agents.autoload_agents", before: :set_autoload_paths do |app|
@@ -210,42 +212,34 @@ module RubyLLM
 
       # Determines the namespace constant for a given path
       #
-      # @param path [String] Relative path like "app/llm/agents"
+      # @param path [String] Relative path like "app/agents/embedders"
       # @param config [Configuration] Current configuration
       # @return [Module, nil] Namespace module or nil for top-level
       # @api private
       def self.namespace_for_path(path, config)
-        # Parse the path to determine namespace
         parts = path.split("/")
-        return nil unless parts.length >= 3
 
-        category = parts[2] # e.g., "agents", "audio", "image", "text"
+        # app/workflows -> no namespace (top-level workflows)
+        return nil if parts == ["app", "workflows"]
 
-        # Determine the namespace name based on category and root_namespace setting
+        # Need at least app/{root_directory}
+        return nil unless parts.length >= 2 && parts[0] == "app"
+        return nil unless parts[1] == config.root_directory
+
+        # app/agents -> no namespace (root level)
+        return nil if parts.length == 2
+
+        # app/agents/embedders -> Embedders namespace
+        subdirectory = parts[2]
         namespace_name = if config.root_namespace.blank?
-          # No root namespace - use category namespace only for audio/image/text
-          case category
-          when "audio", "image", "text"
-            category.camelize # "Audio", "Image", "Text"
-          else
-            nil # Top-level for agents, workflows, tools
-          end
+          subdirectory.camelize
         else
-          # With root namespace - prefix category with root namespace
-          case category
-          when "audio", "image", "text"
-            "#{config.root_namespace}::#{category.camelize}"
-          else
-            config.root_namespace
-          end
+          "#{config.root_namespace}::#{subdirectory.camelize}"
         end
 
-        return nil if namespace_name.nil?
-
-        # Return the constant, creating intermediate modules if needed
+        # Create the namespace module if needed
         namespace_name.constantize
       rescue NameError
-        # Create the namespace module if it doesn't exist
         namespace_name.split("::").inject(Object) do |mod, name|
           mod.const_defined?(name, false) ? mod.const_get(name) : mod.const_set(name, Module.new)
         end

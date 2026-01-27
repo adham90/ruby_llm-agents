@@ -46,146 +46,119 @@ RSpec.describe RubyLLM::Agents::Engine do
   describe ".namespace_for_path" do
     let(:config) { RubyLLM::Agents.configuration }
 
-    context "with default namespace (Llm)" do
-      before do
-        allow(config).to receive(:root_namespace).and_return("Llm")
-      end
-
-      it "returns Llm module for agents path" do
-        result = described_class.namespace_for_path("app/llm/agents", config)
-        expect(result).to eq(Llm)
-      end
-
-      it "returns Llm module for tools path" do
-        result = described_class.namespace_for_path("app/llm/tools", config)
-        expect(result).to eq(Llm)
-      end
-
-      it "returns Llm module for workflows path" do
-        result = described_class.namespace_for_path("app/llm/workflows", config)
-        expect(result).to eq(Llm)
-      end
-
-      it "returns Llm::Audio module for audio speakers path" do
-        result = described_class.namespace_for_path("app/llm/audio/speakers", config)
-        expect(result.name).to eq("Llm::Audio")
-      end
-
-      it "returns Llm::Audio module for audio transcribers path" do
-        result = described_class.namespace_for_path("app/llm/audio/transcribers", config)
-        expect(result.name).to eq("Llm::Audio")
-      end
-
-      it "returns Llm::Image module for image generators path" do
-        result = described_class.namespace_for_path("app/llm/image/generators", config)
-        expect(result.name).to eq("Llm::Image")
-      end
-
-      it "returns Llm::Image module for image analyzers path" do
-        result = described_class.namespace_for_path("app/llm/image/analyzers", config)
-        expect(result.name).to eq("Llm::Image")
-      end
-
-      it "returns Llm::Text module for text embedders path" do
-        result = described_class.namespace_for_path("app/llm/text/embedders", config)
-        expect(result.name).to eq("Llm::Text")
-      end
-
-      it "returns Llm::Text module for text moderators path" do
-        result = described_class.namespace_for_path("app/llm/text/moderators", config)
-        expect(result.name).to eq("Llm::Text")
-      end
-    end
-
-    context "with no namespace (nil)" do
+    context "with no root namespace (default)" do
       before do
         allow(config).to receive(:root_namespace).and_return(nil)
+        allow(config).to receive(:root_directory).and_return("agents")
       end
 
-      it "returns nil for agents path" do
-        result = described_class.namespace_for_path("app/llm/agents", config)
+      it "returns nil for app/agents (top-level)" do
+        result = described_class.namespace_for_path("app/agents", config)
         expect(result).to be_nil
       end
 
-      it "returns nil for tools path" do
-        result = described_class.namespace_for_path("app/llm/tools", config)
+      it "returns nil for app/workflows (top-level)" do
+        result = described_class.namespace_for_path("app/workflows", config)
         expect(result).to be_nil
       end
 
-      it "returns nil for workflows path" do
-        result = described_class.namespace_for_path("app/llm/workflows", config)
-        expect(result).to be_nil
+      it "returns Embedders module for app/agents/embedders" do
+        result = described_class.namespace_for_path("app/agents/embedders", config)
+        expect(result).to be_a(Module)
+        expect(result.name).to eq("Embedders")
       end
 
-      it "returns Audio module for audio speakers path" do
-        result = described_class.namespace_for_path("app/llm/audio/speakers", config)
+      it "returns Images module for app/agents/images" do
+        result = described_class.namespace_for_path("app/agents/images", config)
+        expect(result).to be_a(Module)
+        expect(result.name).to eq("Images")
+      end
+
+      it "returns Audio module for app/agents/audio" do
+        result = described_class.namespace_for_path("app/agents/audio", config)
         expect(result).to be_a(Module)
         expect(result.name).to eq("Audio")
       end
 
-      it "returns Image module for image generators path" do
-        result = described_class.namespace_for_path("app/llm/image/generators", config)
+      it "returns Tools module for app/agents/tools" do
+        result = described_class.namespace_for_path("app/agents/tools", config)
         expect(result).to be_a(Module)
-        expect(result.name).to eq("Image")
+        expect(result.name).to eq("Tools")
       end
 
-      it "returns Text module for text embedders path" do
-        result = described_class.namespace_for_path("app/llm/text/embedders", config)
+      it "returns CustomFoo module for arbitrary subdirectories" do
+        result = described_class.namespace_for_path("app/agents/custom_foo", config)
         expect(result).to be_a(Module)
-        expect(result.name).to eq("Text")
+        expect(result.name).to eq("CustomFoo")
       end
     end
 
     context "with empty string namespace" do
       before do
         allow(config).to receive(:root_namespace).and_return("")
+        allow(config).to receive(:root_directory).and_return("agents")
       end
 
-      it "returns nil for agents path" do
-        result = described_class.namespace_for_path("app/llm/agents", config)
+      it "returns nil for app/agents (top-level)" do
+        result = described_class.namespace_for_path("app/agents", config)
         expect(result).to be_nil
       end
 
-      it "returns Audio module for audio path" do
-        result = described_class.namespace_for_path("app/llm/audio/speakers", config)
+      it "returns Embedders module for app/agents/embedders" do
+        result = described_class.namespace_for_path("app/agents/embedders", config)
         expect(result).to be_a(Module)
-        expect(result.name).to eq("Audio")
+        expect(result.name).to eq("Embedders")
       end
     end
 
     context "with custom namespace (AI)" do
       before do
         allow(config).to receive(:root_namespace).and_return("AI")
+        allow(config).to receive(:root_directory).and_return("agents")
       end
 
-      it "returns AI module for agents path" do
-        # Ensure the AI module exists for the test
-        Object.const_set(:AI, Module.new) unless Object.const_defined?(:AI)
-        result = described_class.namespace_for_path("app/llm/agents", config)
-        expect(result).to eq(AI)
+      it "returns nil for app/agents (top-level)" do
+        result = described_class.namespace_for_path("app/agents", config)
+        expect(result).to be_nil
       end
 
-      it "returns AI::Image module for image generators path" do
-        # Ensure the AI::Image module exists for the test
-        Object.const_set(:AI, Module.new) unless Object.const_defined?(:AI)
-        AI.const_set(:Image, Module.new) unless AI.const_defined?(:Image)
-        result = described_class.namespace_for_path("app/llm/image/generators", config)
-        expect(result.name).to eq("AI::Image")
+      it "returns AI::Embedders module for app/agents/embedders" do
+        result = described_class.namespace_for_path("app/agents/embedders", config)
+        expect(result).to be_a(Module)
+        expect(result.name).to eq("AI::Embedders")
+      end
+
+      it "returns AI::Images module for app/agents/images" do
+        result = described_class.namespace_for_path("app/agents/images", config)
+        expect(result).to be_a(Module)
+        expect(result.name).to eq("AI::Images")
+      end
+
+      it "returns AI::CustomFoo module for arbitrary subdirectories" do
+        result = described_class.namespace_for_path("app/agents/custom_foo", config)
+        expect(result).to be_a(Module)
+        expect(result.name).to eq("AI::CustomFoo")
       end
     end
 
     context "with invalid paths" do
       before do
-        allow(config).to receive(:root_namespace).and_return("Llm")
+        allow(config).to receive(:root_namespace).and_return(nil)
+        allow(config).to receive(:root_directory).and_return("agents")
       end
 
-      it "returns nil for paths with fewer than 3 parts" do
-        result = described_class.namespace_for_path("app/llm", config)
+      it "returns nil for paths with only 1 part" do
+        result = described_class.namespace_for_path("app", config)
         expect(result).to be_nil
       end
 
-      it "returns nil for paths with only 2 parts" do
-        result = described_class.namespace_for_path("app", config)
+      it "returns nil for paths that don't start with app" do
+        result = described_class.namespace_for_path("lib/agents/embedders", config)
+        expect(result).to be_nil
+      end
+
+      it "returns nil for paths that don't match root_directory" do
+        result = described_class.namespace_for_path("app/llm/embedders", config)
         expect(result).to be_nil
       end
     end
