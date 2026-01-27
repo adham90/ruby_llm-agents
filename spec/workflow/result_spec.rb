@@ -414,6 +414,78 @@ RSpec.describe RubyLLM::Agents::Workflow::Result do
       result = described_class.new(content: { a: 1, b: 2 })
       expect(result.keys).to eq(%i[a b])
     end
+
+    it "delegates values to content" do
+      result = described_class.new(content: { a: 1, b: 2 })
+      expect(result.values).to eq([1, 2])
+    end
+
+    it "delegates each to content" do
+      result = described_class.new(content: { a: 1, b: 2 })
+      pairs = []
+      result.each { |k, v| pairs << [k, v] }
+      expect(pairs).to eq([[:a, 1], [:b, 2]])
+    end
+
+    it "delegates map to content" do
+      result = described_class.new(content: { a: 1, b: 2 })
+      expect(result.map { |k, v| [k, v * 2] }).to eq([[:a, 2], [:b, 4]])
+    end
+  end
+
+  describe "#skipped_steps" do
+    let(:skipped_result) { RubyLLM::Agents::Workflow::SkippedResult.new(:skipped_step) }
+    let(:success_result) { mock_step_result.call("ok") }
+
+    it "returns names of skipped steps" do
+      result = described_class.new(
+        content: "final",
+        steps: { a: success_result, b: skipped_result }
+      )
+
+      expect(result.skipped_steps).to contain_exactly(:b)
+    end
+
+    it "returns empty when no steps skipped" do
+      result = described_class.new(
+        content: "final",
+        steps: { a: success_result }
+      )
+
+      expect(result.skipped_steps).to be_empty
+    end
+  end
+
+  describe "#to_json" do
+    it "serializes to JSON" do
+      result = described_class.new(
+        content: { key: "value" },
+        workflow_type: "TestWorkflow",
+        status: "success"
+      )
+
+      json = result.to_json
+      parsed = JSON.parse(json)
+
+      expect(parsed["content"]["key"]).to eq("value")
+      expect(parsed["workflow_type"]).to eq("TestWorkflow")
+      expect(parsed["status"]).to eq("success")
+    end
+  end
+
+  describe "to_h with errors" do
+    it "transforms errors to hashes" do
+      error = StandardError.new("Something failed")
+      result = described_class.new(
+        content: nil,
+        status: "error",
+        errors: { step1: error }
+      )
+
+      hash = result.to_h
+      expect(hash[:errors][:step1][:class]).to eq("StandardError")
+      expect(hash[:errors][:step1][:message]).to eq("Something failed")
+    end
   end
 end
 

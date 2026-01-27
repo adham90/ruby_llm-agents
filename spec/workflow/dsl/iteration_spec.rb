@@ -249,4 +249,112 @@ RSpec.describe "Iteration support" do
       expect(context.current_index).to eq(index)
     end
   end
+
+  describe "IterationExecutor sequential execution with errors" do
+    let(:error_workflow_class) do
+      Class.new(RubyLLM::Agents::Workflow) do
+        step :process_items,
+             each: -> { input.items },
+             fail_fast: false,
+             continue_on_error: true do |item|
+          raise "Item error" if item == "error"
+          { processed: item }
+        end
+      end
+    end
+
+    it "continues on error when continue_on_error is true" do
+      workflow = error_workflow_class.new(items: %w[a error b])
+      result = workflow.call
+      iteration_result = result.steps[:process_items]
+
+      expect(iteration_result.errors).not_to be_empty
+      # Should have processed 'a' and 'b', with 'error' failing
+      expect(iteration_result.successful_count).to be >= 1
+    end
+  end
+
+  describe "IterationExecutor with fail_fast" do
+    let(:fail_fast_workflow_class) do
+      Class.new(RubyLLM::Agents::Workflow) do
+        step :process_items,
+             each: -> { input.items },
+             fail_fast: true do |item|
+          raise "Fail fast error" if item == "fail"
+          { processed: item }
+        end
+      end
+    end
+
+    it "stops processing on first error with fail_fast" do
+      workflow = fail_fast_workflow_class.new(items: %w[a fail c])
+      result = workflow.call
+      iteration_result = result.steps[:process_items]
+
+      # Should have stopped after 'fail'
+      expect(iteration_result.errors).not_to be_empty
+      expect(iteration_result.successful_count).to eq(1) # Only 'a' succeeded
+    end
+  end
+
+  describe "IterationExecutor parallel execution" do
+    let(:parallel_workflow_class) do
+      Class.new(RubyLLM::Agents::Workflow) do
+        step :process_items,
+             each: -> { input.items },
+             concurrency: 3 do |item|
+          { processed: item }
+        end
+      end
+    end
+
+    it "executes items in parallel" do
+      workflow = parallel_workflow_class.new(items: %w[a b c d e])
+      result = workflow.call
+      iteration_result = result.steps[:process_items]
+
+      expect(iteration_result.success?).to be true
+      expect(iteration_result.total_count).to eq(5)
+    end
+  end
+
+  describe "IterationExecutor parallel with errors" do
+    let(:parallel_error_workflow_class) do
+      Class.new(RubyLLM::Agents::Workflow) do
+        step :process_items,
+             each: -> { input.items },
+             concurrency: 2,
+             fail_fast: true do |item|
+          raise "Parallel error" if item == "error"
+          { processed: item }
+        end
+      end
+    end
+
+    it "aborts remaining tasks on fail_fast error" do
+      workflow = parallel_error_workflow_class.new(items: %w[a error b c])
+      result = workflow.call
+      iteration_result = result.steps[:process_items]
+
+      expect(iteration_result.errors).not_to be_empty
+    end
+  end
+
+  describe "IterationExecutor with source error" do
+    let(:source_error_workflow_class) do
+      Class.new(RubyLLM::Agents::Workflow) do
+        step :process_items,
+             each: -> { raise "Source resolution failed" } do |item|
+          { processed: item }
+        end
+      end
+    end
+
+    it "handles source error by failing the workflow" do
+      workflow = source_error_workflow_class.new
+      result = workflow.call
+      # The workflow should report an error
+      expect(result.error?).to be true
+    end
+  end
 end
