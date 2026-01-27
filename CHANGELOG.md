@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.3] - 2026-01-27
+
+### Added
+
+- Comprehensive test coverage improvements:
+  - Added specs for `ModerationResult` class with threshold and category filtering tests
+  - Added specs for `AsyncExecutor` with fiber-based concurrent execution tests
+  - Added specs for `IterationExecutor` with collection processing tests
+  - Added specs for `ScheduleHelpers` DSL methods (next_weekday_at, next_hour, tomorrow_at, etc.)
+  - Added specs for `Notifiers` module and registry wrapper
+  - Added specs for `Workflow::Result` with step/branch aggregation tests
+  - Added specs for `ThrottleManager` with rate limiting and token bucket tests
+  - Enhanced `ImageGenerationResult` specs with data, save, blob, and mime type tests
+  - Enhanced `ImageEditResult` specs with comprehensive coverage
+  - Enhanced `ImagePipelineResult` specs with transform, background_removal, and caching tests
+  - Enhanced `SpeechResult` specs with additional audio format tests
+
+### Changed
+
+- Added VCR and WebMock gems for improved test mocking
+- Test coverage improved from 87.91% to 89.05%
+
 ## [1.2.2] - 2026-01-27
 
 ### Fixed
@@ -387,6 +409,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[1.2.3]: https://github.com/adham90/ruby_llm-agents/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/adham90/ruby_llm-agents/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/adham90/ruby_llm-agents/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/adham90/ruby_llm-agents/compare/v1.1.0...v1.2.0
