@@ -33,7 +33,7 @@ RSpec.describe RubyLLM::Agents::BackgroundRemover::Execution do
       config.default_background_remover_model = "rembg"
       config.default_background_output_format = :png
     end
-    allow(RubyLLM).to receive(:respond_to?).with(:remove_background).and_return(false)
+    # Note: RubyLLM mock doesn't have remove_background, so respond_to?(:remove_background) returns false naturally
     allow(RubyLLM).to receive(:paint).and_return(mock_image_result)
   end
 

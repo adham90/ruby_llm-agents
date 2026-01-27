@@ -104,7 +104,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         allow(config).to receive(:track_embeddings).and_return(true)
         allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
         # Mock the Execution model
-        stub_const("RubyLLM::Agents::Execution", Class.new)
+        # Using real Execution model for proper method verification
       end
 
       describe "running execution pattern" do
@@ -243,31 +243,29 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
         it "uses mark_execution_failed! if update fails" do
           context = build_context
-          execution_class = class_double("RubyLLM::Agents::Execution")
-          stub_const("RubyLLM::Agents::Execution", execution_class)
 
-          running_execution = instance_double("RubyLLM::Agents::Execution",
-                                              id: 456,
-                                              status: "running",
-                                              class: execution_class)
+          # Create a real running execution
+          running_execution = create(:execution, :running, agent_type: "TestAgent", model_id: "test-model")
 
           allow(app).to receive(:call) do |ctx|
             ctx.output = "result"
             ctx
           end
 
-          allow(execution_class).to receive(:create!).and_return(running_execution)
+          allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(running_execution)
 
           # Simulate update! failing
           allow(running_execution).to receive(:update!).and_raise(StandardError.new("Update failed"))
 
           # Expect emergency update_all to be called
-          expect(execution_class).to receive(:where).with(id: 456, status: "running").and_return(execution_class)
-          expect(execution_class).to receive(:update_all).with(
-            hash_including(status: "error")
-          )
+          expect(RubyLLM::Agents::Execution).to receive(:where).with(id: running_execution.id, status: "running").and_call_original
+          # The update_all will actually run against the database
 
           middleware.call(context)
+
+          # Verify the execution was marked as error
+          running_execution.reload
+          expect(running_execution.status).to eq("error")
         end
       end
 
@@ -342,7 +340,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         allow(config).to receive(:respond_to?).with(:track_cache_hits).and_return(true)
         allow(config).to receive(:track_cache_hits).and_return(false)
         allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
-        stub_const("RubyLLM::Agents::Execution", Class.new)
+        # Using real Execution model for proper method verification
       end
 
       it "does not record cache hits when track_cache_hits is false" do
@@ -387,7 +385,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       before do
         allow(config).to receive(:track_embeddings).and_return(true)
         allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
-        stub_const("RubyLLM::Agents::Execution", Class.new)
+        # Using real Execution model for proper method verification
       end
 
       it "creates running record synchronously even when async_logging is enabled" do
@@ -590,7 +588,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
     before do
       allow(config).to receive(:track_embeddings).and_return(true)
-      stub_const("RubyLLM::Agents::Execution", Class.new)
+      # Using real Execution model for proper method verification
     end
 
     it "includes tenant_id when multi-tenancy is enabled" do
@@ -641,7 +639,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       allow(config).to receive(:respond_to?).with(:track_cache_hits).and_return(true)
       allow(config).to receive(:track_cache_hits).and_return(true)
       allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
-      stub_const("RubyLLM::Agents::Execution", Class.new)
+      # Using real Execution model for proper method verification
     end
 
     it "includes cache key for cached results" do
@@ -671,7 +669,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     before do
       allow(config).to receive(:track_embeddings).and_return(true)
       allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
-      stub_const("RubyLLM::Agents::Execution", Class.new)
+      # Using real Execution model for proper method verification
     end
 
     it "includes custom metadata in execution record when metadata is present" do
@@ -736,13 +734,20 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     before do
       allow(config).to receive(:track_embeddings).and_return(true)
       allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
-      stub_const("RubyLLM::Agents::Execution", Class.new)
+      # Using real Execution model for proper method verification
     end
 
     it "redacts sensitive parameters" do
-      agent_instance = instance_double("AgentInstance")
-      allow(agent_instance).to receive(:respond_to?).with(:options, true).and_return(true)
-      allow(agent_instance).to receive(:options).and_return({
+      # Create a simple class to represent an agent instance with options
+      agent_instance_class = Class.new do
+        attr_reader :options
+
+        def initialize(options)
+          @options = options
+        end
+      end
+
+      agent_instance = agent_instance_class.new({
         query: "test query",
         api_key: "secret-key",
         password: "secret-pass",

@@ -218,14 +218,25 @@ RSpec.describe RubyLLM::Agents::Workflow::DSL::StepConfig do
   end
 
   describe "#should_execute?" do
-    let(:workflow) do
-      workflow_class = Class.new(RubyLLM::Agents::Workflow)
-      workflow_class.new
+    let(:workflow_class) do
+      Class.new(RubyLLM::Agents::Workflow) do
+        attr_accessor :is_premium, :should_skip
+
+        def premium?
+          @is_premium
+        end
+
+        def skip?
+          @should_skip
+        end
+      end
     end
 
-    before do
-      allow(workflow).to receive(:premium?).and_return(true)
-      allow(workflow).to receive(:skip?).and_return(false)
+    let(:workflow) do
+      w = workflow_class.new
+      w.is_premium = true
+      w.should_skip = false
+      w
     end
 
     it "returns true when no conditions" do
@@ -254,7 +265,7 @@ RSpec.describe RubyLLM::Agents::Workflow::DSL::StepConfig do
     end
 
     it "returns false when unless condition is true" do
-      allow(workflow).to receive(:skip?).and_return(true)
+      workflow.should_skip = true
       config = described_class.new(name: :step, agent: mock_agent, options: { unless: :skip? })
       expect(config.should_execute?(workflow)).to be false
     end

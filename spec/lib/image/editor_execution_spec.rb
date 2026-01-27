@@ -31,7 +31,7 @@ RSpec.describe RubyLLM::Agents::ImageEditor::Execution do
       config.async_logging = false
       config.default_editor_model = "dall-e-3"
     end
-    allow(RubyLLM).to receive(:respond_to?).with(:edit_image).and_return(false)
+    # Note: RubyLLM mock doesn't have edit_image, so respond_to?(:edit_image) returns false naturally
     allow(RubyLLM).to receive(:paint).and_return(mock_image_result)
   end
 

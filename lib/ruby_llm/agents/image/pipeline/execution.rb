@@ -232,10 +232,9 @@ module RubyLLM
         end
 
         def check_budget!
-          BudgetTracker.check!(
-            agent_type: self.class.name,
-            tenant_id: @tenant_id,
-            execution_type: "image_pipeline"
+          BudgetTracker.check_budget!(
+            self.class.name,
+            tenant_id: @tenant_id
           )
         end
 

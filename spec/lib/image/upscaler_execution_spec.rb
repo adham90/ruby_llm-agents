@@ -32,8 +32,7 @@ RSpec.describe RubyLLM::Agents::ImageUpscaler::Execution do
       config.async_logging = false
       config.default_upscaler_model = "real-esrgan"
     end
-    # Mock both possible upscale methods
-    allow(RubyLLM).to receive(:respond_to?).with(:upscale_image).and_return(false)
+    # Note: RubyLLM mock doesn't have upscale_image, so respond_to?(:upscale_image) returns false naturally
     allow(RubyLLM).to receive(:paint).and_return(mock_image_result)
   end
 

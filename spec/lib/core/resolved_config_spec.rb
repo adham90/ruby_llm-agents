@@ -28,7 +28,7 @@ RSpec.describe RubyLLM::Agents::ResolvedConfig do
 
   # Mock config objects
   let(:mock_tenant_config) do
-    instance_double("ApiConfiguration",
+    instance_double(RubyLLM::Agents::ApiConfiguration,
       scope_id: "tenant-123",
       has_value?: false,
       inherit_global_defaults: true
@@ -36,7 +36,7 @@ RSpec.describe RubyLLM::Agents::ResolvedConfig do
   end
 
   let(:mock_global_config) do
-    instance_double("ApiConfiguration",
+    instance_double(RubyLLM::Agents::ApiConfiguration,
       has_value?: false
     )
   end

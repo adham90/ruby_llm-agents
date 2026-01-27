@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "spec_helper"
+require "rails_helper"
 
 RSpec.describe RubyLLM::Agents::Tenant::Configurable do
   let(:tenant) { RubyLLM::Agents::Tenant.create!(tenant_id: "test_tenant_#{SecureRandom.hex(4)}") }

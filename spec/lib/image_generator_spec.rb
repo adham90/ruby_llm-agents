@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "spec_helper"
+require "rails_helper"
 
 RSpec.describe RubyLLM::Agents::ImageGenerator do
   let(:test_prompt) { "A beautiful sunset over the ocean" }

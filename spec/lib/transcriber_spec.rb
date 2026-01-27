@@ -3,21 +3,21 @@
 require "rails_helper"
 
 RSpec.describe RubyLLM::Agents::Transcriber do
-  let(:config) { double("config") }
+  let(:global_config) { double("global_config") }
 
   before do
-    allow(RubyLLM::Agents).to receive(:configuration).and_return(config)
-    allow(config).to receive(:default_model).and_return("gpt-4o")
-    allow(config).to receive(:default_transcription_model).and_return("whisper-1")
-    allow(config).to receive(:default_timeout).and_return(120)
-    allow(config).to receive(:default_temperature).and_return(0.7)
-    allow(config).to receive(:default_streaming).and_return(false)
-    allow(config).to receive(:budgets_enabled?).and_return(false)
-    allow(config).to receive(:track_audio).and_return(false)
-    allow(config).to receive(:track_embeddings).and_return(false)
-    allow(config).to receive(:track_executions).and_return(false)
-    allow(config).to receive(:track_image_generation).and_return(false)
-    allow(config).to receive(:track_moderation).and_return(false)
+    allow(RubyLLM::Agents).to receive(:configuration).and_return(global_config)
+    allow(global_config).to receive(:default_model).and_return("gpt-4o")
+    allow(global_config).to receive(:default_transcription_model).and_return("whisper-1")
+    allow(global_config).to receive(:default_timeout).and_return(120)
+    allow(global_config).to receive(:default_temperature).and_return(0.7)
+    allow(global_config).to receive(:default_streaming).and_return(false)
+    allow(global_config).to receive(:budgets_enabled?).and_return(false)
+    allow(global_config).to receive(:track_audio).and_return(false)
+    allow(global_config).to receive(:track_embeddings).and_return(false)
+    allow(global_config).to receive(:track_executions).and_return(false)
+    allow(global_config).to receive(:track_image_generation).and_return(false)
+    allow(global_config).to receive(:track_moderation).and_return(false)
   end
 
   # Mock RubyLLM.transcribe response

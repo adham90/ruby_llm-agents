@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
-require "spec_helper"
-require "ruby_llm/agents/core/version"
+require "rails_helper"
 
 RSpec.describe "RubyLLM::Agents::VERSION" do
   it "is defined" do

@@ -46,4 +46,11 @@ RSpec.configure do |config|
   config.expect_with :rspec do |c|
     c.syntax = :expect
   end
+
+  # Verify that stubbed methods actually exist on the object
+  # This prevents bugs like stubbing non-existent methods
+  config.mock_with :rspec do |mocks|
+    mocks.verify_partial_doubles = true
+    mocks.verify_doubled_constant_names = true
+  end
 end

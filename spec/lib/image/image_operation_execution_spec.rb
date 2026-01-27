@@ -163,18 +163,17 @@ RSpec.describe RubyLLM::Agents::Concerns::ImageOperationExecution do
 
   describe "#check_budget!" do
     before do
-      allow(RubyLLM::Agents::BudgetTracker).to receive(:check!)
+      allow(RubyLLM::Agents::BudgetTracker).to receive(:check_budget!)
     end
 
-    it "calls BudgetTracker.check! with agent info" do
+    it "calls BudgetTracker.check_budget! with agent info" do
       instance = test_class.new(tenant: "tenant-123")
       instance.test_resolve_tenant_context!
       instance.test_check_budget!
 
-      expect(RubyLLM::Agents::BudgetTracker).to have_received(:check!).with(
-        agent_type: "TestImageOperation",
-        tenant_id: "tenant-123",
-        execution_type: "test_image_operation"
+      expect(RubyLLM::Agents::BudgetTracker).to have_received(:check_budget!).with(
+        "TestImageOperation",
+        tenant_id: "tenant-123"
       )
     end
   end

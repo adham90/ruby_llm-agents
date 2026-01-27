@@ -16,4 +16,6 @@ group :development, :test do
   gem "database_cleaner-active_record"
   gem "rails-controller-testing"
   gem "simplecov", require: false
+  gem "vcr"
+  gem "webmock"
 end

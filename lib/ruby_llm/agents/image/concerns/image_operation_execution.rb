@@ -29,10 +29,9 @@ module RubyLLM
 
         # Check budget before execution
         def check_budget!
-          BudgetTracker.check!(
-            agent_type: self.class.name,
-            tenant_id: @tenant_id,
-            execution_type: execution_type
+          BudgetTracker.check_budget!(
+            self.class.name,
+            tenant_id: @tenant_id
           )
         end
 

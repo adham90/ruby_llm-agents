@@ -32,7 +32,7 @@ RSpec.describe RubyLLM::Agents::ImageVariator::Execution do
       config.async_logging = false
       config.default_variator_model = "dall-e-3"
     end
-    allow(RubyLLM).to receive(:respond_to?).with(:create_image_variation).and_return(false)
+    # Note: RubyLLM mock doesn't have create_image_variation, so respond_to?(:create_image_variation) returns false naturally
     allow(RubyLLM).to receive(:paint).and_return(mock_image_result)
   end
 
