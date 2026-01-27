@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-01-27
+
+### Fixed
+
+- Fixed autoloading for all subdirectories under `app/agents/` - Previously only `audio`, `image`, `text` subdirectories were namespaced. Now any subdirectory (e.g., `app/agents/embedders/`, `app/agents/tools/`, `app/agents/custom_foo/`) is properly namespaced
+
+### Changed
+
+- Updated `namespace_for_path` in engine to dynamically namespace ALL subdirectories under `app/agents/`
+- Simplified `namespace_for` method in configuration to support arbitrary categories using camelize
+- Updated documentation comments to reflect new default directory structure (`app/agents/` instead of `app/llm/`)
+
 ## [1.2.0] - 2026-01-27
 
 ### Added
@@ -369,6 +381,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[1.2.1]: https://github.com/adham90/ruby_llm-agents/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/adham90/ruby_llm-agents/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/adham90/ruby_llm-agents/compare/v1.0.0...v1.1.0
 [1.0.0-beta.1]: https://github.com/adham90/ruby_llm-agents/compare/v0.5.0...v1.0.0-beta.1

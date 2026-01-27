@@ -825,17 +825,15 @@ module RubyLLM
       # @return [String, nil] Full namespace string, or nil if no namespace configured
       # @example With root_namespace = "AI"
       #   namespace_for(:embedders) #=> "AI::Embedders"
-      #   namespace_for(nil)        #=> nil
+      #   namespace_for(nil)        #=> "AI"
       # @example With no namespace (root_namespace = nil)
       #   namespace_for(:embedders) #=> "Embedders"
       #   namespace_for(nil)        #=> nil
       def namespace_for(category = nil)
-        return nil if category.nil?
-
-        category_namespace = category.to_s.camelize
+        category_namespace = category&.to_s&.camelize
 
         if root_namespace.present?
-          "#{root_namespace}::#{category_namespace}"
+          category_namespace ? "#{root_namespace}::#{category_namespace}" : root_namespace
         else
           category_namespace
         end
