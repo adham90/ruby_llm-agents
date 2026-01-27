@@ -60,12 +60,11 @@ module RubyLLM
           # @param context [Context] The execution context
           # @raise [BudgetExceededError] If budget exceeded with hard enforcement
           def check_budget!(context)
-            BudgetTracker.check!(
-              agent_type: context.agent_class&.name,
-              tenant_id: context.tenant_id,
-              execution_type: context.agent_type&.to_s
+            BudgetTracker.check_budget!(
+              context.agent_class&.name,
+              tenant_id: context.tenant_id
             )
-          rescue BudgetExceededError
+          rescue RubyLLM::Agents::Reliability::BudgetExceededError
             # Re-raise budget errors
             raise
           rescue StandardError => e
@@ -80,10 +79,19 @@ module RubyLLM
             return unless context.total_cost&.positive?
 
             BudgetTracker.record_spend!(
-              tenant_id: context.tenant_id,
-              cost: context.total_cost,
-              tokens: context.total_tokens
+              context.agent_class&.name,
+              context.total_cost,
+              tenant_id: context.tenant_id
             )
+
+            # Also record tokens if available
+            if context.total_tokens&.positive?
+              BudgetTracker.record_tokens!(
+                context.agent_class&.name,
+                context.total_tokens,
+                tenant_id: context.tenant_id
+              )
+            end
           rescue StandardError => e
             # Log but don't fail on spend recording errors
             error("Failed to record spend: #{e.message}")

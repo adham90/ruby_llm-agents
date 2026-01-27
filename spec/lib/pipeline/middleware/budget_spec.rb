@@ -59,16 +59,16 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Budget do
         context = build_context(tenant: { id: "org_123" })
         context.tenant_id = "org_123"
 
-        expect(RubyLLM::Agents::BudgetTracker).to receive(:check!).with(
-          agent_type: "TestAgent",
-          tenant_id: "org_123",
-          execution_type: "embedding"
+        expect(RubyLLM::Agents::BudgetTracker).to receive(:check_budget!).with(
+          "TestAgent",
+          tenant_id: "org_123"
         )
         allow(app).to receive(:call) do |ctx|
           ctx.output = "result"
           ctx
         end
         allow(RubyLLM::Agents::BudgetTracker).to receive(:record_spend!)
+        allow(RubyLLM::Agents::BudgetTracker).to receive(:record_tokens!)
 
         middleware.call(context)
       end
@@ -78,7 +78,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Budget do
         context.output = "result"
         context.total_cost = 0.05
 
-        allow(RubyLLM::Agents::BudgetTracker).to receive(:check!)
+        allow(RubyLLM::Agents::BudgetTracker).to receive(:check_budget!)
         allow(app).to receive(:call) do |ctx|
           ctx.output = "result"
           ctx.total_cost = 0.05
@@ -86,9 +86,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Budget do
         end
 
         expect(RubyLLM::Agents::BudgetTracker).to receive(:record_spend!).with(
-          tenant_id: nil,
-          cost: 0.05,
-          tokens: 0
+          "TestAgent",
+          0.05,
+          tenant_id: nil
         )
 
         middleware.call(context)
@@ -98,7 +98,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Budget do
         context = build_context
         context.cached = true
 
-        allow(RubyLLM::Agents::BudgetTracker).to receive(:check!)
+        allow(RubyLLM::Agents::BudgetTracker).to receive(:check_budget!)
         allow(app).to receive(:call) do |ctx|
           ctx.output = "cached_result"
           ctx.total_cost = 0.05
@@ -113,7 +113,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Budget do
       it "does not record spend when cost is zero" do
         context = build_context
 
-        allow(RubyLLM::Agents::BudgetTracker).to receive(:check!)
+        allow(RubyLLM::Agents::BudgetTracker).to receive(:check_budget!)
         allow(app).to receive(:call) do |ctx|
           ctx.output = "result"
           ctx.total_cost = 0
@@ -128,17 +128,17 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Budget do
       it "re-raises BudgetExceededError" do
         context = build_context
 
-        expect(RubyLLM::Agents::BudgetTracker).to receive(:check!).and_raise(
-          RubyLLM::Agents::BudgetExceededError.new("Budget exceeded")
+        expect(RubyLLM::Agents::BudgetTracker).to receive(:check_budget!).and_raise(
+          RubyLLM::Agents::Reliability::BudgetExceededError.new(:global_daily, 10.0, 15.0)
         )
 
-        expect { middleware.call(context) }.to raise_error(RubyLLM::Agents::BudgetExceededError)
+        expect { middleware.call(context) }.to raise_error(RubyLLM::Agents::Reliability::BudgetExceededError)
       end
 
       it "logs but does not fail on budget check errors" do
         context = build_context
 
-        allow(RubyLLM::Agents::BudgetTracker).to receive(:check!).and_raise(
+        allow(RubyLLM::Agents::BudgetTracker).to receive(:check_budget!).and_raise(
           StandardError.new("Database connection failed")
         )
         allow(app).to receive(:call) do |ctx|
@@ -154,7 +154,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Budget do
         context = build_context
         context.total_cost = 0.05
 
-        allow(RubyLLM::Agents::BudgetTracker).to receive(:check!)
+        allow(RubyLLM::Agents::BudgetTracker).to receive(:check_budget!)
         allow(app).to receive(:call) do |ctx|
           ctx.output = "result"
           ctx.total_cost = 0.05
@@ -172,7 +172,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Budget do
         context = build_context
         context.total_cost = 0.05
 
-        allow(RubyLLM::Agents::BudgetTracker).to receive(:check!)
+        allow(RubyLLM::Agents::BudgetTracker).to receive(:check_budget!)
         allow(app).to receive(:call) do |ctx|
           ctx.error = StandardError.new("Something went wrong")
           ctx

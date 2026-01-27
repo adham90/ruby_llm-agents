@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-01-27
+
+### Fixed
+
+- Fixed `BudgetTracker` method calls in pipeline budget middleware - was calling non-existent `check!` method instead of `check_budget!`, and `record_spend!` had incorrect argument signature
+
 ## [1.2.1] - 2026-01-27
 
 ### Fixed
@@ -381,6 +387,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[1.2.2]: https://github.com/adham90/ruby_llm-agents/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/adham90/ruby_llm-agents/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/adham90/ruby_llm-agents/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/adham90/ruby_llm-agents/compare/v1.0.0...v1.1.0
