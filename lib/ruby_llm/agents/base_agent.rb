@@ -212,7 +212,9 @@ module RubyLLM
       #   @return [Float] The temperature setting
       # @!attribute [r] client
       #   @return [RubyLLM::Chat] The configured RubyLLM client
-      attr_reader :model, :temperature, :client
+      # @!attribute [r] tracked_tool_calls
+      #   @return [Array<Hash>] Tool calls tracked during execution with results, timing, and status
+      attr_reader :model, :temperature, :client, :tracked_tool_calls
 
       # Creates a new agent instance
       #
@@ -223,6 +225,8 @@ module RubyLLM
         @model = model
         @temperature = temperature
         @options = options
+        @tracked_tool_calls = []
+        @pending_tool_call = nil
         validate_required_params!
       end
 
@@ -485,6 +489,7 @@ module RubyLLM
         client = client.with_instructions(system_prompt) if system_prompt
         client = client.with_schema(schema) if schema
         client = client.with_tools(*resolved_tools) if resolved_tools.any?
+        client = setup_tool_tracking(client) if resolved_tools.any?
         client = apply_messages(client, resolved_messages) if resolved_messages.any?
         client = client.with_thinking(**resolved_thinking) if resolved_thinking
 
@@ -542,6 +547,9 @@ module RubyLLM
         context.model_used = response.model_id || model
         # finish_reason may not be available on all RubyLLM::Message versions
         context.finish_reason = response.respond_to?(:finish_reason) ? response.finish_reason : nil
+
+        # Store tracked tool calls in context for instrumentation
+        context[:tool_calls] = @tracked_tool_calls if @tracked_tool_calls.any?
 
         calculate_costs(response, context) if context.input_tokens
       end
@@ -669,6 +677,122 @@ module RubyLLM
           client.add_message(role: message[:role].to_sym, content: message[:content])
         end
         client
+      end
+
+      # Sets up tool call tracking callbacks on the client
+      #
+      # @param client [RubyLLM::Chat] The chat client
+      # @return [RubyLLM::Chat] Client with tracking callbacks
+      def setup_tool_tracking(client)
+        client
+          .on_tool_call { |tool_call| start_tracking_tool_call(tool_call) }
+          .on_tool_result { |result| complete_tool_call_tracking(result) }
+      end
+
+      # Starts tracking a tool call
+      #
+      # @param tool_call [Object] The tool call object from RubyLLM
+      def start_tracking_tool_call(tool_call)
+        @pending_tool_call = {
+          id: extract_tool_call_value(tool_call, :id),
+          name: extract_tool_call_value(tool_call, :name),
+          arguments: extract_tool_call_value(tool_call, :arguments) || {},
+          called_at: Time.current.iso8601(3),
+          started_at: Time.current
+        }
+      end
+
+      # Completes tracking for the pending tool call with result
+      #
+      # @param result [Object] The tool result (string, hash, or object)
+      def complete_tool_call_tracking(result)
+        return unless @pending_tool_call
+
+        completed_at = Time.current
+        started_at = @pending_tool_call.delete(:started_at)
+        duration_ms = started_at ? ((completed_at - started_at) * 1000).to_i : nil
+
+        result_data = extract_tool_result(result)
+
+        tracked_call = @pending_tool_call.merge(
+          result: truncate_tool_result(result_data[:content]),
+          status: result_data[:status],
+          error_message: result_data[:error_message],
+          duration_ms: duration_ms,
+          completed_at: completed_at.iso8601(3)
+        )
+
+        @tracked_tool_calls << tracked_call
+        @pending_tool_call = nil
+      end
+
+      # Extracts result data from various tool result formats
+      #
+      # @param result [Object] The tool result
+      # @return [Hash] Hash with :content, :status, :error_message keys
+      def extract_tool_result(result)
+        content = nil
+        status = "success"
+        error_message = nil
+
+        if result.is_a?(Exception)
+          content = result.message
+          status = "error"
+          error_message = "#{result.class}: #{result.message}"
+        elsif result.respond_to?(:error?) && result.error?
+          content = result.respond_to?(:content) ? result.content : result.to_s
+          status = "error"
+          error_message = result.respond_to?(:error_message) ? result.error_message : content
+        elsif result.respond_to?(:content)
+          content = result.content
+        elsif result.is_a?(Hash)
+          content = result[:content] || result["content"] || result.to_json
+          if result[:error] || result["error"]
+            status = "error"
+            error_message = result[:error] || result["error"]
+          end
+        else
+          content = result.to_s
+        end
+
+        { content: content, status: status, error_message: error_message }
+      end
+
+      # Truncates tool result if it exceeds the configured max length
+      #
+      # @param result [String, Object] The result to truncate
+      # @return [String] The truncated result
+      def truncate_tool_result(result)
+        return nil if result.nil?
+
+        result_str = result.is_a?(String) ? result : result.to_json
+        max_length = tool_result_max_length
+
+        return result_str if result_str.length <= max_length
+
+        result_str[0, max_length - 15] + "... [truncated]"
+      end
+
+      # Returns the configured max length for tool results
+      #
+      # @return [Integer] Max length
+      def tool_result_max_length
+        RubyLLM::Agents.configuration.tool_result_max_length || 10_000
+      rescue StandardError
+        10_000
+      end
+
+      # Extracts a value from a tool call object (supports both hash and object access)
+      #
+      # @param tool_call [Hash, Object] The tool call
+      # @param key [Symbol] The key to extract
+      # @return [Object, nil] The value or nil
+      def extract_tool_call_value(tool_call, key)
+        if tool_call.respond_to?(key)
+          tool_call.send(key)
+        elsif tool_call.respond_to?(:[])
+          tool_call[key] || tool_call[key.to_s]
+        end
       end
     end
   end

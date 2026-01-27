@@ -616,36 +616,81 @@
     <div class="space-y-4" x-show="expanded" x-cloak>
       <% tool_calls.each_with_index do |tool_call, index| %>
         <%
-          # Handle both symbol and string keys
+          # Handle both symbol and string keys for backward compatibility
           tool_id = tool_call['id'] || tool_call[:id]
           tool_name = tool_call['name'] || tool_call[:name]
           tool_args = tool_call['arguments'] || tool_call[:arguments] || {}
+          tool_result = tool_call['result'] || tool_call[:result]
+          tool_status = tool_call['status'] || tool_call[:status] || 'unknown'
+          tool_error = tool_call['error_message'] || tool_call[:error_message]
+          tool_duration = tool_call['duration_ms'] || tool_call[:duration_ms]
+          tool_called_at = tool_call['called_at'] || tool_call[:called_at]
+
+          # Status badge styling
+          status_badge_class = case tool_status
+            when 'success' then 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
+            when 'error' then 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
+            else 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+          end
         %>
         <div class="border border-gray-100 dark:border-gray-700 rounded-lg overflow-hidden">
           <!-- Tool Call Header -->
-          <div class="bg-gray-50 dark:bg-gray-900/50 px-4 py-3 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-medium">
-                <%= index + 1 %>
-              </span>
-              <code class="text-sm font-semibold text-gray-900 dark:text-gray-100"><%= tool_name %></code>
+          <div class="bg-gray-50 dark:bg-gray-900/50 px-4 py-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-medium">
+                  <%= index + 1 %>
+                </span>
+                <code class="text-sm font-semibold text-gray-900 dark:text-gray-100"><%= tool_name %></code>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= status_badge_class %>">
+                  <%= tool_status %>
+                </span>
+                <% if tool_duration.present? %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300">
+                    <%= tool_duration %>ms
+                  </span>
+                <% end %>
+              </div>
+              <div class="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+                <% if tool_called_at.present? %>
+                  <span class="font-mono" title="Called at"><%= Time.parse(tool_called_at).strftime("%H:%M:%S.%L") rescue tool_called_at %></span>
+                <% end %>
+                <% if tool_id.present? %>
+                  <span class="font-mono truncate max-w-[120px]" title="<%= tool_id %>">
+                    <%= tool_id.to_s.truncate(16) %>
+                  </span>
+                <% end %>
+              </div>
             </div>
-            <% if tool_id.present? %>
-              <span class="text-xs text-gray-400 dark:text-gray-500 font-mono truncate max-w-xs" title="<%= tool_id %>">
-                <%= tool_id.to_s.truncate(24) %>
-              </span>
-            <% end %>
           </div>
 
           <!-- Tool Call Arguments -->
           <% if tool_args.present? && tool_args.any? %>
-            <div class="px-4 py-3">
+            <div class="px-4 py-3 border-t border-gray-100 dark:border-gray-700">
               <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Arguments</p>
               <pre class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-3 text-sm overflow-x-auto font-mono"><%= highlight_json(tool_args) %></pre>
             </div>
           <% else %>
-            <div class="px-4 py-3">
+            <div class="px-4 py-3 border-t border-gray-100 dark:border-gray-700">
               <p class="text-xs text-gray-400 dark:text-gray-500 italic">No arguments</p>
+            </div>
+          <% end %>
+
+          <!-- Tool Call Result (NEW) -->
+          <% if tool_result.present? %>
+            <div class="px-4 py-3 border-t border-gray-100 dark:border-gray-700">
+              <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Result</p>
+              <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 max-h-48 overflow-y-auto">
+                <pre class="text-sm text-gray-900 dark:text-gray-100 font-mono whitespace-pre-wrap break-words"><%= tool_result.is_a?(String) ? tool_result : JSON.pretty_generate(tool_result) rescue tool_result.to_s %></pre>
+              </div>
+            </div>
+          <% end %>
+
+          <!-- Tool Call Error (NEW) -->
+          <% if tool_status == 'error' && tool_error.present? %>
+            <div class="px-4 py-3 border-t border-red-100 dark:border-red-900/50 bg-red-50 dark:bg-red-900/20">
+              <p class="text-xs text-red-600 dark:text-red-400 uppercase tracking-wide mb-2">Error</p>
+              <pre class="text-sm text-red-700 dark:text-red-300 font-mono whitespace-pre-wrap break-words"><%= tool_error %></pre>
             </div>
           <% end %>
         </div>

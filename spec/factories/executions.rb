@@ -124,6 +124,71 @@ FactoryBot.define do
       finish_reason { "tool_calls" }
     end
 
+    trait :with_enhanced_tool_calls do
+      tool_calls do
+        [
+          {
+            "id" => "call_enhanced_1",
+            "name" => "weather_lookup",
+            "arguments" => { "city" => "Paris" },
+            "result" => "15°C, partly cloudy",
+            "status" => "success",
+            "error_message" => nil,
+            "duration_ms" => 245,
+            "called_at" => "2025-01-27T10:30:45.123Z",
+            "completed_at" => "2025-01-27T10:30:45.368Z"
+          },
+          {
+            "id" => "call_enhanced_2",
+            "name" => "database_query",
+            "arguments" => { "sql" => "SELECT * FROM users" },
+            "result" => "[{\"id\": 1, \"name\": \"Alice\"}]",
+            "status" => "success",
+            "error_message" => nil,
+            "duration_ms" => 89,
+            "called_at" => "2025-01-27T10:30:45.400Z",
+            "completed_at" => "2025-01-27T10:30:45.489Z"
+          }
+        ]
+      end
+      tool_calls_count { 2 }
+      finish_reason { "tool_calls" }
+    end
+
+    trait :with_enhanced_tool_call_error do
+      tool_calls do
+        [
+          {
+            "id" => "call_error_1",
+            "name" => "api_call",
+            "arguments" => { "endpoint" => "/users" },
+            "result" => nil,
+            "status" => "error",
+            "error_message" => "ConnectionError: Failed to connect to API",
+            "duration_ms" => 5023,
+            "called_at" => "2025-01-27T10:30:45.123Z",
+            "completed_at" => "2025-01-27T10:30:50.146Z"
+          }
+        ]
+      end
+      tool_calls_count { 1 }
+      finish_reason { "tool_calls" }
+    end
+
+    trait :with_legacy_tool_calls do
+      tool_calls do
+        [
+          {
+            "id" => "call_legacy_1",
+            "name" => "old_tool",
+            "arguments" => { "param" => "value" }
+          }
+        ]
+      end
+      tool_calls_count { 1 }
+      finish_reason { "tool_calls" }
+    end
+
     trait :with_tenant do
       sequence(:tenant_id) { |n| "tenant_#{n}" }
     end

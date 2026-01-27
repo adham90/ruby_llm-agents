@@ -332,146 +332,278 @@ create_org_executions(acme, count: 8, agents: %w[SearchAgent SummaryAgent], mode
 puts "  Created 8 standard agent executions"
 
 # =============================================================================
-# TOOL CALLS EXECUTIONS
+# TOOL CALLS EXECUTIONS (Enhanced with results, status, duration, timestamps)
 # =============================================================================
 puts "\n" + "-" * 40
-puts "Creating tool calls executions..."
+puts "Creating enhanced tool calls executions..."
 puts "-" * 40
 
-# Tool calls execution - Calculator and Weather
+# Helper to generate timestamps for tool calls
+def tool_call_times(base_time, duration_ms)
+  called_at = base_time
+  completed_at = called_at + (duration_ms / 1000.0)
+  {
+    called_at: called_at.iso8601(3),
+    completed_at: completed_at.iso8601(3),
+    duration_ms: duration_ms
+  }
+end
+
+# Tool calls execution - Calculator and Weather (SUCCESS with results)
+base_time = Time.current - 45.minutes
 create_execution(
   tenant_id: acme.llm_tenant_id,
   agent_type: "ToolsAgent",
   model_id: "gpt-4o",
   finish_reason: "tool_calls",
   tool_calls: [
-    { id: "call_calc_001", name: "calculator", arguments: { operation: "multiply", a: 25, b: 4 } },
-    { id: "call_weather_001", name: "weather", arguments: { location: "Tokyo" } }
+    {
+      id: "call_calc_001",
+      name: "calculator",
+      arguments: { operation: "multiply", a: 25, b: 4 },
+      result: "100",
+      status: "success",
+      error_message: nil,
+      **tool_call_times(base_time, 45)
+    },
+    {
+      id: "call_weather_001",
+      name: "weather",
+      arguments: { location: "Tokyo" },
+      result: '{"temperature": "22°C", "condition": "sunny", "humidity": "45%", "wind": "10 km/h"}',
+      status: "success",
+      error_message: nil,
+      **tool_call_times(base_time + 0.1, 312)
+    }
   ],
   tool_calls_count: 2,
   parameters: { query: "What's 25*4 and the weather in Tokyo?" },
-  response: { content: "25 times 4 is 100, and Tokyo is sunny at 22C." },
-  created_at: Time.current - 45.minutes
+  response: { content: "25 times 4 is 100, and Tokyo is sunny at 22°C." },
+  created_at: base_time
 )
 
-# Tool calls execution - Database query
+# Tool calls execution - Database query (SUCCESS with JSON result)
+base_time = Time.current - 50.minutes
 create_execution(
   tenant_id: acme.llm_tenant_id,
   agent_type: "ToolsAgent",
   model_id: "gpt-4o",
   finish_reason: "tool_calls",
   tool_calls: [
-    { id: "call_db_001", name: "database_query", arguments: { table: "users", filter: { status: "active" }, limit: 10 } }
+    {
+      id: "call_db_001",
+      name: "database_query",
+      arguments: { table: "users", filter: { status: "active" }, limit: 10 },
+      result: '[{"id": 1, "name": "Alice", "email": "alice@example.com"}, {"id": 2, "name": "Bob", "email": "bob@example.com"}, {"id": 3, "name": "Charlie", "email": "charlie@example.com"}, {"id": 4, "name": "Diana", "email": "diana@example.com"}, {"id": 5, "name": "Eve", "email": "eve@example.com"}]',
+      status: "success",
+      error_message: nil,
+      **tool_call_times(base_time, 89)
+    }
   ],
   tool_calls_count: 1,
   parameters: { query: "List 10 active users from the database" },
   response: { content: "Found 10 active users: Alice, Bob, Charlie..." },
   metadata: { db_rows_returned: 10 },
-  created_at: Time.current - 50.minutes
+  created_at: base_time
 )
 
-# Tool calls execution - File operations
+# Tool calls execution - File operations (SUCCESS with file content)
+base_time = Time.current - 55.minutes
 create_execution(
   tenant_id: acme.llm_tenant_id,
   agent_type: "FullFeaturedAgent",
   model_id: "gpt-4o",
   finish_reason: "tool_calls",
   tool_calls: [
-    { id: "call_read_001", name: "read_file", arguments: { path: "/docs/readme.md" } },
-    { id: "call_write_001", name: "write_file", arguments: { path: "/docs/summary.md", content: "# Summary\n\nThis document..." } }
+    {
+      id: "call_read_001",
+      name: "read_file",
+      arguments: { path: "/docs/readme.md" },
+      result: "# Project README\n\nThis is a Ruby on Rails application that provides...\n\n## Features\n- User authentication\n- API endpoints\n- Background jobs",
+      status: "success",
+      error_message: nil,
+      **tool_call_times(base_time, 23)
+    },
+    {
+      id: "call_write_001",
+      name: "write_file",
+      arguments: { path: "/docs/summary.md", content: "# Summary\n\nThis document..." },
+      result: '{"written": true, "bytes": 1245, "path": "/docs/summary.md"}',
+      status: "success",
+      error_message: nil,
+      **tool_call_times(base_time + 0.05, 156)
+    }
   ],
   tool_calls_count: 2,
   parameters: { query: "Read the readme and create a summary file" },
   response: { content: "I've read the readme and created a summary at /docs/summary.md" },
   metadata: { files_read: 1, files_written: 1 },
-  created_at: Time.current - 55.minutes
+  created_at: base_time
 )
 
-# Tool calls execution - Web search and scraping
+# Tool calls execution - Web search and scraping (SUCCESS with search results)
+base_time = Time.current - 30.minutes
 create_execution(
   tenant_id: enterprise.llm_tenant_id,
   agent_type: "SearchAgent",
   model_id: "gpt-4o",
   finish_reason: "tool_calls",
   tool_calls: [
-    { id: "call_search_001", name: "web_search", arguments: { query: "Ruby on Rails best practices 2024", num_results: 5 } },
-    { id: "call_scrape_001", name: "scrape_url", arguments: { url: "https://guides.rubyonrails.org", extract: "headings" } }
+    {
+      id: "call_search_001",
+      name: "web_search",
+      arguments: { query: "Ruby on Rails best practices 2024", num_results: 5 },
+      result: '[{"title": "Rails Guide - Best Practices", "url": "https://guides.rubyonrails.org/best_practices.html", "snippet": "Learn the best practices for Rails development..."}, {"title": "12 Factor Rails", "url": "https://12factor.net", "snippet": "Build scalable Rails apps..."}]',
+      status: "success",
+      error_message: nil,
+      **tool_call_times(base_time, 1245)
+    },
+    {
+      id: "call_scrape_001",
+      name: "scrape_url",
+      arguments: { url: "https://guides.rubyonrails.org", extract: "headings" },
+      result: '["Getting Started", "Active Record Basics", "Routing", "Controllers", "Views", "Layouts", "Active Storage", "Action Cable"]',
+      status: "success",
+      error_message: nil,
+      **tool_call_times(base_time + 1.3, 876)
+    }
   ],
   tool_calls_count: 2,
   parameters: { query: "Find best practices for Rails development" },
   response: { content: "Here are the top Rails best practices from authoritative sources..." },
   metadata: { search_results: 5, urls_scraped: 1 },
-  created_at: Time.current - 30.minutes
+  created_at: base_time
 )
 
-# Tool calls execution - API calls
+# Tool calls execution - API calls (SUCCESS with GitHub API responses)
+base_time = Time.current - 35.minutes
 create_execution(
   tenant_id: enterprise.llm_tenant_id,
   agent_type: "ToolsAgent",
   model_id: "gpt-4o",
   finish_reason: "tool_calls",
   tool_calls: [
-    { id: "call_api_001", name: "http_request", arguments: { method: "GET", url: "https://api.github.com/repos/ruby/ruby", headers: { "Accept" => "application/json" } } },
-    { id: "call_api_002", name: "http_request", arguments: { method: "GET", url: "https://api.github.com/repos/rails/rails", headers: { "Accept" => "application/json" } } }
+    {
+      id: "call_api_001",
+      name: "http_request",
+      arguments: { method: "GET", url: "https://api.github.com/repos/ruby/ruby", headers: { "Accept" => "application/json" } },
+      result: '{"name": "ruby", "full_name": "ruby/ruby", "stargazers_count": 21500, "forks_count": 5200, "language": "Ruby", "description": "The Ruby Programming Language"}',
+      status: "success",
+      error_message: nil,
+      **tool_call_times(base_time, 234)
+    },
+    {
+      id: "call_api_002",
+      name: "http_request",
+      arguments: { method: "GET", url: "https://api.github.com/repos/rails/rails", headers: { "Accept" => "application/json" } },
+      result: '{"name": "rails", "full_name": "rails/rails", "stargazers_count": 54800, "forks_count": 21100, "language": "Ruby", "description": "Ruby on Rails"}',
+      status: "success",
+      error_message: nil,
+      **tool_call_times(base_time + 0.25, 189)
+    }
   ],
   tool_calls_count: 2,
   parameters: { query: "Get info about Ruby and Rails repositories on GitHub" },
   response: { content: "Ruby has 21k stars and Rails has 54k stars on GitHub." },
   metadata: { api_calls: 2, response_time_ms: 450 },
-  created_at: Time.current - 35.minutes
+  created_at: base_time
 )
 
-# Tool calls execution - Code execution
+# Tool calls execution - Code execution (SUCCESS with output)
+base_time = Time.current - 25.minutes
 create_execution(
   tenant_id: startup.llm_tenant_id,
   agent_type: "ToolsAgent",
   model_id: "gpt-4o-mini",
   finish_reason: "tool_calls",
   tool_calls: [
-    { id: "call_code_001", name: "execute_ruby", arguments: { code: "puts (1..10).map { |n| n * 2 }.inspect" } }
+    {
+      id: "call_code_001",
+      name: "execute_ruby",
+      arguments: { code: "puts (1..10).map { |n| n * 2 }.inspect" },
+      result: "[2, 4, 6, 8, 10, 12, 14, 16, 18, 20]",
+      status: "success",
+      error_message: nil,
+      **tool_call_times(base_time, 12)
+    }
   ],
   tool_calls_count: 1,
   parameters: { query: "Double each number from 1 to 10" },
   response: { content: "The doubled numbers are: [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]" },
   metadata: { execution_time_ms: 12 },
-  created_at: Time.current - 25.minutes
+  created_at: base_time
 )
 
-# Tool calls execution - Email sending
+# Tool calls execution - Email sending (SUCCESS)
+base_time = Time.current - 20.minutes
 create_execution(
   tenant_id: startup.llm_tenant_id,
   agent_type: "FullFeaturedAgent",
   model_id: "gpt-4o-mini",
   finish_reason: "tool_calls",
   tool_calls: [
-    { id: "call_email_001", name: "send_email", arguments: { to: "team@example.com", subject: "Weekly Report", body: "Here is this week's summary..." } }
+    {
+      id: "call_email_001",
+      name: "send_email",
+      arguments: { to: "team@example.com", subject: "Weekly Report", body: "Here is this week's summary..." },
+      result: '{"sent": true, "message_id": "msg_abc123xyz", "recipients": 1, "queued_at": "2025-01-27T10:15:00Z"}',
+      status: "success",
+      error_message: nil,
+      **tool_call_times(base_time, 567)
+    }
   ],
   tool_calls_count: 1,
   parameters: { query: "Send the weekly report to the team" },
   response: { content: "I've sent the weekly report email to team@example.com" },
   metadata: { email_sent: true, recipients: 1 },
-  created_at: Time.current - 20.minutes
+  created_at: base_time
 )
 
-# Tool calls execution - Multiple sequential tools
+# Tool calls execution - Multiple sequential tools (SUCCESS with analytics data)
+base_time = Time.current - 15.minutes
 create_execution(
   tenant_id: acme.llm_tenant_id,
   agent_type: "FullFeaturedAgent",
   model_id: "gpt-4o",
   finish_reason: "tool_calls",
   tool_calls: [
-    { id: "call_fetch_001", name: "fetch_data", arguments: { source: "analytics", date_range: "last_7_days" } },
-    { id: "call_calc_002", name: "calculator", arguments: { operation: "average", values: [120, 145, 132, 158, 167, 143, 155] } },
-    { id: "call_chart_001", name: "generate_chart", arguments: { type: "line", data: [120, 145, 132, 158, 167, 143, 155], title: "Weekly Traffic" } }
+    {
+      id: "call_fetch_001",
+      name: "fetch_data",
+      arguments: { source: "analytics", date_range: "last_7_days" },
+      result: '{"daily_visits": [120, 145, 132, 158, 167, 143, 155], "total_visits": 1020, "unique_visitors": 845}',
+      status: "success",
+      error_message: nil,
+      **tool_call_times(base_time, 234)
+    },
+    {
+      id: "call_calc_002",
+      name: "calculator",
+      arguments: { operation: "average", values: [120, 145, 132, 158, 167, 143, 155] },
+      result: "145.71",
+      status: "success",
+      error_message: nil,
+      **tool_call_times(base_time + 0.3, 8)
+    },
+    {
+      id: "call_chart_001",
+      name: "generate_chart",
+      arguments: { type: "line", data: [120, 145, 132, 158, 167, 143, 155], title: "Weekly Traffic" },
+      result: '{"chart_url": "https://charts.example.com/c/abc123", "format": "png", "width": 800, "height": 400}',
+      status: "success",
+      error_message: nil,
+      **tool_call_times(base_time + 0.35, 456)
+    }
   ],
   tool_calls_count: 3,
   parameters: { query: "Show me the weekly traffic analytics with a chart" },
   response: { content: "Here's your weekly traffic report. Average: 145.7 visits/day. Chart generated." },
   metadata: { data_points: 7, chart_generated: true },
-  created_at: Time.current - 15.minutes
+  created_at: base_time
 )
 
-# Tool calls execution - Error during tool execution
+# Tool calls execution - ERROR during tool execution (with error details)
+base_time = Time.current - 60.minutes
 create_execution(
   tenant_id: demo.llm_tenant_id,
   agent_type: "ToolsAgent",
@@ -481,49 +613,160 @@ create_execution(
   error_class: "ToolExecutionError",
   error_message: "Tool 'database_query' failed: Connection timeout after 30s",
   tool_calls: [
-    { id: "call_db_002", name: "database_query", arguments: { table: "orders", filter: { year: 2024 } }, error: "Connection timeout" }
+    {
+      id: "call_db_002",
+      name: "database_query",
+      arguments: { table: "orders", filter: { year: 2024 } },
+      result: nil,
+      status: "error",
+      error_message: "ConnectionError: Connection timeout after 30000ms - host: db.example.com:5432",
+      **tool_call_times(base_time, 30023)
+    }
   ],
   tool_calls_count: 1,
   parameters: { query: "Get all orders from 2024" },
   metadata: { tool_error: true, retry_count: 3 },
-  created_at: Time.current - 60.minutes
+  created_at: base_time
 )
 
-# Tool calls execution - Conversation with context retrieval
+# Tool calls execution - Conversation with context retrieval (SUCCESS)
+base_time = Time.current - 10.minutes
 create_execution(
   tenant_id: acme.llm_tenant_id,
   agent_type: "ConversationAgent",
   model_id: "gpt-4o",
   finish_reason: "tool_calls",
   tool_calls: [
-    { id: "call_memory_001", name: "retrieve_context", arguments: { query: "previous discussion about project timeline", limit: 3 } },
-    { id: "call_search_002", name: "search_documents", arguments: { query: "project milestones Q1 2024", collection: "project_docs" } }
+    {
+      id: "call_memory_001",
+      name: "retrieve_context",
+      arguments: { query: "previous discussion about project timeline", limit: 3 },
+      result: '[{"message": "We discussed a 3-month timeline", "timestamp": "2025-01-20"}, {"message": "Milestones at weeks 4, 8, 12", "timestamp": "2025-01-21"}]',
+      status: "success",
+      error_message: nil,
+      **tool_call_times(base_time, 123)
+    },
+    {
+      id: "call_search_002",
+      name: "search_documents",
+      arguments: { query: "project milestones Q1 2024", collection: "project_docs" },
+      result: '[{"title": "Q1 Roadmap", "content": "Phase 1: Foundation...", "relevance": 0.92}, {"title": "Sprint Planning", "content": "Sprint 1 goals...", "relevance": 0.85}]',
+      status: "success",
+      error_message: nil,
+      **tool_call_times(base_time + 0.15, 245)
+    }
   ],
   tool_calls_count: 2,
   parameters: { message: "What did we decide about the project timeline?", conversation_id: "conv_123" },
   response: { content: "Based on our previous discussion, we agreed on a 3-month timeline with milestones at weeks 4, 8, and 12." },
   metadata: { context_retrieved: true, documents_found: 2 },
-  created_at: Time.current - 10.minutes
+  created_at: base_time
 )
 
-# Tool calls execution - Image analysis
+# Tool calls execution - Image analysis (SUCCESS with extracted data)
+base_time = Time.current - 40.minutes
 create_execution(
   tenant_id: enterprise.llm_tenant_id,
   agent_type: "ToolsAgent",
   model_id: "gpt-4o",
   finish_reason: "tool_calls",
   tool_calls: [
-    { id: "call_vision_001", name: "analyze_image", arguments: { image_url: "https://example.com/chart.png", analysis_type: "data_extraction" } },
-    { id: "call_ocr_001", name: "extract_text", arguments: { image_url: "https://example.com/chart.png" } }
+    {
+      id: "call_vision_001",
+      name: "analyze_image",
+      arguments: { image_url: "https://example.com/chart.png", analysis_type: "data_extraction" },
+      result: '{"chart_type": "bar", "title": "Quarterly Revenue", "data_points": [{"label": "Q1", "value": 1200000}, {"label": "Q2", "value": 1500000}, {"label": "Q3", "value": 1800000}, {"label": "Q4", "value": 2100000}], "trend": "increasing"}',
+      status: "success",
+      error_message: nil,
+      **tool_call_times(base_time, 1567)
+    },
+    {
+      id: "call_ocr_001",
+      name: "extract_text",
+      arguments: { image_url: "https://example.com/chart.png" },
+      result: '{"text": "Quarterly Revenue 2024\nQ1: $1.2M\nQ2: $1.5M\nQ3: $1.8M\nQ4: $2.1M\nTotal: $6.6M", "confidence": 0.97}',
+      status: "success",
+      error_message: nil,
+      **tool_call_times(base_time + 1.6, 892)
+    }
   ],
   tool_calls_count: 2,
   parameters: { query: "Extract data from this chart image" },
   response: { content: "The chart shows quarterly revenue: Q1 $1.2M, Q2 $1.5M, Q3 $1.8M, Q4 $2.1M" },
   metadata: { image_analyzed: true, text_extracted: true },
-  created_at: Time.current - 40.minutes
+  created_at: base_time
 )
 
-puts "  Created 11 tool calls executions"
+# Tool calls execution - Mixed success/error (partial failure)
+base_time = Time.current - 8.minutes
+create_execution(
+  tenant_id: acme.llm_tenant_id,
+  agent_type: "ToolsAgent",
+  model_id: "gpt-4o",
+  finish_reason: "tool_calls",
+  tool_calls: [
+    {
+      id: "call_stock_001",
+      name: "get_stock_price",
+      arguments: { symbol: "AAPL" },
+      result: '{"symbol": "AAPL", "price": 185.42, "change": "+2.15", "change_percent": "+1.17%"}',
+      status: "success",
+      error_message: nil,
+      **tool_call_times(base_time, 156)
+    },
+    {
+      id: "call_stock_002",
+      name: "get_stock_price",
+      arguments: { symbol: "INVALID_TICKER" },
+      result: nil,
+      status: "error",
+      error_message: "SymbolNotFound: No stock found with symbol 'INVALID_TICKER'",
+      **tool_call_times(base_time + 0.2, 89)
+    },
+    {
+      id: "call_stock_003",
+      name: "get_stock_price",
+      arguments: { symbol: "GOOGL" },
+      result: '{"symbol": "GOOGL", "price": 142.87, "change": "-0.53", "change_percent": "-0.37%"}',
+      status: "success",
+      error_message: nil,
+      **tool_call_times(base_time + 0.3, 143)
+    }
+  ],
+  tool_calls_count: 3,
+  parameters: { query: "Get stock prices for AAPL, INVALID_TICKER, and GOOGL" },
+  response: { content: "AAPL is at $185.42 (+1.17%). I couldn't find INVALID_TICKER. GOOGL is at $142.87 (-0.37%)." },
+  metadata: { stocks_found: 2, stocks_not_found: 1 },
+  created_at: base_time
+)
+
+# Tool calls with very long result (truncated in display)
+base_time = Time.current - 5.minutes
+long_result = (1..100).map { |i| { id: i, name: "Item #{i}", description: "Description for item #{i}" * 5 } }.to_json
+create_execution(
+  tenant_id: enterprise.llm_tenant_id,
+  agent_type: "ToolsAgent",
+  model_id: "gpt-4o",
+  finish_reason: "tool_calls",
+  tool_calls: [
+    {
+      id: "call_bulk_001",
+      name: "bulk_fetch",
+      arguments: { collection: "products", limit: 100 },
+      result: long_result[0..5000] + "... [truncated]", # Simulating truncated result
+      status: "success",
+      error_message: nil,
+      **tool_call_times(base_time, 2345)
+    }
+  ],
+  tool_calls_count: 1,
+  parameters: { query: "Fetch all products from the database" },
+  response: { content: "Retrieved 100 products from the database." },
+  metadata: { records_fetched: 100, result_truncated: true },
+  created_at: base_time
+)
+
+puts "  Created 13 enhanced tool calls executions"
 
 # =============================================================================
 # STARTUP INC EXECUTIONS - Budget conscious

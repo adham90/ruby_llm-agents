@@ -369,6 +369,13 @@ module RubyLLM
       #   @example No namespace (default)
       #     config.root_namespace = nil   # app/agents/embedders -> Embedders
 
+      # @!attribute [rw] tool_result_max_length
+      #   Maximum character length for tool call results stored in execution records.
+      #   Results exceeding this length will be truncated with "... [truncated]".
+      #   @return [Integer] Max length for tool results (default: 10000)
+      #   @example
+      #     config.tool_result_max_length = 5000
+
       # Attributes without validation (simple accessors)
       attr_accessor :default_model,
                     :async_logging,
@@ -429,7 +436,8 @@ module RubyLLM
                     :default_background_remover_model,
                     :default_background_output_format,
                     :root_directory,
-                    :root_namespace
+                    :root_namespace,
+                    :tool_result_max_length
 
       # Attributes with validation (readers only, custom setters below)
       attr_reader :default_temperature,
@@ -704,6 +712,9 @@ module RubyLLM
         # Directory structure defaults
         @root_directory = "agents"  # Root directory under app/
         @root_namespace = nil  # No namespace (top-level classes)
+
+        # Tool tracking defaults
+        @tool_result_max_length = 10_000
       end
 
       # Returns the configured cache store, falling back to Rails.cache

@@ -169,5 +169,117 @@ RSpec.describe "ruby_llm/agents/executions/show", type: :view do
         expect(rendered).to include("expanded: true")
       end
     end
+
+    context "with enhanced tool calls (new format)" do
+      let(:execution) { create(:execution, :with_enhanced_tool_calls) }
+
+      it "shows tool name" do
+        render
+
+        expect(rendered).to include("weather_lookup")
+        expect(rendered).to include("database_query")
+      end
+
+      it "shows status badge" do
+        render
+
+        # Should show status badge with 'success' - check for the badge with success text
+        expect(rendered).to match(/rounded.*text-xs.*font-medium.*>[\s\n]*success[\s\n]*<\/span>/m)
+      end
+
+      it "shows duration badge" do
+        render
+
+        expect(rendered).to include("245ms")
+        expect(rendered).to include("89ms")
+      end
+
+      it "shows timestamp" do
+        render
+
+        # Should display formatted time from called_at
+        expect(rendered).to include("10:30:45")
+      end
+
+      it "shows tool result" do
+        render
+
+        expect(rendered).to include("Result")
+        expect(rendered).to include("15°C, partly cloudy")
+      end
+
+      it "shows arguments" do
+        render
+
+        expect(rendered).to include("city")
+        expect(rendered).to include("Paris")
+      end
+    end
+
+    context "with enhanced tool call error" do
+      let(:execution) { create(:execution, :with_enhanced_tool_call_error) }
+
+      it "shows error status badge" do
+        render
+
+        # Should show status badge with 'error' - check for the badge with error text
+        expect(rendered).to match(/rounded.*text-xs.*font-medium.*>[\s\n]*error[\s\n]*<\/span>/m)
+      end
+
+      it "shows error message section" do
+        render
+
+        expect(rendered).to include("Error")
+        expect(rendered).to include("ConnectionError")
+        expect(rendered).to include("Failed to connect to API")
+      end
+
+      it "has error styling" do
+        render
+
+        # Should have red-themed error section
+        expect(rendered).to match(/border-red-100.*Error/m)
+      end
+    end
+
+    context "backward compatibility with legacy tool calls" do
+      let(:execution) { create(:execution, :with_legacy_tool_calls) }
+
+      it "shows tool name" do
+        render
+
+        expect(rendered).to include("old_tool")
+      end
+
+      it "shows unknown status for missing status field" do
+        render
+
+        # Should show 'unknown' status for legacy tool calls without status
+        expect(rendered).to match(/rounded.*text-xs.*font-medium.*>[\s\n]*unknown[\s\n]*<\/span>/m)
+      end
+
+      it "does not show duration badge when missing" do
+        render
+
+        # Should not crash and should not show ms duration in header for this tool
+        # The duration badge would show Xms near the tool name
+        expect(rendered).not_to match(/old_tool.*\d+ms\s*<\/span>/m)
+      end
+
+      it "does not show result section when result is missing" do
+        render
+
+        # The Result section header should not appear after Arguments for old_tool
+        # since the legacy format doesn't include result
+        expect(rendered).not_to match(/>old_tool<.*>Result</m)
+      end
+
+      it "shows arguments correctly" do
+        render
+
+        expect(rendered).to include("param")
+        expect(rendered).to include("value")
+      end
+    end
   end
 end

@@ -226,6 +226,12 @@ module RubyLLM
             # Add custom metadata
             data[:metadata] = context.metadata if context.metadata.any?
 
+            # Add enhanced tool calls if present
+            if context[:tool_calls].present?
+              data[:tool_calls] = context[:tool_calls]
+              data[:tool_calls_count] = context[:tool_calls].size
+            end
+
             data
           end
 
@@ -291,6 +297,12 @@ module RubyLLM
 
             # Add sanitized parameters
             data[:parameters] = sanitize_parameters(context)
+
+            # Add enhanced tool calls if present
+            if context[:tool_calls].present?
+              data[:tool_calls] = context[:tool_calls]
+              data[:tool_calls_count] = context[:tool_calls].size
+            end
 
             data
           end

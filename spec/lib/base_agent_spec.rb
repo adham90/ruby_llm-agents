@@ -408,4 +408,191 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
       expect(child_class.params.keys).to include(:shared_param, :child_param)
     end
   end
+
+  describe "tool call tracking" do
+    let(:agent_class) do
+      Class.new(described_class) do
+        def self.name
+          "ToolTrackingAgent"
+        end
+
+        def user_prompt
+          "test"
+        end
+      end
+    end
+
+    before do
+      allow(config).to receive(:tool_result_max_length).and_return(10_000)
+    end
+
+    describe "#initialize" do
+      it "initializes tracked_tool_calls as empty array" do
+        agent = agent_class.new
+        expect(agent.tracked_tool_calls).to eq([])
+      end
+    end
+
+    describe "#start_tracking_tool_call" do
+      it "captures tool call data with timestamp" do
+        agent = agent_class.new
+        tool_call = double("ToolCall", id: "call_123", name: "weather_lookup", arguments: { city: "Paris" })
+
+        freeze_time = Time.parse("2025-01-27T10:30:45.123Z")
+        allow(Time).to receive(:current).and_return(freeze_time)
+
+        agent.send(:start_tracking_tool_call, tool_call)
+
+        pending_call = agent.instance_variable_get(:@pending_tool_call)
+        expect(pending_call[:id]).to eq("call_123")
+        expect(pending_call[:name]).to eq("weather_lookup")
+        expect(pending_call[:arguments]).to eq({ city: "Paris" })
+        expect(pending_call[:called_at]).to eq("2025-01-27T10:30:45.123Z")
+      end
+
+      it "handles hash-style tool calls" do
+        agent = agent_class.new
+        tool_call = { id: "call_123", name: "search", arguments: { q: "test" } }
+
+        agent.send(:start_tracking_tool_call, tool_call)
+
+        pending_call = agent.instance_variable_get(:@pending_tool_call)
+        expect(pending_call[:id]).to eq("call_123")
+        expect(pending_call[:name]).to eq("search")
+      end
+    end
+
+    describe "#complete_tool_call_tracking" do
+      it "captures result and calculates duration" do
+        agent = agent_class.new
+
+        start_time = Time.parse("2025-01-27T10:30:45.000Z")
+        end_time = Time.parse("2025-01-27T10:30:45.245Z")
+
+        agent.instance_variable_set(:@pending_tool_call, {
+          id: "call_123",
+          name: "weather",
+          arguments: { city: "Paris" },
+          called_at: start_time.iso8601(3),
+          started_at: start_time
+        })
+
+        allow(Time).to receive(:current).and_return(end_time)
+
+        agent.send(:complete_tool_call_tracking, "15°C, partly cloudy")
+
+        expect(agent.tracked_tool_calls.size).to eq(1)
+        tracked = agent.tracked_tool_calls.first
+        expect(tracked[:id]).to eq("call_123")
+        expect(tracked[:name]).to eq("weather")
+        expect(tracked[:result]).to eq("15°C, partly cloudy")
+        expect(tracked[:status]).to eq("success")
+        expect(tracked[:duration_ms]).to eq(245)
+        expect(tracked[:completed_at]).to be_present
+      end
+
+      it "marks error status for exceptions" do
+        agent = agent_class.new
+        agent.instance_variable_set(:@pending_tool_call, {
+          id: "call_err",
+          name: "api_call",
+          arguments: {},
+          called_at: Time.current.iso8601(3),
+          started_at: Time.current
+        })
+
+        error = StandardError.new("Connection refused")
+        agent.send(:complete_tool_call_tracking, error)
+
+        tracked = agent.tracked_tool_calls.first
+        expect(tracked[:status]).to eq("error")
+        expect(tracked[:error_message]).to include("StandardError")
+        expect(tracked[:error_message]).to include("Connection refused")
+      end
+
+      it "does nothing when no pending tool call" do
+        agent = agent_class.new
+        agent.send(:complete_tool_call_tracking, "result")
+        expect(agent.tracked_tool_calls).to be_empty
+      end
+    end
+
+    describe "#truncate_tool_result" do
+      it "returns result unchanged if under max length" do
+        agent = agent_class.new
+        result = "Short result"
+        expect(agent.send(:truncate_tool_result, result)).to eq(result)
+      end
+
+      it "truncates result if over max length" do
+        allow(config).to receive(:tool_result_max_length).and_return(50)
+        agent = agent_class.new
+        result = "A" * 100
+        truncated = agent.send(:truncate_tool_result, result)
+
+        expect(truncated.length).to be <= 50
+        expect(truncated).to end_with("... [truncated]")
+      end
+
+      it "handles nil result" do
+        agent = agent_class.new
+        expect(agent.send(:truncate_tool_result, nil)).to be_nil
+      end
+
+      it "converts non-string results to JSON" do
+        agent = agent_class.new
+        result = { key: "value", count: 42 }
+        truncated = agent.send(:truncate_tool_result, result)
+        expect(truncated).to include("key")
+        expect(truncated).to include("value")
+      end
+    end
+
+    describe "#extract_tool_result" do
+      it "extracts content from string" do
+        agent = agent_class.new
+        data = agent.send(:extract_tool_result, "test result")
+
+        expect(data[:content]).to eq("test result")
+        expect(data[:status]).to eq("success")
+        expect(data[:error_message]).to be_nil
+      end
+
+      it "extracts content from hash" do
+        agent = agent_class.new
+        data = agent.send(:extract_tool_result, { content: "hash result" })
+
+        expect(data[:content]).to eq("hash result")
+        expect(data[:status]).to eq("success")
+      end
+
+      it "detects error in hash" do
+        agent = agent_class.new
+        data = agent.send(:extract_tool_result, { error: "Something failed" })
+
+        expect(data[:status]).to eq("error")
+        expect(data[:error_message]).to eq("Something failed")
+      end
+
+      it "handles exception objects" do
+        agent = agent_class.new
+        error = RuntimeError.new("Failed!")
+        data = agent.send(:extract_tool_result, error)
+
+        expect(data[:status]).to eq("error")
+        expect(data[:error_message]).to include("RuntimeError")
+        expect(data[:content]).to eq("Failed!")
+      end
+
+      it "handles objects with content method" do
+        agent = agent_class.new
+        result_obj = double("Result", content: "object content")
+        allow(result_obj).to receive(:respond_to?).with(:error?).and_return(false)
+        allow(result_obj).to receive(:respond_to?).with(:content).and_return(true)
+
+        data = agent.send(:extract_tool_result, result_obj)
+        expect(data[:content]).to eq("object content")
+      end
+    end
+  end
 end
