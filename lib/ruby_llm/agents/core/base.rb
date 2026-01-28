@@ -83,7 +83,7 @@ module RubyLLM
         end
 
         # Execute the LLM call via parent
-        client = build_client
+        client = build_client(context)
         response = execute_llm_call(client, context)
         capture_response(response, context)
         processed_content = process_response(response)

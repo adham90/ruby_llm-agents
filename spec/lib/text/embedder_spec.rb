@@ -205,4 +205,62 @@ RSpec.describe RubyLLM::Agents::Embedder do
       expect(embedder.agent_cache_key).to include("512")
     end
   end
+
+  describe "#execute_batch uses context.model for fallback support" do
+    let(:embed_response) do
+      double("EmbedResponse",
+        vectors: [[0.1, 0.2, 0.3]],
+        input_tokens: 5,
+        model: "fallback-embedding-model",
+        to_h: {})
+    end
+
+    it "uses context.model when context is provided" do
+      embedder_class.model "text-embedding-3-small"
+      embedder = embedder_class.new(text: "Hello")
+
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "Hello",
+        agent_class: embedder_class,
+        model: "fallback-embedding-model"
+      )
+
+      expect(RubyLLM).to receive(:embed).with(
+        ["Hello"],
+        hash_including(model: "fallback-embedding-model")
+      ).and_return(embed_response)
+
+      embedder.send(:execute_batch, ["Hello"], context)
+    end
+
+    it "falls back to resolved_model when context is nil" do
+      embedder_class.model "text-embedding-3-small"
+      embedder = embedder_class.new(text: "Hello")
+
+      expect(RubyLLM).to receive(:embed).with(
+        ["Hello"],
+        hash_including(model: "text-embedding-3-small")
+      ).and_return(embed_response)
+
+      embedder.send(:execute_batch, ["Hello"])
+    end
+
+    it "falls back to resolved_model when context.model is nil" do
+      embedder_class.model "text-embedding-3-small"
+      embedder = embedder_class.new(text: "Hello")
+
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "Hello",
+        agent_class: embedder_class,
+        model: nil
+      )
+
+      expect(RubyLLM).to receive(:embed).with(
+        ["Hello"],
+        hash_including(model: "text-embedding-3-small")
+      ).and_return(embed_response)
+
+      embedder.send(:execute_batch, ["Hello"], context)
+    end
+  end
 end

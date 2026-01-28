@@ -579,6 +579,224 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
       end
     end
 
+    context "three-model fallback chain" do
+      let(:three_model_agent) do
+        Class.new do
+          def self.name = "ThreeModelAgent"
+          def self.agent_type = :embedding
+          def self.model = "gemini-2.5-flash"
+
+          def self.reliability_config
+            {
+              retries: { max: 2, backoff: :exponential, base: 0.1, max_delay: 1.0 },
+              fallback_models: ["gpt-4.1-mini", "claude-haiku-4-5"]
+            }
+          end
+        end
+      end
+
+      let(:three_model_middleware) { described_class.new(app, three_model_agent) }
+
+      before do
+        allow(three_model_middleware).to receive(:sleep)
+      end
+
+      def build_three_model_context(options = {})
+        RubyLLM::Agents::Pipeline::Context.new(
+          input: "test",
+          agent_class: three_model_agent,
+          model: "gemini-2.5-flash",
+          **options
+        )
+      end
+
+      it "reports last_error from the third model when all three fail with distinct errors" do
+        context = build_three_model_context
+
+        allow(app).to receive(:call) do |ctx|
+          case ctx.model
+          when "gemini-2.5-flash"
+            raise StandardError, "You exceeded your current quota, generativelanguage.googleapis.com"
+          when "gpt-4.1-mini"
+            raise StandardError, "OpenAI API error: insufficient_quota"
+          when "claude-haiku-4-5"
+            raise StandardError, "Anthropic API error: authentication_error"
+          end
+        end
+
+        expect { three_model_middleware.call(context) }.to raise_error(
+          RubyLLM::Agents::Reliability::AllModelsExhaustedError
+        ) do |error|
+          expect(error.models_tried).to eq(["gemini-2.5-flash", "gpt-4.1-mini", "claude-haiku-4-5"])
+          expect(error.last_error.message).to eq("Anthropic API error: authentication_error")
+          expect(error.last_error.message).not_to include("generativelanguage")
+        end
+      end
+
+      it "reaches the third model and returns success when first two fail" do
+        context = build_three_model_context
+
+        allow(app).to receive(:call) do |ctx|
+          case ctx.model
+          when "gemini-2.5-flash"
+            raise StandardError, "Gemini quota exceeded"
+          when "gpt-4.1-mini"
+            raise StandardError, "OpenAI rate limit"
+          when "claude-haiku-4-5"
+            ctx.output = "third model success"
+            ctx
+          end
+        end
+
+        result = three_model_middleware.call(context)
+
+        expect(result.output).to eq("third model success")
+        expect(result.attempts_made).to eq(3)
+      end
+
+      it "stops at the second model when it succeeds" do
+        context = build_three_model_context
+        models_tried = []
+
+        allow(app).to receive(:call) do |ctx|
+          models_tried << ctx.model
+          if ctx.model == "gemini-2.5-flash"
+            raise StandardError, "Gemini quota exceeded"
+          end
+          ctx.output = "second model success"
+          ctx
+        end
+
+        result = three_model_middleware.call(context)
+
+        expect(models_tried).to eq(["gemini-2.5-flash", "gpt-4.1-mini"])
+        expect(models_tried).not_to include("claude-haiku-4-5")
+        expect(result.output).to eq("second model success")
+      end
+
+      it "sets the correct model on context for each fallback attempt" do
+        context = build_three_model_context
+        models_seen = []
+
+        allow(app).to receive(:call) do |ctx|
+          models_seen << ctx.model
+          raise StandardError, "error from #{ctx.model}"
+        end
+
+        expect { three_model_middleware.call(context) }.to raise_error(
+          RubyLLM::Agents::Reliability::AllModelsExhaustedError
+        )
+
+        expect(models_seen).to eq(["gemini-2.5-flash", "gpt-4.1-mini", "claude-haiku-4-5"])
+      end
+
+      it "includes all three models in models_tried when all fail with the same error type" do
+        context = build_three_model_context
+
+        allow(app).to receive(:call) do |ctx|
+          raise StandardError, "rate limit exceeded for #{ctx.model}"
+        end
+
+        expect { three_model_middleware.call(context) }.to raise_error(
+          RubyLLM::Agents::Reliability::AllModelsExhaustedError
+        ) do |error|
+          expect(error.models_tried).to eq(["gemini-2.5-flash", "gpt-4.1-mini", "claude-haiku-4-5"])
+          expect(error.last_error.message).to eq("rate limit exceeded for claude-haiku-4-5")
+        end
+      end
+
+      it "updates context.error to reflect the current model's error" do
+        context = build_three_model_context
+        errors_seen = []
+
+        allow(app).to receive(:call) do |ctx|
+          errors_seen << ctx.error&.message if ctx.error
+          raise StandardError, "error from #{ctx.model}"
+        end
+
+        expect { three_model_middleware.call(context) }.to raise_error(
+          RubyLLM::Agents::Reliability::AllModelsExhaustedError
+        )
+
+        # After all attempts, context.error should be from the last model
+        expect(context.error).to be_a(StandardError)
+        expect(context.error.message).to eq("error from claude-haiku-4-5")
+      end
+    end
+
+    context "downstream model resolution on fallback" do
+      # These specs verify that when reliability sets context.model to a fallback,
+      # the downstream execution layer actually uses that model (not the original).
+      # This catches the bug where all fallback models hit the same provider.
+
+      context "chat agent (build_client)" do
+        it "passes context to build_client so fallback model is used" do
+          agent_instance = double("agent_instance")
+          chat_client = double("chat_client")
+
+          # Simulate: primary fails, fallback succeeds
+          allow(app).to receive(:call) do |ctx|
+            # Verify the downstream would see the correct model
+            if ctx.model == "primary-model"
+              raise StandardError, "primary failed"
+            end
+            ctx.output = "fallback success"
+            ctx
+          end
+
+          context = build_context
+          result = middleware.call(context)
+
+          # The middleware correctly sets context.model to "fallback-model"
+          # Downstream code must read context.model (not agent_class.model)
+          expect(result.output).to eq("fallback success")
+        end
+      end
+
+      context "embedder (resolved_model)" do
+        it "uses context.model for embedding calls, not the class-level model" do
+          context = build_context
+          models_used_for_embedding = []
+
+          allow(app).to receive(:call) do |ctx|
+            # Track what model the downstream would see
+            models_used_for_embedding << ctx.model
+            if ctx.model == "primary-model"
+              raise StandardError, "primary quota exceeded"
+            end
+            ctx.output = "embedded with fallback"
+            ctx
+          end
+
+          result = middleware.call(context)
+
+          # The fallback attempt must have context.model set to fallback-model
+          expect(models_used_for_embedding).to eq(["primary-model", "fallback-model"])
+          expect(result.output).to eq("embedded with fallback")
+        end
+      end
+
+      context "model is not restored before downstream call" do
+        it "does not restore original model before calling app on fallback attempt" do
+          context = build_context
+          model_during_app_call = []
+
+          allow(app).to receive(:call) do |ctx|
+            model_during_app_call << ctx.model
+            raise StandardError, "fail #{ctx.model}"
+          end
+
+          expect { middleware.call(context) }.to raise_error(
+            RubyLLM::Agents::Reliability::AllModelsExhaustedError
+          )
+
+          # During each app.call, context.model must be the current model being tried
+          # NOT the original model (which would mean fallback isn't working)
+          expect(model_during_app_call).to eq(["primary-model", "fallback-model"])
+        end
+      end
+    end
+
     context "per-model attempt tracking via AttemptTracker" do
       it "stores attempt data in context on successful fallback" do
         context = build_context

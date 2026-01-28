@@ -213,7 +213,7 @@ module RubyLLM
         batches = input_list.each_slice(batch_count).to_a
 
         batches.each_with_index do |batch, index|
-          batch_result = execute_batch(batch)
+          batch_result = execute_batch(batch, context)
 
           all_vectors.concat(batch_result[:vectors])
           total_input_tokens += batch_result[:input_tokens] || 0
@@ -331,10 +331,10 @@ module RubyLLM
       #
       # @param texts [Array<String>] Texts to embed
       # @return [Hash] Batch result with vectors, tokens, cost
-      def execute_batch(texts)
+      def execute_batch(texts, context = nil)
         preprocessed = texts.map { |t| preprocess(t) }
 
-        embed_options = { model: resolved_model }
+        embed_options = { model: context&.model || resolved_model }
         embed_options[:dimensions] = resolved_dimensions if resolved_dimensions
 
         response = RubyLLM.embed(preprocessed, **embed_options)

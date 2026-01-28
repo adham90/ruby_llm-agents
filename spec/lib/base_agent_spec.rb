@@ -662,4 +662,45 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
       agent.send(:build_client, nil)
     end
   end
+
+  describe "#execute passes context to build_client" do
+    let(:agent_class) do
+      Class.new(described_class) do
+        def self.name = "ExecuteFallbackAgent"
+        model "gemini-2.5-flash"
+        temperature 0.5
+
+        def user_prompt
+          "test"
+        end
+      end
+    end
+
+    it "calls build_client with context so fallback model is used" do
+      agent = agent_class.new
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: agent_class,
+        model: "gpt-4.1-mini"
+      )
+
+      mock_chat = instance_double(RubyLLM::Chat)
+      allow(RubyLLM).to receive(:chat).and_return(mock_chat)
+      allow(mock_chat).to receive(:with_model).and_return(mock_chat)
+      allow(mock_chat).to receive(:with_temperature).and_return(mock_chat)
+
+      # The critical assertion: build_client must receive the context
+      expect(agent).to receive(:build_client).with(context).and_call_original
+      # And it must use the context's model, not the class-level model
+      expect(mock_chat).to receive(:with_model).with("gpt-4.1-mini").and_return(mock_chat)
+
+      allow(agent).to receive(:execute_llm_call).and_return(
+        double("response", content: "ok", tool_calls: nil, tool_call: nil, input_tokens: 10, output_tokens: 5)
+      )
+      allow(agent).to receive(:capture_response)
+      allow(agent).to receive(:process_response).and_return("ok")
+
+      agent.send(:execute, context)
+    end
+  end
 end

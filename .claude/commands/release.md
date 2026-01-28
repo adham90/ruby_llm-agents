@@ -14,8 +14,17 @@ Parse the arguments to extract:
 - **Bump type**: First argument must be `patch`, `minor`, or `major`
 - **Release notes**: Optional remaining arguments (if any)
 
-If no bump type is provided or it's invalid, ask the user:
-> "Please specify a version bump type: `patch`, `minor`, or `major`"
+If no bump type is provided or it's invalid:
+1. Read the current version from `lib/ruby_llm/agents/version.rb`
+2. Show the user all three options with calculated versions:
+   > Current version: **{current_version}**
+   >
+   > - `patch` → **{major}.{minor}.{patch+1}** (bug fixes, small changes)
+   > - `minor` → **{major}.{minor+1}.0** (new features, backwards compatible)
+   > - `major` → **{major+1}.0.0** (breaking changes)
+   >
+   > Which version bump type?
+3. Use `AskUserQuestion` to let the user pick
 
 ## Step 2: Pre-flight Checks
 
@@ -116,14 +125,16 @@ If this fails due to missing credentials, inform the user they need to run `gem 
 
 ## Step 9: Create GitHub Release
 
+Always use the changelog entry from Step 6 as the GitHub release notes. Extract the content for the `[{new_version}]` section from `CHANGELOG.md` (everything between the version header and the next version header) and pass it via a HEREDOC:
+
 ```bash
-cd /Users/adhameldeeb/dev/ruby_llm-agents && gh release create v{new_version} --generate-notes --title "v{new_version}"
+gh release create v{new_version} --title "v{new_version}" --notes "$(cat <<'EOF'
+{changelog_entry_content}
+EOF
+)"
 ```
 
-If custom release notes were provided, use:
-```bash
-gh release create v{new_version} --title "v{new_version}" --notes "{release_notes}"
-```
+This ensures the GitHub release always has meaningful, structured release notes matching the changelog.
 
 ## Step 10: Summary
 
