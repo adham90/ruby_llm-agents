@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-01-28
+
+### Fixed
+
+- **Fallback Models Now Work Correctly** - Fixed critical bug where fallback models were never actually used. The `build_client` method was ignoring `context.model` set by the reliability middleware, always using the agent's primary model instead. Now properly uses fallback models when the primary model fails.
+
+### Added
+
+- New test coverage for `build_client` to ensure fallback model support doesn't regress
+
 ## [1.3.0] - 2026-01-27
 
 ### Added
@@ -427,6 +437,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[1.3.1]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/adham90/ruby_llm-agents/compare/v1.2.3...v1.3.0
 [1.2.3]: https://github.com/adham90/ruby_llm-agents/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/adham90/ruby_llm-agents/compare/v1.2.1...v1.2.2
