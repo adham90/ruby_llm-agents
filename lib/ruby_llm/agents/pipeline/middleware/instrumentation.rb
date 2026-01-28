@@ -232,6 +232,11 @@ module RubyLLM
               data[:tool_calls_count] = context[:tool_calls].size
             end
 
+            # Add response if persist_responses is enabled
+            if global_config.persist_responses && context.output.respond_to?(:content)
+              data[:response] = serialize_response(context)
+            end
+
             data
           end
 
@@ -304,6 +309,11 @@ module RubyLLM
               data[:tool_calls_count] = context[:tool_calls].size
             end
 
+            # Add response if persist_responses is enabled
+            if global_config.persist_responses && context.output.respond_to?(:content)
+              data[:response] = serialize_response(context)
+            end
+
             data
           end
 
@@ -357,6 +367,33 @@ module RubyLLM
             message.to_s.truncate(1000)
           rescue StandardError
             message.to_s[0, 1000]
+          end
+
+          # Serializes the response content for storage
+          #
+          # @param context [Context] The execution context
+          # @return [Hash, nil] Serialized response data
+          def serialize_response(context)
+            return nil unless context.output
+
+            content = context.output.content
+            return nil if content.nil?
+
+            # Build response hash similar to core instrumentation
+            response_data = { content: content }
+
+            # Add model_id if available
+            response_data[:model_id] = context.model_used if context.model_used
+
+            # Add token info if available
+            response_data[:input_tokens] = context.input_tokens if context.input_tokens
+            response_data[:output_tokens] = context.output_tokens if context.output_tokens
+
+            # Apply redaction for sensitive data
+            Redactor.redact(response_data)
+          rescue StandardError => e
+            error("Failed to serialize response: #{e.message}")
+            nil
           end
 
           # Queues async logging via background job

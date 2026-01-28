@@ -39,6 +39,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     allow(config).to receive(:track_image_generation).and_return(true)
     allow(config).to receive(:track_audio).and_return(true)
     allow(config).to receive(:async_logging).and_return(false)
+    allow(config).to receive(:persist_responses).and_return(false)
   end
 
   describe "#call" do
@@ -778,6 +779,159 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       allow(mock_execution).to receive(:update!)
 
       middleware.call(context)
+    end
+  end
+
+  describe "response persistence" do
+    let(:mock_execution) do
+      instance_double("RubyLLM::Agents::Execution",
+                      id: 123,
+                      status: "running",
+                      class: RubyLLM::Agents::Execution)
+    end
+
+    before do
+      allow(config).to receive(:track_embeddings).and_return(true)
+      allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
+    end
+
+    context "when persist_responses is enabled" do
+      before do
+        allow(config).to receive(:persist_responses).and_return(true)
+        # Mock redaction config for Redactor
+        # Note: Use specific field names that won't match input_tokens/output_tokens
+        allow(config).to receive(:redaction_fields).and_return(%w[password api_key secret credential])
+        allow(config).to receive(:redaction_patterns).and_return([])
+        allow(config).to receive(:redaction_placeholder).and_return("[REDACTED]")
+        allow(config).to receive(:redaction_max_value_length).and_return(nil)
+      end
+
+      it "stores response when output has content" do
+        context = build_context
+
+        result_obj = RubyLLM::Agents::Result.new(content: "Test response")
+        allow(app).to receive(:call) do |ctx|
+          ctx.output = result_obj
+          ctx
+        end
+        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+
+        expect(mock_execution).to receive(:update!).with(
+          hash_including(response: hash_including(content: "Test response"))
+        )
+
+        middleware.call(context)
+      end
+
+      it "includes model_id in response when available" do
+        context = build_context
+        context.model_used = "gpt-4"
+
+        result_obj = RubyLLM::Agents::Result.new(content: "Test response")
+        allow(app).to receive(:call) do |ctx|
+          ctx.output = result_obj
+          ctx
+        end
+        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+
+        expect(mock_execution).to receive(:update!).with(
+          hash_including(response: hash_including(content: "Test response", model_id: "gpt-4"))
+        )
+
+        middleware.call(context)
+      end
+
+      it "includes token info in response when available" do
+        context = build_context
+        context.input_tokens = 100
+        context.output_tokens = 50
+
+        result_obj = RubyLLM::Agents::Result.new(content: "Test response")
+        allow(app).to receive(:call) do |ctx|
+          ctx.output = result_obj
+          ctx
+        end
+        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+
+        expect(mock_execution).to receive(:update!).with(
+          hash_including(response: hash_including(input_tokens: 100, output_tokens: 50))
+        )
+
+        middleware.call(context)
+      end
+
+      it "applies redaction to response content" do
+        context = build_context
+
+        result_obj = RubyLLM::Agents::Result.new(content: { message: "Hello", password: "secret123" })
+        allow(app).to receive(:call) do |ctx|
+          ctx.output = result_obj
+          ctx
+        end
+        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+
+        expect(mock_execution).to receive(:update!) do |data|
+          expect(data[:response][:content][:message]).to eq("Hello")
+          expect(data[:response][:content][:password]).to eq("[REDACTED]")
+        end
+
+        middleware.call(context)
+      end
+
+      it "does not store response when output is nil" do
+        context = build_context
+
+        allow(app).to receive(:call) do |ctx|
+          ctx.output = nil
+          ctx
+        end
+        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+
+        expect(mock_execution).to receive(:update!).with(
+          hash_not_including(:response)
+        )
+
+        middleware.call(context)
+      end
+
+      it "does not store response when output does not respond to content" do
+        context = build_context
+
+        allow(app).to receive(:call) do |ctx|
+          ctx.output = "plain string"
+          ctx
+        end
+        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+
+        expect(mock_execution).to receive(:update!).with(
+          hash_not_including(:response)
+        )
+
+        middleware.call(context)
+      end
+    end
+
+    context "when persist_responses is disabled" do
+      before do
+        allow(config).to receive(:persist_responses).and_return(false)
+      end
+
+      it "does not store response even when output has content" do
+        context = build_context
+
+        result_obj = RubyLLM::Agents::Result.new(content: "Test response")
+        allow(app).to receive(:call) do |ctx|
+          ctx.output = result_obj
+          ctx
+        end
+        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+
+        expect(mock_execution).to receive(:update!).with(
+          hash_not_including(:response)
+        )
+
+        middleware.call(context)
+      end
     end
   end
 end
