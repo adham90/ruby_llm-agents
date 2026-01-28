@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.3] - 2026-01-29
+
+### Fixed
+
+- **Embedder Fallback Model Resolution** - Fixed bug where `execute_batch` ignored `context.model` set by reliability middleware, always using the class-level model. All fallback embedding attempts now correctly use the fallback model instead of re-calling the primary provider.
+- **Chat Agent Fallback Model Passthrough** - Fixed `execute` in `core/base.rb` not passing context to `build_client`, causing fallback models to be ignored during chat agent execution.
+
+### Added
+
+- **Three-Model Fallback Chain Specs** - Comprehensive test coverage for multi-model fallback scenarios verifying `last_error` tracking, model switching, and early termination on success.
+- **Downstream Model Resolution Specs** - Tests ensuring both chat agents and embedders use `context.model` (not the class-level model) when reliability middleware activates fallback.
+
 ## [1.3.2] - 2026-01-28
 
 ### Added
@@ -450,6 +462,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[1.3.3]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.2...v1.3.3
 [1.3.2]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/adham90/ruby_llm-agents/compare/v1.2.3...v1.3.0
