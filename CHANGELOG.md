@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-01-28
+
+### Added
+
+- **Per-Model Error Tracking** - Reliability middleware now tracks individual attempts per model using `AttemptTracker`. Each execution record includes detailed per-model attempt data (model_id, timing, tokens, error details, short-circuit status) in the `attempts` JSON column, visible on the dashboard.
+- **Non-Fallback Error Handling** - Programming errors (`ArgumentError`, `TypeError`, `NameError`, `NoMethodError`, `NotImplementedError`) now fail immediately without trying fallback models. Configurable via `non_fallback_errors` DSL.
+- **Smart Retry Strategy** - When fallback models are configured, transient errors skip retries and move directly to the next model. Retries only occur when no fallbacks are available.
+- **Response Persistence** - Instrumentation middleware can now persist LLM response content with automatic redaction of sensitive data.
+
+### Fixed
+
+- **Gemini Quota Errors Now Trigger Fallback** - Added "quota" to default retryable rate limiting patterns so Gemini quota exceeded errors are properly recognized as transient and trigger model fallback.
+
 ## [1.3.1] - 2026-01-28
 
 ### Fixed
@@ -437,6 +450,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[1.3.2]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/adham90/ruby_llm-agents/compare/v1.2.3...v1.3.0
 [1.2.3]: https://github.com/adham90/ruby_llm-agents/compare/v1.2.2...v1.2.3
