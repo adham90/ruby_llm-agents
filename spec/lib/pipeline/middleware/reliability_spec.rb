@@ -889,6 +889,65 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
         end
       end
 
+      it "builds a multi-line error message listing each model's error" do
+        context = build_context
+
+        allow(app).to receive(:call) do |ctx|
+          if ctx.model == "primary-model"
+            raise StandardError, "Gemini quota exceeded"
+          else
+            raise StandardError, "OpenAI API key invalid"
+          end
+        end
+
+        expect { middleware.call(context) }.to raise_error(
+          RubyLLM::Agents::Reliability::AllModelsExhaustedError
+        ) do |error|
+          expect(error.message).to include("All models exhausted:")
+          expect(error.message).to include("primary-model: StandardError - Gemini quota exceeded")
+          expect(error.message).to include("fallback-model: StandardError - OpenAI API key invalid")
+        end
+      end
+
+      it "exposes an errors array with model and error details" do
+        context = build_context
+
+        allow(app).to receive(:call) do |ctx|
+          if ctx.model == "primary-model"
+            raise StandardError, "Gemini quota exceeded"
+          else
+            raise StandardError, "OpenAI API key invalid"
+          end
+        end
+
+        expect { middleware.call(context) }.to raise_error(
+          RubyLLM::Agents::Reliability::AllModelsExhaustedError
+        ) do |error|
+          expect(error.errors.length).to eq(2)
+          expect(error.errors[0]).to include(model: "primary-model", error_class: "StandardError", error_message: "Gemini quota exceeded")
+          expect(error.errors[0][:error_backtrace]).to be_an(Array)
+          expect(error.errors[1]).to include(model: "fallback-model", error_class: "StandardError", error_message: "OpenAI API key invalid")
+          expect(error.errors[1][:error_backtrace]).to be_an(Array)
+        end
+      end
+
+      it "returns empty errors array when attempts is nil" do
+        error = RubyLLM::Agents::Reliability::AllModelsExhaustedError.new(
+          ["model-a"], StandardError.new("broke")
+        )
+        expect(error.errors).to eq([])
+      end
+
+      it "falls back to models/last_error format when attempts is nil" do
+        error = RubyLLM::Agents::Reliability::AllModelsExhaustedError.new(
+          ["model-a", "model-b"],
+          StandardError.new("something broke")
+        )
+        expect(error.message).to include("All models exhausted:")
+        expect(error.message).to include("Models: model-a, model-b")
+        expect(error.message).to include("Last error: something broke")
+      end
+
       it "records short-circuited models from circuit breaker" do
         agent_cb = Class.new do
           def self.name = "CBTrackAgent"

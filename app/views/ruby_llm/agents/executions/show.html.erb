@@ -455,11 +455,26 @@
                   -
                 <% end %>
               </td>
-              <td class="px-3 py-2 text-sm">
+              <td class="px-3 py-2 text-sm max-w-xs">
                 <% if attempt['error_class'].present? %>
-                  <span class="text-red-600 dark:text-red-400 font-mono text-xs" title="<%= attempt['error_message'] %>">
-                    <%= attempt['error_class'].split('::').last.truncate(30) %>
-                  </span>
+                  <div class="relative group cursor-pointer">
+                    <div>
+                      <span class="text-red-600 dark:text-red-400 font-mono text-xs font-medium">
+                        <%= attempt['error_class'].split('::').last %>
+                      </span>
+                    </div>
+                    <p class="text-red-500 dark:text-red-400 text-xs mt-0.5 break-words">
+                      <%= attempt['error_message'].to_s.truncate(150) %>
+                    </p>
+                    <% if attempt['error_backtrace'].present? %>
+                      <div class="hidden group-hover:block absolute z-50 left-0 top-full mt-1 w-[32rem] max-h-64 overflow-auto bg-gray-900 text-gray-100 text-xs font-mono p-3 rounded-lg shadow-xl border border-gray-700 whitespace-pre-wrap">
+                        <div class="font-semibold text-red-400 mb-1"><%= attempt['error_class'] %>: <%= attempt['error_message'].to_s.truncate(200) %></div>
+                        <% attempt['error_backtrace'].each do |line| %>
+                          <div class="text-gray-300 leading-relaxed"><%= line %></div>
+                        <% end %>
+                      </div>
+                    <% end %>
+                  </div>
                 <% else %>
                   <span class="text-gray-400">-</span>
                 <% end %>

@@ -73,6 +73,7 @@ module RubyLLM
         if error
           attempt[:error_class] = error.class.name
           attempt[:error_message] = error.message.to_s.truncate(1000)
+          attempt[:error_backtrace] = error.backtrace&.first(20)
         end
 
         @attempts << attempt

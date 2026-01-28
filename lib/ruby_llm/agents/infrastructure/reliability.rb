@@ -88,7 +88,7 @@ module RubyLLM
       #
       # @api public
       class AllModelsExhaustedError < Error
-        attr_reader :models_tried, :last_error, :attempts
+        attr_reader :models_tried, :last_error, :attempts, :errors
 
         # @param models_tried [Array<String>] List of models that were attempted
         # @param last_error [Exception] The last error that occurred
@@ -97,7 +97,42 @@ module RubyLLM
           @models_tried = models_tried
           @last_error = last_error
           @attempts = attempts
-          super("All models exhausted: #{models_tried.join(', ')}. Last error: #{last_error.message}")
+          @errors = build_errors
+          super(build_message)
+        end
+
+        private
+
+        def build_errors
+          return [] unless @attempts&.any?
+
+          @attempts.filter_map do |attempt|
+            if attempt["short_circuited"]
+              { model: attempt["model_id"], error_class: "CircuitBreakerOpen", error_message: "circuit breaker open",
+                error_backtrace: nil }
+            elsif attempt["error_class"]
+              { model: attempt["model_id"], error_class: attempt["error_class"], error_message: attempt["error_message"],
+                error_backtrace: attempt["error_backtrace"] }
+            end
+          end
+        end
+
+        def build_message
+          parts = ["All models exhausted:"]
+          if @attempts&.any?
+            @attempts.each do |attempt|
+              model = attempt["model_id"]
+              if attempt["short_circuited"]
+                parts << "  #{model}: circuit breaker open"
+              elsif attempt["error_class"]
+                parts << "  #{model}: #{attempt['error_class']} - #{attempt['error_message']}"
+              end
+            end
+          else
+            parts << "  Models: #{@models_tried.join(', ')}"
+            parts << "  Last error: #{@last_error.message}"
+          end
+          parts.join("\n")
         end
       end
 
