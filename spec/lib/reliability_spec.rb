@@ -174,6 +174,49 @@ RSpec.describe RubyLLM::Agents::Reliability do
     end
   end
 
+  describe ".non_fallback_error?" do
+    it "returns true for ArgumentError" do
+      expect(described_class.non_fallback_error?(ArgumentError.new("wrong args"))).to be true
+    end
+
+    it "returns true for TypeError" do
+      expect(described_class.non_fallback_error?(TypeError.new("no implicit conversion"))).to be true
+    end
+
+    it "returns true for NameError" do
+      expect(described_class.non_fallback_error?(NameError.new("undefined local variable"))).to be true
+    end
+
+    it "returns true for NoMethodError" do
+      expect(described_class.non_fallback_error?(NoMethodError.new("undefined method"))).to be true
+    end
+
+    it "returns true for NotImplementedError" do
+      expect(described_class.non_fallback_error?(NotImplementedError.new("not implemented"))).to be true
+    end
+
+    it "returns false for StandardError" do
+      expect(described_class.non_fallback_error?(StandardError.new("API error"))).to be false
+    end
+
+    it "returns false for RuntimeError" do
+      expect(described_class.non_fallback_error?(RuntimeError.new("invalid API key"))).to be false
+    end
+
+    it "returns false for Timeout::Error" do
+      expect(described_class.non_fallback_error?(Timeout::Error.new("timeout"))).to be false
+    end
+
+    it "returns false for IOError" do
+      expect(described_class.non_fallback_error?(IOError.new("connection reset"))).to be false
+    end
+
+    it "accepts custom non-fallback error classes" do
+      custom_error = Class.new(StandardError)
+      expect(described_class.non_fallback_error?(custom_error.new, custom_errors: [custom_error])).to be true
+    end
+  end
+
   describe ".calculate_backoff" do
     context "with exponential backoff" do
       it "increases delay exponentially" do

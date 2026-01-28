@@ -103,6 +103,33 @@ RSpec.describe RubyLLM::Agents::DSL::Reliability do
     end
   end
 
+  describe "#non_fallback_errors" do
+    it "returns nil when not set" do
+      expect(test_class.non_fallback_errors).to be_nil
+    end
+
+    it "sets non-fallback error classes" do
+      custom_error = Class.new(StandardError)
+      test_class.non_fallback_errors(custom_error)
+      expect(test_class.non_fallback_errors).to eq([custom_error])
+    end
+
+    it "sets multiple non-fallback error classes" do
+      error1 = Class.new(StandardError)
+      error2 = Class.new(StandardError)
+      test_class.non_fallback_errors(error1, error2)
+      expect(test_class.non_fallback_errors).to eq([error1, error2])
+    end
+
+    it "appears in reliability_config" do
+      custom_error = Class.new(StandardError)
+      test_class.fallback_models("backup")
+      test_class.non_fallback_errors(custom_error)
+      config = test_class.reliability_config
+      expect(config[:non_fallback_errors]).to eq([custom_error])
+    end
+  end
+
   describe "#reliability block syntax" do
     it "configures all options in a block" do
       test_class.reliability do
@@ -119,6 +146,16 @@ RSpec.describe RubyLLM::Agents::DSL::Reliability do
       expect(test_class.total_timeout).to eq(60)
       expect(test_class.circuit_breaker_config[:errors]).to eq(5)
       expect(test_class.retryable_patterns).to eq(["custom_error"])
+    end
+
+    it "configures non_fallback_errors in a block" do
+      custom_error = Class.new(StandardError)
+      test_class.reliability do
+        retries max: 1
+        non_fallback_errors custom_error
+      end
+
+      expect(test_class.non_fallback_errors).to eq([custom_error])
     end
   end
 
@@ -182,6 +219,14 @@ RSpec.describe RubyLLM::Agents::DSL::Reliability do
 
       child_class = Class.new(test_class)
       expect(child_class.fallback_models).to eq(["parent-backup"])
+    end
+
+    it "inherits non_fallback_errors from parent" do
+      custom_error = Class.new(StandardError)
+      test_class.non_fallback_errors(custom_error)
+
+      child_class = Class.new(test_class)
+      expect(child_class.non_fallback_errors).to eq([custom_error])
     end
   end
 end

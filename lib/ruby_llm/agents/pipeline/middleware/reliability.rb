@@ -162,6 +162,9 @@ module RubyLLM
                 context.error = e
                 breaker&.record_failure!
 
+                # Programming errors fail immediately — no retry, no fallback
+                raise if non_fallback_error?(e, config)
+
                 # Check if we should retry
                 if should_retry?(e, config, attempt_index, max_retries, total_deadline)
                   attempt_index += 1
@@ -202,8 +205,29 @@ module RubyLLM
           def should_retry?(error, config, attempt_index, max_retries, total_deadline)
             return false if attempt_index >= max_retries
             return false if total_deadline && Time.current > total_deadline
+            # Don't retry if fallback models are available — move to next model instead
+            return false if has_fallback_models?(config)
 
             retryable_error?(error, config)
+          end
+
+          # Checks if an error is a programming error that should not trigger fallback
+          #
+          # @param error [Exception] The error to check
+          # @param config [Hash] The reliability configuration
+          # @return [Boolean] Whether the error should fail immediately
+          def non_fallback_error?(error, config)
+            custom_errors = config[:non_fallback_errors] || []
+            Agents::Reliability.non_fallback_error?(error, custom_errors: custom_errors)
+          end
+
+          # Returns whether fallback models are configured
+          #
+          # @param config [Hash] The reliability configuration
+          # @return [Boolean]
+          def has_fallback_models?(config)
+            fallbacks = config[:fallback_models]
+            fallbacks.is_a?(Array) && fallbacks.any?
           end
 
           # Checks if an error is retryable

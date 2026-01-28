@@ -100,6 +100,32 @@ module RubyLLM
       end
 
       class << self
+        # Default list of error classes that should never trigger fallback
+        #
+        # These errors indicate programming bugs that won't be fixed by trying
+        # a different model. They should fail immediately.
+        #
+        # @return [Array<Class>] Error classes that are non-fallback by default
+        def default_non_fallback_errors
+          @default_non_fallback_errors ||= [
+            ArgumentError,
+            TypeError,
+            NameError,
+            NoMethodError,
+            NotImplementedError
+          ]
+        end
+
+        # Determines if an error is a programming error that should not trigger fallback
+        #
+        # @param error [Exception] The error to check
+        # @param custom_errors [Array<Class>] Additional error classes to consider non-fallback
+        # @return [Boolean] true if the error should fail immediately
+        def non_fallback_error?(error, custom_errors: [])
+          all = default_non_fallback_errors + Array(custom_errors)
+          all.any? { |klass| error.is_a?(klass) }
+        end
+
         # Default list of error classes that are considered retryable
         #
         # These errors typically indicate transient issues that may resolve on retry.

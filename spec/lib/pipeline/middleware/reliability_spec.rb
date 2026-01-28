@@ -114,80 +114,53 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
       end
     end
 
-    context "retry behavior" do
-      it "retries on retryable errors" do
+    context "retry behavior (with fallback models - skips retries)" do
+      it "does not retry retryable errors when fallbacks exist" do
         context = build_context
-        call_count = 0
+        models_tried = []
 
         allow(app).to receive(:call) do |ctx|
-          call_count += 1
-          if call_count < 2
+          models_tried << ctx.model
+          if ctx.model == "primary-model"
             raise Timeout::Error, "Connection timed out"
           end
-          ctx.output = "success after retry"
+          ctx.output = "fallback success"
           ctx
         end
 
         result = middleware.call(context)
 
-        expect(result.output).to eq("success after retry")
-        expect(result.attempts_made).to eq(2)
+        # With fallbacks, should skip retries and move to fallback
+        expect(models_tried.count("primary-model")).to eq(1)
+        expect(models_tried).to include("fallback-model")
+        expect(result.output).to eq("fallback success")
       end
 
-      it "respects max retry count" do
+      it "does not retry on message pattern match when fallbacks exist" do
+        context = build_context
+        models_tried = []
+
+        allow(app).to receive(:call) do |ctx|
+          models_tried << ctx.model
+          if ctx.model == "primary-model"
+            raise StandardError, "rate limit exceeded"
+          end
+          ctx.output = "fallback success"
+          ctx
+        end
+
+        result = middleware.call(context)
+
+        expect(models_tried.count("primary-model")).to eq(1)
+        expect(result.output).to eq("fallback success")
+      end
+
+      it "raises AllModelsExhaustedError when all models fail" do
         context = build_context
 
         allow(app).to receive(:call).and_raise(Timeout::Error, "Connection timed out")
 
-        # Should fail after max retries (2) on primary model, then try fallback
         expect { middleware.call(context) }.to raise_error(RubyLLM::Agents::Reliability::AllModelsExhaustedError)
-      end
-
-      it "does not retry non-retryable errors" do
-        context = build_context
-
-        # ArgumentError is not retryable
-        allow(app).to receive(:call).and_raise(ArgumentError, "Invalid argument")
-
-        expect(app).to receive(:call).exactly(2).times # Once per model
-
-        expect { middleware.call(context) }.to raise_error(RubyLLM::Agents::Reliability::AllModelsExhaustedError)
-      end
-
-      it "retries on message pattern match" do
-        context = build_context
-        call_count = 0
-
-        allow(app).to receive(:call) do |ctx|
-          call_count += 1
-          if call_count < 2
-            raise StandardError, "rate limit exceeded"
-          end
-          ctx.output = "success"
-          ctx
-        end
-
-        result = middleware.call(context)
-
-        expect(result.output).to eq("success")
-      end
-
-      it "uses exponential backoff between retries" do
-        context = build_context
-        call_count = 0
-
-        allow(app).to receive(:call) do |ctx|
-          call_count += 1
-          if call_count < 3
-            raise Timeout::Error, "timeout"
-          end
-          ctx.output = "success"
-          ctx
-        end
-
-        expect(middleware).to receive(:sleep).at_least(:once)
-
-        middleware.call(context)
       end
     end
 
@@ -264,7 +237,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
         expect(result.attempts_made).to eq(2)
       end
 
-      it "falls back after exhausting retries on quota error" do
+      it "skips retries and falls back immediately when fallback models exist" do
         context = build_context
         models_tried = []
 
@@ -279,8 +252,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
         result = middleware.call(context)
 
-        # Should retry on primary (max 2 retries = 3 total attempts), then fall back
-        expect(models_tried.count("primary-model")).to eq(3) # 1 initial + 2 retries
+        # Should NOT retry primary — fallback models exist, so move immediately
+        expect(models_tried.count("primary-model")).to eq(1)
         expect(models_tried).to include("fallback-model")
         expect(result.output).to eq("fallback success")
       end
@@ -301,6 +274,139 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
           expect(error.last_error.message).to eq("OpenAI API error: invalid_api_key")
           expect(error.last_error.message).not_to include("quota")
         end
+      end
+    end
+
+    context "non-fallback errors (programming errors)" do
+      it "re-raises ArgumentError immediately without fallback" do
+        context = build_context
+
+        allow(app).to receive(:call).and_raise(ArgumentError, "wrong number of arguments")
+
+        expect(app).to receive(:call).once
+        expect { middleware.call(context) }.to raise_error(ArgumentError, "wrong number of arguments")
+      end
+
+      it "re-raises TypeError immediately without fallback" do
+        context = build_context
+
+        allow(app).to receive(:call).and_raise(TypeError, "no implicit conversion")
+
+        expect(app).to receive(:call).once
+        expect { middleware.call(context) }.to raise_error(TypeError, "no implicit conversion")
+      end
+
+      it "re-raises NoMethodError immediately without fallback" do
+        context = build_context
+
+        allow(app).to receive(:call).and_raise(NoMethodError, "undefined method 'foo'")
+
+        expect(app).to receive(:call).once
+        expect { middleware.call(context) }.to raise_error(NoMethodError)
+      end
+
+      it "still records circuit breaker failure for non-fallback errors" do
+        agent_class_cb = Class.new do
+          def self.name = "CBAgent"
+          def self.agent_type = :embedding
+          def self.model = "primary-model"
+
+          def self.reliability_config
+            {
+              retries: { max: 2 },
+              fallback_models: ["fallback-model"],
+              circuit_breaker: { errors: 3, within: 60, cooldown: 300 }
+            }
+          end
+        end
+
+        cb_middleware = described_class.new(app, agent_class_cb)
+        allow(cb_middleware).to receive(:sleep)
+        context = build_context
+
+        breaker = instance_double(RubyLLM::Agents::CircuitBreaker)
+        allow(RubyLLM::Agents::CircuitBreaker).to receive(:from_config).and_return(breaker)
+        allow(breaker).to receive(:open?).and_return(false)
+        allow(breaker).to receive(:record_failure!)
+        allow(app).to receive(:call).and_raise(ArgumentError, "bad args")
+
+        expect(breaker).to receive(:record_failure!)
+        expect { cb_middleware.call(context) }.to raise_error(ArgumentError)
+      end
+    end
+
+    context "retry behavior with fallback models" do
+      it "skips retries when fallback models exist" do
+        context = build_context
+        models_tried = []
+
+        allow(app).to receive(:call) do |ctx|
+          models_tried << ctx.model
+          if ctx.model == "primary-model"
+            raise Timeout::Error, "Connection timed out"
+          end
+          ctx.output = "fallback success"
+          ctx
+        end
+
+        result = middleware.call(context)
+
+        # With fallback models, should NOT retry primary — move to fallback immediately
+        expect(models_tried.count("primary-model")).to eq(1)
+        expect(models_tried).to include("fallback-model")
+        expect(result.output).to eq("fallback success")
+      end
+    end
+
+    context "retry behavior without fallback models" do
+      let(:agent_class_no_fallbacks) do
+        Class.new do
+          def self.name = "NoFallbackAgent"
+          def self.agent_type = :embedding
+          def self.model = "primary-model"
+
+          def self.reliability_config
+            {
+              retries: { max: 2, backoff: :exponential, base: 0.1, max_delay: 1.0 },
+              fallback_models: []
+            }
+          end
+        end
+      end
+
+      let(:no_fallback_middleware) { described_class.new(app, agent_class_no_fallbacks) }
+
+      before do
+        allow(no_fallback_middleware).to receive(:sleep)
+      end
+
+      it "retries on transient errors when no fallback models exist" do
+        context = build_context
+        call_count = 0
+
+        allow(app).to receive(:call) do |ctx|
+          call_count += 1
+          if call_count < 3
+            raise Timeout::Error, "Connection timed out"
+          end
+          ctx.output = "success after retry"
+          ctx
+        end
+
+        result = no_fallback_middleware.call(context)
+
+        expect(result.output).to eq("success after retry")
+        expect(result.attempts_made).to eq(3)
+      end
+
+      it "raises after exhausting retries when no fallback models exist" do
+        context = build_context
+
+        allow(app).to receive(:call).and_raise(Timeout::Error, "Connection timed out")
+
+        expect { no_fallback_middleware.call(context) }.to raise_error(
+          RubyLLM::Agents::Reliability::AllModelsExhaustedError
+        )
       end
     end
 
@@ -419,13 +525,13 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
     end
 
     context "attempt tracking" do
-      it "tracks total attempts across models and retries" do
+      it "tracks total attempts across models (with fallbacks, no retries)" do
         context = build_context
         attempts_seen = []
 
         allow(app).to receive(:call) do |ctx|
           attempts_seen << { model: ctx.model, attempt: ctx.attempt }
-          if attempts_seen.length < 4 # Fail first 3 attempts
+          if ctx.model == "primary-model"
             raise Timeout::Error, "timeout"
           end
           ctx.output = "success"
@@ -434,7 +540,42 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
         result = middleware.call(context)
 
-        expect(result.attempts_made).to eq(4)
+        # Primary fails (1 attempt), fallback succeeds (1 attempt) = 2 total
+        expect(result.attempts_made).to eq(2)
+      end
+
+      it "tracks total attempts with retries (without fallbacks)" do
+        agent_class_retries_only = Class.new do
+          def self.name = "RetriesOnlyAgent"
+          def self.agent_type = :embedding
+          def self.model = "primary-model"
+
+          def self.reliability_config
+            {
+              retries: { max: 3, backoff: :exponential, base: 0.1, max_delay: 1.0 },
+              fallback_models: []
+            }
+          end
+        end
+
+        retries_middleware = described_class.new(app, agent_class_retries_only)
+        allow(retries_middleware).to receive(:sleep)
+
+        context = build_context
+        call_count = 0
+
+        allow(app).to receive(:call) do |ctx|
+          call_count += 1
+          if call_count < 3
+            raise Timeout::Error, "timeout"
+          end
+          ctx.output = "success"
+          ctx
+        end
+
+        result = retries_middleware.call(context)
+
+        expect(result.attempts_made).to eq(3)
       end
     end
   end

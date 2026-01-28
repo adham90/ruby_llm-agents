@@ -54,6 +54,7 @@ module RubyLLM
           @total_timeout = builder.total_timeout_value if builder.total_timeout_value
           @circuit_breaker_config = builder.circuit_breaker_config if builder.circuit_breaker_config
           @retryable_patterns = builder.retryable_patterns_list if builder.retryable_patterns_list
+          @non_fallback_errors = builder.non_fallback_errors_list if builder.non_fallback_errors_list
         end
 
         # Returns the complete reliability configuration hash
@@ -70,7 +71,8 @@ module RubyLLM
             fallback_providers: fallback_providers,
             total_timeout: total_timeout,
             circuit_breaker: circuit_breaker_config,
-            retryable_patterns: retryable_patterns
+            retryable_patterns: retryable_patterns,
+            non_fallback_errors: non_fallback_errors
           }.compact
         end
 
@@ -196,6 +198,17 @@ module RubyLLM
           @retryable_patterns || inherited_retryable_patterns
         end
 
+        # Sets or returns additional error classes that should never trigger fallback
+        #
+        # @param error_classes [Array<Class>] Error classes that should fail immediately
+        # @return [Array<Class>, nil] The current non-fallback error classes
+        # @example
+        #   non_fallback_errors MyValidationError, MySchemaError
+        def non_fallback_errors(*error_classes)
+          @non_fallback_errors = error_classes.flatten if error_classes.any?
+          @non_fallback_errors || inherited_non_fallback_errors
+        end
+
         # @!endgroup
 
         private
@@ -236,6 +249,12 @@ module RubyLLM
           superclass.retryable_patterns
         end
 
+        def inherited_non_fallback_errors
+          return nil unless superclass.respond_to?(:non_fallback_errors)
+
+          superclass.non_fallback_errors
+        end
+
         def default_retries_config
           {
             max: 0,
@@ -249,7 +268,8 @@ module RubyLLM
         # Inner builder class for block-style configuration
         class ReliabilityBuilder
           attr_reader :retries_config, :fallback_models_list, :total_timeout_value,
-                      :circuit_breaker_config, :retryable_patterns_list, :fallback_providers_list
+                      :circuit_breaker_config, :retryable_patterns_list, :fallback_providers_list,
+                      :non_fallback_errors_list
 
           def initialize
             @retries_config = nil
@@ -258,6 +278,7 @@ module RubyLLM
             @circuit_breaker_config = nil
             @retryable_patterns_list = nil
             @fallback_providers_list = []
+            @non_fallback_errors_list = nil
           end
 
           def retries(max: 0, backoff: :exponential, base: 0.4, max_delay: 3.0, on: [])
@@ -299,6 +320,10 @@ module RubyLLM
 
           def retryable_patterns(*patterns)
             @retryable_patterns_list = patterns.flatten
+          end
+
+          def non_fallback_errors(*error_classes)
+            @non_fallback_errors_list = error_classes.flatten
           end
         end
       end
