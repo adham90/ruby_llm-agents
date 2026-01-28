@@ -221,6 +221,87 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
           expect(error.last_error.message).to eq("All models failed")
         end
       end
+
+      it "captures the last error from the last model tried" do
+        context = build_context
+
+        allow(app).to receive(:call) do |ctx|
+          if ctx.model == "primary-model"
+            raise StandardError, "Primary model quota exceeded"
+          else
+            raise StandardError, "Fallback model API key invalid"
+          end
+        end
+
+        expect { middleware.call(context) }.to raise_error(RubyLLM::Agents::Reliability::AllModelsExhaustedError) do |error|
+          expect(error.last_error.message).to eq("Fallback model API key invalid")
+        end
+      end
+    end
+
+    context "quota errors (Gemini rate limiting)" do
+      before do
+        # Update patterns to include quota for these tests
+        allow(config).to receive(:all_retryable_patterns).and_return(["rate limit", "overloaded", "quota"])
+      end
+
+      it "retries on quota exceeded errors" do
+        context = build_context
+        call_count = 0
+
+        allow(app).to receive(:call) do |ctx|
+          call_count += 1
+          if call_count < 2
+            raise StandardError, "You exceeded your current quota"
+          end
+          ctx.output = "success after quota retry"
+          ctx
+        end
+
+        result = middleware.call(context)
+
+        expect(result.output).to eq("success after quota retry")
+        expect(result.attempts_made).to eq(2)
+      end
+
+      it "falls back after exhausting retries on quota error" do
+        context = build_context
+        models_tried = []
+
+        allow(app).to receive(:call) do |ctx|
+          models_tried << ctx.model
+          if ctx.model == "primary-model"
+            raise StandardError, "Quota exceeded for metric: generativelanguage.googleapis.com"
+          end
+          ctx.output = "fallback success"
+          ctx
+        end
+
+        result = middleware.call(context)
+
+        # Should retry on primary (max 2 retries = 3 total attempts), then fall back
+        expect(models_tried.count("primary-model")).to eq(3) # 1 initial + 2 retries
+        expect(models_tried).to include("fallback-model")
+        expect(result.output).to eq("fallback success")
+      end
+
+      it "captures quota error as last_error when all models fail with different errors" do
+        context = build_context
+
+        allow(app).to receive(:call) do |ctx|
+          if ctx.model == "primary-model"
+            raise StandardError, "You exceeded your current quota, please check your plan"
+          else
+            raise StandardError, "OpenAI API error: invalid_api_key"
+          end
+        end
+
+        expect { middleware.call(context) }.to raise_error(RubyLLM::Agents::Reliability::AllModelsExhaustedError) do |error|
+          # Last error should be from the fallback model, not the primary
+          expect(error.last_error.message).to eq("OpenAI API error: invalid_api_key")
+          expect(error.last_error.message).not_to include("quota")
+        end
+      end
     end
 
     context "circuit breaker" do

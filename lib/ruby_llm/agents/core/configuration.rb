@@ -621,7 +621,7 @@ module RubyLLM
         @default_fallback_models = []
         @default_total_timeout = nil
         @default_retryable_patterns = {
-          rate_limiting: ["rate limit", "rate_limit", "too many requests", "429"],
+          rate_limiting: ["rate limit", "rate_limit", "too many requests", "429", "quota"],
           server_errors: ["500", "502", "503", "504", "service unavailable",
                          "internal server error", "bad gateway", "gateway timeout"],
           capacity: ["overloaded", "capacity"]

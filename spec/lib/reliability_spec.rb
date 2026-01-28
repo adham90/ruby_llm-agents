@@ -98,6 +98,80 @@ RSpec.describe RubyLLM::Agents::Reliability do
       custom_error = Class.new(StandardError)
       expect(described_class.retryable_error?(custom_error.new, custom_errors: [custom_error])).to be true
     end
+
+    it "accepts custom patterns for message matching" do
+      error = StandardError.new("custom quota exceeded error")
+      expect(described_class.retryable_error?(error, custom_patterns: ["quota"])).to be true
+    end
+  end
+
+  describe ".retryable_by_message?" do
+    it "returns true for rate limit errors" do
+      error = StandardError.new("rate limit exceeded")
+      expect(described_class.retryable_by_message?(error)).to be true
+    end
+
+    it "returns true for 429 errors" do
+      error = StandardError.new("HTTP 429: Too Many Requests")
+      expect(described_class.retryable_by_message?(error)).to be true
+    end
+
+    it "returns true for server errors (500, 502, 503, 504)" do
+      %w[500 502 503 504].each do |code|
+        error = StandardError.new("HTTP #{code} error")
+        expect(described_class.retryable_by_message?(error)).to be true
+      end
+    end
+
+    it "returns true for overloaded errors" do
+      error = StandardError.new("Service overloaded, try again later")
+      expect(described_class.retryable_by_message?(error)).to be true
+    end
+
+    it "returns false for non-retryable error messages" do
+      error = StandardError.new("Invalid argument provided")
+      expect(described_class.retryable_by_message?(error)).to be false
+    end
+
+    context "with quota errors (Gemini rate limiting)" do
+      let(:gemini_quota_error_message) do
+        "You exceeded your current quota, please check your plan and billing details. " \
+        "For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. " \
+        "Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests"
+      end
+
+      it "returns true for quota exceeded errors" do
+        error = StandardError.new(gemini_quota_error_message)
+        expect(described_class.retryable_by_message?(error)).to be true
+      end
+
+      it "returns true for simple quota errors" do
+        error = StandardError.new("quota exceeded")
+        expect(described_class.retryable_by_message?(error)).to be true
+      end
+
+      it "returns true for exceeded quota errors" do
+        error = StandardError.new("You exceeded your quota")
+        expect(described_class.retryable_by_message?(error)).to be true
+      end
+    end
+
+    context "with custom patterns" do
+      it "matches custom patterns" do
+        error = StandardError.new("custom_retry_pattern occurred")
+        expect(described_class.retryable_by_message?(error, custom_patterns: ["custom_retry_pattern"])).to be true
+      end
+
+      it "combines default and custom patterns" do
+        # Should still match default patterns
+        rate_limit_error = StandardError.new("rate limit exceeded")
+        expect(described_class.retryable_by_message?(rate_limit_error, custom_patterns: ["custom"])).to be true
+
+        # Should also match custom patterns
+        custom_error = StandardError.new("custom error message")
+        expect(described_class.retryable_by_message?(custom_error, custom_patterns: ["custom"])).to be true
+      end
+    end
   end
 
   describe ".calculate_backoff" do

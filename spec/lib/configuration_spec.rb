@@ -764,6 +764,11 @@ RSpec.describe RubyLLM::Agents::Configuration do
       expect(patterns).to include("overloaded")
     end
 
+    it "includes quota for Gemini and other provider rate limiting" do
+      patterns = config.all_retryable_patterns
+      expect(patterns).to include("quota")
+    end
+
     it "flattens and deduplicates patterns" do
       config.default_retryable_patterns = {
         category1: ["pattern1", "pattern2"],
