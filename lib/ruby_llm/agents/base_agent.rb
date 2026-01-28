@@ -471,7 +471,7 @@ module RubyLLM
       # @param context [Pipeline::Context] The execution context
       # @return [void] Sets context.output with the result
       def execute(context)
-        client = build_client
+        client = build_client(context)
         response = execute_llm_call(client, context)
         capture_response(response, context)
         result = build_result(process_response(response), response, context)
@@ -480,10 +480,12 @@ module RubyLLM
 
       # Builds and configures the RubyLLM client
       #
+      # @param context [Pipeline::Context, nil] Optional execution context for model overrides
       # @return [RubyLLM::Chat] Configured chat client
-      def build_client
+      def build_client(context = nil)
+        effective_model = context&.model || model
         client = RubyLLM.chat
-                        .with_model(model)
+                        .with_model(effective_model)
                         .with_temperature(temperature)
 
         client = client.with_instructions(system_prompt) if system_prompt

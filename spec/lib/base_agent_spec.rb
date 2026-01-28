@@ -595,4 +595,71 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
       end
     end
   end
+
+  describe "#build_client" do
+    let(:agent_class) do
+      Class.new(described_class) do
+        def self.name
+          "FallbackTestAgent"
+        end
+
+        model "primary-model"
+        temperature 0.5
+
+        def user_prompt
+          "test prompt"
+        end
+      end
+    end
+
+    let(:mock_chat) { instance_double(RubyLLM::Chat) }
+
+    before do
+      allow(RubyLLM).to receive(:chat).and_return(mock_chat)
+      allow(mock_chat).to receive(:with_model).and_return(mock_chat)
+      allow(mock_chat).to receive(:with_temperature).and_return(mock_chat)
+    end
+
+    it "uses agent's configured model by default" do
+      agent = agent_class.new
+
+      expect(mock_chat).to receive(:with_model).with("primary-model").and_return(mock_chat)
+
+      agent.send(:build_client)
+    end
+
+    it "uses context.model when provided (for fallback support)" do
+      agent = agent_class.new
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: agent_class,
+        model: "fallback-model"
+      )
+
+      expect(mock_chat).to receive(:with_model).with("fallback-model").and_return(mock_chat)
+
+      agent.send(:build_client, context)
+    end
+
+    it "falls back to agent model when context.model is nil" do
+      agent = agent_class.new
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: agent_class,
+        model: nil
+      )
+
+      expect(mock_chat).to receive(:with_model).with("primary-model").and_return(mock_chat)
+
+      agent.send(:build_client, context)
+    end
+
+    it "works with nil context (backward compatibility)" do
+      agent = agent_class.new
+
+      expect(mock_chat).to receive(:with_model).with("primary-model").and_return(mock_chat)
+
+      agent.send(:build_client, nil)
+    end
+  end
 end
