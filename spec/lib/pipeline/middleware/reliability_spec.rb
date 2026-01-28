@@ -578,5 +578,153 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
         expect(result.attempts_made).to eq(3)
       end
     end
+
+    context "per-model attempt tracking via AttemptTracker" do
+      it "stores attempt data in context on successful fallback" do
+        context = build_context
+
+        allow(app).to receive(:call) do |ctx|
+          if ctx.model == "primary-model"
+            raise StandardError, "Gemini quota exceeded"
+          end
+          ctx.output = "fallback success"
+          ctx
+        end
+
+        result = middleware.call(context)
+
+        attempts = result[:reliability_attempts]
+        expect(attempts).to be_an(Array)
+        expect(attempts.length).to eq(2)
+
+        # First attempt: primary model failed
+        expect(attempts[0]["model_id"]).to eq("primary-model")
+        expect(attempts[0]["error_class"]).to eq("StandardError")
+        expect(attempts[0]["error_message"]).to include("Gemini quota exceeded")
+
+        # Second attempt: fallback model succeeded
+        expect(attempts[1]["model_id"]).to eq("fallback-model")
+        expect(attempts[1]["error_class"]).to be_nil
+      end
+
+      it "stores attempt data in context when all models fail" do
+        context = build_context
+
+        allow(app).to receive(:call) do |ctx|
+          if ctx.model == "primary-model"
+            raise StandardError, "Gemini quota exceeded"
+          else
+            raise StandardError, "OpenAI API key invalid"
+          end
+        end
+
+        expect { middleware.call(context) }.to raise_error(
+          RubyLLM::Agents::Reliability::AllModelsExhaustedError
+        )
+
+        attempts = context[:reliability_attempts]
+        expect(attempts).to be_an(Array)
+        expect(attempts.length).to eq(2)
+
+        expect(attempts[0]["model_id"]).to eq("primary-model")
+        expect(attempts[0]["error_class"]).to eq("StandardError")
+        expect(attempts[0]["error_message"]).to include("Gemini quota exceeded")
+
+        expect(attempts[1]["model_id"]).to eq("fallback-model")
+        expect(attempts[1]["error_class"]).to eq("StandardError")
+        expect(attempts[1]["error_message"]).to include("OpenAI API key invalid")
+      end
+
+      it "records each attempt with timing data" do
+        context = build_context
+
+        allow(app).to receive(:call) do |ctx|
+          if ctx.model == "primary-model"
+            raise StandardError, "model error"
+          end
+          ctx.output = "ok"
+          ctx
+        end
+
+        result = middleware.call(context)
+        attempts = result[:reliability_attempts]
+
+        attempts.each do |attempt|
+          expect(attempt["started_at"]).to be_present
+          expect(attempt["completed_at"]).to be_present
+          expect(attempt["duration_ms"]).to be_a(Integer)
+        end
+      end
+
+      it "includes attempts data in AllModelsExhaustedError" do
+        context = build_context
+
+        allow(app).to receive(:call).and_raise(StandardError, "model error")
+
+        expect { middleware.call(context) }.to raise_error(
+          RubyLLM::Agents::Reliability::AllModelsExhaustedError
+        ) do |error|
+          expect(error.attempts).to be_an(Array)
+          expect(error.attempts.length).to eq(2)
+          expect(error.attempts[0]["model_id"]).to eq("primary-model")
+          expect(error.attempts[1]["model_id"]).to eq("fallback-model")
+        end
+      end
+
+      it "records short-circuited models from circuit breaker" do
+        agent_cb = Class.new do
+          def self.name = "CBTrackAgent"
+          def self.agent_type = :embedding
+          def self.model = "primary-model"
+
+          def self.reliability_config
+            {
+              retries: { max: 0 },
+              fallback_models: ["fallback-model"],
+              circuit_breaker: { errors: 3, within: 60, cooldown: 300 }
+            }
+          end
+        end
+
+        cb_middleware = described_class.new(app, agent_cb)
+        allow(cb_middleware).to receive(:sleep)
+
+        primary_breaker = instance_double(RubyLLM::Agents::CircuitBreaker)
+        fallback_breaker = instance_double(RubyLLM::Agents::CircuitBreaker)
+
+        allow(RubyLLM::Agents::CircuitBreaker).to receive(:from_config)
+          .with("CBTrackAgent", "primary-model", anything, tenant_id: nil)
+          .and_return(primary_breaker)
+        allow(RubyLLM::Agents::CircuitBreaker).to receive(:from_config)
+          .with("CBTrackAgent", "fallback-model", anything, tenant_id: nil)
+          .and_return(fallback_breaker)
+
+        allow(primary_breaker).to receive(:open?).and_return(true)
+        allow(fallback_breaker).to receive(:open?).and_return(false)
+        allow(fallback_breaker).to receive(:record_success!)
+
+        context = RubyLLM::Agents::Pipeline::Context.new(
+          input: "test", agent_class: agent_cb, model: "primary-model"
+        )
+
+        allow(app).to receive(:call) do |ctx|
+          ctx.output = "fallback result"
+          ctx
+        end
+
+        result = cb_middleware.call(context)
+        attempts = result[:reliability_attempts]
+
+        expect(attempts.length).to eq(2)
+
+        # Primary was short-circuited
+        expect(attempts[0]["model_id"]).to eq("primary-model")
+        expect(attempts[0]["short_circuited"]).to be true
+
+        # Fallback succeeded
+        expect(attempts[1]["model_id"]).to eq("fallback-model")
+        expect(attempts[1]["error_class"]).to be_nil
+      end
+    end
   end
 end

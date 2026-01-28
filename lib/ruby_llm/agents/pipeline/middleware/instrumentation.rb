@@ -232,6 +232,12 @@ module RubyLLM
               data[:tool_calls_count] = context[:tool_calls].size
             end
 
+            # Add reliability attempts if present
+            if context[:reliability_attempts].present?
+              data[:attempts] = context[:reliability_attempts]
+              data[:attempts_count] = context[:reliability_attempts].size
+            end
+
             # Add response if persist_responses is enabled
             if global_config.persist_responses && context.output.respond_to?(:content)
               data[:response] = serialize_response(context)
@@ -307,6 +313,12 @@ module RubyLLM
             if context[:tool_calls].present?
               data[:tool_calls] = context[:tool_calls]
               data[:tool_calls_count] = context[:tool_calls].size
+            end
+
+            # Add reliability attempts if present
+            if context[:reliability_attempts].present?
+              data[:attempts] = context[:reliability_attempts]
+              data[:attempts_count] = context[:reliability_attempts].size
             end
 
             # Add response if persist_responses is enabled

@@ -933,5 +933,59 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         middleware.call(context)
       end
     end
+
+    describe "reliability attempts persistence" do
+      let(:mock_execution) do
+        instance_double("RubyLLM::Agents::Execution",
+                        id: 456,
+                        status: "running",
+                        class: RubyLLM::Agents::Execution)
+      end
+
+      before do
+        allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
+      end
+
+      it "persists reliability_attempts in the execution record" do
+        context = build_context
+        context[:reliability_attempts] = [
+          { "model_id" => "gemini-2.5-flash", "error_class" => "StandardError", "error_message" => "quota exceeded" },
+          { "model_id" => "gpt-4.1-mini", "error_class" => nil, "error_message" => nil }
+        ]
+
+        allow(app).to receive(:call) do |ctx|
+          ctx.output = "result"
+          ctx
+        end
+
+        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+
+        expect(mock_execution).to receive(:update!).with(
+          hash_including(
+            attempts: context[:reliability_attempts],
+            attempts_count: 2
+          )
+        )
+
+        middleware.call(context)
+      end
+
+      it "does not include attempts when reliability_attempts is absent" do
+        context = build_context
+
+        allow(app).to receive(:call) do |ctx|
+          ctx.output = "result"
+          ctx
+        end
+
+        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+
+        expect(mock_execution).to receive(:update!).with(
+          hash_not_including(:attempts)
+        )
+
+        middleware.call(context)
+      end
+    end
   end
 end

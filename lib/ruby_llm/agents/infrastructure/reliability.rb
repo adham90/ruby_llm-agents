@@ -88,13 +88,15 @@ module RubyLLM
       #
       # @api public
       class AllModelsExhaustedError < Error
-        attr_reader :models_tried, :last_error
+        attr_reader :models_tried, :last_error, :attempts
 
         # @param models_tried [Array<String>] List of models that were attempted
         # @param last_error [Exception] The last error that occurred
-        def initialize(models_tried, last_error)
+        # @param attempts [Array<Hash>, nil] Per-model attempt data from AttemptTracker
+        def initialize(models_tried, last_error, attempts: nil)
           @models_tried = models_tried
           @last_error = last_error
+          @attempts = attempts
           super("All models exhausted: #{models_tried.join(', ')}. Last error: #{last_error.message}")
         end
       end

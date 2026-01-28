@@ -97,12 +97,14 @@ module RubyLLM
             started_at = Time.current
             last_error = nil
             context.attempts_made = 0
+            tracker = Agents::AttemptTracker.new
 
             models_to_try.each do |current_model|
               # Check circuit breaker for this model
               breaker = get_circuit_breaker(current_model, context)
               if breaker&.open?
                 debug("Circuit breaker open for #{current_model}, skipping")
+                tracker.record_short_circuit(current_model)
                 next
               end
 
@@ -112,17 +114,27 @@ module RubyLLM
                 config: config,
                 total_deadline: total_deadline,
                 started_at: started_at,
-                breaker: breaker
+                breaker: breaker,
+                tracker: tracker
               )
 
-              return result if result
+              if result
+                context[:reliability_attempts] = tracker.to_json_array
+                return result
+              end
 
               # Capture the last error from context for the final error
               last_error = context.error
             end
 
+            # Store attempts even on total failure
+            context[:reliability_attempts] = tracker.to_json_array
+
             # All models exhausted
-            raise Agents::Reliability::AllModelsExhaustedError.new(models_to_try, last_error)
+            raise Agents::Reliability::AllModelsExhaustedError.new(
+              models_to_try, last_error,
+              attempts: tracker.to_json_array
+            )
           end
 
           # Tries a model with retry logic
@@ -134,7 +146,7 @@ module RubyLLM
           # @param started_at [Time] When execution started
           # @param breaker [CircuitBreaker, nil] The circuit breaker for this model
           # @return [Context, nil] The context if successful, nil to try next model
-          def try_model_with_retries(context:, model:, config:, total_deadline:, started_at:, breaker:)
+          def try_model_with_retries(context:, model:, config:, total_deadline:, started_at:, breaker:, tracker:)
             retries_config = config[:retries] || {}
             max_retries = retries_config[:max] || 0
             attempt_index = 0
@@ -146,6 +158,8 @@ module RubyLLM
               context.attempt = attempt_index + 1
               context.attempts_made += 1
 
+              attempt = tracker.start_attempt(model)
+
               begin
                 # Override the model for this attempt
                 original_model = context.model
@@ -153,14 +167,16 @@ module RubyLLM
 
                 @app.call(context)
 
-                # Success - record in circuit breaker
+                # Success - record in circuit breaker and tracker
                 breaker&.record_success!
+                tracker.complete_attempt(attempt, success: true, response: context.output)
 
                 return context
 
               rescue StandardError => e
                 context.error = e
                 breaker&.record_failure!
+                tracker.complete_attempt(attempt, success: false, error: e)
 
                 # Programming errors fail immediately — no retry, no fallback
                 raise if non_fallback_error?(e, config)
