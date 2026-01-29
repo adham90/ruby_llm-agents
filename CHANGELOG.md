@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.4] - 2026-01-29
+
+### Improved
+
+- **AllModelsExhaustedError Messages** - Error message now lists each model's error class and message on separate lines instead of only showing the last error. Includes an `errors` accessor returning structured error data (model, error_class, error_message, error_backtrace).
+- **Error Backtrace Capture** - `AttemptTracker` now captures the first 20 lines of each error's backtrace, persisted in the execution's `attempts` JSON column.
+- **Execution Dashboard Error Display** - Error column in the attempts table now shows the error class and message visibly (not hidden in a tooltip). Click "Stack trace" to expand the full backtrace inline. Copy buttons for individual traces and all errors.
+
 ## [1.3.3] - 2026-01-29
 
 ### Fixed
@@ -462,6 +470,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[1.3.4]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.3...v1.3.4
 [1.3.3]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.2...v1.3.3
 [1.3.2]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.0...v1.3.1
