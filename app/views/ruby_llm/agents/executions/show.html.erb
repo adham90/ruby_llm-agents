@@ -398,7 +398,27 @@
       <% end %>
     </div>
 
+    <% error_attempts = @execution.attempts.select { |a| a['error_class'].present? } %>
+    <% if error_attempts.any? %>
+      <script type="application/json" id="all-errors-data">
+        <%= raw error_attempts.map { |a|
+          lines = ["#{a['error_class']}: #{a['error_message']}"]
+          lines += (a['error_backtrace'] || [])
+          "Model: #{a['model_id']}\n#{lines.join("\n")}"
+        }.join("\n\n---\n\n").to_json %>
+      </script>
+    <% end %>
+
     <div class="overflow-x-auto">
+      <% if error_attempts.any? %>
+        <div class="flex justify-end mb-2">
+          <button onclick="var text = JSON.parse(document.getElementById('all-errors-data').textContent); navigator.clipboard.writeText(text).then(function() { var btn = event.currentTarget; btn.textContent = 'Copied!'; setTimeout(function() { btn.textContent = 'Copy all errors'; }, 2000); });"
+                  class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+            Copy all errors
+          </button>
+        </div>
+      <% end %>
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead>
           <tr>
@@ -457,29 +477,44 @@
               </td>
               <td class="px-3 py-2 text-sm max-w-xs">
                 <% if attempt['error_class'].present? %>
-                  <div class="relative group cursor-pointer">
-                    <div>
-                      <span class="text-red-600 dark:text-red-400 font-mono text-xs font-medium">
-                        <%= attempt['error_class'].split('::').last %>
-                      </span>
-                    </div>
-                    <p class="text-red-500 dark:text-red-400 text-xs mt-0.5 break-words">
-                      <%= attempt['error_message'].to_s.truncate(150) %>
-                    </p>
-                    <% if attempt['error_backtrace'].present? %>
-                      <div class="hidden group-hover:block absolute z-50 left-0 top-full mt-1 w-[32rem] max-h-64 overflow-auto bg-gray-900 text-gray-100 text-xs font-mono p-3 rounded-lg shadow-xl border border-gray-700 whitespace-pre-wrap">
-                        <div class="font-semibold text-red-400 mb-1"><%= attempt['error_class'] %>: <%= attempt['error_message'].to_s.truncate(200) %></div>
-                        <% attempt['error_backtrace'].each do |line| %>
-                          <div class="text-gray-300 leading-relaxed"><%= line %></div>
-                        <% end %>
-                      </div>
-                    <% end %>
+                  <div>
+                    <span class="text-red-600 dark:text-red-400 font-mono text-xs font-medium">
+                      <%= attempt['error_class'].split('::').last %>
+                    </span>
                   </div>
+                  <p class="text-red-500 dark:text-red-400 text-xs mt-0.5 break-words">
+                    <%= attempt['error_message'].to_s.truncate(150) %>
+                  </p>
+                  <% if attempt['error_backtrace'].present? %>
+                    <button onclick="var el = document.getElementById('backtrace-<%= index %>'); el.classList.toggle('hidden');"
+                            class="text-xs text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 mt-1 underline">
+                      Stack trace
+                    </button>
+                  <% end %>
                 <% else %>
                   <span class="text-gray-400">-</span>
                 <% end %>
               </td>
             </tr>
+            <% if attempt['error_backtrace'].present? %>
+              <tr id="backtrace-<%= index %>" class="hidden">
+                <td colspan="6" class="px-3 py-2">
+                  <div class="bg-gray-900 text-gray-100 text-xs font-mono p-3 rounded-lg max-h-64 overflow-auto whitespace-pre-wrap relative group/bt">
+                    <button onclick="var el = document.getElementById('backtrace-text-<%= index %>'); navigator.clipboard.writeText(el.textContent.trim()).then(function() { var btn = event.currentTarget; btn.querySelector('span').textContent = 'Copied!'; setTimeout(function() { btn.querySelector('span').textContent = 'Copy'; }, 2000); });"
+                            class="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-0.5 text-xs text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded transition-colors">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                      <span>Copy</span>
+                    </button>
+                    <div id="backtrace-text-<%= index %>">
+                      <div class="font-semibold text-red-400 mb-1"><%= attempt['error_class'] %>: <%= attempt['error_message'].to_s.truncate(200) %></div>
+                      <% attempt['error_backtrace'].each do |line| %>
+                        <div class="text-gray-300 leading-relaxed"><%= line %></div>
+                      <% end %>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
           <% end %>
         </tbody>
       </table>
