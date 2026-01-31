@@ -12,9 +12,6 @@ RubyLLM::Agents::Engine.routes.draw do
       get :search
       get :export
     end
-    member do
-      post :rerun
-    end
   end
 
   resources :tenants, only: [:index, :show, :edit, :update]

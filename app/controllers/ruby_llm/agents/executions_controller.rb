@@ -61,49 +61,6 @@ module RubyLLM
         end
       end
 
-      # Reruns an execution with the same parameters
-      #
-      # Supports both dry-run mode (returns prompt info without API call)
-      # and real reruns that create a new execution.
-      #
-      # @return [void]
-      def rerun
-        @execution = Execution.find(params[:id])
-        dry_run = params[:dry_run] == "true"
-
-        agent_class = AgentRegistry.find(@execution.agent_type)
-
-        unless agent_class
-          flash[:alert] = "Agent class '#{@execution.agent_type}' not found. Cannot rerun."
-          redirect_to execution_path(@execution)
-          return
-        end
-
-        # Prepare parameters from original execution
-        original_params = @execution.parameters&.symbolize_keys || {}
-
-        if dry_run
-          # Dry run mode - show what would be sent without making API call
-          result = agent_class.call(**original_params, dry_run: true)
-          @dry_run_result = result
-
-          respond_to do |format|
-            format.html { render :dry_run }
-            format.json { render json: result }
-          end
-        else
-          # Real rerun - execute the agent
-          begin
-            agent_class.call(**original_params)
-            flash[:notice] = "Execution rerun successfully! Check the executions list for the new result."
-          rescue StandardError => e
-            flash[:alert] = "Rerun failed: #{e.message}"
-          end
-
-          redirect_to executions_path
-        end
-      end
-
       # Exports filtered executions as CSV
       #
       # Streams CSV data with redacted error messages to protect

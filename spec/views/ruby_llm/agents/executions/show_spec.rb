@@ -13,7 +13,6 @@ RSpec.describe "ruby_llm/agents/executions/show", type: :view do
 
     # Set up engine routes for the view
     without_partial_double_verification do
-      allow(view).to receive(:rerun_execution_path).and_return("/executions/1/rerun")
       allow(view).to receive(:execution_path).and_return("/executions/1")
       allow(view).to receive(:executions_path).and_return("/executions")
     end
