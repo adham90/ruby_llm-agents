@@ -72,6 +72,30 @@ module RubyLLM
           @timeout || inherited_or_default(:timeout, default_timeout)
         end
 
+        # Sets or returns the response schema for structured output
+        #
+        # Accepts a hash (JSON Schema), a block (passed to RubyLLM::Schema.create),
+        # or any object that responds to `to_json_schema`.
+        #
+        # @param value [Hash, Object, nil] The schema to set
+        # @param block [Proc, nil] Block passed to RubyLLM::Schema.create
+        # @return [Hash, RubyLLM::Schema, nil] The current schema setting
+        # @example With a block (recommended)
+        #   schema do
+        #     string :name, description: "The user's name"
+        #     integer :age, description: "The user's age"
+        #   end
+        # @example With a hash
+        #   schema type: "object", properties: { name: { type: "string" } }
+        def schema(value = nil, &block)
+          if value
+            @schema = value
+          elsif block
+            @schema = RubyLLM::Schema.create(&block)
+          end
+          @schema || inherited_or_default(:schema, nil)
+        end
+
         # @!endgroup
 
         private

@@ -115,25 +115,79 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
     end
 
     context "with schema" do
-      let(:mock_schema) { double("Schema") }
-
       let(:schema_agent_class) do
-        schema = mock_schema
         Class.new(described_class) do
           define_singleton_method(:name) { "SchemaAgent" }
           model "gpt-4o"
           param :query
 
-          define_method(:user_prompt) { query }
+          schema do
+            string :answer, description: "The answer"
+          end
 
-          define_method(:schema) { schema }
+          define_method(:user_prompt) { query }
         end
       end
 
-      it "configures client with schema when present" do
+      it "configures client with class-level schema" do
         schema_agent = schema_agent_class.new(query: "test")
         schema_agent.send(:build_client)
-        expect(mock_chat).to have_received(:with_schema).with(mock_schema)
+        expect(mock_chat).to have_received(:with_schema).with(schema_agent_class.schema)
+      end
+
+      it "allows instance method to override class-level schema" do
+        instance_schema = double("InstanceSchema")
+        override_class = Class.new(schema_agent_class) do
+          define_singleton_method(:name) { "OverrideSchemaAgent" }
+          define_method(:schema) { instance_schema }
+        end
+
+        override_agent = override_class.new(query: "test")
+        override_agent.send(:build_client)
+        expect(mock_chat).to have_received(:with_schema).with(instance_schema)
+      end
+
+      it "does not call with_schema when schema is nil" do
+        no_schema_class = Class.new(described_class) do
+          define_singleton_method(:name) { "NoSchemaAgent" }
+          model "gpt-4o"
+          param :query
+          define_method(:user_prompt) { query }
+        end
+
+        no_schema_agent = no_schema_class.new(query: "test")
+        no_schema_agent.send(:build_client)
+        expect(mock_chat).not_to have_received(:with_schema)
+      end
+
+      it "works with hash schema value" do
+        hash_schema = { type: "object", properties: { answer: { type: "string" } } }
+        hash_schema_class = Class.new(described_class) do
+          define_singleton_method(:name) { "HashSchemaAgent" }
+          model "gpt-4o"
+          param :query
+          schema(hash_schema)
+          define_method(:user_prompt) { query }
+        end
+
+        hash_agent = hash_schema_class.new(query: "test")
+        hash_agent.send(:build_client)
+        expect(mock_chat).to have_received(:with_schema).with(hash_schema)
+      end
+
+      it "child class inherits schema for build_client" do
+        child_class = Class.new(schema_agent_class) do
+          define_singleton_method(:name) { "ChildSchemaAgent" }
+        end
+
+        child_agent = child_class.new(query: "test")
+        child_agent.send(:build_client)
+        expect(mock_chat).to have_received(:with_schema).with(schema_agent_class.schema)
+      end
+
+      it "instance delegates to class-level schema" do
+        schema_agent = schema_agent_class.new(query: "test")
+        expect(schema_agent.schema).to eq(schema_agent_class.schema)
       end
     end
 

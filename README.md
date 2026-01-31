@@ -38,11 +38,9 @@ class SearchIntentAgent < ApplicationAgent
     "Extract search intent from: #{query}"
   end
 
-  def schema
-    @schema ||= RubyLLM::Schema.create do
-      string :refined_query, description: "Cleaned search query"
-      array :filters, of: :string, description: "Extracted filters"
-    end
+  schema do
+    string :refined_query, description: "Cleaned search query"
+    array :filters, of: :string, description: "Extracted filters"
   end
 end
 

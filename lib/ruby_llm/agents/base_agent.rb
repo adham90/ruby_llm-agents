@@ -261,9 +261,12 @@ module RubyLLM
 
       # Response schema for structured output
       #
+      # Delegates to the class-level schema DSL by default.
+      # Override in subclass instances to customize per-instance.
+      #
       # @return [RubyLLM::Schema, nil] Schema definition, or nil for free-form
       def schema
-        nil
+        self.class.schema
       end
 
       # Conversation history for multi-turn conversations
