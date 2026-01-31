@@ -107,42 +107,139 @@ RSpec.describe RubyLLM::Agents::DSL::Base do
       expect(test_class.schema).to be_nil
     end
 
-    it "sets schema from a block using RubyLLM::Schema DSL" do
-      test_class.schema do
-        string :name, description: "A name"
-      end
-      expect(test_class.schema).to be_present
-      expect(test_class.schema.properties).to include(:name)
-    end
-
-    it "sets schema from a hash" do
-      hash_schema = { type: "object", properties: { name: { type: "string" } } }
-      test_class.schema(hash_schema)
-      expect(test_class.schema).to eq(hash_schema)
-    end
-
-    it "inherits from parent class" do
-      test_class.schema do
-        string :name, description: "A name"
-      end
-
-      child_class = Class.new(test_class)
-      expect(child_class.schema).to eq(test_class.schema)
-    end
-
-    it "allows child class to override parent schema" do
-      test_class.schema do
-        string :name, description: "A name"
-      end
-
-      child_class = Class.new(test_class) do
-        schema do
-          integer :age, description: "An age"
+    context "with block DSL (RubyLLM::Schema)" do
+      it "sets schema from a block" do
+        test_class.schema do
+          string :name, description: "A name"
         end
+        expect(test_class.schema).to be_present
+        expect(test_class.schema.properties).to include(:name)
       end
 
-      expect(child_class.schema).not_to eq(test_class.schema)
-      expect(child_class.schema.properties).to include(:age)
+      it "produces a RubyLLM::Schema subclass" do
+        test_class.schema do
+          string :name
+        end
+        expect(test_class.schema.ancestors).to include(RubyLLM::Schema)
+      end
+
+      it "supports multiple property types" do
+        test_class.schema do
+          string :name, description: "Full name"
+          integer :age, description: "Age in years"
+          number :score, description: "Score"
+          boolean :active, required: false
+        end
+
+        schema = test_class.schema
+        expect(schema.properties.keys).to contain_exactly(:name, :age, :score, :active)
+        expect(schema.required_properties).to include(:name, :age, :score)
+        expect(schema.required_properties).not_to include(:active)
+      end
+
+      it "supports arrays" do
+        test_class.schema do
+          array :tags, of: :string, description: "Tags"
+        end
+        expect(test_class.schema.properties).to include(:tags)
+      end
+
+      it "supports nested objects" do
+        test_class.schema do
+          object :address do
+            string :city
+            string :zip
+          end
+        end
+        expect(test_class.schema.properties).to include(:address)
+      end
+
+      it "returns the same schema on subsequent calls without arguments" do
+        test_class.schema do
+          string :name
+        end
+        first_call = test_class.schema
+        second_call = test_class.schema
+        expect(first_call).to equal(second_call)
+      end
+    end
+
+    context "with hash value" do
+      it "sets and returns schema from a hash" do
+        hash_schema = { type: "object", properties: { name: { type: "string" } } }
+        test_class.schema(hash_schema)
+        expect(test_class.schema).to eq(hash_schema)
+      end
+    end
+
+    context "inheritance" do
+      it "inherits schema from parent class" do
+        test_class.schema do
+          string :name, description: "A name"
+        end
+
+        child_class = Class.new(test_class)
+        expect(child_class.schema).to eq(test_class.schema)
+      end
+
+      it "allows child class to override parent schema" do
+        test_class.schema do
+          string :name, description: "A name"
+        end
+
+        child_class = Class.new(test_class) do
+          schema do
+            integer :age, description: "An age"
+          end
+        end
+
+        expect(child_class.schema).not_to eq(test_class.schema)
+        expect(child_class.schema.properties).to include(:age)
+        expect(child_class.schema.properties).not_to include(:name)
+      end
+
+      it "does not affect parent when child overrides" do
+        test_class.schema do
+          string :name
+        end
+
+        Class.new(test_class) do
+          schema do
+            integer :age
+          end
+        end
+
+        expect(test_class.schema.properties).to include(:name)
+        expect(test_class.schema.properties).not_to include(:age)
+      end
+
+      it "supports grandchild inheritance" do
+        test_class.schema do
+          string :name
+        end
+
+        child_class = Class.new(test_class)
+        grandchild_class = Class.new(child_class)
+
+        expect(grandchild_class.schema).to eq(test_class.schema)
+      end
+
+      it "grandchild can override without affecting ancestors" do
+        test_class.schema do
+          string :name
+        end
+
+        child_class = Class.new(test_class)
+        grandchild_class = Class.new(child_class) do
+          schema do
+            boolean :active
+          end
+        end
+
+        expect(grandchild_class.schema.properties).to include(:active)
+        expect(child_class.schema.properties).to include(:name)
+        expect(test_class.schema.properties).to include(:name)
+      end
     end
   end
 
