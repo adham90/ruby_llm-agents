@@ -2,6 +2,7 @@
 
 require "csv"
 require "ruby_llm"
+require "ruby_llm/schema"
 
 # Core
 require_relative "agents/core/version"

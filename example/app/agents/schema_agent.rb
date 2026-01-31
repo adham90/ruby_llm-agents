@@ -32,6 +32,18 @@ class SchemaAgent < ApplicationAgent
 
   param :text, required: true
 
+  schema do
+    string :summary, description: "Brief summary of the text (1-2 sentences)"
+    string :sentiment, enum: %w[positive negative neutral mixed], description: "Overall sentiment"
+    number :confidence, description: "Confidence score between 0 and 1"
+    array :keywords, of: :string, description: "Key words and phrases from the text"
+    object :metadata do
+      integer :word_count, description: "Number of words in the text"
+      string :language, description: "ISO 639-1 language code (e.g., 'en', 'es')"
+      boolean :contains_questions, description: "Whether the text contains questions"
+    end
+  end
+
   def system_prompt
     <<~PROMPT
       You are a text analysis assistant. Analyze the provided text and return:
@@ -47,56 +59,6 @@ class SchemaAgent < ApplicationAgent
 
   def user_prompt
     "Analyze this text:\n\n#{text}"
-  end
-
-  # Structured output schema as JSON Schema
-  # The LLM will return JSON matching this structure
-  #
-  # Note: You can also use RubyLLM::Schema.create (if available) or
-  # any object that responds to to_json_schema for more readable syntax.
-  def schema
-    {
-      type: "object",
-      properties: {
-        summary: {
-          type: "string",
-          description: "Brief summary of the text (1-2 sentences)"
-        },
-        sentiment: {
-          type: "string",
-          enum: %w[positive negative neutral mixed],
-          description: "Overall sentiment"
-        },
-        confidence: {
-          type: "number",
-          description: "Confidence score between 0 and 1"
-        },
-        keywords: {
-          type: "array",
-          items: { type: "string" },
-          description: "Key words and phrases from the text"
-        },
-        metadata: {
-          type: "object",
-          properties: {
-            word_count: {
-              type: "integer",
-              description: "Number of words in the text"
-            },
-            language: {
-              type: "string",
-              description: "ISO 639-1 language code (e.g., 'en', 'es')"
-            },
-            contains_questions: {
-              type: "boolean",
-              description: "Whether the text contains questions"
-            }
-          },
-          required: %w[word_count language contains_questions]
-        }
-      },
-      required: %w[summary sentiment confidence keywords metadata]
-    }
   end
 
   def execution_metadata

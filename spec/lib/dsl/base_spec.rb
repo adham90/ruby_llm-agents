@@ -102,6 +102,50 @@ RSpec.describe RubyLLM::Agents::DSL::Base do
     end
   end
 
+  describe "#schema" do
+    it "returns nil when not set" do
+      expect(test_class.schema).to be_nil
+    end
+
+    it "sets schema from a block using RubyLLM::Schema DSL" do
+      test_class.schema do
+        string :name, description: "A name"
+      end
+      expect(test_class.schema).to be_present
+      expect(test_class.schema.properties).to include(:name)
+    end
+
+    it "sets schema from a hash" do
+      hash_schema = { type: "object", properties: { name: { type: "string" } } }
+      test_class.schema(hash_schema)
+      expect(test_class.schema).to eq(hash_schema)
+    end
+
+    it "inherits from parent class" do
+      test_class.schema do
+        string :name, description: "A name"
+      end
+
+      child_class = Class.new(test_class)
+      expect(child_class.schema).to eq(test_class.schema)
+    end
+
+    it "allows child class to override parent schema" do
+      test_class.schema do
+        string :name, description: "A name"
+      end
+
+      child_class = Class.new(test_class) do
+        schema do
+          integer :age, description: "An age"
+        end
+      end
+
+      expect(child_class.schema).not_to eq(test_class.schema)
+      expect(child_class.schema.properties).to include(:age)
+    end
+  end
+
   describe "configuration fallback" do
     it "falls back to hardcoded defaults if configuration fails" do
       allow(RubyLLM::Agents).to receive(:configuration).and_raise(StandardError)
