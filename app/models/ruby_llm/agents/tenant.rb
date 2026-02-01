@@ -40,6 +40,8 @@ module RubyLLM
       include Tenant::Budgetable
       include Tenant::Trackable
       include Tenant::Configurable
+      include Tenant::Resettable
+      include Tenant::Incrementable
 
       # Polymorphic association to user's tenant model (optional)
       # Allows linking to Organization, Account, or any ActiveRecord model

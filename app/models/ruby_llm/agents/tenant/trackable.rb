@@ -50,11 +50,12 @@ module RubyLLM
           scope.sum(:total_cost) || 0
         end
 
-        # Returns today's cost
+        # Returns today's cost from counter columns
         #
         # @return [Float]
         def cost_today
-          cost(period: :today)
+          ensure_daily_reset!
+          daily_cost_spent
         end
 
         # Returns yesterday's cost
@@ -78,11 +79,12 @@ module RubyLLM
           cost(period: :last_week)
         end
 
-        # Returns this month's cost
+        # Returns this month's cost from counter columns
         #
         # @return [Float]
         def cost_this_month
-          cost(period: :this_month)
+          ensure_monthly_reset!
+          monthly_cost_spent
         end
 
         # Returns last month's cost
@@ -104,11 +106,12 @@ module RubyLLM
           scope.sum(:total_tokens) || 0
         end
 
-        # Returns today's token usage
+        # Returns today's token usage from counter columns
         #
         # @return [Integer]
         def tokens_today
-          tokens(period: :today)
+          ensure_daily_reset!
+          daily_tokens_used
         end
 
         # Returns yesterday's token usage
@@ -125,11 +128,12 @@ module RubyLLM
           tokens(period: :this_week)
         end
 
-        # Returns this month's token usage
+        # Returns this month's token usage from counter columns
         #
         # @return [Integer]
         def tokens_this_month
-          tokens(period: :this_month)
+          ensure_monthly_reset!
+          monthly_tokens_used
         end
 
         # Returns last month's token usage
@@ -151,11 +155,12 @@ module RubyLLM
           scope.count
         end
 
-        # Returns today's execution count
+        # Returns today's execution count from counter columns
         #
         # @return [Integer]
         def executions_today
-          execution_count(period: :today)
+          ensure_daily_reset!
+          daily_executions_count
         end
 
         # Returns yesterday's execution count
@@ -172,11 +177,12 @@ module RubyLLM
           execution_count(period: :this_week)
         end
 
-        # Returns this month's execution count
+        # Returns this month's execution count from counter columns
         #
         # @return [Integer]
         def executions_this_month
-          execution_count(period: :this_month)
+          ensure_monthly_reset!
+          monthly_executions_count
         end
 
         # Returns last month's execution count
@@ -184,6 +190,34 @@ module RubyLLM
         # @return [Integer]
         def executions_last_month
           execution_count(period: :last_month)
+        end
+
+        # Error count queries
+
+        # Returns today's error count from counter columns
+        #
+        # @return [Integer]
+        def errors_today
+          ensure_daily_reset!
+          daily_error_count
+        end
+
+        # Returns this month's error count from counter columns
+        #
+        # @return [Integer]
+        def errors_this_month
+          ensure_monthly_reset!
+          monthly_error_count
+        end
+
+        # Returns today's success rate from counter columns
+        #
+        # @return [Float] Percentage (0.0-100.0)
+        def success_rate_today
+          ensure_daily_reset!
+          return 100.0 if daily_executions_count.zero?
+
+          ((daily_executions_count - daily_error_count).to_f / daily_executions_count * 100).round(1)
         end
 
         # Usage summaries

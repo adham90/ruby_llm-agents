@@ -422,7 +422,10 @@ RSpec.describe RubyLLM::Agents::LLMTenant do
     end
 
     it "filters by this month" do
-      expect(organization.llm_cost_this_month).to eq(1.5)
+      # Yesterday may be in the previous month (e.g., on the 1st)
+      yesterday_in_current_month = 1.day.ago.to_date >= Date.current.beginning_of_month
+      expected = yesterday_in_current_month ? 1.5 : 0.5
+      expect(organization.llm_cost_this_month).to eq(expected)
     end
 
     it "supports custom date ranges" do
@@ -451,50 +454,72 @@ RSpec.describe RubyLLM::Agents::LLMTenant do
   end
 
   describe "#llm_budget_status" do
-    it "returns budget status from BudgetTracker" do
-      allow(RubyLLM::Agents::BudgetTracker).to receive(:status).and_return({
-        enabled: true,
-        global_daily: { remaining: 50, percentage_used: 50 }
-      })
+    it "returns budget status from tenant model" do
+      tenant = organization.llm_tenant
+      tenant.daily_limit = 100.0
+      tenant.enforcement = "soft"
+      tenant.save!
+      tenant.update_columns(
+        daily_cost_spent: 50.0, daily_reset_date: Date.current,
+        monthly_reset_date: Date.current.beginning_of_month
+      )
+      tenant.reload
 
       status = organization.llm_budget_status
       expect(status[:enabled]).to be true
+      expect(status[:global_daily][:percentage_used]).to eq(50.0)
     end
   end
 
   describe "#llm_within_budget?" do
     it "returns true when budget is disabled" do
-      allow(RubyLLM::Agents::BudgetTracker).to receive(:status).and_return({
-        enabled: false
-      })
+      tenant = organization.llm_tenant
+      tenant.enforcement = "none"
+      tenant.save!
 
       expect(organization.llm_within_budget?).to be true
     end
 
     it "returns true when under budget" do
-      allow(RubyLLM::Agents::BudgetTracker).to receive(:status).and_return({
-        enabled: true,
-        global_daily: { percentage_used: 50 }
-      })
+      tenant = organization.llm_tenant
+      tenant.daily_limit = 100.0
+      tenant.enforcement = "soft"
+      tenant.save!
+      tenant.update_columns(
+        daily_cost_spent: 50.0, daily_reset_date: Date.current,
+        monthly_reset_date: Date.current.beginning_of_month
+      )
+      tenant.reload
 
       expect(organization.llm_within_budget?(type: :daily_cost)).to be true
     end
 
     it "returns false when over budget" do
-      allow(RubyLLM::Agents::BudgetTracker).to receive(:status).and_return({
-        enabled: true,
-        global_daily: { percentage_used: 100 }
-      })
+      tenant = organization.llm_tenant
+      tenant.daily_limit = 100.0
+      tenant.enforcement = "soft"
+      tenant.save!
+      tenant.update_columns(
+        daily_cost_spent: 100.0, daily_reset_date: Date.current,
+        monthly_reset_date: Date.current.beginning_of_month
+      )
+      tenant.reload
 
       expect(organization.llm_within_budget?(type: :daily_cost)).to be false
     end
 
     it "supports different budget types" do
-      allow(RubyLLM::Agents::BudgetTracker).to receive(:status).and_return({
-        enabled: true,
-        global_monthly: { percentage_used: 75 },
-        global_daily_tokens: { percentage_used: 90 }
-      })
+      tenant = organization.llm_tenant
+      tenant.monthly_limit = 1000.0
+      tenant.daily_token_limit = 100000
+      tenant.enforcement = "soft"
+      tenant.save!
+      tenant.update_columns(
+        monthly_cost_spent: 750.0, daily_tokens_used: 90000,
+        daily_reset_date: Date.current,
+        monthly_reset_date: Date.current.beginning_of_month
+      )
+      tenant.reload
 
       expect(organization.llm_within_budget?(type: :monthly_cost)).to be true
       expect(organization.llm_within_budget?(type: :daily_tokens)).to be true
@@ -502,24 +527,37 @@ RSpec.describe RubyLLM::Agents::LLMTenant do
   end
 
   describe "#llm_remaining_budget" do
-    it "returns remaining budget from status" do
-      allow(RubyLLM::Agents::BudgetTracker).to receive(:status).and_return({
-        enabled: true,
-        global_daily: { remaining: 50.0 }
-      })
+    it "returns remaining budget from counters" do
+      tenant = organization.llm_tenant
+      tenant.daily_limit = 100.0
+      tenant.enforcement = "soft"
+      tenant.save!
+      tenant.update_columns(
+        daily_cost_spent: 50.0, daily_reset_date: Date.current,
+        monthly_reset_date: Date.current.beginning_of_month
+      )
+      tenant.reload
 
       expect(organization.llm_remaining_budget(type: :daily_cost)).to eq(50.0)
     end
 
     it "returns remaining for different budget types" do
-      allow(RubyLLM::Agents::BudgetTracker).to receive(:status).and_return({
-        enabled: true,
-        global_monthly: { remaining: 200.0 },
-        global_daily_tokens: { remaining: 10000 },
-        global_monthly_tokens: { remaining: 50000 },
-        global_daily_executions: { remaining: 100 },
-        global_monthly_executions: { remaining: 500 }
-      })
+      tenant = organization.llm_tenant
+      tenant.assign_attributes(
+        monthly_limit: 1000.0,
+        daily_token_limit: 100000, monthly_token_limit: 500000,
+        daily_execution_limit: 200, monthly_execution_limit: 1000,
+        enforcement: "soft"
+      )
+      tenant.save!
+      tenant.update_columns(
+        monthly_cost_spent: 800.0,
+        daily_tokens_used: 90000, monthly_tokens_used: 450000,
+        daily_executions_count: 100, monthly_executions_count: 500,
+        daily_reset_date: Date.current,
+        monthly_reset_date: Date.current.beginning_of_month
+      )
+      tenant.reload
 
       expect(organization.llm_remaining_budget(type: :monthly_cost)).to eq(200.0)
       expect(organization.llm_remaining_budget(type: :daily_tokens)).to eq(10000)
@@ -530,11 +568,9 @@ RSpec.describe RubyLLM::Agents::LLMTenant do
   end
 
   describe "#llm_check_budget!" do
-    it "delegates to BudgetTracker.check_budget!" do
-      expect(RubyLLM::Agents::BudgetTracker).to receive(:check_budget!).with(
-        "TestOrganization",
-        tenant_id: organization.llm_tenant_id
-      )
+    it "delegates to tenant.check_budget!" do
+      tenant = organization.llm_tenant
+      expect(tenant).to receive(:check_budget!).with("TestOrganization")
 
       organization.llm_check_budget!
     end

@@ -129,6 +129,7 @@ RSpec.describe "TenantBudget backward compatibility", type: :model do
         total_tokens: 1000,
         tenant_id: tenant.tenant_id
       )
+      tenant.refresh_counters!
     end
 
     it "has cost method" do

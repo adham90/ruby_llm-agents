@@ -161,6 +161,12 @@ module RubyLLM
         end)
       end
 
+      # Load rake tasks from lib/tasks
+      rake_tasks do
+        tasks_path = File.expand_path("../../../tasks", __dir__)
+        Dir[File.join(tasks_path, "**", "*.rake")].each { |f| load f }
+      end
+
       # Configures default generators for the engine
       # Sets up RSpec and FactoryBot for generated specs
       # @api private

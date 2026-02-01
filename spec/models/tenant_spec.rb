@@ -59,13 +59,16 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
           total_cost: 1.00,
           tenant_id: tenant.tenant_id
         )
+
+        # Refresh counters so counter-based methods work
+        tenant.refresh_counters!
       end
 
       it "returns total cost" do
         expect(tenant.cost).to eq(1.75)
       end
 
-      it "returns cost for today" do
+      it "returns cost for today (from counters)" do
         expect(tenant.cost_today).to eq(0.75)
       end
 
@@ -73,8 +76,12 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
         expect(tenant.cost_yesterday).to eq(1.00)
       end
 
-      it "returns cost for this month" do
-        expect(tenant.cost_this_month).to eq(1.75)
+      it "returns cost for this month (from counters)" do
+        # Only includes executions from the current month
+        # Yesterday's executions may be in the previous month (e.g., on the 1st)
+        yesterday_in_current_month = 1.day.ago.to_date >= Date.current.beginning_of_month
+        expected = yesterday_in_current_month ? 1.75 : 0.75
+        expect(tenant.cost_this_month.to_f).to eq(expected)
       end
 
       it "returns cost for custom date range" do
@@ -104,13 +111,15 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
           total_tokens: 500,
           tenant_id: tenant.tenant_id
         )
+
+        tenant.refresh_counters!
       end
 
       it "returns total tokens" do
         expect(tenant.tokens).to eq(1500)
       end
 
-      it "returns tokens for today" do
+      it "returns tokens for today (from counters)" do
         expect(tenant.tokens_today).to eq(1000)
       end
 
@@ -143,13 +152,15 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
             tenant_id: tenant.tenant_id
           )
         end
+
+        tenant.refresh_counters!
       end
 
       it "returns total execution count" do
         expect(tenant.execution_count).to eq(5)
       end
 
-      it "returns executions for today" do
+      it "returns executions for today (from counters)" do
         expect(tenant.executions_today).to eq(3)
       end
 
@@ -157,8 +168,10 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
         expect(tenant.executions_yesterday).to eq(2)
       end
 
-      it "returns executions for this month" do
-        expect(tenant.executions_this_month).to eq(5)
+      it "returns executions for this month (from counters)" do
+        yesterday_in_current_month = 1.day.ago.to_date >= Date.current.beginning_of_month
+        expected = yesterday_in_current_month ? 5 : 3
+        expect(tenant.executions_this_month).to eq(expected)
       end
     end
 
@@ -302,15 +315,19 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
         usage = tenant.usage_by_day
 
         today = Date.current
-        yesterday = Date.current - 1
 
         expect(usage[today][:cost]).to eq(0.50)
         expect(usage[today][:tokens]).to eq(500)
         expect(usage[today][:count]).to eq(1)
 
-        expect(usage[yesterday][:cost]).to eq(1.00)
-        expect(usage[yesterday][:tokens]).to eq(1000)
-        expect(usage[yesterday][:count]).to eq(1)
+        # Yesterday may be in the previous month (e.g., on the 1st),
+        # so only assert if it falls within :this_month scope
+        yesterday = Date.current - 1
+        if yesterday >= Date.current.beginning_of_month
+          expect(usage[yesterday][:cost]).to eq(1.00)
+          expect(usage[yesterday][:tokens]).to eq(1000)
+          expect(usage[yesterday][:count]).to eq(1)
+        end
       end
     end
 

@@ -163,6 +163,20 @@ ActiveRecord::Schema.define do
     # Status
     t.boolean :active, default: true
 
+    # Usage counter columns (DB-based budget tracking)
+    t.decimal :daily_cost_spent,        precision: 12, scale: 6, default: 0, null: false
+    t.decimal :monthly_cost_spent,      precision: 12, scale: 6, default: 0, null: false
+    t.bigint :daily_tokens_used,        default: 0, null: false
+    t.bigint :monthly_tokens_used,      default: 0, null: false
+    t.bigint :daily_executions_count,   default: 0, null: false
+    t.bigint :monthly_executions_count, default: 0, null: false
+    t.bigint :daily_error_count,        default: 0, null: false
+    t.bigint :monthly_error_count,      default: 0, null: false
+    t.datetime :last_execution_at
+    t.string   :last_execution_status
+    t.date :daily_reset_date
+    t.date :monthly_reset_date
+
     # Extensible metadata
     t.json :metadata, null: false, default: {}
 

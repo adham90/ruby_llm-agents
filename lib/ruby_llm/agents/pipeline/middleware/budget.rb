@@ -57,25 +57,51 @@ module RubyLLM
 
           # Checks budget before execution
           #
+          # For tenants, checks budget via counter columns on the tenant model.
+          # For non-tenant usage, falls back to BudgetTracker (cache-based).
+          #
           # @param context [Context] The execution context
           # @raise [BudgetExceededError] If budget exceeded with hard enforcement
           def check_budget!(context)
+            if context.tenant_id.present?
+              tenant = RubyLLM::Agents::Tenant.find_by(tenant_id: context.tenant_id)
+              if tenant
+                tenant.check_budget!(context.agent_class&.name)
+                return
+              end
+            end
+
+            # Fallback to cache-based checking (non-tenant or no tenant record)
             BudgetTracker.check_budget!(
               context.agent_class&.name,
               tenant_id: context.tenant_id
             )
           rescue RubyLLM::Agents::Reliability::BudgetExceededError
-            # Re-raise budget errors
             raise
           rescue StandardError => e
-            # Log but don't fail on budget check errors
             error("Budget check failed: #{e.message}")
           end
 
           # Records spend after execution
           #
+          # For tenants, uses atomic SQL increment via tenant.record_execution!.
+          # For non-tenant usage, falls back to BudgetTracker (cache-based).
+          #
           # @param context [Context] The execution context
           def record_spend!(context)
+            if context.tenant_id.present?
+              tenant = RubyLLM::Agents::Tenant.find_by(tenant_id: context.tenant_id)
+              if tenant
+                tenant.record_execution!(
+                  cost: context.total_cost || 0,
+                  tokens: context.total_tokens || 0,
+                  error: context.error?
+                )
+                return
+              end
+            end
+
+            # Fallback for non-tenant usage
             return unless context.total_cost&.positive?
 
             BudgetTracker.record_spend!(
@@ -84,7 +110,6 @@ module RubyLLM
               tenant_id: context.tenant_id
             )
 
-            # Also record tokens if available
             if context.total_tokens&.positive?
               BudgetTracker.record_tokens!(
                 context.agent_class&.name,
@@ -93,7 +118,6 @@ module RubyLLM
               )
             end
           rescue StandardError => e
-            # Log but don't fail on spend recording errors
             error("Failed to record spend: #{e.message}")
           end
         end

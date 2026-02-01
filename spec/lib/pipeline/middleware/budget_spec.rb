@@ -55,20 +55,19 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Budget do
         allow(config).to receive(:budgets_enabled?).and_return(true)
       end
 
-      it "checks budget before execution" do
+      it "checks budget before execution via tenant model" do
         context = build_context(tenant: { id: "org_123" })
         context.tenant_id = "org_123"
 
-        expect(RubyLLM::Agents::BudgetTracker).to receive(:check_budget!).with(
-          "TestAgent",
-          tenant_id: "org_123"
-        )
+        tenant = instance_double(RubyLLM::Agents::Tenant)
+        allow(RubyLLM::Agents::Tenant).to receive(:find_by).and_return(tenant)
+        expect(tenant).to receive(:check_budget!).with("TestAgent")
+        allow(tenant).to receive(:record_execution!)
+
         allow(app).to receive(:call) do |ctx|
           ctx.output = "result"
           ctx
         end
-        allow(RubyLLM::Agents::BudgetTracker).to receive(:record_spend!)
-        allow(RubyLLM::Agents::BudgetTracker).to receive(:record_tokens!)
 
         middleware.call(context)
       end
