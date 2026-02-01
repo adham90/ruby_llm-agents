@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class ApprovalDocumentAgent < ApplicationAgent
-  description "Creates approval records"
-  model "gpt-4o-mini"
+  description 'Creates approval records'
+  model 'gpt-4o-mini'
 
   param :document_id, required: true
   param :amount, required: true

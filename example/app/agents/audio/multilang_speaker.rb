@@ -27,17 +27,17 @@
 #
 module Audio
   class MultilangSpeaker < ApplicationSpeaker
-    description "Generates multilingual audio content with natural pronunciation"
-    version "1.0"
+    description 'Generates multilingual audio content with natural pronunciation'
+    version '1.0'
 
     # ElevenLabs for multilingual support
     provider :elevenlabs
 
     # Multilingual v2 model
-    model "eleven_multilingual_v2"
+    model 'eleven_multilingual_v2'
 
     # Rachel voice - versatile multilingual
-    voice "Rachel"
+    voice 'Rachel'
 
     # Standard speed
     speed 1.0
@@ -59,7 +59,7 @@ module Audio
     # Fallback to OpenAI if ElevenLabs fails
     reliability do
       retries max: 2, backoff: :exponential
-      fallback_provider :openai, voice: "nova"
+      fallback_provider :openai, voice: 'nova'
     end
   end
 end

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "concerns/loggable"
-require_relative "concerns/measurable"
+require_relative 'concerns/loggable'
+require_relative 'concerns/measurable'
 
 # GrammarAgent - Checks text for grammar and spelling issues
 #
@@ -19,8 +19,8 @@ class GrammarAgent < ApplicationAgent
   include Concerns::Loggable::Execution
   include Concerns::Measurable::Execution
 
-  description "Checks text for grammar, spelling, and punctuation issues"
-  model "gpt-4o-mini"
+  description 'Checks text for grammar, spelling, and punctuation issues'
+  model 'gpt-4o-mini'
   temperature 0.0
 
   log_level :info

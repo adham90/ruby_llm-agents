@@ -28,8 +28,8 @@ module Images
     # Step 2: Upscale for high resolution output
     step :upscale, upscaler: PhotoUpscaler, scale: 2
 
-    description "High-quality marketing asset generation"
-    version "1.0"
+    description 'High-quality marketing asset generation'
+    version '1.0'
 
     # Cache marketing assets since they're often regenerated
     cache_for 1.day
@@ -41,8 +41,8 @@ module Images
 
     def validate_prompt
       prompt = context[:prompt]
-      raise ArgumentError, "Prompt is required" if prompt.nil? || prompt.empty?
-      raise ArgumentError, "Prompt too short" if prompt.length < 10
+      raise ArgumentError, 'Prompt is required' if prompt.nil? || prompt.empty?
+      raise ArgumentError, 'Prompt too short' if prompt.length < 10
     end
   end
 end

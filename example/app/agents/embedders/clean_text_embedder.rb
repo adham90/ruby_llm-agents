@@ -38,10 +38,10 @@
 #
 module Embedders
   class CleanTextEmbedder < ApplicationEmbedder
-    description "Embedder with text preprocessing"
-    version "1.0"
+    description 'Embedder with text preprocessing'
+    version '1.0'
 
-    model "text-embedding-3-small"
+    model 'text-embedding-3-small'
     dimensions 512
 
     # Enable caching - preprocessing makes cache hits more likely
@@ -55,7 +55,7 @@ module Embedders
     # @param text [String] Raw input text
     # @return [String] Cleaned text ready for embedding
     def preprocess(text)
-      return "" if text.nil?
+      return '' if text.nil?
 
       text.to_s
           .then { |t| strip_html(t) }           # Remove HTML tags
@@ -72,14 +72,14 @@ module Embedders
     # @return [String]
     def strip_html(text)
       # Simple HTML stripping - use Nokogiri for complex HTML
-      text.gsub(/<[^>]*>/, " ")
+      text.gsub(/<[^>]*>/, ' ')
     end
 
     # Collapse multiple whitespace characters to single space
     # @param text [String]
     # @return [String]
     def normalize_whitespace(text)
-      text.gsub(/\s+/, " ")
+      text.gsub(/\s+/, ' ')
     end
 
     # Normalize unicode characters
@@ -89,8 +89,8 @@ module Embedders
       # Convert smart quotes, dashes, etc. to ASCII equivalents
       text.gsub(/[\u2018\u2019]/, "'")     # Smart single quotes
           .gsub(/[\u201C\u201D]/, '"')     # Smart double quotes
-          .gsub(/[\u2013\u2014]/, "-")     # En/em dashes
-          .gsub(/\u2026/, "...")           # Ellipsis
+          .gsub(/[\u2013\u2014]/, '-')     # En/em dashes
+          .gsub(/\u2026/, '...')           # Ellipsis
     end
   end
 end

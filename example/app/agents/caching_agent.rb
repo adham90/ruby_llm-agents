@@ -26,11 +26,11 @@
 #   # => Forces new API call
 #
 class CachingAgent < ApplicationAgent
-  description "Demonstrates response caching for repeated queries"
-  version "1.0"
+  description 'Demonstrates response caching for repeated queries'
+  version '1.0'
 
-  model "gpt-4o-mini"
-  temperature 0.0  # Deterministic output is essential for caching
+  model 'gpt-4o-mini'
+  temperature 0.0 # Deterministic output is essential for caching
   timeout 30
 
   # Enable response caching with 1-hour TTL
@@ -52,7 +52,7 @@ class CachingAgent < ApplicationAgent
 
   def execution_metadata
     {
-      showcase: "caching",
+      showcase: 'caching',
       features: %w[cache_for temperature_zero version]
     }
   end

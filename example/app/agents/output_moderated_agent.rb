@@ -37,17 +37,17 @@
 #   end
 #
 class OutputModeratedAgent < ApplicationAgent
-  description "Demonstrates output-only content moderation"
-  version "1.0"
+  description 'Demonstrates output-only content moderation'
+  version '1.0'
 
-  model "gpt-4o"
+  model 'gpt-4o'
   temperature 0.7
 
   # Moderate only the output (LLM response)
   # Input is passed through without moderation
   moderation :output,
-    threshold: 0.6,
-    categories: [:hate, :violence, :harassment, :sexual]
+             threshold: 0.6,
+             categories: %i[hate violence harassment sexual]
 
   param :topic, required: true
 
@@ -64,7 +64,7 @@ class OutputModeratedAgent < ApplicationAgent
 
   def execution_metadata
     {
-      showcase: "moderation",
+      showcase: 'moderation',
       features: %w[output_moderation content_generation safety_checks]
     }
   end

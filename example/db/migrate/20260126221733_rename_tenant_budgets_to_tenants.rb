@@ -25,10 +25,11 @@ class RenameTenantBudgetsToTenants < ActiveRecord::Migration[8.1]
     # If you get an error about missing indexes, you may need to adjust this
 
     # The polymorphic index needs to be renamed if it exists
-    if index_exists?(:ruby_llm_agents_tenants, [:tenant_record_type, :tenant_record_id], name: "index_tenant_budgets_on_tenant_record")
+    if index_exists?(:ruby_llm_agents_tenants, %i[tenant_record_type tenant_record_id],
+                     name: 'index_tenant_budgets_on_tenant_record')
       rename_index :ruby_llm_agents_tenants,
-                   "index_tenant_budgets_on_tenant_record",
-                   "index_tenants_on_tenant_record"
+                   'index_tenant_budgets_on_tenant_record',
+                   'index_tenants_on_tenant_record'
     end
   end
 end

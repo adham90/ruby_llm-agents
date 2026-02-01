@@ -18,7 +18,7 @@
 #
 module Images
   class PortraitBackgroundRemover < ApplicationBackgroundRemover
-    model "segment-anything"
+    model 'segment-anything'
     output_format :png
     refine_edges true
     alpha_matting true
@@ -27,7 +27,7 @@ module Images
     erode_size 1
     return_mask true
 
-    description "Extracts portraits with fine edge detail for hair/fur"
-    version "1.0"
+    description 'Extracts portraits with fine edge detail for hair/fur'
+    version '1.0'
   end
 end

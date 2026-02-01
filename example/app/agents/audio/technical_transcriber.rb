@@ -25,14 +25,14 @@
 #
 module Audio
   class TechnicalTranscriber < ApplicationTranscriber
-    description "Transcribes technical content with terminology corrections"
-    version "1.0"
+    description 'Transcribes technical content with terminology corrections'
+    version '1.0'
 
     # GPT-4o for better technical accuracy
-    model "gpt-4o-transcribe"
+    model 'gpt-4o-transcribe'
 
     # English (most technical content)
-    language "en"
+    language 'en'
 
     # Plain text output
     output_format :text
@@ -45,43 +45,42 @@ module Audio
 
     # Context hint for technical accuracy
     def prompt
-      "Technical discussion about software development, Ruby programming, APIs, " \
-      "databases, and cloud infrastructure. Speakers mention RubyLLM, PostgreSQL, " \
-      "Redis, Kubernetes, Docker, OpenAI, and other technical terms."
+      'Technical discussion about software development, Ruby programming, APIs, ' \
+      'databases, and cloud infrastructure. Speakers mention RubyLLM, PostgreSQL, ' \
+      'Redis, Kubernetes, Docker, OpenAI, and other technical terms.'
     end
 
     # Postprocess to fix common technical term transcription errors
     def postprocess_text(text)
       result = text
       # Ruby ecosystem
-      result = result.gsub(/\bRuby L L M\b/i, "RubyLLM")
-      result = result.gsub(/\bruby llm\b/i, "RubyLLM")
+      result = result.gsub(/\bRuby L L M\b/i, 'RubyLLM')
+      result = result.gsub(/\bruby llm\b/i, 'RubyLLM')
       # Databases
-      result = result.gsub(/\bpost gres Q L\b/i, "PostgreSQL")
-      result = result.gsub(/\bpostgres q l\b/i, "PostgreSQL")
-      result = result.gsub(/\bmy S Q L\b/i, "MySQL")
-      result = result.gsub(/\bS Q Lite\b/i, "SQLite")
+      result = result.gsub(/\bpost gres Q L\b/i, 'PostgreSQL')
+      result = result.gsub(/\bpostgres q l\b/i, 'PostgreSQL')
+      result = result.gsub(/\bmy S Q L\b/i, 'MySQL')
+      result = result.gsub(/\bS Q Lite\b/i, 'SQLite')
       # Infrastructure
-      result = result.gsub(/\bengine X\b/i, "nginx")
-      result = result.gsub(/\bkuber net ease\b/i, "Kubernetes")
-      result = result.gsub(/\bkube control\b/i, "kubectl")
+      result = result.gsub(/\bengine X\b/i, 'nginx')
+      result = result.gsub(/\bkuber net ease\b/i, 'Kubernetes')
+      result = result.gsub(/\bkube control\b/i, 'kubectl')
       # Protocols
-      result = result.gsub(/\boh auth\b/i, "OAuth")
-      result = result.gsub(/\bJ W T\b/i, "JWT")
-      result = result.gsub(/\bJ son\b/i, "JSON")
-      result = result.gsub(/\bgraph Q L\b/i, "GraphQL")
-      result = result.gsub(/\bG R P C\b/i, "gRPC")
+      result = result.gsub(/\boh auth\b/i, 'OAuth')
+      result = result.gsub(/\bJ W T\b/i, 'JWT')
+      result = result.gsub(/\bJ son\b/i, 'JSON')
+      result = result.gsub(/\bgraph Q L\b/i, 'GraphQL')
+      result = result.gsub(/\bG R P C\b/i, 'gRPC')
       # Companies
-      result = result.gsub(/\bopen A I\b/i, "OpenAI")
-      result = result.gsub(/\bgit hub\b/i, "GitHub")
-      result = result.gsub(/\bgit lab\b/i, "GitLab")
+      result = result.gsub(/\bopen A I\b/i, 'OpenAI')
+      result = result.gsub(/\bgit hub\b/i, 'GitHub')
+      result = result.gsub(/\bgit lab\b/i, 'GitLab')
       # Technical terms
-      result = result.gsub(/\bA P I\b/i, "API")
-      result = result.gsub(/\bS D K\b/i, "SDK")
-      result = result.gsub(/\bC L I\b/i, "CLI")
-      result = result.gsub(/\brep ul\b/i, "REPL")
-      result = result.gsub(/\bsue doe\b/i, "sudo")
-      result
+      result = result.gsub(/\bA P I\b/i, 'API')
+      result = result.gsub(/\bS D K\b/i, 'SDK')
+      result = result.gsub(/\bC L I\b/i, 'CLI')
+      result = result.gsub(/\brep ul\b/i, 'REPL')
+      result.gsub(/\bsue doe\b/i, 'sudo')
     end
   end
 end

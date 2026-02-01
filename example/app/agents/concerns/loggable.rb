@@ -198,10 +198,10 @@ module Concerns
       def resolve_log_model
         return self.class.model if self.class.respond_to?(:model)
 
-        "unknown"
+        'unknown'
       end
 
-      def write_log(phase, data)
+      def write_log(_phase, data)
         formatted = format_log_output(data)
 
         case log_config[:level]
@@ -232,11 +232,11 @@ module Concerns
         parts << "[#{data[:phase]}]"
         parts << "duration=#{data[:duration]}ms" if data[:duration]
         parts << "error=#{data.dig(:error, :class)}" if data[:error]
-        parts.join(" ")
+        parts.join(' ')
       end
 
       def format_detailed(data)
-        lines = ["=" * 60]
+        lines = ['=' * 60]
         lines << "Agent: #{data[:agent]}"
         lines << "Phase: #{data[:phase]}"
         lines << "Timestamp: #{data[:timestamp]}"
@@ -249,7 +249,7 @@ module Concerns
           lines << "Error: #{data[:error][:class]}"
           lines << "Message: #{data[:error][:message]}"
         end
-        lines << "=" * 60
+        lines << '=' * 60
         lines.join("\n")
       end
 
@@ -261,7 +261,7 @@ module Concerns
         @logger ||= if defined?(Rails) && Rails.respond_to?(:logger)
                       Rails.logger
                     else
-                      require "logger"
+                      require 'logger'
                       Logger.new($stdout)
                     end
       end

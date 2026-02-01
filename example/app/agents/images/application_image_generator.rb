@@ -99,10 +99,10 @@ module Images
     # ============================================
     # These settings are inherited by all image generators
 
-    model "gpt-image-1"
-    size "1024x1024"
-    quality "standard"
-    style "natural"
+    model 'gpt-image-1'
+    size '1024x1024'
+    quality 'standard'
+    style 'natural'
 
     # ============================================
     # Shared Content Policy

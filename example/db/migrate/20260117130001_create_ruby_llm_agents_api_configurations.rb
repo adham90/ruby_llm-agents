@@ -82,7 +82,7 @@ class CreateRubyLLMAgentsApiConfigurations < ActiveRecord::Migration[8.1]
     end
 
     # Ensure unique scope_type + scope_id combinations
-    add_index :ruby_llm_agents_api_configurations, [:scope_type, :scope_id], unique: true, name: 'idx_api_configs_scope'
+    add_index :ruby_llm_agents_api_configurations, %i[scope_type scope_id], unique: true, name: 'idx_api_configs_scope'
 
     # Index for faster tenant lookups
     add_index :ruby_llm_agents_api_configurations, :scope_id, name: 'idx_api_configs_scope_id'

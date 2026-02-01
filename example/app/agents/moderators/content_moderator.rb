@@ -63,7 +63,7 @@
 module Moderators
   class ContentModerator < RubyLLM::Agents::Moderator
     # Model to use for moderation
-    model "omni-moderation-latest"
+    model 'omni-moderation-latest'
 
     # Score threshold - content is only flagged if max score >= threshold
     threshold 0.7

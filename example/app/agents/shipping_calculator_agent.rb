@@ -13,13 +13,13 @@
 #   )
 #
 class ShippingCalculatorAgent < ApplicationAgent
-  description "Calculates shipping costs and delivery estimates"
-  model "gpt-4o-mini"
+  description 'Calculates shipping costs and delivery estimates'
+  model 'gpt-4o-mini'
   temperature 0.0
 
   param :address, required: true
   param :items, required: true
-  param :shipping_speed, default: "standard"
+  param :shipping_speed, default: 'standard'
 
   def system_prompt
     <<~PROMPT
@@ -46,12 +46,12 @@ class ShippingCalculatorAgent < ApplicationAgent
 
   def schema
     {
-      type: "object",
+      type: 'object',
       properties: {
-        carrier: { type: "string" },
-        cost: { type: "number" },
-        delivery_days: { type: "integer" },
-        tracking_available: { type: "boolean" }
+        carrier: { type: 'string' },
+        cost: { type: 'number' },
+        delivery_days: { type: 'integer' },
+        tracking_available: { type: 'boolean' }
       },
       required: %w[carrier cost delivery_days tracking_available]
     }
@@ -74,6 +74,6 @@ class ShippingCalculatorAgent < ApplicationAgent
       else
         item.to_s
       end
-    end.join(", ")
+    end.join(', ')
   end
 end

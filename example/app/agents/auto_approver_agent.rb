@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class AutoApproverAgent < ApplicationAgent
-  description "Auto-approves low-value requests"
-  model "gpt-4o-mini"
+  description 'Auto-approves low-value requests'
+  model 'gpt-4o-mini'
 
   param :document_id, required: true
   param :reason, required: false

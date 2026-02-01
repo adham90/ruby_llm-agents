@@ -12,8 +12,8 @@
 #   )
 #
 class SectionAnalyzerAgent < ApplicationAgent
-  description "Analyzes document sections for content and structure"
-  model "gpt-4o-mini"
+  description 'Analyzes document sections for content and structure'
+  model 'gpt-4o-mini'
   temperature 0.3
 
   param :section, required: true
@@ -44,7 +44,7 @@ class SectionAnalyzerAgent < ApplicationAgent
     <<~PROMPT
       Analyze document section:
 
-      Title: #{section_content[:title] || "Untitled"}
+      Title: #{section_content[:title] || 'Untitled'}
       Content: #{section_content[:content] || section_content.to_s}
 
       Document Context: #{document_context.to_json}
@@ -53,18 +53,18 @@ class SectionAnalyzerAgent < ApplicationAgent
 
   def schema
     {
-      type: "object",
+      type: 'object',
       properties: {
-        section_id: { type: "string" },
-        title: { type: "string" },
-        summary: { type: "string" },
-        key_points: { type: "array", items: { type: "string" } },
-        word_count: { type: "integer" },
-        sentiment: { type: "string", enum: %w[positive negative neutral] },
-        topics: { type: "array", items: { type: "string" } },
-        entities: { type: "array", items: { type: "string" } },
-        readability_score: { type: "integer" },
-        recommendations: { type: "array", items: { type: "string" } }
+        section_id: { type: 'string' },
+        title: { type: 'string' },
+        summary: { type: 'string' },
+        key_points: { type: 'array', items: { type: 'string' } },
+        word_count: { type: 'integer' },
+        sentiment: { type: 'string', enum: %w[positive negative neutral] },
+        topics: { type: 'array', items: { type: 'string' } },
+        entities: { type: 'array', items: { type: 'string' } },
+        readability_score: { type: 'integer' },
+        recommendations: { type: 'array', items: { type: 'string' } }
       },
       required: %w[section_id title summary key_points word_count sentiment]
     }

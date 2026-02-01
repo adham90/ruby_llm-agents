@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "concerns/validatable"
-require_relative "concerns/contextual"
+require_relative 'concerns/validatable'
+require_relative 'concerns/contextual'
 
 # AccountAgent - Handles account-related support requests
 #
@@ -19,17 +19,17 @@ class AccountAgent < ApplicationAgent
   include Concerns::Validatable::Execution
   include Concerns::Contextual::Execution
 
-  description "Handles account issues: login, profile, settings, password resets"
-  model "gpt-4o"
+  description 'Handles account issues: login, profile, settings, password resets'
+  model 'gpt-4o'
   temperature 0.3
 
   validates_presence_of :message
   validates_length_of :message, min: 5, max: 5000,
-                                message: "message must be between 5 and 5000 characters"
+                                message: 'message must be between 5 and 5000 characters'
 
   context_from :current_user, :options
   context_includes :user_id, :user_name, :account_type
-  default_context account_type: "standard"
+  default_context account_type: 'standard'
 
   param :message, required: true
   param :current_user, default: nil

@@ -29,32 +29,32 @@
 #
 module Images
   class AvatarGenerator < ApplicationImageGenerator
-    description "Generates unique profile avatars and character illustrations"
-    version "1.0"
+    description 'Generates unique profile avatars and character illustrations'
+    version '1.0'
 
     # DALL-E 3 for quality
-    model "gpt-image-1"
+    model 'gpt-image-1'
 
     # Square format for profile pictures
-    size "1024x1024"
+    size '1024x1024'
 
     # Standard quality is good for avatars
-    quality "standard"
+    quality 'standard'
 
     # Vivid for distinctive avatars
-    style "vivid"
+    style 'vivid'
 
     # Strict content policy for user-facing content
     content_policy :strict
 
     # Prompt template for avatar style
-    template "Profile avatar: {prompt}. Centered composition, clear face or symbol, " \
-             "works well at small sizes, distinctive and memorable, " \
-             "suitable for professional or social media use."
+    template 'Profile avatar: {prompt}. Centered composition, clear face or symbol, ' \
+             'works well at small sizes, distinctive and memorable, ' \
+             'suitable for professional or social media use.'
 
     # Avoid inappropriate content for avatars
-    negative_prompt "offensive, inappropriate, scary, disturbing, " \
-                    "too complex, hard to recognize at small sizes"
+    negative_prompt 'offensive, inappropriate, scary, disturbing, ' \
+                    'too complex, hard to recognize at small sizes'
 
     # Cache avatars briefly
     cache_for 30.minutes

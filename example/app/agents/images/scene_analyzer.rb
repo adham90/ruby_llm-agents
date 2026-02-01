@@ -13,13 +13,13 @@
 #
 module Images
   class SceneAnalyzer < ApplicationImageAnalyzer
-    model "gpt-4o"
+    model 'gpt-4o'
     analysis_type :detailed
     extract_colors true
     max_tags 12
 
-    description "Analyzes scenes for location and environmental context"
-    version "1.0"
+    description 'Analyzes scenes for location and environmental context'
+    version '1.0'
 
     custom_prompt <<~PROMPT
       Analyze this scene image. Provide:

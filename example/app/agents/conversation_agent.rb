@@ -37,10 +37,10 @@
 #   # Agent remembers the previous exchange
 #
 class ConversationAgent < ApplicationAgent
-  description "Demonstrates multi-turn conversation with message history"
-  version "1.0"
+  description 'Demonstrates multi-turn conversation with message history'
+  version '1.0'
 
-  model "gpt-4o-mini"
+  model 'gpt-4o-mini'
   temperature 0.7
   timeout 30
 
@@ -61,8 +61,8 @@ class ConversationAgent < ApplicationAgent
   def messages
     conversation_history.map do |msg|
       {
-        role: msg[:role]&.to_sym || msg["role"]&.to_sym,
-        content: msg[:content] || msg["content"]
+        role: msg[:role]&.to_sym || msg['role']&.to_sym,
+        content: msg[:content] || msg['content']
       }
     end
   end
@@ -73,7 +73,7 @@ class ConversationAgent < ApplicationAgent
 
   def execution_metadata
     {
-      showcase: "conversation",
+      showcase: 'conversation',
       features: %w[messages conversation_history multi_turn],
       message_count: conversation_history.length
     }

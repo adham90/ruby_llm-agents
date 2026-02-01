@@ -28,11 +28,11 @@
 #
 module Audio
   class MultilingualTranscriber < ApplicationTranscriber
-    description "Transcribes audio with automatic language detection"
-    version "1.0"
+    description 'Transcribes audio with automatic language detection'
+    version '1.0'
 
     # Whisper-1 has strong multilingual support
-    model "whisper-1"
+    model 'whisper-1'
 
     # No language specified - auto-detect
     # language nil
@@ -47,6 +47,6 @@ module Audio
     cache_for 14.days
 
     # Fallback for reliability
-    fallback_models "gpt-4o-transcribe"
+    fallback_models 'gpt-4o-transcribe'
   end
 end

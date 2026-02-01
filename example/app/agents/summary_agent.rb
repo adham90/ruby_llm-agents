@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
 class SummaryAgent < ApplicationAgent
-  description "Generates concise 2-3 sentence summaries of text"
-  model "gpt-4o-mini"
+  description 'Generates concise 2-3 sentence summaries of text'
+  model 'gpt-4o-mini'
   temperature 0.3
 
   param :text, required: true
 
   def system_prompt
-    "You are a summarization assistant."
+    'You are a summarization assistant.'
   end
 
   def user_prompt

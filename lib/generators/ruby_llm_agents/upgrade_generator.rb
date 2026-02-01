@@ -2,8 +2,6 @@
 
 require "rails/generators"
 require "rails/generators/active_record"
-require "fileutils"
-
 module RubyLlmAgents
   # Upgrade generator for ruby_llm-agents
   #
@@ -167,18 +165,6 @@ module RubyLlmAgents
       )
     end
 
-    def migrate_agents_directory
-      root_dir = RubyLLM::Agents.configuration.root_directory
-      namespace = RubyLLM::Agents.configuration.root_namespace
-      migrate_directory("agents", "#{root_dir}/agents", namespace)
-    end
-
-    def migrate_tools_directory
-      root_dir = RubyLLM::Agents.configuration.root_directory
-      namespace = RubyLLM::Agents.configuration.root_namespace
-      migrate_directory("tools", "#{root_dir}/tools", namespace)
-    end
-
     def show_post_upgrade_message
       say ""
       say "RubyLLM::Agents upgrade complete!", :green
@@ -187,29 +173,6 @@ module RubyLlmAgents
       say "  1. Run migrations: rails db:migrate"
       say "  2. Update class references in your controllers, views, and tests"
       say "  3. Run your test suite to find any broken references"
-      say ""
-    end
-
-    def show_migration_summary
-      namespace = RubyLLM::Agents.configuration.root_namespace
-      root_dir = RubyLLM::Agents.configuration.root_directory
-
-      return unless @agents_migrated || @tools_migrated
-
-      say ""
-      say "=" * 60
-      say "  File Migration Summary", :green
-      say "=" * 60
-      say ""
-      say "Your agents and tools have been migrated to the new structure:"
-      say ""
-      say "  app/agents/  →  app/#{root_dir}/agents/" if @agents_migrated
-      say "  app/tools/   →  app/#{root_dir}/tools/" if @tools_migrated
-      say ""
-      say "Classes are now namespaced under #{namespace}::"
-      say ""
-      say "  Before: GeneralAgent.call(...)"
-      say "  After:  #{namespace}::GeneralAgent.call(...)"
       say ""
     end
 
@@ -237,104 +200,5 @@ module RubyLlmAgents
       false
     end
 
-    def migrate_directory(old_dir, new_dir, namespace)
-      source = Rails.root.join("app", old_dir)
-      destination = Rails.root.join("app", new_dir)
-
-      # Skip if source doesn't exist
-      unless File.directory?(source)
-        say_status :skip, "app/#{old_dir}/ does not exist", :yellow
-        return
-      end
-
-      # Skip if source and destination are the same
-      if source.to_s == destination.to_s
-        say_status :skip, "app/#{old_dir}/ is already at destination", :yellow
-        return
-      end
-
-      files_to_migrate = Dir.glob("#{source}/**/*.rb")
-      if files_to_migrate.empty?
-        say_status :skip, "app/#{old_dir}/ has no Ruby files to migrate", :yellow
-        return
-      end
-
-      if options[:pretend]
-        say_status :preview, "Would move #{files_to_migrate.size} files from app/#{old_dir}/ → app/#{new_dir}/", :yellow
-        files_to_migrate.each do |file|
-          relative = file.sub("#{source}/", "")
-          say_status :would_move, relative, :cyan
-        end
-        return
-      end
-
-      # Create destination directory
-      FileUtils.mkdir_p(destination)
-
-      # Track conflicts and migrated files
-      conflicts = []
-      migrated = []
-
-      files_to_migrate.each do |file|
-        relative_path = file.sub("#{source}/", "")
-        dest_file = File.join(destination, relative_path)
-
-        # Skip if destination file already exists (conflict)
-        if File.exist?(dest_file)
-          conflicts << relative_path
-          say_status :conflict, "app/#{new_dir}/#{relative_path} already exists, skipping", :red
-          next
-        end
-
-        FileUtils.mkdir_p(File.dirname(dest_file))
-        FileUtils.mv(file, dest_file)
-
-        wrap_in_namespace(dest_file, namespace)
-        say_status :migrated, "app/#{new_dir}/#{relative_path}", :green
-        migrated << relative_path
-      end
-
-      # Cleanup empty source directory
-      cleanup_empty_directory(source, old_dir)
-
-      # Track that migration happened for summary
-      instance_variable_set("@#{old_dir}_migrated", migrated.any?)
-
-      { migrated: migrated, conflicts: conflicts }
-    end
-
-    def wrap_in_namespace(file, namespace)
-      content = File.read(file)
-
-      # Skip if already namespaced
-      return if content.include?("module #{namespace}")
-
-      # Wrap content in namespace with proper indentation
-      indented = content.lines.map { |line| line.empty? || line.strip.empty? ? line : "  #{line}" }.join
-      wrapped = "module #{namespace}\n#{indented}end\n"
-
-      File.write(file, wrapped)
-    end
-
-    def cleanup_empty_directory(dir, dir_name)
-      return unless File.directory?(dir)
-
-      # Remove empty subdirectories first (deepest first)
-      Dir.glob("#{dir}/**/", File::FNM_DOTMATCH).sort_by(&:length).reverse.each do |subdir|
-        next if subdir.end_with?(".", "..")
-
-        FileUtils.rmdir(subdir) if File.directory?(subdir) && Dir.empty?(subdir)
-      rescue Errno::ENOTEMPTY, Errno::ENOENT
-        # Directory not empty or already removed
-      end
-
-      # Remove main directory if empty
-      if File.directory?(dir) && Dir.empty?(dir)
-        FileUtils.rmdir(dir)
-        say_status :removed, "app/#{dir_name}/ (empty)", :yellow
-      end
-    rescue Errno::ENOTEMPTY
-      say_status :kept, "app/#{dir_name}/ (not empty)", :yellow
-    end
   end
 end

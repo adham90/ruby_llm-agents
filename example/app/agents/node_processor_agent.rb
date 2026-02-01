@@ -12,8 +12,8 @@
 #   )
 #
 class NodeProcessorAgent < ApplicationAgent
-  description "Processes tree nodes and identifies children"
-  model "gpt-4o-mini"
+  description 'Processes tree nodes and identifies children'
+  model 'gpt-4o-mini'
   temperature 0.0
 
   param :node, required: true
@@ -44,24 +44,24 @@ class NodeProcessorAgent < ApplicationAgent
 
   def schema
     {
-      type: "object",
+      type: 'object',
       properties: {
-        node_id: { type: "string" },
-        processed_value: { type: "number" },
+        node_id: { type: 'string' },
+        processed_value: { type: 'number' },
         children: {
-          type: "array",
+          type: 'array',
           items: {
-            type: "object",
+            type: 'object',
             properties: {
-              id: { type: "string" },
-              name: { type: "string" },
-              value: { type: "number" }
+              id: { type: 'string' },
+              name: { type: 'string' },
+              value: { type: 'number' }
             }
           }
         },
-        is_leaf: { type: "boolean" },
-        depth: { type: "integer" },
-        metadata: { type: "object" }
+        is_leaf: { type: 'boolean' },
+        depth: { type: 'integer' },
+        metadata: { type: 'object' }
       },
       required: %w[node_id processed_value children is_leaf depth]
     }

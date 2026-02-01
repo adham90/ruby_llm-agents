@@ -32,11 +32,11 @@
 #
 module Audio
   class PodcastTranscriber < ApplicationTranscriber
-    description "Transcribes podcast episodes with detailed timing information"
-    version "1.0"
+    description 'Transcribes podcast episodes with detailed timing information'
+    version '1.0'
 
     # GPT-4o for better conversational accuracy
-    model "gpt-4o-transcribe"
+    model 'gpt-4o-transcribe'
 
     # Verbose JSON for detailed output
     output_format :verbose_json
@@ -58,13 +58,13 @@ module Audio
     # Reliability for long content
     reliability do
       retries max: 3, backoff: :exponential
-      fallback_models "whisper-1"
-      total_timeout 600  # 10 minutes max
+      fallback_models 'whisper-1'
+      total_timeout 600 # 10 minutes max
     end
 
     # Context hint for podcast content
     def prompt
-      "Podcast conversation with hosts and guests discussing various topics."
+      'Podcast conversation with hosts and guests discussing various topics.'
     end
   end
 end

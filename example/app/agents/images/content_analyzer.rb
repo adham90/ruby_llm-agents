@@ -13,13 +13,13 @@
 #
 module Images
   class ContentAnalyzer < ApplicationImageAnalyzer
-    model "gpt-4o"
+    model 'gpt-4o'
     analysis_type :all
     detect_objects true
     max_tags 20
 
-    description "Analyzes images for content moderation"
-    version "1.0"
+    description 'Analyzes images for content moderation'
+    version '1.0'
 
     custom_prompt <<~PROMPT
       Analyze this image for content moderation purposes.

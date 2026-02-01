@@ -13,14 +13,14 @@
 #
 module Images
   class ProductAnalyzer < ApplicationImageAnalyzer
-    model "gpt-4o"
+    model 'gpt-4o'
     analysis_type :all
     extract_colors true
     detect_objects true
     max_tags 15
 
-    description "Analyzes product images for e-commerce catalogs"
-    version "1.0"
+    description 'Analyzes product images for e-commerce catalogs'
+    version '1.0'
 
     custom_prompt <<~PROMPT
       Analyze this product image for an e-commerce catalog.

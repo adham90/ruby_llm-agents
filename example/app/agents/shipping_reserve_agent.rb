@@ -14,8 +14,8 @@
 #   )
 #
 class ShippingReserveAgent < ApplicationAgent
-  description "Reserves shipping capacity and generates tracking"
-  model "gpt-4o-mini"
+  description 'Reserves shipping capacity and generates tracking'
+  model 'gpt-4o-mini'
   temperature 0.0
 
   param :carrier, required: true
@@ -50,13 +50,13 @@ class ShippingReserveAgent < ApplicationAgent
 
   def schema
     {
-      type: "object",
+      type: 'object',
       properties: {
-        reservation_id: { type: "string" },
-        tracking_number: { type: "string" },
-        label_url: { type: "string" },
-        pickup_scheduled: { type: "boolean" },
-        estimated_ship_date: { type: "string" }
+        reservation_id: { type: 'string' },
+        tracking_number: { type: 'string' },
+        label_url: { type: 'string' },
+        pickup_scheduled: { type: 'boolean' },
+        estimated_ship_date: { type: 'string' }
       },
       required: %w[reservation_id tracking_number label_url pickup_scheduled estimated_ship_date]
     }

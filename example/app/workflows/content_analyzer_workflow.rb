@@ -22,14 +22,14 @@
 #   result.total_cost                 # Combined cost
 #
 class ContentAnalyzerWorkflow < RubyLLM::Agents::Workflow
-  description "Analyzes content in parallel for sentiment, keywords, and summary"
-  version "2.0"
+  description 'Analyzes content in parallel for sentiment, keywords, and summary'
+  version '2.0'
   timeout 2.minutes
   max_cost 0.50
 
   input do
     required :text, String, validate: ->(v) { v.length >= 10 }
-    optional :analysis_depth, String, default: "standard", in: %w[basic standard deep]
+    optional :analysis_depth, String, default: 'standard', in: %w[basic standard deep]
     optional :include_entities, :boolean, default: false
     optional :max_keywords, Integer, default: 5
   end
@@ -49,37 +49,37 @@ class ContentAnalyzerWorkflow < RubyLLM::Agents::Workflow
     Rails.logger.info "[#{step_name}] Starting sentiment analysis"
   end
 
-  after_step do |step_name, result, duration_ms|
+  after_step do |step_name, _result, duration_ms|
     Rails.logger.info "[#{step_name}] Completed in #{duration_ms}ms"
   end
 
-  on_step_complete do |step_name, result, duration_ms|
+  on_step_complete do |step_name, _result, duration_ms|
     # Track metrics - could send to StatsD, Datadog, etc.
     Rails.logger.debug "[Metrics] #{step_name}: #{duration_ms}ms"
   end
 
   parallel :analysis, fail_fast: false, timeout: 90.seconds, concurrency: 2 do
     step :sentiment, SentimentAgent,
-      ui_label: "Analyze Sentiment",
-      tags: [:nlp, :analysis],
-      optional: true,
-      default: { sentiment: "neutral", confidence: 0.0 }
+         ui_label: 'Analyze Sentiment',
+         tags: %i[nlp analysis],
+         optional: true,
+         default: { sentiment: 'neutral', confidence: 0.0 }
 
     step :keywords, KeywordAgent,
-      ui_label: "Extract Keywords",
-      tags: [:nlp, :extraction],
-      input: -> { { text: input.text, max_count: input.max_keywords } }
+         ui_label: 'Extract Keywords',
+         tags: %i[nlp extraction],
+         input: -> { { text: input.text, max_count: input.max_keywords } }
 
     step :summary, SummaryAgent,
-      ui_label: "Generate Summary",
-      tags: [:nlp, :summarization],
-      timeout: 30.seconds
+         ui_label: 'Generate Summary',
+         tags: %i[nlp summarization],
+         timeout: 30.seconds
   end
 
   step :entities, EntityAgent,
-    ui_label: "Extract Entities",
-    tags: [:nlp, :ner],
-    if: -> { input.include_entities },
-    optional: true,
-    default: { entities: [] }
+       ui_label: 'Extract Entities',
+       tags: %i[nlp ner],
+       if: -> { input.include_entities },
+       optional: true,
+       default: { entities: [] }
 end

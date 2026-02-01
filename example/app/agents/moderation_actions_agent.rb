@@ -73,17 +73,17 @@
 #   end
 #
 class ModerationActionsAgent < ApplicationAgent
-  description "Demonstrates :raise action with exception handling"
-  version "1.0"
+  description 'Demonstrates :raise action with exception handling'
+  version '1.0'
 
-  model "gpt-4o"
+  model 'gpt-4o'
   temperature 0.7
 
   # Use :raise action - throws exception when content is flagged
   moderation :input,
-    threshold: 0.6,
-    categories: [:hate, :violence, :harassment, :self_harm],
-    on_flagged: :raise
+             threshold: 0.6,
+             categories: %i[hate violence harassment self_harm],
+             on_flagged: :raise
 
   param :message, required: true
 
@@ -100,7 +100,7 @@ class ModerationActionsAgent < ApplicationAgent
 
   def execution_metadata
     {
-      showcase: "moderation",
+      showcase: 'moderation',
       features: %w[raise_action exception_handling error_flow]
     }
   end

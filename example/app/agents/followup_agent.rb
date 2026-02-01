@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "concerns/loggable"
-require_relative "concerns/measurable"
+require_relative 'concerns/loggable'
+require_relative 'concerns/measurable'
 
 # FollowupAgent - Generates follow-up suggestions after support responses
 #
@@ -22,8 +22,8 @@ class FollowupAgent < ApplicationAgent
   include Concerns::Loggable::Execution
   include Concerns::Measurable::Execution
 
-  description "Generates follow-up suggestions and related resources"
-  model "gpt-4o-mini"
+  description 'Generates follow-up suggestions and related resources'
+  model 'gpt-4o-mini'
   temperature 0.5
 
   log_level :info

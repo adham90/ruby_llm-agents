@@ -29,14 +29,14 @@
 #
 module Audio
   class ArticleNarrator < ApplicationSpeaker
-    description "Narrates articles with professional, high-quality voice"
-    version "1.0"
+    description 'Narrates articles with professional, high-quality voice'
+    version '1.0'
 
     # High-definition model for better quality
-    model "tts-1-hd"
+    model 'tts-1-hd'
 
     # Nova voice - warm, engaging, good for articles
-    voice "nova"
+    voice 'nova'
 
     # Standard speech speed
     speed 1.0

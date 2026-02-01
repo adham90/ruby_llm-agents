@@ -87,7 +87,7 @@ module Images
     # ============================================
     # These settings are inherited by all background removers
 
-    model "rembg"
+    model 'rembg'
     output_format :png
 
     # ============================================

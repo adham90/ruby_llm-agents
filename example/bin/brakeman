@@ -1,7 +1,9 @@
 #!/usr/bin/env ruby
-require "rubygems"
-require "bundler/setup"
+# frozen_string_literal: true
 
-ARGV.unshift("--ensure-latest")
+require 'rubygems'
+require 'bundler/setup'
 
-load Gem.bin_path("brakeman", "brakeman")
+ARGV.unshift('--ensure-latest')
+
+load Gem.bin_path('brakeman', 'brakeman')

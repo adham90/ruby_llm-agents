@@ -26,14 +26,14 @@
 #
 module Audio
   class TechnicalNarrator < ApplicationSpeaker
-    description "Narrates technical content with proper terminology pronunciations"
-    version "1.0"
+    description 'Narrates technical content with proper terminology pronunciations'
+    version '1.0'
 
     # High-definition for documentation quality
-    model "tts-1-hd"
+    model 'tts-1-hd'
 
     # Fable voice - clear, educational tone
-    voice "fable"
+    voice 'fable'
 
     # Normal speed for technical content
     speed 1.0
@@ -44,43 +44,43 @@ module Audio
     # Technical pronunciation lexicon
     lexicon do
       # Ruby ecosystem
-      pronounce "RubyLLM", "ruby L L M"
-      pronounce "PostgreSQL", "post-gres-Q-L"
-      pronounce "MySQL", "my-S-Q-L"
-      pronounce "SQLite", "S-Q-Lite"
+      pronounce 'RubyLLM', 'ruby L L M'
+      pronounce 'PostgreSQL', 'post-gres-Q-L'
+      pronounce 'MySQL', 'my-S-Q-L'
+      pronounce 'SQLite', 'S-Q-Lite'
 
       # Infrastructure
-      pronounce "nginx", "engine-X"
-      pronounce "Redis", "RED-iss"
-      pronounce "Kubernetes", "koo-ber-NET-eez"
-      pronounce "kubectl", "koob-control"
+      pronounce 'nginx', 'engine-X'
+      pronounce 'Redis', 'RED-iss'
+      pronounce 'Kubernetes', 'koo-ber-NET-eez'
+      pronounce 'kubectl', 'koob-control'
 
       # Protocols & Standards
-      pronounce "OAuth", "oh-auth"
-      pronounce "OAuth2", "oh-auth-two"
-      pronounce "JWT", "J-W-T"
-      pronounce "JSON", "JAY-son"
-      pronounce "YAML", "YAM-ul"
-      pronounce "TOML", "TOM-ul"
-      pronounce "GraphQL", "graph-Q-L"
-      pronounce "REST", "rest"
-      pronounce "gRPC", "G-R-P-C"
+      pronounce 'OAuth', 'oh-auth'
+      pronounce 'OAuth2', 'oh-auth-two'
+      pronounce 'JWT', 'J-W-T'
+      pronounce 'JSON', 'JAY-son'
+      pronounce 'YAML', 'YAM-ul'
+      pronounce 'TOML', 'TOM-ul'
+      pronounce 'GraphQL', 'graph-Q-L'
+      pronounce 'REST', 'rest'
+      pronounce 'gRPC', 'G-R-P-C'
 
       # Companies & Products
-      pronounce "OpenAI", "open-A-I"
-      pronounce "GitHub", "git-hub"
-      pronounce "GitLab", "git-lab"
-      pronounce "AWS", "A-W-S"
-      pronounce "GCP", "G-C-P"
+      pronounce 'OpenAI', 'open-A-I'
+      pronounce 'GitHub', 'git-hub'
+      pronounce 'GitLab', 'git-lab'
+      pronounce 'AWS', 'A-W-S'
+      pronounce 'GCP', 'G-C-P'
 
       # Technical terms
-      pronounce "API", "A-P-I"
-      pronounce "SDK", "S-D-K"
-      pronounce "CLI", "C-L-I"
-      pronounce "REPL", "rep-ul"
-      pronounce "regex", "REG-ex"
-      pronounce "sudo", "sue-doe"
-      pronounce "chmod", "ch-mod"
+      pronounce 'API', 'A-P-I'
+      pronounce 'SDK', 'S-D-K'
+      pronounce 'CLI', 'C-L-I'
+      pronounce 'REPL', 'rep-ul'
+      pronounce 'regex', 'REG-ex'
+      pronounce 'sudo', 'sue-doe'
+      pronounce 'chmod', 'ch-mod'
     end
 
     # Long cache for documentation

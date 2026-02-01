@@ -29,28 +29,28 @@
 #
 module Images
   class ProductImageGenerator < ApplicationImageGenerator
-    description "Generates high-quality product images for e-commerce"
-    version "1.0"
+    description 'Generates high-quality product images for e-commerce'
+    version '1.0'
 
     # DALL-E 3 for highest quality
-    model "gpt-image-1"
+    model 'gpt-image-1'
 
     # Square format for product listings
-    size "1024x1024"
+    size '1024x1024'
 
     # HD quality for product detail
-    quality "hd"
+    quality 'hd'
 
     # Natural style for realistic products
-    style "natural"
+    style 'natural'
 
     # Strict content policy for commercial use
     content_policy :strict
 
     # Prompt template for consistent product photography style
-    template "Professional product photography: {prompt}. Studio lighting, " \
-             "clean white background, high-end commercial photography style, " \
-             "sharp focus on product details."
+    template 'Professional product photography: {prompt}. Studio lighting, ' \
+             'clean white background, high-end commercial photography style, ' \
+             'sharp focus on product details.'
 
     # Cache product images for 1 hour
     cache_for 1.hour

@@ -29,28 +29,28 @@
 #
 module Images
   class IllustrationGenerator < ApplicationImageGenerator
-    description "Generates artistic illustrations for blog posts and articles"
-    version "1.0"
+    description 'Generates artistic illustrations for blog posts and articles'
+    version '1.0'
 
     # DALL-E 3 for highest quality
-    model "gpt-image-1"
+    model 'gpt-image-1'
 
     # Portrait format for hero images
-    size "1024x1792"
+    size '1024x1792'
 
     # HD quality for detailed illustrations
-    quality "hd"
+    quality 'hd'
 
     # Vivid for artistic illustrations
-    style "vivid"
+    style 'vivid'
 
     # Standard content policy
     content_policy :standard
 
     # Prompt template for illustration style
-    template "Artistic editorial illustration: {prompt}. Rich colors, " \
-             "thoughtful composition, editorial quality, suitable for " \
-             "blog or article header, visually engaging storytelling."
+    template 'Artistic editorial illustration: {prompt}. Rich colors, ' \
+             'thoughtful composition, editorial quality, suitable for ' \
+             'blog or article header, visually engaging storytelling.'
 
     # Cache illustrations for 1 hour
     cache_for 1.hour

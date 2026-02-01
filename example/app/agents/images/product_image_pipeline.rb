@@ -35,8 +35,8 @@ module Images
     # Step 4: Analyze the final image for metadata
     step :analyze, analyzer: Images::ProductAnalyzer
 
-    description "Complete e-commerce product image workflow"
-    version "1.0"
+    description 'Complete e-commerce product image workflow'
+    version '1.0'
 
     # Optional: Enable caching for repeated prompts
     # cache_for 1.hour

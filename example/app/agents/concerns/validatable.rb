@@ -105,7 +105,7 @@ module Concerns
       def validate!
         return true if valid?
 
-        raise ValidationError, validation_errors.join(", ")
+        raise ValidationError, validation_errors.join(', ')
       end
 
       # Check if all validations pass
@@ -158,9 +158,9 @@ module Concerns
       def validate_presence(field, options)
         value = get_field_value(field)
 
-        if value.nil? || (value.respond_to?(:empty?) && value.empty?)
-          add_error(field, options[:message] || "#{field} can't be blank")
-        end
+        return unless value.nil? || (value.respond_to?(:empty?) && value.empty?)
+
+        add_error(field, options[:message] || "#{field} can't be blank")
       end
 
       def validate_format(field, options)
@@ -168,9 +168,9 @@ module Concerns
         return if value.nil? # Skip format validation if value is nil
 
         pattern = options[:pattern]
-        unless value.to_s.match?(pattern)
-          add_error(field, options[:message] || "#{field} has invalid format")
-        end
+        return if value.to_s.match?(pattern)
+
+        add_error(field, options[:message] || "#{field} has invalid format")
       end
 
       def validate_length(field, options)
@@ -185,9 +185,9 @@ module Concerns
           add_error(field, options[:message] || "#{field} is too short (minimum #{min} characters)")
         end
 
-        if max && length > max
-          add_error(field, options[:message] || "#{field} is too long (maximum #{max} characters)")
-        end
+        return unless max && length > max
+
+        add_error(field, options[:message] || "#{field} is too long (maximum #{max} characters)")
       end
 
       def validate_inclusion(field, options)
@@ -195,9 +195,9 @@ module Concerns
         return if value.nil?
 
         values = options[:values]
-        unless values.include?(value)
-          add_error(field, options[:message] || "#{field} must be one of: #{values.join(', ')}")
-        end
+        return if values.include?(value)
+
+        add_error(field, options[:message] || "#{field} must be one of: #{values.join(', ')}")
       end
 
       def validate_exclusion(field, options)
@@ -205,9 +205,9 @@ module Concerns
         return if value.nil?
 
         values = options[:values]
-        if values.include?(value)
-          add_error(field, options[:message] || "#{field} cannot be one of: #{values.join(', ')}")
-        end
+        return unless values.include?(value)
+
+        add_error(field, options[:message] || "#{field} cannot be one of: #{values.join(', ')}")
       end
 
       def validate_numericality(field, options)
@@ -261,7 +261,7 @@ module Concerns
         end
       end
 
-      def add_error(field, message)
+      def add_error(_field, message)
         @validation_errors ||= []
         @validation_errors << message
       end

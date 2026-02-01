@@ -31,7 +31,7 @@ class CreateRubyLLMAgentsTenantBudgets < ActiveRecord::Migration[8.1]
       # - none: no enforcement, only tracking
       # - soft: log warnings when limits exceeded
       # - hard: block execution when limits exceeded
-      t.string :enforcement, default: "soft"
+      t.string :enforcement, default: 'soft'
 
       # Whether to inherit from global config for unset limits
       t.boolean :inherit_global_defaults, default: true

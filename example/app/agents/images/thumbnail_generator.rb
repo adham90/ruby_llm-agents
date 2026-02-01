@@ -29,28 +29,28 @@
 #
 module Images
   class ThumbnailGenerator < ApplicationImageGenerator
-    description "Generates eye-catching thumbnails for videos and articles"
-    version "1.0"
+    description 'Generates eye-catching thumbnails for videos and articles'
+    version '1.0'
 
     # DALL-E 3 for quality
-    model "gpt-image-1"
+    model 'gpt-image-1'
 
     # Landscape format for video platforms (16:9 aspect)
-    size "1792x1024"
+    size '1792x1024'
 
     # Standard quality is sufficient for thumbnails
-    quality "standard"
+    quality 'standard'
 
     # Vivid style for attention-grabbing thumbnails
-    style "vivid"
+    style 'vivid'
 
     # Standard content policy
     content_policy :standard
 
     # Prompt template for engaging thumbnails
-    template "Eye-catching thumbnail: {prompt}. Bold colors, clear focal point, " \
-             "high contrast, visually striking composition, " \
-             "optimized for small preview sizes, attention-grabbing."
+    template 'Eye-catching thumbnail: {prompt}. Bold colors, clear focal point, ' \
+             'high contrast, visually striking composition, ' \
+             'optimized for small preview sizes, attention-grabbing.'
 
     # Cache thumbnails briefly
     cache_for 30.minutes

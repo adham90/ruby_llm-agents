@@ -42,11 +42,11 @@
 #
 module Embedders
   class CodeEmbedder < ApplicationEmbedder
-    description "Domain-specific embedder for source code"
-    version "1.0"
+    description 'Domain-specific embedder for source code'
+    version '1.0'
 
     # Use larger model for better code understanding
-    model "text-embedding-3-large"
+    model 'text-embedding-3-large'
 
     # Higher dimensions for capturing code nuances
     dimensions 1536
@@ -64,7 +64,7 @@ module Embedders
     # @param text [String] Source code
     # @return [String] Normalized code
     def preprocess(text)
-      return "" if text.nil?
+      return '' if text.nil?
 
       text.to_s
           .then { |t| normalize_indentation(t) }
@@ -90,13 +90,13 @@ module Embedders
       # Remove common indentation and normalize tabs to spaces
       lines.map do |line|
         # Convert tabs to 2 spaces
-        normalized = line.gsub("\t", "  ")
+        normalized = line.gsub("\t", '  ')
 
         # Remove common leading indentation
         if normalized.strip.empty?
-          ""
+          ''
         else
-          normalized[min_indent..] || ""
+          normalized[min_indent..] || ''
         end
       end.join
     end

@@ -32,18 +32,18 @@
 #   # Check your logs for moderation events
 #
 class CustomHandlerModerationAgent < ApplicationAgent
-  description "Demonstrates custom moderation handling logic"
-  version "1.0"
+  description 'Demonstrates custom moderation handling logic'
+  version '1.0'
 
-  model "gpt-4o"
+  model 'gpt-4o'
   temperature 0.7
 
   # Use custom handler for moderation decisions
   # The method name specified here will be called when content is flagged
   moderation :input,
-    threshold: 0.5,
-    categories: [:hate, :violence, :harassment],
-    custom_handler: :handle_moderation_result
+             threshold: 0.5,
+             categories: %i[hate violence harassment],
+             custom_handler: :handle_moderation_result
 
   param :message, required: true
 
@@ -60,7 +60,7 @@ class CustomHandlerModerationAgent < ApplicationAgent
 
   def execution_metadata
     {
-      showcase: "moderation",
+      showcase: 'moderation',
       features: %w[custom_handler business_logic conditional_moderation]
     }
   end

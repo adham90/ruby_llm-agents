@@ -78,10 +78,10 @@
 #   end
 #
 class ModeratedAgent < ApplicationAgent
-  description "Demonstrates content moderation support"
-  version "1.0"
+  description 'Demonstrates content moderation support'
+  version '1.0'
 
-  model "gpt-4o"
+  model 'gpt-4o'
   temperature 0.7
 
   # Enable input moderation
@@ -97,8 +97,8 @@ class ModeratedAgent < ApplicationAgent
   #   on_flagged: - Action: :block (default), :raise, :warn, :log
   #   custom_handler: - Method name for custom handling
   moderation :input,
-    threshold: 0.7,
-    categories: [:hate, :violence, :harassment]
+             threshold: 0.7,
+             categories: %i[hate violence harassment]
 
   param :message, required: true
 
@@ -115,7 +115,7 @@ class ModeratedAgent < ApplicationAgent
 
   def execution_metadata
     {
-      showcase: "moderation",
+      showcase: 'moderation',
       features: %w[content_moderation input_filtering safety_checks]
     }
   end

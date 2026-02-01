@@ -5,7 +5,7 @@ class CreateOrganizations < ActiveRecord::Migration[7.1]
     create_table :organizations do |t|
       t.string :slug, null: false, index: { unique: true }
       t.string :name, null: false
-      t.string :plan, default: "free"
+      t.string :plan, default: 'free'
 
       # Encrypted API keys (use Rails 7+ encryption in model)
       t.string :openai_api_key

@@ -54,18 +54,18 @@
 #   end
 #
 class ThinkingAgent < ApplicationAgent
-  description "Demonstrates extended thinking/reasoning support"
-  version "1.0"
+  description 'Demonstrates extended thinking/reasoning support'
+  version '1.0'
 
   # Use a model that supports thinking
   # Claude Opus 4.5 is recommended for best thinking support
-  model "claude-opus-4-5-20250514"
+  model 'claude-opus-4-5-20250514'
   temperature 0.0
 
   # Configure thinking with effort level and token budget
   # effort: :none, :low, :medium, :high
   # budget: max tokens for thinking computation
-  thinking effort: :high, budget: 10000
+  thinking effort: :high, budget: 10_000
 
   param :query, required: true
 
@@ -89,7 +89,7 @@ class ThinkingAgent < ApplicationAgent
 
   def execution_metadata
     {
-      showcase: "thinking",
+      showcase: 'thinking',
       features: %w[extended_thinking reasoning effort_levels token_budget]
     }
   end

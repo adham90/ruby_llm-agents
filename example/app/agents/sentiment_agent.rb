@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "concerns/loggable"
-require_relative "concerns/measurable"
+require_relative 'concerns/loggable'
+require_relative 'concerns/measurable'
 
 # SentimentAgent - Analyzes text sentiment with logging and metrics
 #
@@ -23,8 +23,8 @@ class SentimentAgent < ApplicationAgent
   include Concerns::Loggable::Execution
   include Concerns::Measurable::Execution
 
-  description "Analyzes text sentiment as positive, negative, or neutral"
-  model "gpt-4o-mini"
+  description 'Analyzes text sentiment as positive, negative, or neutral'
+  model 'gpt-4o-mini'
   temperature 0.0
 
   # Logging configuration
@@ -35,7 +35,7 @@ class SentimentAgent < ApplicationAgent
   param :text, required: true
 
   def system_prompt
-    "You are a sentiment analysis assistant."
+    'You are a sentiment analysis assistant.'
   end
 
   def user_prompt

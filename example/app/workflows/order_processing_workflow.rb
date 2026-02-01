@@ -25,8 +25,8 @@
 #   result.steps[:shipping].steps[:calculate].content
 #
 class OrderProcessingWorkflow < RubyLLM::Agents::Workflow
-  description "Processes orders with sub-workflow composition"
-  version "1.0"
+  description 'Processes orders with sub-workflow composition'
+  version '1.0'
   timeout 2.minutes
   max_cost 0.50
 
@@ -35,13 +35,13 @@ class OrderProcessingWorkflow < RubyLLM::Agents::Workflow
     required :customer, Hash
     required :shipping_address, Hash
     required :items, Array
-    optional :priority, String, default: "normal"
+    optional :priority, String, default: 'normal'
   end
 
   # Validate the order
   step :validate, ValidatorAgent,
-       desc: "Validate order data",
-       input: -> {
+       desc: 'Validate order data',
+       input: lambda {
          {
            data: {
              order_id: input.order_id,
@@ -66,14 +66,14 @@ class OrderProcessingWorkflow < RubyLLM::Agents::Workflow
   # Execute shipping workflow as a sub-workflow
   # This demonstrates calling another Workflow class as a step
   step :shipping, ShippingWorkflow,
-       desc: "Handle shipping calculation and reservation",
-       input: -> {
+       desc: 'Handle shipping calculation and reservation',
+       input: lambda {
          {
            address: input.shipping_address,
            items: input.items.map do |item|
              { sku: item[:sku], weight: item[:weight] || 1.0 }
            end,
-           shipping_speed: input.priority == "express" ? "express" : "standard"
+           shipping_speed: input.priority == 'express' ? 'express' : 'standard'
          }
        }
 
@@ -81,7 +81,7 @@ class OrderProcessingWorkflow < RubyLLM::Agents::Workflow
   step :confirmation do
     {
       order_id: input.order_id,
-      status: "confirmed",
+      status: 'confirmed',
       customer: input.customer,
       totals: {
         subtotal: calculate_totals[:subtotal],

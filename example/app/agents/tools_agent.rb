@@ -31,11 +31,11 @@
 #   result.has_tool_calls?    # => true
 #
 class ToolsAgent < ApplicationAgent
-  description "Demonstrates tool usage with calculator and weather tools"
-  version "1.0"
+  description 'Demonstrates tool usage with calculator and weather tools'
+  version '1.0'
 
-  model "gpt-4o"  # GPT-4o has good tool calling capabilities
-  temperature 0.0  # Deterministic for consistent tool calls
+  model 'gpt-4o' # GPT-4o has good tool calling capabilities
+  temperature 0.0 # Deterministic for consistent tool calls
   timeout 45
 
   # Register tools available to this agent
@@ -63,7 +63,7 @@ class ToolsAgent < ApplicationAgent
 
   def execution_metadata
     {
-      showcase: "tools",
+      showcase: 'tools',
       features: %w[tools tool_calls tool_loop]
     }
   end

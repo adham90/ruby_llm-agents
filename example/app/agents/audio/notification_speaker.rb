@@ -25,14 +25,14 @@
 #
 module Audio
   class NotificationSpeaker < ApplicationSpeaker
-    description "Generates quick audio notifications and alerts"
-    version "1.0"
+    description 'Generates quick audio notifications and alerts'
+    version '1.0'
 
     # Standard model for speed
-    model "tts-1"
+    model 'tts-1'
 
     # Alloy voice - neutral, clear, professional
-    voice "alloy"
+    voice 'alloy'
 
     # Slightly faster for notifications
     speed 1.1

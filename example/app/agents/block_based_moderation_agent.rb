@@ -32,10 +32,10 @@
 #   puts config[:output][:threshold]  # => 0.8
 #
 class BlockBasedModerationAgent < ApplicationAgent
-  description "Demonstrates block DSL with phase-specific thresholds"
-  version "1.0"
+  description 'Demonstrates block DSL with phase-specific thresholds'
+  version '1.0'
 
-  model "gpt-4o"
+  model 'gpt-4o'
   temperature 0.7
 
   # Block-based moderation configuration
@@ -48,7 +48,7 @@ class BlockBasedModerationAgent < ApplicationAgent
     output enabled: true, threshold: 0.8
 
     # Shared settings
-    model "omni-moderation-latest"
+    model 'omni-moderation-latest'
     categories :hate, :violence, :harassment
 
     # Block flagged content (default behavior)
@@ -70,7 +70,7 @@ class BlockBasedModerationAgent < ApplicationAgent
 
   def execution_metadata
     {
-      showcase: "moderation",
+      showcase: 'moderation',
       features: %w[block_dsl phase_specific_thresholds granular_control]
     }
   end

@@ -94,7 +94,7 @@ module Images
     # ============================================
     # These settings are inherited by all image analyzers
 
-    model "gpt-4o"
+    model 'gpt-4o'
     analysis_type :detailed
 
     # ============================================

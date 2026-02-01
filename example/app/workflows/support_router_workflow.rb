@@ -20,14 +20,14 @@
 #   result.content                  # Final workflow output
 #
 class SupportRouterWorkflow < RubyLLM::Agents::Workflow
-  description "Routes support requests to specialized agents"
-  version "2.0"
+  description 'Routes support requests to specialized agents'
+  version '2.0'
   timeout 3.minutes
   max_cost 2.00
 
   input do
     required :message, String
-    optional :customer_tier, String, default: "standard"
+    optional :customer_tier, String, default: 'standard'
     optional :previous_context, String
   end
 
@@ -36,30 +36,30 @@ class SupportRouterWorkflow < RubyLLM::Agents::Workflow
   end
 
   step :analyze, AnalyzerAgent,
-    description: "Analyze request intent and categorize",
-    timeout: 30.seconds
+       description: 'Analyze request intent and categorize',
+       timeout: 30.seconds
 
   step :handle, on: -> { analyze.category } do |route|
     route.billing BillingAgent,
-      input: -> { { issue: input.message, tier: input.customer_tier } },
-      timeout: 2.minutes
+                  input: -> { { issue: input.message, tier: input.customer_tier } },
+                  timeout: 2.minutes
 
     # Multiple fallback chain for resilience
     route.technical TechnicalAgent,
-      input: -> { { problem: input.message, context: input.previous_context } },
-      fallback: [SpecialistAgent, GeneralAgent]
+                    input: -> { { problem: input.message, context: input.previous_context } },
+                    fallback: [SpecialistAgent, GeneralAgent]
 
     route.account AccountAgent,
-      if: -> { input.customer_tier != "free" }
+                  if: -> { input.customer_tier != 'free' }
 
     # Default route for unmatched categories
     route.default GeneralAgent,
-      input: -> { { query: input.message } }
+                  input: -> { { query: input.message } }
   end
 
   # Using description: option instead of positional argument
   step :followup, FollowupAgent,
-    description: "Generate follow-up suggestions based on response",
-    optional: true,
-    input: -> { { response: handle.to_h, original: input.message } }
+       description: 'Generate follow-up suggestions based on response',
+       optional: true,
+       input: -> { { response: handle.to_h, original: input.message } }
 end

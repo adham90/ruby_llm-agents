@@ -28,23 +28,21 @@
 #   result.steps[:process_items].failed_count     # Count of failed items
 #
 class BatchProcessorWorkflow < RubyLLM::Agents::Workflow
-  description "Processes batches of items with iteration support"
-  version "1.0"
+  description 'Processes batches of items with iteration support'
+  version '1.0'
   timeout 5.minutes
   max_cost 1.00
 
   input do
     required :items, Array
-    optional :operation, String, default: "process"
+    optional :operation, String, default: 'process'
     optional :batch_size, Integer, default: 10
     optional :parallel, :boolean, default: true
   end
 
   # Validate the batch input
   step :validate_batch do
-    if input.items.empty?
-      skip!(reason: "No items to process", default: { valid: true, count: 0 })
-    end
+    skip!(reason: 'No items to process', default: { valid: true, count: 0 }) if input.items.empty?
 
     {
       valid: true,
@@ -56,11 +54,11 @@ class BatchProcessorWorkflow < RubyLLM::Agents::Workflow
   # Sequential iteration example with agent
   # Each item is processed one at a time
   step :process_items_sequential, ItemProcessorAgent,
-       desc: "Process items sequentially",
+       desc: 'Process items sequentially',
        each: -> { input.items },
        continue_on_error: true,
        if: -> { !input.parallel },
-       input: -> {
+       input: lambda {
          {
            item: item,
            index: index,
@@ -71,13 +69,13 @@ class BatchProcessorWorkflow < RubyLLM::Agents::Workflow
   # Parallel iteration example with agent
   # Items are processed concurrently with configurable concurrency
   step :process_items, ItemProcessorAgent,
-       desc: "Process items in parallel",
+       desc: 'Process items in parallel',
        each: -> { input.items },
        concurrency: 5,
        fail_fast: false,
        continue_on_error: true,
        if: -> { input.parallel },
-       input: -> {
+       input: lambda {
          {
            item: item,
            index: index,
@@ -88,13 +86,13 @@ class BatchProcessorWorkflow < RubyLLM::Agents::Workflow
   # Block-based iteration example
   # Demonstrates custom processing logic per item
   step :enrich_items,
-       desc: "Enrich processed items with metadata",
+       desc: 'Enrich processed items with metadata',
        each: -> { select_processed_items } do |item|
     # Access the current item being processed
     processed = item.is_a?(Hash) ? item : item.content
 
     {
-      original_id: processed[:item_id] || processed["item_id"],
+      original_id: processed[:item_id] || processed['item_id'],
       enriched: true,
       processed_at: Time.current.iso8601,
       batch_id: workflow_id
@@ -113,7 +111,7 @@ class BatchProcessorWorkflow < RubyLLM::Agents::Workflow
         total_items: input.items.size,
         successful: successful,
         failed: failed,
-        success_rate: input.items.size > 0 ? (successful.to_f / input.items.size * 100).round(2) : 0
+        success_rate: input.items.size.positive? ? (successful.to_f / input.items.size * 100).round(2) : 0
       },
       enriched_count: enrich_items&.content&.size || 0,
       operation: input.operation,
@@ -127,7 +125,7 @@ class BatchProcessorWorkflow < RubyLLM::Agents::Workflow
   # Helper method to select successfully processed items
   def select_processed_items
     result = input.parallel ? step_result(:process_items) : step_result(:process_items_sequential)
-    return [] unless result&.respond_to?(:item_results)
+    return [] unless result.respond_to?(:item_results)
 
     result.item_results.select do |r|
       !r.respond_to?(:error?) || !r.error?

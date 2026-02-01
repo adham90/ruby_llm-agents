@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "concerns/loggable"
-require_relative "concerns/measurable"
+require_relative 'concerns/loggable'
+require_relative 'concerns/measurable'
 
 # EntityAgent - Extracts named entities from text
 #
@@ -19,8 +19,8 @@ class EntityAgent < ApplicationAgent
   include Concerns::Loggable::Execution
   include Concerns::Measurable::Execution
 
-  description "Extracts named entities (people, places, organizations, dates) from text"
-  model "gpt-4o-mini"
+  description 'Extracts named entities (people, places, organizations, dates) from text'
+  model 'gpt-4o-mini'
   temperature 0.0
 
   log_level :info

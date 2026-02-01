@@ -51,10 +51,10 @@
 module Moderators
   class ChildSafeModerator < RubyLLM::Agents::Moderator
     description "Very strict moderation for children's content"
-    version "1.0"
+    version '1.0'
 
     # Use latest moderation model
-    model "omni-moderation-latest"
+    model 'omni-moderation-latest'
 
     # Very low threshold - flag anything remotely concerning
     # 0.3 means content is flagged if any category scores above 30%

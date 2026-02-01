@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "concerns/loggable"
-require_relative "concerns/measurable"
+require_relative 'concerns/loggable'
+require_relative 'concerns/measurable'
 
 # AnalyzerAgent - Analyzes support request intent and category
 #
@@ -19,8 +19,8 @@ class AnalyzerAgent < ApplicationAgent
   include Concerns::Loggable::Execution
   include Concerns::Measurable::Execution
 
-  description "Analyzes support request intent and determines routing category"
-  model "gpt-4o-mini"
+  description 'Analyzes support request intent and determines routing category'
+  model 'gpt-4o-mini'
   temperature 0.0
 
   log_level :info

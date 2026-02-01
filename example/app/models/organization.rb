@@ -42,7 +42,7 @@ class Organization < ApplicationRecord
   PLANS = %w[free starter business enterprise].freeze
 
   validates :slug, presence: true, uniqueness: true,
-                   format: { with: /\A[a-z0-9\-]+\z/, message: "only allows lowercase letters, numbers, and hyphens" }
+                   format: { with: /\A[a-z0-9-]+\z/, message: 'only allows lowercase letters, numbers, and hyphens' }
   validates :name, presence: true
   validates :plan, inclusion: { in: PLANS }
 
@@ -78,15 +78,15 @@ class Organization < ApplicationRecord
   # Scopes
   scope :active, -> { where(active: true) }
   scope :by_plan, ->(plan) { where(plan: plan) }
-  scope :enterprise, -> { where(plan: "enterprise") }
+  scope :enterprise, -> { where(plan: 'enterprise') }
 
   # Helper to check if enterprise tier
   def enterprise?
-    plan == "enterprise"
+    plan == 'enterprise'
   end
 
   # Helper to check if free tier
   def free?
-    plan == "free"
+    plan == 'free'
   end
 end

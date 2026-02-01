@@ -14,20 +14,20 @@
 #   )
 #
 class ShippingWorkflow < RubyLLM::Agents::Workflow
-  description "Calculates and reserves shipping for an order"
-  version "1.0"
+  description 'Calculates and reserves shipping for an order'
+  version '1.0'
   timeout 30.seconds
 
   input do
     required :address, Hash
     required :items, Array
-    optional :shipping_speed, String, default: "standard"
+    optional :shipping_speed, String, default: 'standard'
   end
 
   # Calculate shipping costs and options
   step :calculate, ShippingCalculatorAgent,
-       desc: "Calculate shipping cost and delivery time",
-       input: -> {
+       desc: 'Calculate shipping cost and delivery time',
+       input: lambda {
          {
            address: input.address,
            items: input.items,
@@ -37,8 +37,8 @@ class ShippingWorkflow < RubyLLM::Agents::Workflow
 
   # Reserve shipping with the carrier
   step :reserve, ShippingReserveAgent,
-       desc: "Reserve shipping capacity and get tracking",
-       input: -> {
+       desc: 'Reserve shipping capacity and get tracking',
+       input: lambda {
          {
            carrier: calculate.carrier,
            shipping_cost: calculate.cost,

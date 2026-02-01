@@ -26,8 +26,8 @@ module Images
     # Step 1: Analyze the image for content safety and metadata
     step :analyze, analyzer: Images::ContentAnalyzer
 
-    description "Content moderation and analysis pipeline"
-    version "1.0"
+    description 'Content moderation and analysis pipeline'
+    version '1.0'
 
     # Continue processing even if analysis fails
     # stop_on_error false
@@ -46,7 +46,7 @@ module Images
           "tags=#{result.analysis.tags.join(', ')}"
         )
       else
-        Rails.logger.warn("[ContentModeration] Analysis failed for image")
+        Rails.logger.warn('[ContentModeration] Analysis failed for image')
       end
     end
   end

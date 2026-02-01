@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class SpecialistAgent < ApplicationAgent
-  description "Specialist support agent for escalated technical issues"
-  model "gpt-4o"
+  description 'Specialist support agent for escalated technical issues'
+  model 'gpt-4o'
   temperature 0.3
 
   param :problem, required: true

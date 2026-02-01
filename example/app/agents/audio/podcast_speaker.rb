@@ -27,14 +27,14 @@
 #
 module Audio
   class PodcastSpeaker < ApplicationSpeaker
-    description "Generates podcast-style audio for long-form content"
-    version "1.0"
+    description 'Generates podcast-style audio for long-form content'
+    version '1.0'
 
     # Standard model for faster processing of long content
-    model "tts-1"
+    model 'tts-1'
 
     # Onyx voice - deep, authoritative, podcast-friendly
-    voice "onyx"
+    voice 'onyx'
 
     # Slightly slower for podcast pacing
     speed 0.95
@@ -51,7 +51,7 @@ module Audio
     # Reliability settings for long content
     reliability do
       retries max: 3, backoff: :exponential
-      total_timeout 300  # 5 minutes for long content
+      total_timeout 300 # 5 minutes for long content
     end
   end
 end

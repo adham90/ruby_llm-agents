@@ -23,24 +23,24 @@
 #   result[:metadata][:language] # => "en"
 #
 class SchemaAgent < ApplicationAgent
-  description "Demonstrates structured output with schema validation"
-  version "1.0"
+  description 'Demonstrates structured output with schema validation'
+  version '1.0'
 
-  model "gpt-4o-mini"
-  temperature 0.0  # Deterministic for consistent structured output
+  model 'gpt-4o-mini'
+  temperature 0.0 # Deterministic for consistent structured output
   timeout 30
 
   param :text, required: true
 
   schema do
-    string :summary, description: "Brief summary of the text (1-2 sentences)"
-    string :sentiment, enum: %w[positive negative neutral mixed], description: "Overall sentiment"
-    number :confidence, description: "Confidence score between 0 and 1"
-    array :keywords, of: :string, description: "Key words and phrases from the text"
+    string :summary, description: 'Brief summary of the text (1-2 sentences)'
+    string :sentiment, enum: %w[positive negative neutral mixed], description: 'Overall sentiment'
+    number :confidence, description: 'Confidence score between 0 and 1'
+    array :keywords, of: :string, description: 'Key words and phrases from the text'
     object :metadata do
-      integer :word_count, description: "Number of words in the text"
+      integer :word_count, description: 'Number of words in the text'
       string :language, description: "ISO 639-1 language code (e.g., 'en', 'es')"
-      boolean :contains_questions, description: "Whether the text contains questions"
+      boolean :contains_questions, description: 'Whether the text contains questions'
     end
   end
 
@@ -63,7 +63,7 @@ class SchemaAgent < ApplicationAgent
 
   def execution_metadata
     {
-      showcase: "schema",
+      showcase: 'schema',
       features: %w[schema structured_output json_response]
     }
   end

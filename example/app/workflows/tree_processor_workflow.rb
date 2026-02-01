@@ -23,8 +23,8 @@
 #   result.content[:node_count]   # Total nodes processed
 #
 class TreeProcessorWorkflow < RubyLLM::Agents::Workflow
-  description "Recursively processes tree structures"
-  version "1.0"
+  description 'Recursively processes tree structures'
+  version '1.0'
   timeout 2.minutes
   max_cost 0.50
 
@@ -38,8 +38,8 @@ class TreeProcessorWorkflow < RubyLLM::Agents::Workflow
 
   # Process the current node
   step :process_node, NodeProcessorAgent,
-       desc: "Process the current tree node",
-       input: -> {
+       desc: 'Process the current tree node',
+       input: lambda {
          {
            node: input.node,
            depth: input.depth
@@ -49,11 +49,11 @@ class TreeProcessorWorkflow < RubyLLM::Agents::Workflow
   # Recursively process children using this same workflow
   # This creates self-referential workflow execution
   step :process_children, TreeProcessorWorkflow,
-       desc: "Recursively process child nodes",
+       desc: 'Recursively process child nodes',
        each: -> { process_node.children || [] },
        if: -> { (process_node.children || []).any? },
        continue_on_error: true,
-       input: -> {
+       input: lambda {
          {
            node: item,
            depth: input.depth + 1
@@ -68,7 +68,7 @@ class TreeProcessorWorkflow < RubyLLM::Agents::Workflow
     # Sum values from children (each child result contains aggregated subtree values)
     children_total = children_results.sum do |child_result|
       if child_result.is_a?(Hash)
-        child_result[:total_value] || child_result["total_value"] || 0
+        child_result[:total_value] || child_result['total_value'] || 0
       else
         0
       end
@@ -76,7 +76,7 @@ class TreeProcessorWorkflow < RubyLLM::Agents::Workflow
 
     children_count = children_results.sum do |child_result|
       if child_result.is_a?(Hash)
-        child_result[:node_count] || child_result["node_count"] || 1
+        child_result[:node_count] || child_result['node_count'] || 1
       else
         1
       end

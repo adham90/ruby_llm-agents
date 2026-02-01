@@ -27,21 +27,21 @@
 #   result.content[:section_analyses]
 #
 class DocumentPipelineWorkflow < RubyLLM::Agents::Workflow
-  description "Processes documents with sections using combined patterns"
-  version "1.0"
+  description 'Processes documents with sections using combined patterns'
+  version '1.0'
   timeout 5.minutes
   max_cost 1.00
 
   input do
     required :document, Hash
     optional :parallel_analysis, :boolean, default: true
-    optional :analysis_depth, String, default: "standard"
+    optional :analysis_depth, String, default: 'standard'
   end
 
   # Validate document structure
   step :validate, ValidatorAgent,
-       desc: "Validate document structure",
-       input: -> {
+       desc: 'Validate document structure',
+       input: lambda {
          {
            data: {
              title: input.document[:title],
@@ -57,9 +57,9 @@ class DocumentPipelineWorkflow < RubyLLM::Agents::Workflow
 
     {
       title: input.document[:title],
-      type: input.document[:type] || "unknown",
+      type: input.document[:type] || 'unknown',
       section_count: sections.size,
-      total_word_count: sections.sum { |s| (s[:content] || "").split.size },
+      total_word_count: sections.sum { |s| (s[:content] || '').split.size },
       section_titles: sections.map { |s| s[:title] }
     }
   end
@@ -67,12 +67,12 @@ class DocumentPipelineWorkflow < RubyLLM::Agents::Workflow
   # Analyze each section in parallel using an agent
   # Demonstrates iteration with parallel execution
   step :analyze_sections, SectionAnalyzerAgent,
-       desc: "Analyze document sections in parallel",
+       desc: 'Analyze document sections in parallel',
        each: -> { input.document[:sections] || [] },
        concurrency: 3,
        continue_on_error: true,
        if: -> { input.parallel_analysis },
-       input: -> {
+       input: lambda {
          {
            section: item,
            document_context: {
@@ -85,11 +85,11 @@ class DocumentPipelineWorkflow < RubyLLM::Agents::Workflow
 
   # Sequential analysis fallback
   step :analyze_sections_sequential, SectionAnalyzerAgent,
-       desc: "Analyze document sections sequentially",
+       desc: 'Analyze document sections sequentially',
        each: -> { input.document[:sections] || [] },
        continue_on_error: true,
        unless: -> { input.parallel_analysis },
-       input: -> {
+       input: lambda {
          {
            section: item,
            document_context: {
@@ -109,32 +109,37 @@ class DocumentPipelineWorkflow < RubyLLM::Agents::Workflow
                end
 
     # Compute aggregate metrics
-    sentiments = analyses.map { |a| a[:sentiment] || a["sentiment"] }.compact
+    sentiments = analyses.map { |a| a[:sentiment] || a['sentiment'] }.compact
     sentiment_counts = sentiments.tally
 
-    topics = analyses.flat_map { |a| a[:topics] || a["topics"] || [] }.tally
+    topics = analyses.flat_map { |a| a[:topics] || a['topics'] || [] }.tally
     top_topics = topics.sort_by { |_, count| -count }.first(5).to_h
 
-    total_word_count = analyses.sum { |a| a[:word_count] || a["word_count"] || 0 }
-    avg_readability = analyses.any? ?
-      (analyses.sum { |a| a[:readability_score] || a["readability_score"] || 0 } / analyses.size.to_f).round(1) : 0
+    total_word_count = analyses.sum { |a| a[:word_count] || a['word_count'] || 0 }
+    avg_readability = if analyses.any?
+                        (analyses.sum do |a|
+                          a[:readability_score] || a['readability_score'] || 0
+                        end / analyses.size.to_f).round(1)
+                      else
+                        0
+                      end
 
     {
       section_count: analyses.size,
       sentiment_distribution: sentiment_counts,
-      dominant_sentiment: sentiment_counts.max_by { |_, v| v }&.first || "unknown",
+      dominant_sentiment: sentiment_counts.max_by { |_, v| v }&.first || 'unknown',
       top_topics: top_topics,
       total_word_count: total_word_count,
       average_readability: avg_readability,
-      all_entities: analyses.flat_map { |a| a[:entities] || a["entities"] || [] }.uniq,
-      recommendations: analyses.flat_map { |a| a[:recommendations] || a["recommendations"] || [] }.uniq
+      all_entities: analyses.flat_map { |a| a[:entities] || a['entities'] || [] }.uniq,
+      recommendations: analyses.flat_map { |a| a[:recommendations] || a['recommendations'] || [] }.uniq
     }
   end
 
   # Generate final document summary
   step :generate_summary, SummaryAgent,
-       desc: "Generate document summary",
-       input: -> {
+       desc: 'Generate document summary',
+       input: lambda {
          {
            text: build_summary_input
          }
@@ -146,13 +151,13 @@ class DocumentPipelineWorkflow < RubyLLM::Agents::Workflow
       document_summary: {
         title: extract_metadata[:title],
         type: extract_metadata[:type],
-        summary: generate_summary&.content || "Summary unavailable"
+        summary: generate_summary&.content || 'Summary unavailable'
       },
       section_analyses: aggregate_analyses.to_h,
       metadata: {
         section_count: extract_metadata[:section_count],
         word_count: extract_metadata[:total_word_count],
-        analysis_mode: input.parallel_analysis ? "parallel" : "sequential",
+        analysis_mode: input.parallel_analysis ? 'parallel' : 'sequential',
         processed_at: Time.current.iso8601,
         workflow_id: workflow_id
       }

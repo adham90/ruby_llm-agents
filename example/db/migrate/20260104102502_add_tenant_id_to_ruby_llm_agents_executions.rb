@@ -16,8 +16,8 @@ class AddTenantIdToRubyLLMAgentsExecutions < ActiveRecord::Migration[8.1]
 
     # Add indexes for efficient tenant-scoped queries
     add_index :ruby_llm_agents_executions, :tenant_id
-    add_index :ruby_llm_agents_executions, [:tenant_id, :created_at]
-    add_index :ruby_llm_agents_executions, [:tenant_id, :agent_type]
-    add_index :ruby_llm_agents_executions, [:tenant_id, :status]
+    add_index :ruby_llm_agents_executions, %i[tenant_id created_at]
+    add_index :ruby_llm_agents_executions, %i[tenant_id agent_type]
+    add_index :ruby_llm_agents_executions, %i[tenant_id status]
   end
 end

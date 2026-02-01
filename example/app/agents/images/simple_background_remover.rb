@@ -11,13 +11,13 @@
 #
 module Images
   class SimpleBackgroundRemover < ApplicationBackgroundRemover
-    model "rembg"
+    model 'rembg'
     output_format :png
     refine_edges false
     alpha_matting false
 
-    description "Fast background removal for simple images"
-    version "1.0"
+    description 'Fast background removal for simple images'
+    version '1.0'
 
     # Enable caching since simple removals are fast and deterministic
     cache_for 30.days

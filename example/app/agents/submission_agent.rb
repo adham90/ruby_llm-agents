@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class SubmissionAgent < ApplicationAgent
-  description "Submits documents to external system"
-  model "gpt-4o-mini"
+  description 'Submits documents to external system'
+  model 'gpt-4o-mini'
 
   param :document_id, required: true
 

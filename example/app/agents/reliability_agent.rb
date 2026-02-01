@@ -18,10 +18,10 @@
 #   result[:model]  # => "gpt-4o-mini"
 #
 class ReliabilityAgent < ApplicationAgent
-  description "Demonstrates reliability features: retries, fallbacks, timeouts, circuit breaker"
-  version "1.0"
+  description 'Demonstrates reliability features: retries, fallbacks, timeouts, circuit breaker'
+  version '1.0'
 
-  model "gpt-4o-mini"
+  model 'gpt-4o-mini'
   temperature 0.7
   timeout 15
 
@@ -33,7 +33,7 @@ class ReliabilityAgent < ApplicationAgent
     retries max: 3, backoff: :exponential, base: 0.4, max_delay: 3.0
 
     # Try these models in order if primary fails
-    fallback_models "gpt-4o-mini", "claude-3-haiku-20240307"
+    fallback_models 'gpt-4o-mini', 'claude-3-haiku-20240307'
 
     # Overall timeout for all attempts (retries + fallbacks)
     total_timeout 45
@@ -58,7 +58,7 @@ class ReliabilityAgent < ApplicationAgent
 
   def execution_metadata
     {
-      showcase: "reliability",
+      showcase: 'reliability',
       features: %w[retries fallback_models total_timeout circuit_breaker]
     }
   end

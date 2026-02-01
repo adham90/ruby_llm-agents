@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "concerns/loggable"
-require_relative "concerns/measurable"
+require_relative 'concerns/loggable'
+require_relative 'concerns/measurable'
 
 # ReadabilityAgent - Analyzes text readability and complexity
 #
@@ -19,8 +19,8 @@ class ReadabilityAgent < ApplicationAgent
   include Concerns::Loggable::Execution
   include Concerns::Measurable::Execution
 
-  description "Analyzes text readability, complexity, and accessibility"
-  model "gpt-4o-mini"
+  description 'Analyzes text readability, complexity, and accessibility'
+  model 'gpt-4o-mini'
   temperature 0.0
 
   log_level :info

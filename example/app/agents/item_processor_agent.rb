@@ -13,13 +13,13 @@
 #   )
 #
 class ItemProcessorAgent < ApplicationAgent
-  description "Processes individual items with validation and transformation"
-  model "gpt-4o-mini"
+  description 'Processes individual items with validation and transformation'
+  model 'gpt-4o-mini'
   temperature 0.0
 
   param :item, required: true
   param :index, default: 0
-  param :operation, default: "process"
+  param :operation, default: 'process'
 
   def system_prompt
     <<~PROMPT
@@ -53,18 +53,18 @@ class ItemProcessorAgent < ApplicationAgent
 
   def schema
     {
-      type: "object",
+      type: 'object',
       properties: {
-        item_id: { type: "string" },
-        operation: { type: "string" },
-        success: { type: "boolean" },
-        processed_item: { type: "object" },
-        errors: { type: "array", items: { type: "string" } },
+        item_id: { type: 'string' },
+        operation: { type: 'string' },
+        success: { type: 'boolean' },
+        processed_item: { type: 'object' },
+        errors: { type: 'array', items: { type: 'string' } },
         metadata: {
-          type: "object",
+          type: 'object',
           properties: {
-            processed_at: { type: "string" },
-            processing_time_ms: { type: "integer" }
+            processed_at: { type: 'string' },
+            processing_time_ms: { type: 'integer' }
           }
         }
       },

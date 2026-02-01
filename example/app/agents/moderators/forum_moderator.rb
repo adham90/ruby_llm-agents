@@ -69,11 +69,11 @@
 #
 module Moderators
   class ForumModerator < RubyLLM::Agents::Moderator
-    description "Balanced moderation for community forums"
-    version "1.0"
+    description 'Balanced moderation for community forums'
+    version '1.0'
 
     # Use latest moderation model
-    model "omni-moderation-latest"
+    model 'omni-moderation-latest'
 
     # Balanced threshold - allow discussion, block clear violations
     # 0.8 means content is flagged only if a category scores above 80%

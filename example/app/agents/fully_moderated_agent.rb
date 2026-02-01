@@ -45,18 +45,18 @@
 #   end
 #
 class FullyModeratedAgent < ApplicationAgent
-  description "Demonstrates both input AND output moderation"
-  version "1.0"
+  description 'Demonstrates both input AND output moderation'
+  version '1.0'
 
-  model "gpt-4o"
+  model 'gpt-4o'
   temperature 0.7
 
   # Moderate BOTH input and output
   # Same threshold and categories apply to both phases
   moderation :both,
-    threshold: 0.6,
-    categories: [:hate, :violence, :harassment, :self_harm],
-    on_flagged: :raise  # Raise exception instead of blocking
+             threshold: 0.6,
+             categories: %i[hate violence harassment self_harm],
+             on_flagged: :raise # Raise exception instead of blocking
 
   param :message, required: true
 
@@ -74,7 +74,7 @@ class FullyModeratedAgent < ApplicationAgent
 
   def execution_metadata
     {
-      showcase: "moderation",
+      showcase: 'moderation',
       features: %w[full_moderation input_output_checks customer_support]
     }
   end

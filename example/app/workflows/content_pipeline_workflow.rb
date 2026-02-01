@@ -24,33 +24,33 @@
 #   result.total_cost                # Total cost of all steps
 #
 class ContentPipelineWorkflow < RubyLLM::Agents::Workflow
-  description "Processes content through extraction, classification, and formatting"
-  version "2.0"
+  description 'Processes content through extraction, classification, and formatting'
+  version '2.0'
   timeout 2.minutes
   max_cost 1.00
 
   input do
     required :text, String
-    optional :format_style, String, default: "markdown"
+    optional :format_style, String, default: 'markdown'
     optional :skip_formatting, :boolean, default: false
   end
 
   # Retry with error class filtering and linear backoff
-  step :extract, ExtractorAgent, "Extract main points and entities",
-    timeout: 45.seconds,
-    retry: { max: 3, on: [Timeout::Error, Net::ReadTimeout], backoff: :linear, delay: 2 }
+  step :extract, ExtractorAgent, 'Extract main points and entities',
+       timeout: 45.seconds,
+       retry: { max: 3, on: [Timeout::Error, Net::ReadTimeout], backoff: :linear, delay: 2 }
 
   # Validation step with on_error handler (non-critical)
-  step :validate, ValidatorAgent, "Validate extracted data",
-    critical: false,
-    on_error: ->(error) { Rails.logger.warn "Validation skipped: #{error.message}" },
-    optional: true,
-    input: -> { { data: extract.to_h } }
+  step :validate, ValidatorAgent, 'Validate extracted data',
+       critical: false,
+       on_error: ->(error) { Rails.logger.warn "Validation skipped: #{error.message}" },
+       optional: true,
+       input: -> { { data: extract.to_h } }
 
   # Retry with integer shorthand
-  step :classify, ClassifierAgent, "Classify content type",
-    retry: 2,
-    input: -> { { content: extract.content, entities: extract.entities } }
+  step :classify, ClassifierAgent, 'Classify content type',
+       retry: 2,
+       input: -> { { content: extract.content, entities: extract.entities } }
 
   step :enrich do
     # Custom block step example
@@ -70,28 +70,24 @@ class ContentPipelineWorkflow < RubyLLM::Agents::Workflow
     step :readability, ReadabilityAgent, optional: true
   end
 
-  step :format, FormatterAgent, "Format for output",
-    unless: -> { input.skip_formatting },
-    pick: [:content, :classification],
-    from: :enrich,
-    optional: true,
-    default: { formatted: false }
+  step :format, FormatterAgent, 'Format for output',
+       unless: -> { input.skip_formatting },
+       pick: %i[content classification],
+       from: :enrich,
+       optional: true,
+       default: { formatted: false }
 
   # Block with flow control demonstrations
   step :finalize do
     # skip! - Skip this step with a default value
-    if classify.category == "spam"
-      skip!(reason: "Spam content detected", default: { skipped: true, reason: "spam" })
-    end
+    skip!(reason: 'Spam content detected', default: { skipped: true, reason: 'spam' }) if classify.category == 'spam'
 
     # fail! - Abort the workflow with an error
-    if extract.content.blank?
-      fail!("No content extracted - cannot finalize")
-    end
+    fail!('No content extracted - cannot finalize') if extract.content.blank?
 
     # halt! - Stop workflow early with a successful result
     if quality_checks.readability&.score.to_f > 90
-      halt!(result: { status: "excellent", fast_tracked: true, quality_score: 90 })
+      halt!(result: { status: 'excellent', fast_tracked: true, quality_score: 90 })
     end
 
     # Normal completion
@@ -106,7 +102,7 @@ class ContentPipelineWorkflow < RubyLLM::Agents::Workflow
     Rails.logger.error "Pipeline step #{step_name} failed: #{error.message}"
   end
 
-  on_step_failure :extract do |step_name, error, step_results|
+  on_step_failure :extract do |_step_name, error, _step_results|
     Rails.logger.error "Extraction failed after retries: #{error.message}"
     # Could trigger notification or fallback logic
   end

@@ -47,11 +47,11 @@
 #
 module Embedders
   class BatchEmbedder < ApplicationEmbedder
-    description "Optimized for bulk embedding operations"
-    version "1.0"
+    description 'Optimized for bulk embedding operations'
+    version '1.0'
 
     # Use small model for cost efficiency on large batches
-    model "text-embedding-3-small"
+    model 'text-embedding-3-small'
 
     # Moderate dimensions balance quality and storage
     dimensions 1024

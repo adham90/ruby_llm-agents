@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative "concerns/loggable"
-require_relative "concerns/measurable"
-require_relative "concerns/validatable"
-require_relative "concerns/contextual"
+require_relative 'concerns/loggable'
+require_relative 'concerns/measurable'
+require_relative 'concerns/validatable'
+require_relative 'concerns/contextual'
 
 # ConcernsShowcaseAgent - Demonstrates all example concerns working together
 #
@@ -66,8 +66,8 @@ class ConcernsShowcaseAgent < ApplicationAgent
   # ===========================================
   # Agent Configuration
   # ===========================================
-  description "Showcases all example concerns working together"
-  model "gpt-4o-mini"
+  description 'Showcases all example concerns working together'
+  model 'gpt-4o-mini'
   temperature 0.7
 
   # ===========================================
@@ -89,13 +89,13 @@ class ConcernsShowcaseAgent < ApplicationAgent
   # ===========================================
   context_from :current_user, :options
   context_includes :user_id, :user_name, :timezone, :locale
-  default_context timezone: "UTC", locale: "en"
+  default_context timezone: 'UTC', locale: 'en'
 
   # ===========================================
   # Parameters
   # ===========================================
   param :query, required: true
-  param :priority, default: "normal"
+  param :priority, default: 'normal'
   param :current_user, default: nil
 
   # ===========================================
@@ -166,9 +166,9 @@ class ConcernsShowcaseAgent < ApplicationAgent
   validates_with :validate_query_not_spam
 
   def validate_query_not_spam
-    return unless query.to_s.downcase.include?("buy now")
+    return unless query.to_s.downcase.include?('buy now')
 
     @validation_errors ||= []
-    @validation_errors << "query appears to contain spam content"
+    @validation_errors << 'query appears to contain spam content'
   end
 end

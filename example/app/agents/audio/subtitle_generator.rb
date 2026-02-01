@@ -28,11 +28,11 @@
 #
 module Audio
   class SubtitleGenerator < ApplicationTranscriber
-    description "Generates SRT subtitles for video content"
-    version "1.0"
+    description 'Generates SRT subtitles for video content'
+    version '1.0'
 
     # Whisper-1 for reliable timing
-    model "whisper-1"
+    model 'whisper-1'
 
     # SRT format for video players
     output_format :srt

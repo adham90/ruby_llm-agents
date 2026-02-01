@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "concerns/validatable"
-require_relative "concerns/contextual"
+require_relative 'concerns/validatable'
+require_relative 'concerns/contextual'
 
 # TechnicalAgent - Technical support with validation and context
 #
@@ -30,19 +30,19 @@ class TechnicalAgent < ApplicationAgent
   include Concerns::Validatable::Execution
   include Concerns::Contextual::Execution
 
-  description "Assists with technical issues, bugs, errors, and troubleshooting"
-  model "gpt-4o"
+  description 'Assists with technical issues, bugs, errors, and troubleshooting'
+  model 'gpt-4o'
   temperature 0.3
 
   # Validation rules
   validates_presence_of :message
   validates_length_of :message, min: 10, max: 5000,
-                                message: "message must be between 10 and 5000 characters for effective troubleshooting"
+                                message: 'message must be between 10 and 5000 characters for effective troubleshooting'
 
   # Context configuration
   context_from :current_user, :options
   context_includes :user_id, :user_name, :product, :support_tier
-  default_context support_tier: "standard"
+  default_context support_tier: 'standard'
 
   param :message, required: true
   param :current_user, default: nil

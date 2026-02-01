@@ -39,15 +39,15 @@ class FullFeaturedAgent < ApplicationAgent
   # ===========================================
   # Model Configuration
   # ===========================================
-  model "gpt-4o"
+  model 'gpt-4o'
   temperature 0.5
   timeout 60
 
   # ===========================================
   # Metadata
   # ===========================================
-  version "2.0"
-  description "Complete showcase of all agent DSL features - the kitchen sink agent"
+  version '2.0'
+  description 'Complete showcase of all agent DSL features - the kitchen sink agent'
 
   # ===========================================
   # Caching
@@ -69,7 +69,7 @@ class FullFeaturedAgent < ApplicationAgent
   # ===========================================
   reliability do
     retries max: 2, backoff: :exponential, base: 0.5, max_delay: 4.0
-    fallback_models "gpt-4o-mini", "claude-3-haiku-20240307"
+    fallback_models 'gpt-4o-mini', 'claude-3-haiku-20240307'
     total_timeout 90
     circuit_breaker errors: 3, within: 30, cooldown: 120
   end
@@ -78,7 +78,7 @@ class FullFeaturedAgent < ApplicationAgent
   # Parameters
   # ===========================================
   param :query, required: true
-  param :context, default: "general assistance"
+  param :context, default: 'general assistance'
   param :history, default: []
   param :max_length, default: 500, type: Integer
   param :include_metadata, default: false, type: :boolean
@@ -107,8 +107,8 @@ class FullFeaturedAgent < ApplicationAgent
   def messages
     history.map do |msg|
       {
-        role: msg[:role]&.to_sym || msg["role"]&.to_sym,
-        content: msg[:content] || msg["content"]
+        role: msg[:role]&.to_sym || msg['role']&.to_sym,
+        content: msg[:content] || msg['content']
       }
     end
   end
@@ -119,27 +119,27 @@ class FullFeaturedAgent < ApplicationAgent
     return nil unless include_metadata
 
     {
-      type: "object",
+      type: 'object',
       properties: {
         answer: {
-          type: "string",
-          description: "The main response to the query"
+          type: 'string',
+          description: 'The main response to the query'
         },
         analysis: {
-          type: "object",
+          type: 'object',
           properties: {
             category: {
-              type: "string",
+              type: 'string',
               enum: %w[factual creative technical conversational],
-              description: "Category of the query"
+              description: 'Category of the query'
             },
             complexity_score: {
-              type: "number",
-              description: "Query complexity from 0 to 1"
+              type: 'number',
+              description: 'Query complexity from 0 to 1'
             },
             used_tools: {
-              type: "boolean",
-              description: "Whether tools were invoked"
+              type: 'boolean',
+              description: 'Whether tools were invoked'
             }
           },
           required: %w[category complexity_score used_tools]
@@ -163,7 +163,7 @@ class FullFeaturedAgent < ApplicationAgent
   # Additional metadata for execution tracking
   def execution_metadata
     {
-      showcase: "full_featured",
+      showcase: 'full_featured',
       features: %w[
         model temperature timeout version description
         cache_for streaming tools reliability

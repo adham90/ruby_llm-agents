@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class DocumentFetcherAgent < ApplicationAgent
-  description "Fetches documents for review"
-  model "gpt-4o-mini"
+  description 'Fetches documents for review'
+  model 'gpt-4o-mini'
 
   param :document_id, required: true
 

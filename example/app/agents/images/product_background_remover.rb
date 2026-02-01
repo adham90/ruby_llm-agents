@@ -18,14 +18,14 @@
 #
 module Images
   class ProductBackgroundRemover < ApplicationBackgroundRemover
-    model "segment-anything"
+    model 'segment-anything'
     output_format :png
     refine_edges true
     alpha_matting true
     foreground_threshold 0.55
     background_threshold 0.45
 
-    description "Removes backgrounds from product photos for e-commerce"
-    version "1.0"
+    description 'Removes backgrounds from product photos for e-commerce'
+    version '1.0'
   end
 end

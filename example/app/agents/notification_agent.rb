@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class NotificationAgent < ApplicationAgent
-  description "Sends notifications to users"
-  model "gpt-4o-mini"
+  description 'Sends notifications to users'
+  model 'gpt-4o-mini'
 
   param :to, required: true
   param :document_id, required: true
