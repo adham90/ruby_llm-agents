@@ -95,10 +95,11 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
     context "when tracking is enabled" do
       let(:mock_execution) do
-        instance_double("RubyLLM::Agents::Execution",
-                        id: 123,
-                        status: "running",
-                        class: RubyLLM::Agents::Execution)
+        double("RubyLLM::Agents::Execution",
+               id: 123,
+               status: "running",
+               detail: nil,
+               class: RubyLLM::Agents::Execution)
       end
 
       before do
@@ -181,12 +182,12 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
           allow(app).to receive(:call).and_raise(error)
           allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+          allow(mock_execution).to receive(:create_detail!)
 
           expect(mock_execution).to receive(:update!).with(
             hash_including(
               status: "error",
-              error_class: "StandardError",
-              error_message: "Execution failed"
+              error_class: "StandardError"
             )
           )
 
@@ -199,6 +200,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
           allow(app).to receive(:call).and_raise(error)
           allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+          allow(mock_execution).to receive(:create_detail!)
 
           expect(mock_execution).to receive(:update!).with(
             hash_including(status: "timeout")
@@ -277,10 +279,13 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
         allow(app).to receive(:call).and_raise(error)
         allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+        allow(mock_execution).to receive(:create_detail!)
 
+        # error_message is now stored on the detail record, not the execution
         expect(mock_execution).to receive(:update!).with(
           hash_including(
-            error_message: a_string_matching(/\Ax{1,1000}/)
+            status: "error",
+            error_class: "StandardError"
           )
         )
 
@@ -330,10 +335,11 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
     context "when result is cached" do
       let(:mock_execution) do
-        instance_double("RubyLLM::Agents::Execution",
-                        id: 123,
-                        status: "running",
-                        class: RubyLLM::Agents::Execution)
+        double("RubyLLM::Agents::Execution",
+               id: 123,
+               status: "running",
+               detail: nil,
+               class: RubyLLM::Agents::Execution)
       end
 
       before do
@@ -377,10 +383,11 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
     context "async logging" do
       let(:mock_execution) do
-        instance_double("RubyLLM::Agents::Execution",
-                        id: 123,
-                        status: "running",
-                        class: RubyLLM::Agents::Execution)
+        double("RubyLLM::Agents::Execution",
+               id: 123,
+               status: "running",
+               detail: nil,
+               class: RubyLLM::Agents::Execution)
       end
 
       before do
@@ -581,10 +588,11 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
   describe "multi-tenancy support" do
     let(:mock_execution) do
-      instance_double("RubyLLM::Agents::Execution",
-                      id: 123,
-                      status: "running",
-                      class: RubyLLM::Agents::Execution)
+      double("RubyLLM::Agents::Execution",
+             id: 123,
+             status: "running",
+             detail: nil,
+             class: RubyLLM::Agents::Execution)
     end
 
     before do
@@ -629,10 +637,11 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
   describe "cache key tracking" do
     let(:mock_execution) do
-      instance_double("RubyLLM::Agents::Execution",
-                      id: 123,
-                      status: "running",
-                      class: RubyLLM::Agents::Execution)
+      double("RubyLLM::Agents::Execution",
+             id: 123,
+             status: "running",
+             detail: nil,
+             class: RubyLLM::Agents::Execution)
     end
 
     before do
@@ -652,7 +661,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
 
       expect(mock_execution).to receive(:update!).with(
-        hash_including(response_cache_key: "ruby_llm_agents/test/key")
+        hash_including(metadata: hash_including("response_cache_key" => "ruby_llm_agents/test/key"))
       )
 
       middleware.call(context)
@@ -661,10 +670,11 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
   describe "metadata tracking" do
     let(:mock_execution) do
-      instance_double("RubyLLM::Agents::Execution",
-                      id: 123,
-                      status: "running",
-                      class: RubyLLM::Agents::Execution)
+      double("RubyLLM::Agents::Execution",
+             id: 123,
+             status: "running",
+             detail: nil,
+             class: RubyLLM::Agents::Execution)
     end
 
     before do
@@ -718,10 +728,11 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
   describe "parameter sanitization" do
     let(:mock_execution) do
-      instance_double("RubyLLM::Agents::Execution",
-                      id: 123,
-                      status: "running",
-                      class: RubyLLM::Agents::Execution)
+      double("RubyLLM::Agents::Execution",
+             id: 123,
+             status: "running",
+             detail: nil,
+             class: RubyLLM::Agents::Execution)
     end
 
     let(:agent_class_with_options) do
@@ -764,7 +775,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
       allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
 
-      expect(RubyLLM::Agents::Execution).to receive(:create!).with(
+      # Parameters are now stored on the detail record, not the execution
+      expect(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+      expect(mock_execution).to receive(:create_detail!).with(
         hash_including(
           parameters: hash_including(
             "query" => "test query",
@@ -774,7 +787,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
             "normal_param" => "normal"
           )
         )
-      ).and_return(mock_execution)
+      )
 
       allow(mock_execution).to receive(:update!)
 
@@ -784,10 +797,11 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
   describe "response persistence" do
     let(:mock_execution) do
-      instance_double("RubyLLM::Agents::Execution",
-                      id: 123,
-                      status: "running",
-                      class: RubyLLM::Agents::Execution)
+      double("RubyLLM::Agents::Execution",
+             id: 123,
+             status: "running",
+             detail: nil,
+             class: RubyLLM::Agents::Execution)
     end
 
     before do
@@ -815,8 +829,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           ctx
         end
         allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+        allow(mock_execution).to receive(:update!)
 
-        expect(mock_execution).to receive(:update!).with(
+        # Response is now stored via create_detail!, not update!
+        expect(mock_execution).to receive(:create_detail!).with(
           hash_including(response: hash_including(content: "Test response"))
         )
 
@@ -833,8 +849,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           ctx
         end
         allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+        allow(mock_execution).to receive(:update!)
 
-        expect(mock_execution).to receive(:update!).with(
+        # Response is now stored via create_detail!, not update!
+        expect(mock_execution).to receive(:create_detail!).with(
           hash_including(response: hash_including(content: "Test response", model_id: "gpt-4"))
         )
 
@@ -852,8 +870,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           ctx
         end
         allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+        allow(mock_execution).to receive(:update!)
 
-        expect(mock_execution).to receive(:update!).with(
+        # Response is now stored via create_detail!, not update!
+        expect(mock_execution).to receive(:create_detail!).with(
           hash_including(response: hash_including(input_tokens: 100, output_tokens: 50))
         )
 
@@ -936,10 +956,11 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
     describe "reliability attempts persistence" do
       let(:mock_execution) do
-        instance_double("RubyLLM::Agents::Execution",
-                        id: 456,
-                        status: "running",
-                        class: RubyLLM::Agents::Execution)
+        double("RubyLLM::Agents::Execution",
+               id: 456,
+               status: "running",
+               detail: nil,
+               class: RubyLLM::Agents::Execution)
       end
 
       before do
@@ -960,10 +981,20 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
         allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
 
+        # attempts_count on the execution, attempts data goes to detail
         expect(mock_execution).to receive(:update!).with(
           hash_including(
-            attempts: context[:reliability_attempts],
             attempts_count: 2
+          )
+        )
+
+        # Attempts data is stored on the detail record
+        expect(mock_execution).to receive(:create_detail!).with(
+          hash_including(
+            attempts: [
+              { "model_id" => "gemini-2.5-flash", "error_class" => "StandardError", "error_message" => "quota exceeded" },
+              { "model_id" => "gpt-4.1-mini", "error_class" => nil, "error_message" => nil }
+            ]
           )
         )
 

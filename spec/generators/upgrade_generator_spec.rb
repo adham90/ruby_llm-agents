@@ -163,308 +163,43 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
   # ============================================
   # Agent and Tool Migration Tests
   # ============================================
+  # NOTE: File migration (moving agents/tools to app/llm/) has been removed
+  # from the upgrade generator as part of the database schema refactor.
+  # The upgrade generator now only handles database migration generation.
 
-  describe "agent migration" do
+  describe "generator runs without file migration" do
     before do
-      # Mock database checks to avoid migration template issues
       allow(ActiveRecord::Base.connection).to receive(:table_exists?)
         .with(:ruby_llm_agents_executions)
         .and_return(true)
       allow(ActiveRecord::Base.connection).to receive(:column_exists?).and_return(true)
     end
 
-    def setup_old_agents
-      FileUtils.mkdir_p(file("app/agents"))
-      File.write(file("app/agents/application_agent.rb"), <<~RUBY)
-        class ApplicationAgent < RubyLLM::Agents::Base
-        end
-      RUBY
-      File.write(file("app/agents/support_agent.rb"), <<~RUBY)
-        class SupportAgent < ApplicationAgent
-          model "gpt-4"
-        end
-      RUBY
-    end
-
-    context "when app/agents exists with files" do
-      before do
-        setup_old_agents
-        run_generator
-      end
-
-      it "moves agents to app/llm/agents" do
-        expect(file_exists?("app/llm/agents/application_agent.rb")).to be true
-        expect(file_exists?("app/llm/agents/support_agent.rb")).to be true
-      end
-
-      it "removes the old agents directory" do
-        expect(directory_exists?("app/agents")).to be false
-      end
-
-      it "wraps classes in Llm namespace" do
-        content = file_content("app/llm/agents/support_agent.rb")
-        expect(content).to include("module Llm")
-        expect(content).to include("class SupportAgent")
-      end
-
-      it "preserves original class content" do
-        content = file_content("app/llm/agents/support_agent.rb")
-        expect(content).to include('model "gpt-4"')
-      end
-    end
-
-    context "when app/agents does not exist" do
-      it "skips gracefully without error" do
-        expect { run_generator }.not_to raise_error
-      end
-
-      it "does not create app/llm/agents" do
-        run_generator
-        # Directory may be created empty by other means, but should have no files
-        if directory_exists?("app/llm/agents")
-          expect(Dir.glob(file("app/llm/agents/*.rb"))).to be_empty
-        end
-      end
-    end
-
-    context "when app/agents is empty" do
-      before do
-        FileUtils.mkdir_p(file("app/agents"))
-      end
-
-      it "skips gracefully without error" do
-        expect { run_generator }.not_to raise_error
-      end
-    end
-
-    context "with nested subdirectories" do
-      before do
-        FileUtils.mkdir_p(file("app/agents/support/helpers"))
-        File.write(file("app/agents/support/helpers/formatter.rb"), <<~RUBY)
-          class Formatter
-            def format(text)
-              text.strip
-            end
-          end
-        RUBY
-        run_generator
-      end
-
-      it "preserves nested directory structure" do
-        expect(file_exists?("app/llm/agents/support/helpers/formatter.rb")).to be true
-      end
-
-      it "wraps nested files in namespace" do
-        content = file_content("app/llm/agents/support/helpers/formatter.rb")
-        expect(content).to include("module Llm")
-        expect(content).to include("class Formatter")
-      end
-    end
-  end
-
-  describe "tools migration" do
-    before do
-      # Mock database checks to avoid migration template issues
-      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-        .with(:ruby_llm_agents_executions)
-        .and_return(true)
-      allow(ActiveRecord::Base.connection).to receive(:column_exists?).and_return(true)
-    end
-
-    def setup_old_tools
-      FileUtils.mkdir_p(file("app/tools"))
-      File.write(file("app/tools/weather_tool.rb"), <<~RUBY)
-        class WeatherTool < RubyLLM::Tool
-          def call(location:)
-            # Get weather
-          end
-        end
-      RUBY
-      File.write(file("app/tools/calculator_tool.rb"), <<~RUBY)
-        class CalculatorTool < RubyLLM::Tool
-          def call(expression:)
-            eval(expression)
-          end
-        end
-      RUBY
-    end
-
-    context "when app/tools exists with files" do
-      before do
-        setup_old_tools
-        run_generator
-      end
-
-      it "moves tools to app/llm/tools" do
-        expect(file_exists?("app/llm/tools/weather_tool.rb")).to be true
-        expect(file_exists?("app/llm/tools/calculator_tool.rb")).to be true
-      end
-
-      it "removes the old tools directory" do
-        expect(directory_exists?("app/tools")).to be false
-      end
-
-      it "wraps classes in Llm namespace" do
-        content = file_content("app/llm/tools/weather_tool.rb")
-        expect(content).to include("module Llm")
-        expect(content).to include("class WeatherTool")
-      end
-    end
-
-    context "when app/tools does not exist" do
-      it "skips gracefully without error" do
-        expect { run_generator }.not_to raise_error
-      end
-    end
-  end
-
-  describe "conflict handling" do
-    before do
-      # Mock database checks
-      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-        .with(:ruby_llm_agents_executions)
-        .and_return(true)
-      allow(ActiveRecord::Base.connection).to receive(:column_exists?).and_return(true)
-    end
-
-    context "when destination file already exists" do
-      before do
-        # Create source file
-        FileUtils.mkdir_p(file("app/agents"))
-        File.write(file("app/agents/conflicting_agent.rb"), <<~RUBY)
-          class ConflictingAgent
-            # Old version
-          end
-        RUBY
-
-        # Create conflicting destination file
-        FileUtils.mkdir_p(file("app/llm/agents"))
-        File.write(file("app/llm/agents/conflicting_agent.rb"), <<~RUBY)
-          module Llm
-            class ConflictingAgent
-              # New version - should be preserved
-            end
-          end
-        RUBY
-
-        run_generator
-      end
-
-      it "preserves the existing destination file" do
-        content = file_content("app/llm/agents/conflicting_agent.rb")
-        expect(content).to include("# New version - should be preserved")
-      end
-
-      it "does not move the conflicting source file" do
-        # Source file should still exist since it wasn't moved
-        expect(file_exists?("app/agents/conflicting_agent.rb")).to be true
-      end
-    end
-
-    context "with mix of conflicting and non-conflicting files" do
-      before do
-        # Create source files
-        FileUtils.mkdir_p(file("app/agents"))
-        File.write(file("app/agents/conflicting_agent.rb"), "class ConflictingAgent\n  # SOURCE VERSION\nend")
-        File.write(file("app/agents/new_agent.rb"), "class NewAgent; end")
-
-        # Create conflicting destination
-        FileUtils.mkdir_p(file("app/llm/agents"))
-        File.write(file("app/llm/agents/conflicting_agent.rb"), "module Llm\n  class ConflictingAgent\n    # DESTINATION VERSION - should be preserved\n  end\nend")
-
-        run_generator
-      end
-
-      it "migrates non-conflicting files" do
-        expect(file_exists?("app/llm/agents/new_agent.rb")).to be true
-      end
-
-      it "preserves the existing destination file" do
-        content = file_content("app/llm/agents/conflicting_agent.rb")
-        # Should still have the original content from destination, not source
-        expect(content).to include("DESTINATION VERSION - should be preserved")
-        expect(content).not_to include("SOURCE VERSION")
-      end
-    end
-  end
-
-  describe "namespace wrapping idempotency" do
-    before do
-      # Mock database checks
-      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-        .with(:ruby_llm_agents_executions)
-        .and_return(true)
-      allow(ActiveRecord::Base.connection).to receive(:column_exists?).and_return(true)
-    end
-
-    context "when file is already namespaced" do
-      before do
-        FileUtils.mkdir_p(file("app/agents"))
-        File.write(file("app/agents/already_namespaced_agent.rb"), <<~RUBY)
-          module Llm
-            class AlreadyNamespacedAgent < RubyLLM::Agents::Base
-            end
-          end
-        RUBY
-        run_generator
-      end
-
-      it "does not double-wrap the namespace" do
-        content = file_content("app/llm/agents/already_namespaced_agent.rb")
-        expect(content.scan("module Llm").count).to eq(1)
-      end
-    end
-  end
-
-  describe "pretend mode (dry run)" do
-    before do
-      # Mock database checks
-      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-        .with(:ruby_llm_agents_executions)
-        .and_return(true)
-      allow(ActiveRecord::Base.connection).to receive(:column_exists?).and_return(true)
-
-      # Create source files
+    it "runs without error when app/agents exists" do
       FileUtils.mkdir_p(file("app/agents"))
       File.write(file("app/agents/test_agent.rb"), "class TestAgent; end")
+      expect { run_generator }.not_to raise_error
+    end
 
+    it "runs without error when app/tools exists" do
       FileUtils.mkdir_p(file("app/tools"))
       File.write(file("app/tools/test_tool.rb"), "class TestTool; end")
+      expect { run_generator }.not_to raise_error
     end
 
-    it "does not move agent files" do
-      run_generator ["--pretend"]
-      expect(file_exists?("app/agents/test_agent.rb")).to be true
-      expect(file_exists?("app/llm/agents/test_agent.rb")).to be false
-    end
-
-    it "does not move tool files" do
-      run_generator ["--pretend"]
-      expect(file_exists?("app/tools/test_tool.rb")).to be true
-      expect(file_exists?("app/llm/tools/test_tool.rb")).to be false
-    end
-
-    it "does not modify source files" do
-      original_content = file_content("app/agents/test_agent.rb")
-      run_generator ["--pretend"]
-      expect(file_content("app/agents/test_agent.rb")).to eq(original_content)
-    end
-  end
-
-  describe "full migration run idempotency" do
-    before do
-      # Mock database checks
-      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-        .with(:ruby_llm_agents_executions)
-        .and_return(true)
-      allow(ActiveRecord::Base.connection).to receive(:column_exists?).and_return(true)
-
-      # Create source files
+    it "does not move agent files (file migration removed)" do
       FileUtils.mkdir_p(file("app/agents"))
-      File.write(file("app/agents/my_agent.rb"), "class MyAgent; end")
+      File.write(file("app/agents/test_agent.rb"), "class TestAgent; end")
+      run_generator
+      # Agent files stay where they are - migration is no longer part of upgrade generator
+      expect(file_exists?("app/agents/test_agent.rb")).to be true
+    end
 
+    it "does not move tool files (file migration removed)" do
       FileUtils.mkdir_p(file("app/tools"))
-      File.write(file("app/tools/my_tool.rb"), "class MyTool; end")
+      File.write(file("app/tools/test_tool.rb"), "class TestTool; end")
+      run_generator
+      expect(file_exists?("app/tools/test_tool.rb")).to be true
     end
 
     it "can be run multiple times safely" do
@@ -472,59 +207,10 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
       expect { run_generator }.not_to raise_error
     end
 
-    it "does not duplicate namespace on second run" do
+    it "does not create migrations when all columns exist" do
       run_generator
-      run_generator
-
-      content = file_content("app/llm/agents/my_agent.rb")
-      expect(content.scan("module Llm").count).to eq(1)
-    end
-  end
-
-  describe "combined agents and tools migration" do
-    before do
-      # Mock database checks
-      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-        .with(:ruby_llm_agents_executions)
-        .and_return(true)
-      allow(ActiveRecord::Base.connection).to receive(:column_exists?).and_return(true)
-
-      # Create both agents and tools
-      FileUtils.mkdir_p(file("app/agents"))
-      File.write(file("app/agents/chat_agent.rb"), <<~RUBY)
-        class ChatAgent < RubyLLM::Agents::Base
-          tool :weather_tool
-        end
-      RUBY
-
-      FileUtils.mkdir_p(file("app/tools"))
-      File.write(file("app/tools/weather_tool.rb"), <<~RUBY)
-        class WeatherTool < RubyLLM::Tool
-          def call(city:)
-            "Sunny in \#{city}"
-          end
-        end
-      RUBY
-
-      run_generator
-    end
-
-    it "migrates both agents and tools" do
-      expect(file_exists?("app/llm/agents/chat_agent.rb")).to be true
-      expect(file_exists?("app/llm/tools/weather_tool.rb")).to be true
-    end
-
-    it "removes both old directories" do
-      expect(directory_exists?("app/agents")).to be false
-      expect(directory_exists?("app/tools")).to be false
-    end
-
-    it "namespaces both agents and tools consistently" do
-      agent_content = file_content("app/llm/agents/chat_agent.rb")
-      tool_content = file_content("app/llm/tools/weather_tool.rb")
-
-      expect(agent_content).to include("module Llm")
-      expect(tool_content).to include("module Llm")
+      migration_files = Dir[file("db/migrate/*.rb")]
+      expect(migration_files).to be_empty
     end
   end
 end

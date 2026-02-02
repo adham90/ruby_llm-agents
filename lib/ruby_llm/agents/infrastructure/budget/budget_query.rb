@@ -21,7 +21,16 @@ module RubyLLM
           # @return [Float] Current spend in USD
           def current_spend(scope, period, agent_type: nil, tenant_id: nil)
             key = SpendRecorder.budget_cache_key(scope, period, agent_type: agent_type, tenant_id: tenant_id)
-            (BudgetQuery.cache_read(key) || 0).to_f
+            cached = BudgetQuery.cache_read(key)
+            return cached.to_f if cached.present?
+
+            # Cache miss — rebuild from executions table for global scope
+            if scope == :global && tenant_id.nil?
+              total = current_global_spend(period)
+              return total.to_f
+            end
+
+            0.to_f
           end
 
           # Returns the current token usage for a period (global only)
@@ -31,8 +40,63 @@ module RubyLLM
           # @return [Integer] Current token usage
           def current_tokens(period, tenant_id: nil)
             key = SpendRecorder.token_cache_key(period, tenant_id: tenant_id)
-            (BudgetQuery.cache_read(key) || 0).to_i
+            cached = BudgetQuery.cache_read(key)
+            return cached.to_i if cached.present?
+
+            # Cache miss — rebuild from executions table
+            if tenant_id.nil?
+              total = current_global_tokens(period)
+              return total.to_i
+            end
+
+            0
           end
+
+          # Rebuilds global spend from executions table on cache miss
+          #
+          # @param period [Symbol] :daily or :monthly
+          # @return [Float] Total spend in USD
+          def current_global_spend(period)
+            total = RubyLLM::Agents::Execution
+                      .where("created_at >= ?", period_start(period))
+                      .where(tenant_id: nil)
+                      .sum(:total_cost)
+            key = SpendRecorder.budget_cache_key(:global, period)
+            BudgetQuery.cache_write(key, total, expires_in: period_ttl(period))
+            total
+          end
+
+          # Rebuilds global token usage from executions table on cache miss
+          #
+          # @param period [Symbol] :daily or :monthly
+          # @return [Integer] Total tokens used
+          def current_global_tokens(period)
+            total = RubyLLM::Agents::Execution
+                      .where("created_at >= ?", period_start(period))
+                      .where(tenant_id: nil)
+                      .sum(:total_tokens)
+            key = SpendRecorder.token_cache_key(period)
+            BudgetQuery.cache_write(key, total, expires_in: period_ttl(period))
+            total
+          end
+
+          private
+
+          def period_start(period)
+            case period
+            when :daily then Date.current.beginning_of_day
+            when :monthly then Date.current.beginning_of_month.beginning_of_day
+            end
+          end
+
+          def period_ttl(period)
+            case period
+            when :daily then 1.day
+            when :monthly then 31.days
+            end
+          end
+
+          public
 
           # Returns the remaining budget for a scope and period
           #

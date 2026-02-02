@@ -24,7 +24,7 @@ RSpec.describe "ruby_llm/agents/executions/show", type: :view do
 
   describe "tool calls section" do
     context "when execution has no tool calls" do
-      let(:execution) { create(:execution, tool_calls: [], tool_calls_count: 0) }
+      let(:execution) { create(:execution, tool_calls_count: 0) }
 
       it "shows 'No tool calls' message" do
         render

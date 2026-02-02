@@ -279,12 +279,13 @@ RSpec.describe RubyLLM::Agents::Execution, type: :model do
     end
 
     describe "tool_calls attribute" do
-      it "stores and retrieves as JSON array" do
+      it "stores and retrieves as JSON array via detail" do
         tool_calls_data = [
           { "id" => "call_1", "name" => "search", "arguments" => { "query" => "test" } },
           { "id" => "call_2", "name" => "format", "arguments" => { "type" => "json" } }
         ]
-        execution = create(:execution, tool_calls: tool_calls_data)
+        execution = create(:execution)
+        execution.detail.update!(tool_calls: tool_calls_data)
         execution.reload
 
         expect(execution.tool_calls).to be_an(Array)
@@ -293,7 +294,8 @@ RSpec.describe RubyLLM::Agents::Execution, type: :model do
       end
 
       it "handles empty array" do
-        execution = create(:execution, tool_calls: [])
+        execution = create(:execution)
+        execution.detail.update!(tool_calls: [])
         execution.reload
 
         expect(execution.tool_calls).to eq([])
@@ -320,7 +322,8 @@ RSpec.describe RubyLLM::Agents::Execution, type: :model do
         tool_calls_data = [
           { "id" => "call_complex", "name" => "advanced_search", "arguments" => complex_args }
         ]
-        execution = create(:execution, tool_calls: tool_calls_data)
+        execution = create(:execution)
+        execution.detail.update!(tool_calls: tool_calls_data)
         execution.reload
 
         expect(execution.tool_calls.first["arguments"]).to eq(complex_args)

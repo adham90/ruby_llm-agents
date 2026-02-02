@@ -72,8 +72,16 @@ module RubyLLM
       has_many :child_executions, class_name: "RubyLLM::Agents::Execution",
                foreign_key: :parent_execution_id, dependent: :nullify, inverse_of: :parent_execution
 
-      # Polymorphic association to tenant model (for llm_tenant DSL)
-      belongs_to :tenant_record, polymorphic: true, optional: true
+      # Detail record for large payloads (prompts, responses, tool calls, etc.)
+      has_one :detail, class_name: "RubyLLM::Agents::ExecutionDetail",
+              foreign_key: :execution_id, dependent: :destroy
+
+      # Delegations so existing code keeps working transparently
+      delegate :system_prompt, :user_prompt, :response, :error_message,
+               :messages_summary, :tool_calls, :attempts, :fallback_chain,
+               :parameters, :routed_to, :classification_result,
+               :cached_at, :cache_creation_tokens,
+               to: :detail, prefix: false, allow_nil: true
 
       # Validations
       validates :agent_type, :model_id, :started_at, presence: true
@@ -84,8 +92,6 @@ module RubyLLM
       validates :duration_ms, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
       validates :input_cost, :output_cost, :total_cost, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
       validates :finish_reason, inclusion: { in: FINISH_REASONS }, allow_nil: true
-      validates :fallback_reason, inclusion: { in: FALLBACK_REASONS }, allow_nil: true
-      validates :time_to_first_token_ms, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
 
       before_save :calculate_total_tokens, if: -> { input_tokens_changed? || output_tokens_changed? }
       before_save :calculate_total_cost, if: -> { input_cost_changed? || output_cost_changed? }
@@ -205,7 +211,41 @@ module RubyLLM
       #
       # @return [Boolean] true if rate limiting occurred
       def rate_limited?
-        rate_limited == true
+        metadata&.dig("rate_limited") == true
+      end
+
+      # Convenience accessors for niche fields stored in metadata JSON
+      %w[span_id response_cache_key fallback_reason].each do |field|
+        define_method(field) { metadata&.dig(field) }
+        define_method(:"#{field}=") { |val| self.metadata = (metadata || {}).merge(field => val) }
+      end
+
+      %w[time_to_first_token_ms].each do |field|
+        define_method(field) { metadata&.dig(field)&.to_i }
+        define_method(:"#{field}=") { |val| self.metadata = (metadata || {}).merge(field => val) }
+      end
+
+      def retryable
+        metadata&.dig("retryable")
+      end
+
+      def retryable=(val)
+        self.metadata = (metadata || {}).merge("retryable" => val)
+      end
+
+      def rate_limited
+        metadata&.dig("rate_limited")
+      end
+
+      def rate_limited=(val)
+        self.metadata = (metadata || {}).merge("rate_limited" => val)
+      end
+
+      # Convenience method to access tenant_record through the tenant
+      def tenant_record
+        return nil unless tenant_id.present?
+
+        Tenant.find_by(tenant_id: tenant_id)&.tenant_record
       end
 
       # Returns whether this execution used streaming

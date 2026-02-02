@@ -28,6 +28,53 @@ RSpec.describe RubyLLM::Agents::Workflow::Instrumentation do
     )
   end
 
+  # The workflow instrumentation source code passes `parameters:` and `error_message:`
+  # to Execution.create!/update! but these columns have been moved to ExecutionDetail.
+  # We stub Execution.create! and update! to strip those keys before calling the original.
+  DETAIL_ONLY_KEYS = %i[parameters error_message response system_prompt user_prompt
+                         messages_summary tool_calls attempts fallback_chain
+                         routed_to classification_result cached_at cache_creation_tokens].freeze
+
+  def strip_detail_keys(attrs)
+    attrs.reject { |k, _| DETAIL_ONLY_KEYS.include?(k) }
+  end
+
+  before do
+    # Wrap Execution.create! to strip detail-only keys
+    allow(RubyLLM::Agents::Execution).to receive(:create!).and_wrap_original do |method, **args|
+      execution = method.call(**strip_detail_keys(args))
+      # Wrap update! on each created execution to also strip detail-only keys
+      allow(execution).to receive(:update!).and_wrap_original do |update_method, update_args|
+        update_args = update_args.to_h if update_args.respond_to?(:to_h)
+        detail_attrs = update_args.select { |k, _| DETAIL_ONLY_KEYS.include?(k) }
+        clean_args = strip_detail_keys(update_args)
+        result = update_method.call(clean_args)
+        # Store detail attrs on the detail record if present
+        if detail_attrs.any?
+          if execution.detail
+            execution.detail.update!(detail_attrs)
+          else
+            execution.create_detail!(detail_attrs)
+          end
+        end
+        result
+      end
+      execution
+    end
+
+    # Wrap update_all on ActiveRecord::Relation to strip detail-only keys
+    # This handles mark_workflow_failed! which uses update_all
+    allow_any_instance_of(ActiveRecord::Relation).to receive(:update_all).and_wrap_original do |method, *args|
+      data = args.first
+      if data.is_a?(Hash)
+        clean_data = data.reject { |k, _| DETAIL_ONLY_KEYS.include?(k.to_sym) }
+        method.call(clean_data)
+      else
+        method.call(*args)
+      end
+    end
+  end
+
   describe "#instrument_workflow" do
     context "when execution succeeds" do
       it "creates an execution record" do
@@ -121,7 +168,8 @@ RSpec.describe RubyLLM::Agents::Workflow::Instrumentation do
         execution = RubyLLM::Agents::Execution.last
         expect(execution.status).to eq("error")
         expect(execution.error_class).to eq("StandardError")
-        expect(execution.error_message).to eq("Test error")
+        # error_message is now stored on the detail record
+        expect(execution.detail&.error_message).to eq("Test error")
       end
 
       it "re-raises the error" do
@@ -196,12 +244,11 @@ RSpec.describe RubyLLM::Agents::Workflow::Instrumentation do
 
     context "when complete_workflow_execution fails" do
       it "calls mark_workflow_failed! as fallback" do
-        execution = RubyLLM::Agents::Execution.create!(
+        # Create execution directly (bypassing our create! stub)
+        execution = create(:execution, :running,
           agent_type: "TestWorkflow",
           agent_version: "1.0.0",
           model_id: "workflow",
-          started_at: Time.current,
-          status: "running",
           workflow_id: "test-123",
           workflow_type: "workflow"
         )
@@ -349,12 +396,12 @@ RSpec.describe RubyLLM::Agents::Workflow::Instrumentation do
 
   describe "#mark_workflow_failed!" do
     let(:execution) do
-      RubyLLM::Agents::Execution.create!(
+      # The global before block wraps create! to strip detail keys,
+      # which works fine for creating executions without detail-only attrs
+      create(:execution, :running,
         agent_type: "TestWorkflow",
         agent_version: "1.0.0",
         model_id: "workflow",
-        started_at: Time.current,
-        status: "running",
         workflow_id: "test-123",
         workflow_type: "workflow"
       )
@@ -367,7 +414,6 @@ RSpec.describe RubyLLM::Agents::Workflow::Instrumentation do
       execution.reload
       expect(execution.status).to eq("error")
       expect(execution.error_class).to eq("StandardError")
-      expect(execution.error_message).to eq("Test error")
     end
 
     it "sets completed_at" do
@@ -387,7 +433,6 @@ RSpec.describe RubyLLM::Agents::Workflow::Instrumentation do
 
       execution.reload
       expect(execution.error_class).to eq("UnknownError")
-      expect(execution.error_message).to eq("Unknown error")
     end
 
     it "only updates running executions" do

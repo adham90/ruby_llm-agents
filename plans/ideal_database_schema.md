@@ -6,9 +6,9 @@ This plan migrates from the current 3-table schema (68-column executions, tenant
 
 ## Target Schema
 
-### Table 1: `ruby_llm_agents_executions` (39 columns)
+### Table 1: `ruby_llm_agents_executions` (33 columns)
 
-Lean analytics table — only columns that are queried, aggregated, or filtered.
+Lean analytics table — only columns that are queried, aggregated, or filtered. Niche fields (`span_id`, `response_cache_key`, `time_to_first_token_ms`, `retryable`, `rate_limited`, `fallback_reason`) moved to the `metadata` JSON column.
 
 ```ruby
 create_table :ruby_llm_agents_executions do |t|
@@ -46,25 +46,19 @@ create_table :ruby_llm_agents_executions do |t|
 
   # ── Caching ──
   t.boolean :cache_hit,        default: false
-  t.string  :response_cache_key
 
   # ── Streaming ──
   t.boolean :streaming,        default: false
-  t.integer :time_to_first_token_ms
 
   # ── Retry / Fallback ──
   t.integer :attempts_count,   default: 1, null: false
-  t.boolean :retryable
-  t.boolean :rate_limited
-  t.string  :fallback_reason
 
   # ── Tool calls ──
   t.integer :tool_calls_count, default: 0, null: false
 
   # ── Distributed tracing ──
-  t.string  :request_id
   t.string  :trace_id
-  t.string  :span_id
+  t.string  :request_id
 
   # ── Execution hierarchy (self-join) ──
   t.bigint  :parent_execution_id
@@ -81,8 +75,10 @@ create_table :ruby_llm_agents_executions do |t|
   # ── Conversation context ──
   t.integer :messages_count,   default: 0, null: false
 
-  # ── Flexible storage (small, user-provided key-value data only) ──
-  # For: trace context, custom tags, feature flags, request IDs
+  # ── Flexible storage ──
+  # For: trace context, custom tags, feature flags, and niche fields like:
+  #   span_id, response_cache_key, time_to_first_token_ms,
+  #   retryable, rate_limited, fallback_reason
   # NOT for: prompts, responses, tool call payloads — those go in execution_details
   t.json    :metadata,         default: {}, null: false
 
@@ -102,7 +98,6 @@ add_index :ruby_llm_agents_executions, :parent_execution_id
 add_index :ruby_llm_agents_executions, :root_execution_id
 add_index :ruby_llm_agents_executions, [:workflow_id, :workflow_step]
 add_index :ruby_llm_agents_executions, :workflow_type
-add_index :ruby_llm_agents_executions, :response_cache_key
 
 add_foreign_key :ruby_llm_agents_executions, :ruby_llm_agents_executions,
                 column: :parent_execution_id, on_delete: :nullify
@@ -188,7 +183,7 @@ add_index :ruby_llm_agents_tenants, [:tenant_record_type, :tenant_record_id]
 
 ### Table 4: `ruby_llm_agents_api_configurations` (30 columns)
 
-Unchanged from current design.
+Unchanged from current design. **Note:** API key columns store keys as plain `text`. A future improvement should encrypt these using Rails 7+ `encrypts` or `attr_encrypted`. Out of scope for this refactor but flagged as a security concern.
 
 ```ruby
 create_table :ruby_llm_agents_api_configurations do |t|
@@ -266,7 +261,7 @@ end
 
 | Table | Purpose | Columns | Rows |
 |---|---|---|---|
-| `executions` | Lean analytics — queryable metrics | 39 | Many (millions) |
+| `executions` | Lean analytics — queryable metrics | 33 | Many (millions) |
 | `execution_details` | Large payloads — prompts, response, error details, tool calls | 16 | Optional 1:1 with executions |
 | `tenants` | Identity + budget config + rolling counters | 31 | Few (per customer) |
 | `api_configurations` | API keys + endpoints + connection settings | 30 | Few (1 global + per tenant) |
@@ -285,6 +280,7 @@ end
 | Dropped `tenant_record` polymorphic from executions | Redundant — access via `execution → tenant → tenant_record`. |
 | Global budgets: cache + executions fallback | No new table. Cache for speed, executions `SUM` on cache miss. Acceptable for soft enforcement. |
 | Moved `error_message`, `system_prompt`, `user_prompt`, `response`, `tool_calls`, `attempts`, `parameters`, `routed_to`, `classification_result`, `messages_summary`, `fallback_chain`, `cached_at`, `cache_creation_tokens` to `execution_details` | Display/audit data, not analytics. `error_class` stays on executions for filtering. |
+| Moved `span_id`, `response_cache_key`, `time_to_first_token_ms`, `retryable`, `rate_limited`, `fallback_reason` to `metadata` JSON | Niche fields most executions won't use. Avoids wide-table bloat. Accessible via `execution.metadata['span_id']`. |
 | Removed `organizations` table from gem | Example model belongs in dummy app/specs, not gem migrations. |
 
 ---
@@ -327,28 +323,49 @@ class SplitExecutionDetailsFromExecutions < ActiveRecord::Migration[7.1]
       t.timestamps
     end
 
-    # 2. Backfill existing data
-    execute <<~SQL
-      INSERT INTO ruby_llm_agents_execution_details
-        (execution_id, error_message, system_prompt, user_prompt, response,
-         messages_summary, tool_calls, attempts, fallback_chain, parameters,
-         routed_to, classification_result, cached_at, cache_creation_tokens,
-         created_at, updated_at)
-      SELECT id, error_message, system_prompt, user_prompt, response,
+    # 2. Backfill existing data in batches (DB-agnostic, avoids long locks)
+    say_with_time "Backfilling execution_details" do
+      batch_size = 1000
+      count = 0
+      loop do
+        # Find executions that have detail data but no detail row yet
+        ids = exec_query(<<~SQL).rows.flatten
+          SELECT e.id FROM ruby_llm_agents_executions e
+          LEFT JOIN ruby_llm_agents_execution_details d ON d.execution_id = e.id
+          WHERE d.id IS NULL
+            AND (e.error_message IS NOT NULL
+              OR e.system_prompt IS NOT NULL
+              OR e.user_prompt IS NOT NULL
+              OR e.response IS NOT NULL
+              OR e.tool_calls IS NOT NULL
+              OR e.attempts IS NOT NULL
+              OR e.routed_to IS NOT NULL)
+          ORDER BY e.id
+          LIMIT #{batch_size}
+        SQL
+
+        break if ids.empty?
+
+        execute <<~SQL
+          INSERT INTO ruby_llm_agents_execution_details
+            (execution_id, error_message, system_prompt, user_prompt, response,
              messages_summary, tool_calls, attempts, fallback_chain, parameters,
              routed_to, classification_result, cached_at, cache_creation_tokens,
-             created_at, updated_at
-      FROM ruby_llm_agents_executions
-      WHERE error_message IS NOT NULL
-         OR system_prompt IS NOT NULL
-         OR user_prompt IS NOT NULL
-         OR response IS NOT NULL
-         OR tool_calls IS NOT NULL
-         OR attempts IS NOT NULL
-         OR routed_to IS NOT NULL
-    SQL
+             created_at, updated_at)
+          SELECT id, error_message, system_prompt, user_prompt, response,
+                 messages_summary, tool_calls, attempts, fallback_chain, parameters,
+                 routed_to, classification_result, cached_at, cache_creation_tokens,
+                 created_at, updated_at
+          FROM ruby_llm_agents_executions
+          WHERE id IN (#{ids.join(',')})
+        SQL
 
-    # 3. Drop old columns
+        count += ids.size
+      end
+      count
+    end
+
+    # 3. Drop columns moved to execution_details
     remove_column :ruby_llm_agents_executions, :error_message, :text
     remove_column :ruby_llm_agents_executions, :system_prompt, :text
     remove_column :ruby_llm_agents_executions, :user_prompt, :text
@@ -362,10 +379,18 @@ class SplitExecutionDetailsFromExecutions < ActiveRecord::Migration[7.1]
     remove_column :ruby_llm_agents_executions, :classification_result, :json
     remove_column :ruby_llm_agents_executions, :cached_at, :datetime
     remove_column :ruby_llm_agents_executions, :cache_creation_tokens, :integer
+
+    # 4. Drop niche columns moved to metadata JSON
+    remove_column :ruby_llm_agents_executions, :span_id, :string
+    remove_column :ruby_llm_agents_executions, :response_cache_key, :string
+    remove_column :ruby_llm_agents_executions, :time_to_first_token_ms, :integer
+    remove_column :ruby_llm_agents_executions, :retryable, :boolean
+    remove_column :ruby_llm_agents_executions, :rate_limited, :boolean
+    remove_column :ruby_llm_agents_executions, :fallback_reason, :string
   end
 
   def down
-    # Re-add old columns
+    # Re-add detail columns
     add_column :ruby_llm_agents_executions, :error_message, :text
     add_column :ruby_llm_agents_executions, :system_prompt, :text
     add_column :ruby_llm_agents_executions, :user_prompt, :text
@@ -380,25 +405,52 @@ class SplitExecutionDetailsFromExecutions < ActiveRecord::Migration[7.1]
     add_column :ruby_llm_agents_executions, :cached_at, :datetime
     add_column :ruby_llm_agents_executions, :cache_creation_tokens, :integer
 
-    # Copy data back
-    execute <<~SQL
-      UPDATE ruby_llm_agents_executions e
-      SET error_message = d.error_message,
-          system_prompt = d.system_prompt,
-          user_prompt = d.user_prompt,
-          response = d.response,
-          messages_summary = d.messages_summary,
-          tool_calls = d.tool_calls,
-          attempts = d.attempts,
-          fallback_chain = d.fallback_chain,
-          parameters = d.parameters,
-          routed_to = d.routed_to,
-          classification_result = d.classification_result,
-          cached_at = d.cached_at,
-          cache_creation_tokens = d.cache_creation_tokens
-      FROM ruby_llm_agents_execution_details d
-      WHERE d.execution_id = e.id
-    SQL
+    # Re-add niche columns
+    add_column :ruby_llm_agents_executions, :span_id, :string
+    add_column :ruby_llm_agents_executions, :response_cache_key, :string
+    add_column :ruby_llm_agents_executions, :time_to_first_token_ms, :integer
+    add_column :ruby_llm_agents_executions, :retryable, :boolean
+    add_column :ruby_llm_agents_executions, :rate_limited, :boolean
+    add_column :ruby_llm_agents_executions, :fallback_reason, :string
+
+    # Copy data back (DB-agnostic — uses ActiveRecord)
+    say_with_time "Restoring detail data to executions" do
+      count = 0
+      # Can't reference the model since the table is about to be dropped,
+      # so use raw SQL in batches
+      batch_size = 1000
+      loop do
+        rows = exec_query(<<~SQL).to_a
+          SELECT * FROM ruby_llm_agents_execution_details
+          ORDER BY id LIMIT #{batch_size} OFFSET #{count}
+        SQL
+
+        break if rows.empty?
+
+        rows.each do |row|
+          execute <<~SQL
+            UPDATE ruby_llm_agents_executions
+            SET error_message = #{quote(row['error_message'])},
+                system_prompt = #{quote(row['system_prompt'])},
+                user_prompt = #{quote(row['user_prompt'])},
+                response = #{quote(row['response'])},
+                messages_summary = #{quote(row['messages_summary'])},
+                tool_calls = #{quote(row['tool_calls'])},
+                attempts = #{quote(row['attempts'])},
+                fallback_chain = #{quote(row['fallback_chain'])},
+                parameters = #{quote(row['parameters'])},
+                routed_to = #{quote(row['routed_to'])},
+                classification_result = #{quote(row['classification_result'])},
+                cached_at = #{quote(row['cached_at'])},
+                cache_creation_tokens = #{quote(row['cache_creation_tokens'])}
+            WHERE id = #{row['execution_id']}
+          SQL
+        end
+
+        count += rows.size
+      end
+      count
+    end
 
     drop_table :ruby_llm_agents_execution_details
   end
@@ -433,6 +485,18 @@ delegate :system_prompt, :user_prompt, :response, :error_message,
          :parameters, :routed_to, :classification_result,
          :cached_at, :cache_creation_tokens,
          to: :detail, prefix: false, allow_nil: true
+```
+
+**Eager loading — avoid N+1 on detail fields:**
+
+Any query that displays detail columns (workflow step views, execution show pages) must eager load:
+
+```ruby
+# In controllers/views that access detail fields:
+Execution.includes(:detail).where(...)
+
+# Workflow steps — the show page lists steps with routed_to/classification_result:
+execution.workflow_steps.includes(:detail)
 ```
 
 **Instrumentation writes to detail table:**
@@ -509,6 +573,7 @@ class CleanupExecutionIndexes < ActiveRecord::Migration[7.1]
     remove_index :ruby_llm_agents_executions, :tool_calls_count, if_exists: true
     remove_index :ruby_llm_agents_executions, :chosen_model_id, if_exists: true
     remove_index :ruby_llm_agents_executions, :execution_type, if_exists: true
+    remove_index :ruby_llm_agents_executions, :response_cache_key, if_exists: true
 
     # These overlap with composite indexes
     remove_index :ruby_llm_agents_executions, :agent_type, if_exists: true
@@ -517,7 +582,7 @@ class CleanupExecutionIndexes < ActiveRecord::Migration[7.1]
 end
 ```
 
-**Keep:** All composite indexes, `trace_id`, `request_id`, `parent_execution_id`, `root_execution_id`, `response_cache_key`, `workflow_type`, `status`, `created_at`.
+**Keep:** All composite indexes, `trace_id`, `request_id`, `parent_execution_id`, `root_execution_id`, `workflow_type`, `status`, `created_at`.
 
 ### Phase 5: Global Cache Fallback
 
@@ -618,7 +683,7 @@ See `plans/tenant_budget_tracking_refactor.md` — fully detailed there.
 ### Phase 2 (split execution_details)
 | File | Change |
 |---|---|
-| New migration | Create `execution_details`, backfill via SQL, drop 13 old columns from executions |
+| New migration | Create `execution_details`, backfill in batches, drop 13 detail columns + 6 niche columns from executions |
 | New: `app/models/ruby_llm/agents/execution_detail.rb` | Model with `belongs_to :execution` |
 | `app/models/ruby_llm/agents/execution.rb` | Add `has_one :detail`, add delegations |
 | `lib/ruby_llm/agents/pipeline/middleware/instrumentation.rb` | Write details to `execution_details` table |
@@ -656,3 +721,59 @@ See `plans/tenant_budget_tracking_refactor.md` — fully detailed there.
 | File | Change |
 |---|---|
 | `app/models/ruby_llm/agents/tenant_budget.rb` | Delete file (or add deprecation first) |
+
+---
+
+## Generator Install Strategy
+
+The generator must handle two cases: **new installs** and **existing installs upgrading**.
+
+### New installs
+
+`rails generate ruby_llm:agents:install` produces a single migration with the target schema (4 tables, correct columns, no legacy columns). New users never see the old schema.
+
+### Existing installs upgrading
+
+`rails generate ruby_llm:agents:upgrade` (or `install --upgrade`) detects which migrations have already run and generates only the delta:
+
+```ruby
+# In the generator:
+def create_upgrade_migrations
+  # Check which tables/columns exist
+  return unless table_exists?(:ruby_llm_agents_executions)
+
+  # Only generate migrations for changes not yet applied
+  unless table_exists?(:ruby_llm_agents_execution_details)
+    copy_migration "split_execution_details_from_executions"
+  end
+
+  unless column_exists?(:ruby_llm_agents_tenants, :daily_cost_spent)
+    copy_migration "add_tenant_counter_columns"
+  end
+
+  if column_exists?(:ruby_llm_agents_executions, :tenant_record_type)
+    copy_migration "remove_tenant_record_from_executions"
+  end
+
+  # ... etc for each phase
+end
+
+private
+
+def table_exists?(name)
+  ActiveRecord::Base.connection.table_exists?(name)
+end
+
+def column_exists?(table, column)
+  ActiveRecord::Base.connection.column_exists?(table, column)
+end
+```
+
+This way users run one command and get exactly the migrations they need. The generator is idempotent — running it twice produces no duplicate migrations.
+
+---
+
+## Future Considerations (Out of Scope)
+
+- **API key encryption:** `api_configurations` stores keys as plain text. Should use Rails 7+ `encrypts` or `attr_encrypted` in a future release.
+- **Metadata accessors:** Add convenience methods for niche fields moved to metadata (e.g., `execution.span_id` reading from `metadata['span_id']`). Simple `store_accessor` or custom methods.

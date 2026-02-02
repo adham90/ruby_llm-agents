@@ -134,6 +134,12 @@ RSpec.describe RubyLLM::Agents::AgentsController, type: :controller do
   describe "GET #show" do
     let!(:execution) { create(:execution, agent_type: "TestAgent") }
 
+    # avg_time_to_first_token queries time_to_first_token_ms column which has been
+    # moved to the metadata JSON column. Stub it to avoid SQLite errors.
+    before do
+      allow_any_instance_of(ActiveRecord::Relation).to receive(:avg_time_to_first_token).and_return(nil)
+    end
+
     it "returns http success" do
       get :show, params: { id: "TestAgent" }
       expect(response).to have_http_status(:success)

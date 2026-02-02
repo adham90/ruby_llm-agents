@@ -238,9 +238,25 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
     let(:expensive_pricing) { double("pricing", text_tokens: expensive_text_tokens) }
     let(:expensive_model_info) { double("model_info", pricing: expensive_pricing) }
 
+    # Helper to set attempts on detail and reset costs on execution
+    def set_attempts_and_reset_costs(execution, attempts_data)
+      # Use update! instead of update_columns to properly handle JSON type casting
+      if attempts_data.nil?
+        # attempts has NOT NULL constraint, use update_columns to bypass validation
+        execution.detail.update_columns(attempts: nil)
+      else
+        execution.detail.update!(attempts: attempts_data)
+      end
+      execution.update_columns(input_cost: nil, output_cost: nil)
+      execution.reload
+    end
+
     context "with blank attempts" do
       it "returns early when attempts is nil" do
-        execution.update_columns(attempts: nil, input_cost: nil, output_cost: nil)
+        # Destroy the detail record so attempts delegation returns nil
+        execution.detail.destroy!
+        execution.reload
+        execution.update_columns(input_cost: nil, output_cost: nil)
         execution.aggregate_attempt_costs!
 
         expect(execution.input_cost).to be_nil
@@ -248,7 +264,7 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
       end
 
       it "returns early when attempts is empty array" do
-        execution.update_columns(attempts: [], input_cost: nil, output_cost: nil)
+        set_attempts_and_reset_costs(execution, [])
         execution.aggregate_attempt_costs!
 
         expect(execution.input_cost).to be_nil
@@ -270,7 +286,7 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
       end
 
       it "calculates costs from single attempt" do
-        execution.update_columns(attempts: single_attempt, input_cost: nil, output_cost: nil)
+        set_attempts_and_reset_costs(execution, single_attempt)
         execution.aggregate_attempt_costs!
 
         # 1000 * 5 / 1M = 0.005
@@ -302,7 +318,7 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
       end
 
       it "sums costs from all attempts" do
-        execution.update_columns(attempts: multiple_attempts, input_cost: nil, output_cost: nil)
+        set_attempts_and_reset_costs(execution, multiple_attempts)
         execution.aggregate_attempt_costs!
 
         # First attempt: 0.005 input + 0.0075 output
@@ -336,7 +352,7 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
       end
 
       it "calculates costs using each attempt's model pricing" do
-        execution.update_columns(attempts: fallback_attempts, input_cost: nil, output_cost: nil)
+        set_attempts_and_reset_costs(execution, fallback_attempts)
         execution.aggregate_attempt_costs!
 
         # First attempt (gpt-4o at $5/$15): 0.005 input + 0.0075 output
@@ -369,7 +385,7 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
       end
 
       it "skips short-circuited attempts" do
-        execution.update_columns(attempts: attempts_with_short_circuit, input_cost: nil, output_cost: nil)
+        set_attempts_and_reset_costs(execution, attempts_with_short_circuit)
         execution.aggregate_attempt_costs!
 
         # Only second attempt counts: 0.005 input + 0.0075 output
@@ -400,7 +416,7 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
       end
 
       it "skips attempts with unavailable model info" do
-        execution.update_columns(attempts: attempts_with_unknown_model, input_cost: nil, output_cost: nil)
+        set_attempts_and_reset_costs(execution, attempts_with_unknown_model)
         execution.aggregate_attempt_costs!
 
         # Only gpt-4o attempt counts: 0.005 input + 0.0075 output
@@ -432,7 +448,7 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
       end
 
       it "skips attempts where pricing is nil" do
-        execution.update_columns(attempts: attempts_with_nil_pricing, input_cost: nil, output_cost: nil)
+        set_attempts_and_reset_costs(execution, attempts_with_nil_pricing)
         execution.aggregate_attempt_costs!
 
         # Only gpt-4o attempt counts
@@ -455,7 +471,7 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
       end
 
       it "handles zero tokens gracefully" do
-        execution.update_columns(attempts: zero_token_attempts, input_cost: nil, output_cost: nil)
+        set_attempts_and_reset_costs(execution, zero_token_attempts)
         execution.aggregate_attempt_costs!
 
         expect(execution.input_cost).to eq(0.0)
@@ -477,7 +493,7 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
       end
 
       it "treats nil tokens as zero" do
-        execution.update_columns(attempts: missing_token_attempts, input_cost: nil, output_cost: nil)
+        set_attempts_and_reset_costs(execution, missing_token_attempts)
         execution.aggregate_attempt_costs!
 
         expect(execution.input_cost).to eq(0.0)
@@ -499,7 +515,7 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
       end
 
       it "correctly calculates large token costs" do
-        execution.update_columns(attempts: large_token_attempts, input_cost: nil, output_cost: nil)
+        set_attempts_and_reset_costs(execution, large_token_attempts)
         execution.aggregate_attempt_costs!
 
         # 10M * 5 / 1M = 50.0
@@ -523,7 +539,7 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
       end
 
       it "rounds final costs to 6 decimal places" do
-        execution.update_columns(attempts: fractional_attempts, input_cost: nil, output_cost: nil)
+        set_attempts_and_reset_costs(execution, fractional_attempts)
         execution.aggregate_attempt_costs!
 
         # 123 * 5 / 1M = 0.000615

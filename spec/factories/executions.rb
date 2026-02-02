@@ -14,26 +14,40 @@ FactoryBot.define do
     output_tokens { 50 }
     total_tokens { 150 }
     cached_tokens { 0 }
-    cache_creation_tokens { 0 }
     input_cost { 0.003 }
     output_cost { 0.006 }
     total_cost { 0.009 }
-    parameters { { query: "test query" } }
-    response { { content: "test response" } }
-    metadata { { query: "test query" } }
-    tool_calls { [] }
     tool_calls_count { 0 }
+    metadata { { query: "test query" } }
+
+    # Create a detail record with default values after creation
+    after(:create) do |execution|
+      unless execution.detail.present?
+        execution.create_detail!(
+          parameters: { query: "test query" },
+          response: { content: "test response" },
+          tool_calls: [],
+          cache_creation_tokens: 0
+        )
+      end
+    end
 
     trait :failed do
       status { "error" }
       error_class { "StandardError" }
-      error_message { "Something went wrong" }
+      after(:create) do |execution|
+        execution.detail&.update!(error_message: "Something went wrong") ||
+          execution.create_detail!(error_message: "Something went wrong")
+      end
     end
 
     trait :timeout do
       status { "timeout" }
       error_class { "Timeout::Error" }
-      error_message { "Request timed out" }
+      after(:create) do |execution|
+        execution.detail&.update!(error_message: "Request timed out") ||
+          execution.create_detail!(error_message: "Request timed out")
+      end
     end
 
     trait :expensive do
@@ -62,8 +76,10 @@ FactoryBot.define do
     end
 
     trait :with_tool_calls do
-      tool_calls do
-        [
+      tool_calls_count { 2 }
+      finish_reason { "tool_calls" }
+      after(:create) do |execution|
+        tool_calls_data = [
           {
             "id" => "call_abc123",
             "name" => "search_database",
@@ -75,58 +91,68 @@ FactoryBot.define do
             "arguments" => { "format" => "json" }
           }
         ]
+        execution.detail ? execution.detail.update!(tool_calls: tool_calls_data) :
+          execution.create_detail!(tool_calls: tool_calls_data)
       end
-      tool_calls_count { 2 }
-      finish_reason { "tool_calls" }
     end
 
     trait :with_many_tool_calls do
-      tool_calls do
-        [
+      tool_calls_count { 5 }
+      finish_reason { "tool_calls" }
+      after(:create) do |execution|
+        tool_calls_data = [
           { "id" => "call_001", "name" => "tool_one", "arguments" => { "arg" => "value1" } },
           { "id" => "call_002", "name" => "tool_two", "arguments" => { "arg" => "value2" } },
           { "id" => "call_003", "name" => "tool_three", "arguments" => { "arg" => "value3" } },
           { "id" => "call_004", "name" => "tool_four", "arguments" => { "arg" => "value4" } },
           { "id" => "call_005", "name" => "tool_five", "arguments" => { "arg" => "value5" } }
         ]
+        execution.detail ? execution.detail.update!(tool_calls: tool_calls_data) :
+          execution.create_detail!(tool_calls: tool_calls_data)
       end
-      tool_calls_count { 5 }
-      finish_reason { "tool_calls" }
     end
 
     trait :with_single_tool_call do
-      tool_calls do
-        [
-          { "id" => "call_single", "name" => "single_tool", "arguments" => { "key" => "value" } }
-        ]
-      end
       tool_calls_count { 1 }
       finish_reason { "tool_calls" }
+      after(:create) do |execution|
+        tool_calls_data = [
+          { "id" => "call_single", "name" => "single_tool", "arguments" => { "key" => "value" } }
+        ]
+        execution.detail ? execution.detail.update!(tool_calls: tool_calls_data) :
+          execution.create_detail!(tool_calls: tool_calls_data)
+      end
     end
 
     trait :with_tool_calls_no_args do
-      tool_calls do
-        [
-          { "id" => "call_no_args", "name" => "tool_without_args", "arguments" => {} }
-        ]
-      end
       tool_calls_count { 1 }
       finish_reason { "tool_calls" }
+      after(:create) do |execution|
+        tool_calls_data = [
+          { "id" => "call_no_args", "name" => "tool_without_args", "arguments" => {} }
+        ]
+        execution.detail ? execution.detail.update!(tool_calls: tool_calls_data) :
+          execution.create_detail!(tool_calls: tool_calls_data)
+      end
     end
 
     trait :with_symbol_key_tool_calls do
-      tool_calls do
-        [
-          { id: "call_sym_123", name: "symbol_tool", arguments: { key: "value" } }
-        ]
-      end
       tool_calls_count { 1 }
       finish_reason { "tool_calls" }
+      after(:create) do |execution|
+        tool_calls_data = [
+          { id: "call_sym_123", name: "symbol_tool", arguments: { key: "value" } }
+        ]
+        execution.detail ? execution.detail.update!(tool_calls: tool_calls_data) :
+          execution.create_detail!(tool_calls: tool_calls_data)
+      end
     end
 
     trait :with_enhanced_tool_calls do
-      tool_calls do
-        [
+      tool_calls_count { 2 }
+      finish_reason { "tool_calls" }
+      after(:create) do |execution|
+        tool_calls_data = [
           {
             "id" => "call_enhanced_1",
             "name" => "weather_lookup",
@@ -150,14 +176,16 @@ FactoryBot.define do
             "completed_at" => "2025-01-27T10:30:45.489Z"
           }
         ]
+        execution.detail ? execution.detail.update!(tool_calls: tool_calls_data) :
+          execution.create_detail!(tool_calls: tool_calls_data)
       end
-      tool_calls_count { 2 }
-      finish_reason { "tool_calls" }
     end
 
     trait :with_enhanced_tool_call_error do
-      tool_calls do
-        [
+      tool_calls_count { 1 }
+      finish_reason { "tool_calls" }
+      after(:create) do |execution|
+        tool_calls_data = [
           {
             "id" => "call_error_1",
             "name" => "api_call",
@@ -170,23 +198,25 @@ FactoryBot.define do
             "completed_at" => "2025-01-27T10:30:50.146Z"
           }
         ]
+        execution.detail ? execution.detail.update!(tool_calls: tool_calls_data) :
+          execution.create_detail!(tool_calls: tool_calls_data)
       end
-      tool_calls_count { 1 }
-      finish_reason { "tool_calls" }
     end
 
     trait :with_legacy_tool_calls do
-      tool_calls do
-        [
+      tool_calls_count { 1 }
+      finish_reason { "tool_calls" }
+      after(:create) do |execution|
+        tool_calls_data = [
           {
             "id" => "call_legacy_1",
             "name" => "old_tool",
             "arguments" => { "param" => "value" }
           }
         ]
+        execution.detail ? execution.detail.update!(tool_calls: tool_calls_data) :
+          execution.create_detail!(tool_calls: tool_calls_data)
       end
-      tool_calls_count { 1 }
-      finish_reason { "tool_calls" }
     end
 
     trait :with_tenant do
@@ -211,7 +241,7 @@ FactoryBot.define do
       input_cost { 0 }
       output_cost { 0 }
       total_cost { 0 }
-      response_cache_key { "ruby_llm_agent/TestAgent/v1.0/#{SecureRandom.hex(8)}" }
+      metadata { { response_cache_key: "ruby_llm_agent/TestAgent/v1.0/#{SecureRandom.hex(8)}" } }
     end
 
     trait :with_moderation do

@@ -373,16 +373,16 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
     describe "#failed_executions" do
       before do
         3.times do
-          RubyLLM::Agents::Execution.create!(
+          exec = RubyLLM::Agents::Execution.create!(
             agent_type: "TestAgent",
             agent_version: "1.0",
             model_id: "gpt-4",
             started_at: Time.current,
             status: "error",
             error_class: "TestError",
-            error_message: "Test error message",
             tenant_id: tenant.tenant_id
           )
+          exec.create_detail!(error_message: "Test error message")
         end
 
         2.times do

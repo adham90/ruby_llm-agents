@@ -38,6 +38,15 @@ module RubyLlmAgents
       )
     end
 
+    def create_execution_details_migration
+      return if options[:skip_migration]
+
+      migration_template(
+        "create_execution_details_migration.rb.tt",
+        File.join(db_migrate_path, "create_ruby_llm_agents_execution_details.rb")
+      )
+    end
+
     def create_initializer
       return if options[:skip_initializer]
 

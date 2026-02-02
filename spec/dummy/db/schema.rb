@@ -7,127 +7,109 @@ ActiveRecord::Schema.define do
   create_table :ruby_llm_agents_executions, force: :cascade do |t|
     # Agent identification
     t.string :agent_type, null: false
-    t.string :agent_version, default: "1.0"
+    t.string :agent_version, null: false, default: "1.0"
+    t.string :execution_type, null: false, default: "chat"
 
     # Model configuration
     t.string :model_id, null: false
     t.string :model_provider
     t.decimal :temperature, precision: 3, scale: 2
+    t.string :chosen_model_id
+
+    # Status
+    t.string :status, null: false, default: "running"
+    t.string :finish_reason
+    t.string :error_class
 
     # Timing
     t.datetime :started_at, null: false
     t.datetime :completed_at
     t.integer :duration_ms
 
-    # Streaming and finish
-    t.boolean :streaming, default: false
-    t.integer :time_to_first_token_ms
-    t.string :finish_reason
-
-    # Distributed tracing
-    t.string :request_id
-    t.string :trace_id
-    t.string :span_id
-    t.bigint :parent_execution_id
-    t.bigint :root_execution_id
-
-    # Routing and retries
-    t.string :fallback_reason
-    t.boolean :retryable
-    t.boolean :rate_limited
-
-    # Caching
-    t.boolean :cache_hit, default: false
-    t.string :response_cache_key
-    t.datetime :cached_at
-
-    # Status
-    t.string :status, default: "success", null: false
-
     # Token usage
-    t.integer :input_tokens
-    t.integer :output_tokens
-    t.integer :total_tokens
+    t.integer :input_tokens, default: 0
+    t.integer :output_tokens, default: 0
+    t.integer :total_tokens, default: 0
     t.integer :cached_tokens, default: 0
-    t.integer :cache_creation_tokens, default: 0
 
     # Costs (in dollars, 6 decimal precision)
     t.decimal :input_cost, precision: 12, scale: 6
     t.decimal :output_cost, precision: 12, scale: 6
     t.decimal :total_cost, precision: 12, scale: 6
 
-    # Data (JSON for SQLite)
-    t.json :parameters, null: false, default: {}
-    t.json :response, default: {}
-    t.json :metadata, null: false, default: {}
+    # Caching
+    t.boolean :cache_hit, default: false
 
-    # Error tracking
-    t.string :error_class
-    t.text :error_message
+    # Streaming
+    t.boolean :streaming, default: false
 
-    # Prompts (for history/changelog)
-    t.text :system_prompt
-    t.text :user_prompt
+    # Retry / Fallback
+    t.integer :attempts_count, default: 1, null: false
 
-    # Reliability features
-    t.json :fallback_chain, default: []
-    t.json :attempts, default: []
-    t.integer :attempts_count, default: 0
-    t.string :chosen_model_id
+    # Tool calls
+    t.integer :tool_calls_count, default: 0, null: false
 
-    # Tool calls tracking
-    t.json :tool_calls, null: false, default: []
-    t.integer :tool_calls_count, null: false, default: 0
+    # Distributed tracing
+    t.string :trace_id
+    t.string :request_id
 
-    # Workflow support
+    # Execution hierarchy (self-join)
+    t.bigint :parent_execution_id
+    t.bigint :root_execution_id
+
+    # Workflow orchestration
     t.string :workflow_id
     t.string :workflow_type
     t.string :workflow_step
-    t.string :routed_to
-    t.json :classification_result
 
     # Multi-tenancy
     t.string :tenant_id
 
-    # Polymorphic association to tenant model (for llm_tenant DSL)
-    # Uses string type for tenant_record_id to support both integer and UUID primary keys
-    t.string :tenant_record_type
-    t.string :tenant_record_id
+    # Conversation context
+    t.integer :messages_count, default: 0, null: false
 
-    # Messages summary for conversation context
-    t.integer :messages_count, null: false, default: 0
-    t.json :messages_summary, null: false, default: {}
+    # Flexible storage (niche fields, trace context, custom tags)
+    t.json :metadata, null: false, default: {}
 
     t.timestamps
   end
 
-  add_index :ruby_llm_agents_executions, :agent_type
-  add_index :ruby_llm_agents_executions, :status
-  add_index :ruby_llm_agents_executions, :created_at
+  # Indexes: only what's actually queried
   add_index :ruby_llm_agents_executions, [:agent_type, :created_at]
   add_index :ruby_llm_agents_executions, [:agent_type, :status]
-  add_index :ruby_llm_agents_executions, [:agent_type, :agent_version]
-  add_index :ruby_llm_agents_executions, :duration_ms
-  add_index :ruby_llm_agents_executions, :total_cost
-
-  # Tracing indexes
-  add_index :ruby_llm_agents_executions, :request_id
+  add_index :ruby_llm_agents_executions, :status
+  add_index :ruby_llm_agents_executions, :created_at
+  add_index :ruby_llm_agents_executions, [:tenant_id, :created_at]
+  add_index :ruby_llm_agents_executions, [:tenant_id, :status]
   add_index :ruby_llm_agents_executions, :trace_id
+  add_index :ruby_llm_agents_executions, :request_id
   add_index :ruby_llm_agents_executions, :parent_execution_id
   add_index :ruby_llm_agents_executions, :root_execution_id
+  add_index :ruby_llm_agents_executions, [:workflow_id, :workflow_step]
+  add_index :ruby_llm_agents_executions, :workflow_type
 
-  # Caching index
-  add_index :ruby_llm_agents_executions, :response_cache_key
+  # Execution details table (large payloads)
+  create_table :ruby_llm_agents_execution_details, force: :cascade do |t|
+    t.references :execution, null: false,
+                 foreign_key: { to_table: :ruby_llm_agents_executions, on_delete: :cascade },
+                 index: { unique: true }
 
-  # Tool calls index
-  add_index :ruby_llm_agents_executions, :tool_calls_count
+    t.text     :error_message
+    t.text     :system_prompt
+    t.text     :user_prompt
+    t.json     :response,             default: {}
+    t.json     :messages_summary,     default: {}, null: false
+    t.json     :tool_calls,           default: [], null: false
+    t.json     :attempts,             default: [], null: false
+    t.json     :fallback_chain
+    t.json     :parameters,           default: {}, null: false
+    t.string   :routed_to
+    t.json     :classification_result
+    t.datetime :cached_at
+    t.integer  :cache_creation_tokens, default: 0
 
-  # Multi-tenancy index
-  add_index :ruby_llm_agents_executions, [:tenant_id, :agent_type]
-  add_index :ruby_llm_agents_executions, [:tenant_record_type, :tenant_record_id], name: "index_executions_on_tenant_record"
-
-  # Messages summary index
-  add_index :ruby_llm_agents_executions, :messages_count
+    t.timestamps
+  end
 
   # Tenants table (renamed from tenant_budgets)
   create_table :ruby_llm_agents_tenants, force: :cascade do |t|
