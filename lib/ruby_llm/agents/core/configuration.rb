@@ -167,15 +167,18 @@ module RubyLLM
       #       enforcement: :soft
       #     }
 
-      # @!attribute [rw] alerts
-      #   Alert configuration for notifications.
-      #   @return [Hash, nil] Alert config with :slack_webhook_url, :webhook_url, :on_events, :custom keys
+      # @!attribute [rw] on_alert
+      #   Alert handler proc called when governance events occur.
+      #   Receives event name and payload hash. Filter events in your proc as needed.
+      #   @return [Proc, nil] Alert handler or nil to disable (default: nil)
       #   @example
-      #     config.alerts = {
-      #       slack_webhook_url: ENV["SLACK_WEBHOOK"],
-      #       webhook_url: ENV["AGENTS_WEBHOOK"],
-      #       on_events: [:budget_soft_cap, :budget_hard_cap, :breaker_open],
-      #       custom: ->(event, payload) { Rails.logger.info("Alert: #{event}") }
+      #     config.on_alert = ->(event, payload) {
+      #       case event
+      #       when :budget_hard_cap
+      #         Slack::Notifier.new(ENV["SLACK_WEBHOOK"]).ping("Budget exceeded")
+      #       when :breaker_open
+      #         PagerDuty.trigger(payload)
+      #       end
       #     }
 
       # @!attribute [rw] persist_prompts
@@ -389,7 +392,7 @@ module RubyLLM
                     :default_streaming,
                     :default_tools,
                     :default_thinking,
-                    :alerts,
+                    :on_alert,
                     :persist_prompts,
                     :persist_responses,
                     :redaction,
@@ -634,7 +637,7 @@ module RubyLLM
 
         # Governance defaults
         @budgets = nil
-        @alerts = nil
+        @on_alert = nil
         @persist_prompts = true
         @persist_responses = true
         @redaction = nil
@@ -745,25 +748,6 @@ module RubyLLM
       # @return [Array<String>] All patterns from all categories
       def all_retryable_patterns
         default_retryable_patterns.values.flatten.uniq
-      end
-
-      # Returns whether alerts are configured
-      #
-      # @return [Boolean] true if any alert destination is configured
-      def alerts_enabled?
-        return false unless alerts.is_a?(Hash)
-
-        alerts[:slack_webhook_url].present? ||
-          alerts[:webhook_url].present? ||
-          alerts[:custom].present? ||
-          alerts[:email_recipients].present?
-      end
-
-      # Returns the list of events to alert on
-      #
-      # @return [Array<Symbol>] Event names to trigger alerts
-      def alert_events
-        alerts&.dig(:on_events) || []
       end
 
       # Returns merged redaction fields (default sensitive keys + configured)

@@ -51,10 +51,6 @@ require "ruby_llm/agents/core/base"
 # This must happen after Rails.application.initialize! and before specs load
 RubyLLM::Agents::Execution
 
-# Load mailers for specs that test email functionality
-require_relative "../app/mailers/ruby_llm/agents/application_mailer"
-require_relative "../app/mailers/ruby_llm/agents/alert_mailer"
-
 # Load support files
 Dir[File.join(__dir__, "support/**/*.rb")].sort.each { |f| require f }
 

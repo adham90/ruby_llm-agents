@@ -269,43 +269,23 @@
     <!-- Governance - Alerts -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <h3 class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Governance - Alerts</h3>
-      <% alerts = @config.alerts || {} %>
-      <% alerts_enabled = @config.alerts_enabled? %>
+      <% alerts_enabled = @config.on_alert.respond_to?(:call) %>
 
       <div class="space-y-4">
         <div class="flex justify-between items-center">
           <div>
-            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Alerts</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">Notifications for important events</p>
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Alert Handler</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Custom handler for governance events</p>
           </div>
           <%= render_enabled_badge(alerts_enabled) %>
         </div>
 
         <% if alerts_enabled %>
-          <div class="flex justify-between items-center ml-4">
-            <p class="text-sm text-gray-600 dark:text-gray-400">Slack Webhook</p>
-            <%= render_configured_badge(alerts[:slack_webhook_url].present?) %>
+          <div class="ml-4">
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              Handler configured via <code class="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">config.on_alert</code>
+            </p>
           </div>
-          <div class="flex justify-between items-center ml-4">
-            <p class="text-sm text-gray-600 dark:text-gray-400">Generic Webhook</p>
-            <%= render_configured_badge(alerts[:webhook_url].present?) %>
-          </div>
-          <div class="flex justify-between items-center ml-4">
-            <p class="text-sm text-gray-600 dark:text-gray-400">Custom Handler</p>
-            <%= render_configured_badge(alerts[:custom].present?) %>
-          </div>
-          <% if @config.alert_events.any? %>
-            <div class="ml-4">
-              <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Events</p>
-              <div class="flex flex-wrap gap-1">
-                <% @config.alert_events.each do |event| %>
-                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
-                    <%= event %>
-                  </span>
-                <% end %>
-              </div>
-            </div>
-          <% end %>
         <% end %>
       </div>
     </div>

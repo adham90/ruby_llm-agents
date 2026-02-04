@@ -59,9 +59,6 @@ module RubyLLM
         def check_soft_cap_alerts!
           return unless soft_enforcement?
 
-          config = RubyLLM::Agents.configuration
-          return unless config.alerts_enabled?
-
           check_cost_alerts!
           check_token_alerts!
           check_execution_alerts!

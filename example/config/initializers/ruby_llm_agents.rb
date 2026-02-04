@@ -143,22 +143,19 @@ RubyLLM::Agents.configure do |config|
   # Governance - Alerts
   # ============================================
 
-  # Alert notifications for important events
-  # - slack_webhook_url: Slack incoming webhook URL
-  # - webhook_url: Generic webhook URL (receives JSON POST)
-  # - on_events: Events to trigger alerts
+  # Alert handler for governance events
+  # Receives (event, payload) when important events occur:
   #   - :budget_soft_cap - Soft budget limit reached
   #   - :budget_hard_cap - Hard budget limit exceeded
   #   - :breaker_open - Circuit breaker opened
   #   - :agent_anomaly - Cost/duration anomaly detected
-  # - custom: Lambda for custom handling
-  # config.alerts = {
-  #   slack_webhook_url: ENV["SLACK_AGENTS_WEBHOOK"],
-  #   webhook_url: ENV["AGENTS_ALERT_WEBHOOK"],
-  #   on_events: [:budget_soft_cap, :budget_hard_cap, :breaker_open],
-  #   custom: ->(event, payload) {
-  #     Rails.logger.info("[AgentAlert] #{event}: #{payload}")
-  #   }
+  # config.on_alert = ->(event, payload) {
+  #   case event
+  #   when :budget_hard_cap
+  #     Slack::Notifier.new(ENV["SLACK_WEBHOOK"]).ping("Budget exceeded: #{payload[:total_cost]}")
+  #   when :breaker_open
+  #     Rails.logger.error("[Alert] Circuit breaker opened for #{payload[:agent_type]}")
+  #   end
   # }
 
   # ============================================

@@ -56,7 +56,7 @@ RSpec.describe RubyLLM::Agents::Configuration do
 
     it "sets governance defaults" do
       expect(config.budgets).to be_nil
-      expect(config.alerts).to be_nil
+      expect(config.on_alert).to be_nil
       expect(config.persist_prompts).to be true
       expect(config.persist_responses).to be true
       expect(config.redaction).to be_nil
@@ -141,52 +141,16 @@ RSpec.describe RubyLLM::Agents::Configuration do
     end
   end
 
-  describe "#alerts_enabled?" do
-    it "returns false when alerts is nil" do
-      config.alerts = nil
-      expect(config.alerts_enabled?).to be false
+  describe "#on_alert" do
+    it "accepts a callable proc" do
+      handler = ->(event, payload) { }
+      config.on_alert = handler
+      expect(config.on_alert).to eq(handler)
     end
 
-    it "returns false when alerts is not a hash" do
-      config.alerts = "invalid"
-      expect(config.alerts_enabled?).to be false
-    end
-
-    it "returns false when no destinations are configured" do
-      config.alerts = { on_events: [:budget_exceeded] }
-      expect(config.alerts_enabled?).to be false
-    end
-
-    it "returns true when slack_webhook_url is configured" do
-      config.alerts = { slack_webhook_url: "https://hooks.slack.com/..." }
-      expect(config.alerts_enabled?).to be true
-    end
-
-    it "returns true when webhook_url is configured" do
-      config.alerts = { webhook_url: "https://example.com/webhook" }
-      expect(config.alerts_enabled?).to be true
-    end
-
-    it "returns true when custom callback is configured" do
-      config.alerts = { custom: ->(event, payload) { } }
-      expect(config.alerts_enabled?).to be true
-    end
-  end
-
-  describe "#alert_events" do
-    it "returns empty array when alerts is nil" do
-      config.alerts = nil
-      expect(config.alert_events).to eq([])
-    end
-
-    it "returns empty array when on_events is not set" do
-      config.alerts = { slack_webhook_url: "url" }
-      expect(config.alert_events).to eq([])
-    end
-
-    it "returns configured events" do
-      config.alerts = { on_events: [:budget_soft_cap, :breaker_open] }
-      expect(config.alert_events).to eq([:budget_soft_cap, :breaker_open])
+    it "accepts nil" do
+      config.on_alert = nil
+      expect(config.on_alert).to be_nil
     end
   end
 

@@ -7,7 +7,6 @@ RSpec.describe RubyLLM::Agents::CircuitBreaker do
 
   before do
     allow(RubyLLM::Agents.configuration).to receive(:cache_store).and_return(cache_store)
-    allow(RubyLLM::Agents.configuration).to receive(:alerts_enabled?).and_return(false)
     cache_store.clear
   end
 
@@ -170,11 +169,6 @@ RSpec.describe RubyLLM::Agents::CircuitBreaker do
 
   describe "alerts" do
     let(:breaker) { described_class.new("TestAgent", "gpt-4o", errors: 2) }
-
-    before do
-      allow(RubyLLM::Agents.configuration).to receive(:alerts_enabled?).and_return(true)
-      allow(RubyLLM::Agents.configuration).to receive(:alert_events).and_return([:breaker_open])
-    end
 
     it "fires alert when breaker opens" do
       expect(RubyLLM::Agents::AlertManager).to receive(:notify).with(:breaker_open, hash_including(
