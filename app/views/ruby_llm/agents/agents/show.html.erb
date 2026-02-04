@@ -34,11 +34,6 @@
           </span>
         <% end %>
 
-        <% if @config %>
-          <span class="text-sm text-gray-500 dark:text-gray-400">
-            v<%= @config[:version] %>
-          </span>
-        <% end %>
       </div>
 
       <% if @config %>
@@ -300,10 +295,6 @@
   </div>
 <% end %>
 
-<!-- Version Comparison -->
-<%= render partial: "ruby_llm/agents/agents/version_comparison",
-    locals: { versions: @versions, version_comparison: @version_comparison } %>
-
 <% if @config && @agent_type_kind %>
   <%= render "ruby_llm/agents/agents/config_#{@agent_type_kind}", config: @config %>
 <% end %>
@@ -316,9 +307,8 @@
 
   <div id="executions_table">
     <%
-      has_filters = params[:statuses].present? || params[:versions].present? || params[:models].present? || params[:temperatures].present? || params[:days].present?
+      has_filters = params[:statuses].present? || params[:models].present? || params[:temperatures].present? || params[:days].present?
       selected_statuses = params[:statuses].present? ? (params[:statuses].is_a?(Array) ? params[:statuses] : params[:statuses].split(",")) : []
-      selected_versions = params[:versions].present? ? (params[:versions].is_a?(Array) ? params[:versions] : params[:versions].split(",")) : []
       selected_models = params[:models].present? ? (params[:models].is_a?(Array) ? params[:models] : params[:models].split(",")) : []
       selected_temperatures = params[:temperatures].present? ? (params[:temperatures].is_a?(Array) ? params[:temperatures] : params[:temperatures].split(",")).map(&:to_s) : []
 
@@ -328,7 +318,6 @@
         { value: "running", label: "Running", color: "bg-blue-500" },
         { value: "timeout", label: "Timeout", color: "bg-yellow-500" }
       ]
-      version_options = @versions.map { |v| { value: v.to_s, label: "v#{v}" } }
       model_options = @models.map { |m| { value: m, label: m } }
       temperature_options = @temperatures.map { |t| { value: t.to_s, label: t.to_s } }
       days_options = [
@@ -349,18 +338,6 @@
             all_label: "All Statuses",
             options: status_options,
             selected: selected_statuses %>
-
-        <%# Version Filter (Multi-select) %>
-        <% if @versions.any? %>
-          <%= render "ruby_llm/agents/shared/filter_dropdown",
-              name: "versions[]",
-              filter_id: "versions",
-              label: "Version",
-              all_label: "All Versions",
-              options: version_options,
-              selected: selected_versions,
-              icon: "M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" %>
-        <% end %>
 
         <%# Model Filter (Multi-select) %>
         <% if @models.length > 1 %>
