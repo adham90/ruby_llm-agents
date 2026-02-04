@@ -104,7 +104,7 @@ class <%= class_name %>Agent < ApplicationAgent
     # end
 
     # Custom metadata to include in execution logs
-    # def execution_metadata
+    # def metadata
     #   { custom_field: "value", request_id: params[:request_id] }
     # end
 

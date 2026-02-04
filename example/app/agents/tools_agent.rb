@@ -61,7 +61,7 @@ class ToolsAgent < ApplicationAgent
     query
   end
 
-  def execution_metadata
+  def metadata
     {
       showcase: 'tools',
       features: %w[tools tool_calls tool_loop]

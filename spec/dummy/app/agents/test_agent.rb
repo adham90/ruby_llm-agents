@@ -19,7 +19,7 @@ class TestAgent < RubyLLM::Agents::Base
     query
   end
 
-  def execution_metadata
+  def metadata
     { query: query, limit: limit }
   end
 end

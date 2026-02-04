@@ -175,12 +175,12 @@ def process_response(response)
 end
 ```
 
-#### `#execution_metadata` (private)
+#### `#metadata` (private)
 
 Override to add custom metadata.
 
 ```ruby
-def execution_metadata
+def metadata
   { user_id: user_id }
 end
 ```

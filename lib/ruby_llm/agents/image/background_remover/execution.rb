@@ -226,7 +226,7 @@ module RubyLLM
           end
         end
 
-        def build_execution_metadata(result)
+        def build_metadata(result)
           {
             output_format: result.output_format,
             alpha_matting: result.alpha_matting,

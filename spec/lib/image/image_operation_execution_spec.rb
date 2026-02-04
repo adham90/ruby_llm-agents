@@ -93,7 +93,7 @@ RSpec.describe RubyLLM::Agents::Concerns::ImageOperationExecution do
         ["test", "operation", "v1", Digest::SHA256.hexdigest("test")]
       end
 
-      def build_execution_metadata(_result)
+      def build_metadata(_result)
         { test: true }
       end
     end

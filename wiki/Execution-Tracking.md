@@ -85,7 +85,7 @@ class MyAgent < ApplicationAgent
   param :query, required: true
   param :user_id, required: true
 
-  def execution_metadata
+  def metadata
     {
       user_id: user_id,
       source: "web",

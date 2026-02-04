@@ -105,7 +105,7 @@
 #     response.content.upcase
 #   end
 #
-#   def execution_metadata   # OPTIONAL: Extra data for execution logs
+#   def metadata   # OPTIONAL: Extra data for execution logs
 #     { user_id: current_user_id }
 #   end
 #
@@ -172,7 +172,7 @@ class ApplicationAgent < RubyLLM::Agents::Base
   # end
 
   # Example: Common metadata
-  # def execution_metadata
+  # def metadata
   #   { app_version: Rails.application.config.version }
   # end
 end

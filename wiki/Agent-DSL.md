@@ -470,12 +470,12 @@ def process_response(response)
 end
 ```
 
-### execution_metadata
+### metadata
 
 Add custom metadata to execution logs:
 
 ```ruby
-def execution_metadata
+def metadata
   {
     user_id: user_id,
     source: source,
@@ -552,7 +552,7 @@ class ContentGeneratorAgent < ApplicationAgent
     result
   end
 
-  def execution_metadata
+  def metadata
     { user_id: user_id, topic: topic }
   end
 end

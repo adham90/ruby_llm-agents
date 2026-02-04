@@ -118,7 +118,7 @@ module RubyLLM
             duration_ms: result.duration_ms,
             started_at: result.started_at,
             completed_at: result.completed_at,
-            metadata: build_execution_metadata(result)
+            metadata: build_metadata(result)
           }
         end
 
@@ -141,7 +141,7 @@ module RubyLLM
           }
         end
 
-        def build_execution_metadata(result)
+        def build_metadata(result)
           { count: result.count }
         end
 

@@ -15,7 +15,7 @@ module RubyLLM
     #
     # @example Adding custom metadata to executions
     #   class MyAgent < ApplicationAgent
-    #     def execution_metadata
+    #     def metadata
     #       { user_id: Current.user&.id, request_id: request.uuid }
     #     end
     #   end
@@ -232,10 +232,10 @@ module RubyLLM
       # @return [RubyLLM::Agents::Execution, nil] The created record, or nil on failure
       def create_running_execution(started_at, fallback_chain: [])
         config = RubyLLM::Agents.configuration
-        metadata = execution_metadata
+        agent_metadata = metadata
 
         # Separate niche tracing fields into metadata
-        exec_metadata = metadata.dup
+        exec_metadata = agent_metadata.dup
         exec_metadata["span_id"] = exec_metadata.delete(:span_id) if exec_metadata[:span_id]
 
         execution_data = {
@@ -251,10 +251,10 @@ module RubyLLM
         }
 
         # Extract tracing fields from metadata if present
-        execution_data[:request_id] = metadata[:request_id] if metadata[:request_id]
-        execution_data[:trace_id] = metadata[:trace_id] if metadata[:trace_id]
-        execution_data[:parent_execution_id] = metadata[:parent_execution_id] if metadata[:parent_execution_id]
-        execution_data[:root_execution_id] = metadata[:root_execution_id] if metadata[:root_execution_id]
+        execution_data[:request_id] = agent_metadata[:request_id] if agent_metadata[:request_id]
+        execution_data[:trace_id] = agent_metadata[:trace_id] if agent_metadata[:trace_id]
+        execution_data[:parent_execution_id] = agent_metadata[:parent_execution_id] if agent_metadata[:parent_execution_id]
+        execution_data[:root_execution_id] = agent_metadata[:root_execution_id] if agent_metadata[:root_execution_id]
 
         # Add fallback chain tracking (count only on execution, chain stored in detail)
         if fallback_chain.any?
@@ -506,7 +506,7 @@ module RubyLLM
           completed_at: completed_at,
           duration_ms: 0,
           status: status,
-          metadata: execution_metadata,
+          metadata: metadata,
           messages_count: resolved_messages.size
         }
 
@@ -609,10 +609,10 @@ module RubyLLM
       #
       # @return [Hash] Custom metadata to store with the execution
       # @example
-      #   def execution_metadata
+      #   def metadata
       #     { user_id: Current.user&.id, experiment: "v2" }
       #   end
-      def execution_metadata
+      def metadata
         {}
       end
 
@@ -849,7 +849,7 @@ module RubyLLM
         completed_at = Time.current
         duration_ms = ((completed_at - started_at) * 1000).round
 
-        exec_metadata = execution_metadata.dup
+        exec_metadata = metadata.dup
         exec_metadata["response_cache_key"] = cache_key
         exec_metadata["span_id"] = exec_metadata.delete(:span_id) if exec_metadata[:span_id]
 
@@ -876,11 +876,11 @@ module RubyLLM
         }
 
         # Add tracing fields from metadata if present
-        metadata = execution_metadata
-        execution_data[:request_id] = metadata[:request_id] if metadata[:request_id]
-        execution_data[:trace_id] = metadata[:trace_id] if metadata[:trace_id]
-        execution_data[:parent_execution_id] = metadata[:parent_execution_id] if metadata[:parent_execution_id]
-        execution_data[:root_execution_id] = metadata[:root_execution_id] if metadata[:root_execution_id]
+        agent_metadata = metadata
+        execution_data[:request_id] = agent_metadata[:request_id] if agent_metadata[:request_id]
+        execution_data[:trace_id] = agent_metadata[:trace_id] if agent_metadata[:trace_id]
+        execution_data[:parent_execution_id] = agent_metadata[:parent_execution_id] if agent_metadata[:parent_execution_id]
+        execution_data[:root_execution_id] = agent_metadata[:root_execution_id] if agent_metadata[:root_execution_id]
 
         # Add tenant_id if multi-tenancy is enabled
         if config.multi_tenancy_enabled?

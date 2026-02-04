@@ -271,7 +271,7 @@ class ShoppingAgent < ApplicationAgent
     query
   end
 
-  def execution_metadata
+  def metadata
     { user_id: user_id }
   end
 end

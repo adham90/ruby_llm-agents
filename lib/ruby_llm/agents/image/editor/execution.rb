@@ -186,7 +186,7 @@ module RubyLLM
           end
         end
 
-        def build_execution_metadata(result)
+        def build_metadata(result)
           {
             count: result.count,
             size: result.size,

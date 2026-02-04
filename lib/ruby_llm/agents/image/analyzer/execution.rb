@@ -387,7 +387,7 @@ module RubyLLM
           end
         end
 
-        def build_execution_metadata(result)
+        def build_metadata(result)
           {
             analysis_type: result.analysis_type,
             tags_count: result.tags.size,

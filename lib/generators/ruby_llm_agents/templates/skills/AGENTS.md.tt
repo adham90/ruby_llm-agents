@@ -183,10 +183,10 @@ def cache_key_data
 end
 ```
 
-### `execution_metadata`
+### `metadata`
 Add custom data to execution logs:
 ```ruby
-def execution_metadata
+def metadata
   { request_id: params[:request_id] }
 end
 ```

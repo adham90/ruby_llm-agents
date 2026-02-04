@@ -20,7 +20,7 @@ class ApplicationAgent < RubyLLM::Agents::Base
   end
 
   # Common metadata
-  def execution_metadata
+  def metadata
     {
       request_id: Current.request_id,
       user_id: Current.user&.id
@@ -166,7 +166,7 @@ config.dashboard_auth = ->(c) { c.current_user&.admin? }
 Enable filtering and debugging:
 
 ```ruby
-def execution_metadata
+def metadata
   {
     user_id: user_id,
     feature: "search",

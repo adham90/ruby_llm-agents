@@ -61,7 +61,7 @@ class SchemaAgent < ApplicationAgent
     "Analyze this text:\n\n#{text}"
   end
 
-  def execution_metadata
+  def metadata
     {
       showcase: 'schema',
       features: %w[schema structured_output json_response]

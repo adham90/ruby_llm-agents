@@ -48,7 +48,7 @@ class StreamingAgent < ApplicationAgent
     query
   end
 
-  def execution_metadata
+  def metadata
     {
       showcase: 'streaming',
       features: %w[streaming time_to_first_token]

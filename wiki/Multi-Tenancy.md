@@ -585,7 +585,7 @@ Include tenant information in execution metadata:
 class TenantAwareAgent < ApplicationAgent
   model "gpt-4o"
 
-  def execution_metadata
+  def metadata
     {
       tenant_id: Current.tenant_id,
       tenant_name: Current.tenant&.name,

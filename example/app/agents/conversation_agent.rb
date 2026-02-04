@@ -71,7 +71,7 @@ class ConversationAgent < ApplicationAgent
     message
   end
 
-  def execution_metadata
+  def metadata
     {
       showcase: 'conversation',
       features: %w[messages conversation_history multi_turn],

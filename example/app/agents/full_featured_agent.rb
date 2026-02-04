@@ -10,7 +10,7 @@
 # - Tools (tools)
 # - Reliability (full block)
 # - Parameters (param with required, default, type)
-# - Template methods (schema, messages, process_response, execution_metadata)
+# - Template methods (schema, messages, process_response, metadata)
 #
 # Use this as a reference for the complete agent DSL.
 #
@@ -161,13 +161,13 @@ class FullFeaturedAgent < ApplicationAgent
   end
 
   # Additional metadata for execution tracking
-  def execution_metadata
+  def metadata
     {
       showcase: 'full_featured',
       features: %w[
         model temperature timeout version description
         cache_for streaming tools reliability
-        param schema messages process_response execution_metadata
+        param schema messages process_response metadata
       ],
       context: context,
       history_length: history.length,

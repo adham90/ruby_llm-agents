@@ -37,7 +37,7 @@ module RubyLLM
     # @!attribute [rw] parameters
     #   @return [Hash] Sanitized parameters passed to the agent
     # @!attribute [rw] metadata
-    #   @return [Hash] Custom metadata from execution_metadata hook
+    #   @return [Hash] Custom metadata from metadata hook
     # @!attribute [rw] error_class
     #   @return [String, nil] Exception class name if failed
     # @!attribute [rw] error_message

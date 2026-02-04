@@ -56,7 +56,7 @@ class ReliabilityAgent < ApplicationAgent
     query
   end
 
-  def execution_metadata
+  def metadata
     {
       showcase: 'reliability',
       features: %w[retries fallback_models total_timeout circuit_breaker]

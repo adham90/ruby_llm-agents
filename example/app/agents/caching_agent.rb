@@ -50,7 +50,7 @@ class CachingAgent < ApplicationAgent
     "Please answer this question: #{query}"
   end
 
-  def execution_metadata
+  def metadata
     {
       showcase: 'caching',
       features: %w[cache_for temperature_zero version]

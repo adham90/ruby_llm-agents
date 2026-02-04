@@ -87,7 +87,7 @@ class ThinkingAgent < ApplicationAgent
     query
   end
 
-  def execution_metadata
+  def metadata
     {
       showcase: 'thinking',
       features: %w[extended_thinking reasoning effort_levels token_budget]

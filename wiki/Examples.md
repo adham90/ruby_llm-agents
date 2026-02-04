@@ -585,7 +585,7 @@ class TenantAwareAgent < ApplicationAgent
     query
   end
 
-  def execution_metadata
+  def metadata
     {
       tenant_id: Current.tenant_id,
       tenant_name: Current.tenant&.name,

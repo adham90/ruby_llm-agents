@@ -339,8 +339,8 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
           sanitized_parameters
         end
 
-        def test_execution_metadata
-          execution_metadata
+        def test_metadata
+          metadata
         end
 
         def test_safe_system_prompt
@@ -769,9 +769,9 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       end
     end
 
-    describe "#execution_metadata" do
+    describe "#metadata" do
       it "returns empty hash by default" do
-        result = test_instance.test_execution_metadata
+        result = test_instance.test_metadata
 
         expect(result).to eq({})
       end
