@@ -485,9 +485,8 @@ RubyLLM::Agents.configure do |config|
   }
 
   # Alerts
-  config.alerts = {
-    on_events: [:budget_hard_cap],
-    slack_webhook_url: "..."
+  config.on_alert = ->(event, payload) {
+    # Handle alerts (Slack, PagerDuty, etc.)
   }
 
   # Redaction

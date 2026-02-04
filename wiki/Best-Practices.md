@@ -181,9 +181,13 @@ end
 Get notified of issues:
 
 ```ruby
-config.alerts = {
-  on_events: [:budget_hard_cap, :breaker_open],
-  slack_webhook_url: ENV['SLACK_WEBHOOK_URL']
+config.on_alert = ->(event, payload) {
+  case event
+  when :budget_hard_cap
+    PagerDuty.trigger(summary: "Budget exceeded")
+  when :breaker_open
+    Slack::Notifier.new(ENV['SLACK_WEBHOOK']).ping("Circuit breaker opened")
+  end
 }
 ```
 

@@ -45,9 +45,12 @@ config.budgets = {
 ### 5. Alerts
 
 ```ruby
-config.alerts = {
-  on_events: [:budget_hard_cap, :breaker_open],
-  slack_webhook_url: ENV['SLACK_WEBHOOK_URL']
+config.on_alert = ->(event, payload) {
+  case event
+  when :budget_hard_cap, :breaker_open
+    PagerDuty.trigger(summary: "Alert: #{event}")
+    Slack::Notifier.new(ENV['SLACK_WEBHOOK']).ping("#{event}: #{payload[:agent_type]}")
+  end
 }
 ```
 
@@ -102,15 +105,13 @@ RubyLLM::Agents.configure do |config|
   config.anomaly_duration_threshold = 30_000
 
   # Alerts
-  config.alerts = {
-    on_events: [
-      :budget_soft_cap,
-      :budget_hard_cap,
-      :breaker_open,
-      :anomaly_cost
-    ],
-    slack_webhook_url: ENV['SLACK_WEBHOOK_URL'],
-    webhook_url: ENV['ALERT_WEBHOOK_URL']
+  config.on_alert = ->(event, payload) {
+    case event
+    when :budget_hard_cap, :breaker_open
+      PagerDuty.trigger(summary: "Critical: #{event}", details: payload)
+    when :budget_soft_cap, :agent_anomaly
+      Slack::Notifier.new(ENV['SLACK_WEBHOOK']).ping("Warning: #{event}")
+    end
   }
 
   # Dashboard

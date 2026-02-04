@@ -335,25 +335,24 @@ RubyLLM::Agents::Execution
 ```ruby
 # config/initializers/ruby_llm_agents.rb
 RubyLLM::Agents.configure do |config|
-  config.alerts = {
-    on_events: [
-      :budget_soft_cap,
-      :budget_hard_cap,
-      :breaker_open,
-      :high_error_rate
-    ],
-    slack_webhook_url: ENV["SLACK_WEBHOOK_URL"],
-    custom: ->(event, payload) {
-      case event
-      when :breaker_open
-        PagerDuty.trigger(
-          summary: "Circuit breaker open for #{payload[:agent_type]}",
-          severity: "warning"
-        )
-      when :high_error_rate
-        Rails.logger.error("High error rate: #{payload}")
-      end
-    }
+  config.on_alert = ->(event, payload) {
+    case event
+    when :breaker_open
+      PagerDuty.trigger(
+        summary: "Circuit breaker open for #{payload[:agent_type]}",
+        severity: "warning"
+      )
+      Slack::Notifier.new(ENV["SLACK_WEBHOOK"]).ping(
+        "Circuit breaker opened: #{payload[:agent_type]}"
+      )
+    when :budget_hard_cap
+      PagerDuty.trigger(
+        summary: "Budget exceeded: $#{payload[:total_cost]}",
+        severity: "critical"
+      )
+    when :budget_soft_cap
+      Rails.logger.warn("Budget warning: #{payload}")
+    end
   }
 end
 ```

@@ -168,17 +168,13 @@ See [Budget Controls](Budget-Controls) for details.
 ### Alerts
 
 ```ruby
-config.alerts = {
-  on_events: [
-    :budget_soft_cap,
-    :budget_hard_cap,
-    :breaker_open
-  ],
-  slack_webhook_url: ENV['SLACK_WEBHOOK_URL'],
-  webhook_url: "https://your-app.com/webhooks/llm-alerts",
-  custom: ->(event, payload) {
-    MyNotificationService.notify(event, payload)
-  }
+config.on_alert = ->(event, payload) {
+  case event
+  when :budget_hard_cap
+    Slack::Notifier.new(ENV['SLACK_WEBHOOK']).ping("Budget exceeded")
+  when :breaker_open
+    PagerDuty.trigger(summary: "Circuit breaker opened")
+  end
 }
 ```
 

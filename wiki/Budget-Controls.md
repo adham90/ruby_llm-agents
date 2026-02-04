@@ -130,9 +130,12 @@ config.budgets = {
   enforcement: :hard
 }
 
-config.alerts = {
-  on_events: [:budget_soft_cap],
-  slack_webhook_url: ENV['SLACK_WEBHOOK_URL']
+config.on_alert = ->(event, payload) {
+  if event == :budget_soft_cap
+    Slack::Notifier.new(ENV['SLACK_WEBHOOK']).ping(
+      "Budget warning: $#{payload[:total_cost]} / $#{payload[:limit]}"
+    )
+  end
 }
 ```
 
@@ -286,13 +289,15 @@ config.budgets = {
   soft_cap_percentage: 75  # Early warning
 }
 
-config.alerts = {
-  on_events: [:budget_soft_cap],
-  custom: ->(event, payload) {
-    if payload[:percentage_used] >= 90
-      PagerDuty.alert("Critical: Budget at #{payload[:percentage_used]}%")
-    end
-  }
+config.on_alert = ->(event, payload) {
+  return unless event == :budget_soft_cap
+
+  percentage = (payload[:total_cost] / payload[:limit] * 100).round
+  if percentage >= 90
+    PagerDuty.alert("Critical: Budget at #{percentage}%")
+  else
+    Slack.notify("Budget warning: #{percentage}% used")
+  end
 }
 ```
 

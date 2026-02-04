@@ -222,14 +222,24 @@ RubyLLM::Agents::Execution
 
 ## Alerting on High Fallback Usage
 
+Monitor fallback patterns using ActiveSupport::Notifications:
+
 ```ruby
 # config/initializers/ruby_llm_agents.rb
-RubyLLM::Agents.configure do |config|
-  config.alerts = {
-    on_events: [:high_fallback_rate],
-    slack_webhook_url: ENV['SLACK_WEBHOOK_URL'],
-    fallback_rate_threshold: 0.1  # Alert if > 10%
-  }
+fallback_count = 0
+total_count = 0
+
+ActiveSupport::Notifications.subscribe("ruby_llm_agents.execution.complete") do |*, payload|
+  total_count += 1
+  fallback_count += 1 if payload[:attempts] > 1
+
+  if total_count >= 100 && (fallback_count.to_f / total_count) > 0.1
+    Slack::Notifier.new(ENV['SLACK_WEBHOOK']).ping(
+      "High fallback rate: #{(fallback_count.to_f / total_count * 100).round}%"
+    )
+    fallback_count = 0
+    total_count = 0
+  end
 end
 ```
 

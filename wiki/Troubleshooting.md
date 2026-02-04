@@ -359,21 +359,21 @@ JSON::Schema::ValidationError: property missing
 
 1. Verify alert configuration:
    ```ruby
-   config.alerts = {
-     on_events: [:budget_hard_cap],
-     slack_webhook_url: ENV['SLACK_WEBHOOK_URL']
+   config.on_alert = ->(event, payload) {
+     Rails.logger.info("Alert received: #{event}")
+     # Your notification logic
    }
    ```
 
-2. Test webhook:
+2. Test alert handler:
    ```ruby
-   RubyLLM::Agents::AlertNotifier.notify(
+   RubyLLM::Agents::AlertManager.notify(
      :test_event,
      { message: "Test alert" }
    )
    ```
 
-3. Check webhook URL is valid
+3. Check that your handler doesn't raise exceptions (they're caught and logged)
 
 ## Getting Help
 

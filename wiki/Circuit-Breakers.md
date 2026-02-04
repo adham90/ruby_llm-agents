@@ -124,9 +124,12 @@ Get notified when breakers open:
 ```ruby
 # config/initializers/ruby_llm_agents.rb
 RubyLLM::Agents.configure do |config|
-  config.alerts = {
-    on_events: [:breaker_open],
-    slack_webhook_url: ENV['SLACK_WEBHOOK_URL']
+  config.on_alert = ->(event, payload) {
+    if event == :breaker_open
+      Slack::Notifier.new(ENV['SLACK_WEBHOOK']).ping(
+        "Circuit breaker opened for #{payload[:agent_type]} (#{payload[:model_id]})"
+      )
+    end
   }
 end
 ```
@@ -138,8 +141,9 @@ Alert payload:
   event: :breaker_open,
   agent_type: "MyAgent",
   model_id: "gpt-4o",
-  failure_count: 10,
-  window_seconds: 60
+  errors: 10,
+  within: 60,
+  cooldown: 300
 }
 ```
 
