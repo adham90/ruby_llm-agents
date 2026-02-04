@@ -679,10 +679,6 @@ RSpec.describe RubyLLM::Agents::Configuration do
         it "returns Moderators for :moderators category" do
           expect(config.namespace_for(:moderators)).to eq("Moderators")
         end
-
-        it "returns Workflows for :workflows category" do
-          expect(config.namespace_for(:workflows)).to eq("Workflows")
-        end
       end
     end
 
@@ -710,10 +706,6 @@ RSpec.describe RubyLLM::Agents::Configuration do
 
         it "returns app/agents/moderators for :moderators category" do
           expect(config.path_for(:moderators)).to eq("app/agents/moderators")
-        end
-
-        it "returns app/agents/workflows for :workflows category" do
-          expect(config.path_for(:workflows)).to eq("app/agents/workflows")
         end
       end
     end
@@ -746,11 +738,6 @@ RSpec.describe RubyLLM::Agents::Configuration do
       it "includes moderators path" do
         paths = config.all_autoload_paths
         expect(paths).to include("app/agents/moderators")
-      end
-
-      it "includes workflows path" do
-        paths = config.all_autoload_paths
-        expect(paths).to include("app/agents/workflows")
       end
     end
   end

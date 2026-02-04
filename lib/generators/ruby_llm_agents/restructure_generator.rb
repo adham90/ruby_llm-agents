@@ -38,7 +38,6 @@ module RubyLlmAgents
     DIRECTORY_MAPPING = {
       # Top-level under llm/
       "agents" => { category: nil, type: "agents" },
-      "workflows" => { category: nil, type: "workflows" },
       "tools" => { category: nil, type: "tools" },
 
       # Audio group
@@ -173,7 +172,6 @@ module RubyLlmAgents
         say "  ├── text/"
         say "  │   ├── embedders/"
         say "  │   └── moderators/"
-        say "  ├── workflows/"
         say "  └── tools/"
         say ""
         say "Namespaces have been updated to use #{root_namespace}::"

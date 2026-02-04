@@ -19,8 +19,6 @@ module RubyLLM
         "dashboard/index" => "Dashboard",
         "agents/index" => "Agent-DSL",
         "agents/show" => "Agent-DSL",
-        "workflows/index" => "Workflows",
-        "workflows/show" => "Workflows",
         "executions/index" => "Execution-Tracking",
         "executions/show" => "Execution-Tracking",
         "tenants/index" => "Multi-Tenancy",

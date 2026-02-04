@@ -51,7 +51,6 @@ module RubyLLM
       include Execution::Metrics
       include Execution::Scopes
       include Execution::Analytics
-      include Execution::Workflow
 
       # Status enum
       # - running: execution in progress

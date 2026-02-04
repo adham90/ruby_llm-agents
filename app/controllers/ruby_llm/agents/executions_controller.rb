@@ -113,14 +113,12 @@ module RubyLLM
       # Loads available options for filter dropdowns
       #
       # Populates @agent_types with all agent types that have executions,
-      # @model_ids with all distinct models used, @workflow_types with
-      # workflow patterns used, and @statuses with all possible status values.
+      # @model_ids with all distinct models used, and @statuses with all possible status values.
       #
       # @return [void]
       def load_filter_options
         @agent_types = available_agent_types
         @model_ids = available_model_ids
-        @workflow_types = available_workflow_types
         @statuses = Execution.statuses.keys
       end
 
@@ -142,24 +140,6 @@ module RubyLLM
       # @return [Array<String>] Model IDs
       def available_model_ids
         @available_model_ids ||= tenant_scoped_executions.where.not(model_id: nil).distinct.pluck(:model_id).sort
-      end
-
-      # Returns distinct workflow types from execution history
-      #
-      # Memoized to avoid duplicate queries within a request.
-      # Returns empty array if workflow_type column doesn't exist yet.
-      # Uses tenant_scoped_executions to respect multi-tenancy filtering.
-      #
-      # @return [Array<String>] Workflow types (pipeline, parallel, router)
-      def available_workflow_types
-        return @available_workflow_types if defined?(@available_workflow_types)
-
-        @available_workflow_types = if Execution.column_names.include?("workflow_type")
-                                      tenant_scoped_executions.where.not(workflow_type: [nil, ""])
-                                                              .distinct.pluck(:workflow_type).sort
-                                    else
-                                      []
-                                    end
       end
 
       # Loads paginated executions and associated statistics
@@ -221,62 +201,16 @@ module RubyLLM
         model_ids = parse_array_param(:model_ids)
         scope = scope.where(model_id: model_ids) if model_ids.any?
 
-        # Apply workflow type filter (only if column exists)
-        if Execution.column_names.include?("workflow_type")
-          workflow_types = parse_array_param(:workflow_types)
-          if workflow_types.any?
-            includes_single = workflow_types.include?("single")
-            other_types = workflow_types - ["single"]
-
-            if includes_single && other_types.any?
-              # Include both single (null workflow_type) and specific workflow types
-              scope = scope.where(workflow_type: [nil, ""] + other_types)
-            elsif includes_single
-              # Only single executions (non-workflow)
-              scope = scope.where(workflow_type: [nil, ""])
-            else
-              # Only specific workflow types
-              scope = scope.where(workflow_type: workflow_types)
-            end
-          end
-        end
-
-        # Apply execution type tab filter (agents vs workflows)
-        scope = apply_execution_type_filter(scope)
-
         # Apply retries filter (show only executions with multiple attempts)
         scope = scope.where("attempts_count > 1") if params[:has_retries].present?
 
-        # Only show root executions (not workflow children) - children are nested under parents
+        # Only show root executions - children are nested under parents
         scope = scope.where(parent_execution_id: nil)
 
-        # Eager load children for workflow grouping
+        # Eager load children for grouping
         scope = scope.includes(:child_executions)
 
         scope
-      end
-
-      # Applies execution type filter (all, agents, workflows, or specific workflow type)
-      #
-      # @param scope [ActiveRecord::Relation] The current scope
-      # @return [ActiveRecord::Relation] Filtered scope
-      def apply_execution_type_filter(scope)
-        return scope unless Execution.column_names.include?("workflow_type")
-
-        execution_type = params[:execution_type]
-        case execution_type
-        when "agents"
-          # Only show executions where workflow_type is null/empty (regular agents)
-          scope.where(workflow_type: [nil, ""])
-        when "workflows"
-          # Only show executions with a workflow_type (any workflow)
-          scope.where.not(workflow_type: [nil, ""])
-        when "pipeline", "parallel", "router"
-          # Show specific workflow type
-          scope.where(workflow_type: execution_type)
-        else
-          scope
-        end
       end
     end
   end

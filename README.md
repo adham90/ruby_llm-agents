@@ -21,7 +21,6 @@ Build intelligent AI agents in Ruby with a clean DSL, automatic execution tracki
 - **Rails-Native** - Seamlessly integrates with your Rails app: models, jobs, caching, and Hotwire
 - **Production-Ready** - Built-in retries, model fallbacks, circuit breakers, and budget limits
 - **Full Observability** - Track every execution with costs, tokens, duration, and errors
-- **Workflow Orchestration** - Compose agents into pipelines, parallel tasks, and conditional routers
 - **Zero Lock-in** - Works with any LLM provider supported by RubyLLM
 
 ## Show Me the Code
@@ -122,41 +121,6 @@ result.url          # => "https://..."
 result.save("logo.png")
 ```
 
-```ruby
-# Workflow orchestration - sequential, parallel, routing in one DSL
-class OrderWorkflow < RubyLLM::Agents::Workflow
-  description "End-to-end order processing"
-  timeout 60.seconds
-  max_cost 1.50
-
-  input do
-    required :order_id, String
-    optional :priority, String, default: "normal"
-  end
-
-  step :validate, ValidatorAgent
-  step :enrich,   EnricherAgent, input: -> { { data: validate.content } }
-
-  parallel :analysis do
-    step :sentiment, SentimentAgent, optional: true
-    step :classify,  ClassifierAgent
-  end
-
-  step :handle, on: -> { classify.category } do |route|
-    route.billing    BillingAgent
-    route.technical  TechnicalAgent
-    route.default    GeneralAgent
-  end
-
-  step :format, FormatterAgent, optional: true
-end
-
-result = OrderWorkflow.call(order_id: "123")
-result.steps[:classify].content  # Individual step result
-result.total_cost                # Sum of all steps
-result.success?                  # true/false
-```
-
 ## Features
 
 | Feature | Description | Docs |
@@ -167,7 +131,6 @@ result.success?                  # true/false
 | **Reliability** | Automatic retries, model fallbacks, circuit breakers with block DSL | [Reliability](https://github.com/adham90/ruby_llm-agents/wiki/Reliability) |
 | **Budget Controls** | Daily/monthly limits with hard and soft enforcement | [Budgets](https://github.com/adham90/ruby_llm-agents/wiki/Budget-Controls) |
 | **Multi-Tenancy** | Per-tenant API keys, budgets, circuit breakers, and execution isolation | [Multi-Tenancy](https://github.com/adham90/ruby_llm-agents/wiki/Multi-Tenancy) |
-| **Workflows** | Pipelines, parallel execution, conditional routers | [Workflows](https://github.com/adham90/ruby_llm-agents/wiki/Workflows) |
 | **Async/Fiber** | Concurrent execution with Ruby fibers for high-throughput workloads | [Async](https://github.com/adham90/ruby_llm-agents/wiki/Async-Fiber) |
 | **Dashboard** | Real-time Turbo-powered monitoring UI | [Dashboard](https://github.com/adham90/ruby_llm-agents/wiki/Dashboard) |
 | **Streaming** | Real-time response streaming with TTFT tracking | [Streaming](https://github.com/adham90/ruby_llm-agents/wiki/Streaming) |
@@ -231,7 +194,6 @@ mount RubyLLM::Agents::Engine => "/agents"
 | [Getting Started](https://github.com/adham90/ruby_llm-agents/wiki/Getting-Started) | Installation, configuration, first agent |
 | [Agent DSL](https://github.com/adham90/ruby_llm-agents/wiki/Agent-DSL) | All DSL options: model, temperature, params, caching, description |
 | [Reliability](https://github.com/adham90/ruby_llm-agents/wiki/Reliability) | Retries, fallbacks, circuit breakers, timeouts, reliability block |
-| [Workflows](https://github.com/adham90/ruby_llm-agents/wiki/Workflows) | Pipelines, parallel execution, routers |
 | [Budget Controls](https://github.com/adham90/ruby_llm-agents/wiki/Budget-Controls) | Spending limits, alerts, enforcement |
 | [Multi-Tenancy](https://github.com/adham90/ruby_llm-agents/wiki/Multi-Tenancy) | Per-tenant budgets, isolation, configuration |
 | [Async/Fiber](https://github.com/adham90/ruby_llm-agents/wiki/Async-Fiber) | Concurrent execution with Ruby fibers |

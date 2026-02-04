@@ -77,11 +77,6 @@ require_relative "agents/image/analyzer"
 require_relative "agents/image/background_remover"
 require_relative "agents/image/pipeline"
 
-# Workflow
-require_relative "agents/workflow/async"
-require_relative "agents/workflow/orchestrator"
-require_relative "agents/workflow/async_executor"
-
 # Rails integration
 if defined?(Rails)
   require_relative "agents/core/inflections"

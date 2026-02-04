@@ -28,14 +28,6 @@ RSpec.describe RubyLlmAgents::InstallGenerator, type: :generator do
       expect(file_exists?("app/agents/application_agent.rb")).to be true
     end
 
-    it "creates the workflows directory" do
-      expect(directory_exists?("app/workflows")).to be true
-    end
-
-    it "creates application_workflow.rb in workflows" do
-      expect(file_exists?("app/workflows/application_workflow.rb")).to be true
-    end
-
     it "creates the tools directory" do
       expect(directory_exists?("app/tools")).to be true
     end
@@ -86,10 +78,6 @@ RSpec.describe RubyLlmAgents::InstallGenerator, type: :generator do
 
     it "creates AGENTS.md skill file" do
       expect(file_exists?("app/agents/AGENTS.md")).to be true
-    end
-
-    it "creates WORKFLOWS.md skill file" do
-      expect(file_exists?("app/workflows/WORKFLOWS.md")).to be true
     end
 
     it "creates TOOLS.md skill file" do
@@ -152,8 +140,6 @@ RSpec.describe RubyLlmAgents::InstallGenerator, type: :generator do
 
       expect(directory_exists?("app/agents")).to be true
       expect(file_exists?("app/agents/application_agent.rb")).to be true
-      expect(directory_exists?("app/workflows")).to be true
-      expect(file_exists?("app/workflows/application_workflow.rb")).to be true
     end
   end
 end

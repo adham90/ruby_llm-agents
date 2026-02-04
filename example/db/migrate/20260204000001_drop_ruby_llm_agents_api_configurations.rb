@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class DropRubyLlmAgentsApiConfigurations < ActiveRecord::Migration[8.1]
+class DropRubyLLMAgentsApiConfigurations < ActiveRecord::Migration[8.1]
   def up
     drop_table :ruby_llm_agents_api_configurations, if_exists: true
   end

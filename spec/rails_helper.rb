@@ -16,7 +16,6 @@ SimpleCov.start do
   add_group "Core Library", "lib/ruby_llm/agents/core"
   add_group "Pipeline", "lib/ruby_llm/agents/pipeline"
   add_group "Infrastructure", "lib/ruby_llm/agents/infrastructure"
-  add_group "Workflow", "lib/ruby_llm/agents/workflow"
   add_group "Image", "lib/ruby_llm/agents/image"
   add_group "Audio", "lib/ruby_llm/agents/audio"
   add_group "Text", "lib/ruby_llm/agents/text"

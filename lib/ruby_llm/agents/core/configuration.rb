@@ -870,7 +870,6 @@ module RubyLLM
         when :audio then "audio"
         when :embedders then "embedders"
         when :moderators then "moderators"
-        when :workflows then "workflows"
         when :text then "text"
         when :image then "image"
         end
@@ -895,12 +894,10 @@ module RubyLLM
 
         [
           base,
-          "app/workflows",           # Top-level workflows directory
           "#{base}/images",
           "#{base}/audio",
           "#{base}/embedders",
           "#{base}/moderators",
-          "#{base}/workflows",
           "#{base}/tools"
         ]
       end

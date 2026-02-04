@@ -35,7 +35,6 @@ module RubyLLM
         require_relative "../infrastructure/execution_logger_job"
         require_relative "../core/instrumentation"
         require_relative "../core/base"
-        require_relative "../workflow/orchestrator"
 
         # Resolve the parent controller class from configuration
         # Default is ActionController::Base, but can be set to inherit from app controllers
@@ -184,7 +183,6 @@ module RubyLLM
       # - app/agents/ (top-level, no namespace)
       # - app/agents/embedders/ -> Embedders namespace
       # - app/agents/images/ -> Images namespace
-      # - app/workflows/ (top-level, no namespace)
       #
       # @api private
       initializer "ruby_llm_agents.autoload_agents", before: :set_autoload_paths do |app|
@@ -223,9 +221,6 @@ module RubyLLM
       # @api private
       def self.namespace_for_path(path, config)
         parts = path.split("/")
-
-        # app/workflows -> no namespace (top-level workflows)
-        return nil if parts == ["app", "workflows"]
 
         # Need at least app/{root_directory}
         return nil unless parts.length >= 2 && parts[0] == "app"

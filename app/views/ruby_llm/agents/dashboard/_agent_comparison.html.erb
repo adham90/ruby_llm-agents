@@ -6,8 +6,7 @@
     @transcriber_stats,
     @speaker_stats,
     @image_generator_stats,
-    @moderator_stats,
-    @workflow_stats
+    @moderator_stats
   ].flatten.compact
    .select { |a| a[:executions].to_i > 0 }
    .sort_by { |a| -a[:executions].to_i }
@@ -46,11 +45,7 @@
               </td>
               <td class="px-4 py-2">
                 <span class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate max-w-[140px] block" title="<%= item[:agent_type] %>">
-                  <% if item[:is_workflow] %>
-                    <%= item[:agent_type].to_s.demodulize.gsub(/Workflow$|Pipeline$|Parallel$|Router$/, '') %>
-                  <% else %>
-                    <%= item[:agent_type].to_s.demodulize %>
-                  <% end %>
+                  <%= item[:agent_type].to_s.demodulize %>
                 </span>
               </td>
               <td class="px-4 py-2 text-right text-gray-600 dark:text-gray-300">
