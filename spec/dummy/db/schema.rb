@@ -56,11 +56,6 @@ ActiveRecord::Schema.define do
     t.bigint :parent_execution_id
     t.bigint :root_execution_id
 
-    # Workflow orchestration
-    t.string :workflow_id
-    t.string :workflow_type
-    t.string :workflow_step
-
     # Multi-tenancy
     t.string :tenant_id
 
@@ -84,8 +79,6 @@ ActiveRecord::Schema.define do
   add_index :ruby_llm_agents_executions, :request_id
   add_index :ruby_llm_agents_executions, :parent_execution_id
   add_index :ruby_llm_agents_executions, :root_execution_id
-  add_index :ruby_llm_agents_executions, [:workflow_id, :workflow_step]
-  add_index :ruby_llm_agents_executions, :workflow_type
 
   # Execution details table (large payloads)
   create_table :ruby_llm_agents_execution_details, force: :cascade do |t|

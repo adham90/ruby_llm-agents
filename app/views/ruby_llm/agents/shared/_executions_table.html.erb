@@ -22,27 +22,18 @@
       </thead>
       <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
         <% executions.each do |execution| %>
-          <%
-            is_workflow = execution.workflow_type.present?
-            children = execution.child_executions.sort_by(&:created_at)
-            has_children = children.any?
-          %>
-
-          <%# Parent/Main Row %>
+          <%# Main Row %>
           <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
             <%# Status %>
             <td class="px-4 py-3 whitespace-nowrap">
               <%= render "ruby_llm/agents/shared/status_badge", status: execution.status, size: :sm %>
             </td>
 
-            <%# Agent Name with Workflow Badge %>
+            <%# Agent Name %>
             <td class="px-4 py-3 whitespace-nowrap">
               <div class="flex items-center gap-2">
                 <%= link_to ruby_llm_agents.execution_path(execution), class: "font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400" do %>
                   <%= execution.agent_type.gsub(/Agent$/, "") %>
-                <% end %>
-                <% if is_workflow %>
-                  <span class="text-xs text-emerald-600 dark:text-emerald-400">◈</span>
                 <% end %>
               </div>
             </td>
@@ -100,80 +91,6 @@
             </tr>
           <% end %>
 
-          <%# Child Rows (for workflows) %>
-          <% if has_children %>
-            <% children.each_with_index do |child, index| %>
-              <% is_last = index == children.size - 1 %>
-              <tr class="bg-gray-50/50 dark:bg-gray-900/30 hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors">
-                <%# Status with tree line %>
-                <td class="px-4 py-2 whitespace-nowrap">
-                  <div class="flex items-center">
-                    <span class="text-gray-300 dark:text-gray-600 mr-2 font-mono text-xs"><%= is_last ? "└─" : "├─" %></span>
-                    <% case child.status
-                       when "success" %>
-                      <span class="text-green-600 dark:text-green-400">✓</span>
-                    <% when "error" %>
-                      <span class="text-red-600 dark:text-red-400">✗</span>
-                    <% when "timeout" %>
-                      <span class="text-orange-600 dark:text-orange-400">⏱</span>
-                    <% when "running" %>
-                      <span class="text-blue-600 dark:text-blue-400 animate-pulse">●</span>
-                    <% else %>
-                      <span class="text-gray-400">○</span>
-                    <% end %>
-                  </div>
-                </td>
-
-                <%# Step Name %>
-                <td class="px-4 py-2 whitespace-nowrap">
-                  <%= link_to ruby_llm_agents.execution_path(child), class: "text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400" do %>
-                    <span class="text-gray-400 dark:text-gray-500 text-xs"><%= index + 1 %>.</span>
-                    <%= child.workflow_step || child.agent_type.gsub(/Agent$/, "") %>
-                  <% end %>
-                </td>
-
-                <%# Tenant - empty for child rows %>
-                <% if show_tenant_column %>
-                  <td class="px-4 py-2"></td>
-                <% end %>
-
-                <%# Model %>
-                <td class="px-4 py-2 whitespace-nowrap text-gray-400 dark:text-gray-500 font-mono text-xs">
-                  <%= child.model_id %>
-                </td>
-
-                <%# Duration %>
-                <td class="px-4 py-2 whitespace-nowrap text-right text-gray-600 dark:text-gray-300 tabular-nums text-xs">
-                  <%= child.duration_ms ? "#{number_with_delimiter(child.duration_ms)}ms" : "-" %>
-                </td>
-
-                <%# Tokens %>
-                <td class="px-4 py-2 whitespace-nowrap text-right text-gray-600 dark:text-gray-300 tabular-nums text-xs">
-                  <%= number_with_delimiter(child.total_tokens || 0) %>
-                </td>
-
-                <%# Cost %>
-                <td class="px-4 py-2 whitespace-nowrap text-right text-gray-600 dark:text-gray-300 tabular-nums text-xs">
-                  $<%= number_with_precision(child.total_cost || 0, precision: 4) %>
-                </td>
-
-                <%# Time - empty for children %>
-                <td class="px-4 py-2"></td>
-              </tr>
-
-              <%# Child Error Row %>
-              <% if child.status_error? && child.error_message.present? %>
-                <tr class="bg-red-50/30 dark:bg-red-900/10">
-                  <td></td>
-                  <td colspan="<%= show_tenant_column ? 7 : 6 %>" class="px-4 py-1.5 pl-8">
-                    <p class="text-xs text-red-500 dark:text-red-400">
-                      <%= truncate(child.error_message, length: 100) %>
-                    </p>
-                  </td>
-                </tr>
-              <% end %>
-            <% end %>
-          <% end %>
         <% end %>
       </tbody>
     </table>

@@ -983,7 +983,6 @@ puts '=' * 60
 # Helper for embedder executions
 def create_embedder_execution(attrs = {})
   defaults = {
-    agent_version: '1.0',
     model_id: 'text-embedding-3-small',
     model_provider: 'openai',
     status: 'success',
@@ -1017,7 +1016,6 @@ end
 # Helper for speaker executions (TTS)
 def create_speaker_execution(attrs = {})
   defaults = {
-    agent_version: '1.0',
     model_id: 'tts-1',
     model_provider: 'openai',
     status: 'success',
@@ -1048,7 +1046,6 @@ end
 # Helper for transcriber executions (STT)
 def create_transcriber_execution(attrs = {})
   defaults = {
-    agent_version: '1.0',
     model_id: 'whisper-1',
     model_provider: 'openai',
     status: 'success',
@@ -1080,7 +1077,6 @@ end
 # Helper for image generator executions
 def create_image_generator_execution(attrs = {})
   defaults = {
-    agent_version: '1.0',
     model_id: 'gpt-image-1',
     model_provider: 'openai',
     status: 'success',
@@ -1113,40 +1109,6 @@ def create_image_generator_execution(attrs = {})
   merged[:input_cost] = price.round(6)
   merged[:output_cost] = 0
   merged[:total_cost] = merged[:input_cost]
-
-  RubyLLM::Agents::Execution.create!(merged)
-end
-
-# Helper for workflow executions
-def create_workflow_execution(attrs = {})
-  defaults = {
-    agent_version: '1.0',
-    model_id: 'gpt-4o-mini',
-    model_provider: 'openai',
-    temperature: 0.7,
-    status: 'success',
-    started_at: Time.current - rand(1..60).minutes,
-    input_tokens: rand(500..3000),
-    output_tokens: rand(200..1500),
-    streaming: false
-  }
-
-  merged = defaults.merge(attrs)
-  merged[:completed_at] ||= merged[:started_at] + rand(2000..8000) / 1000.0 if merged[:status] != 'running'
-  merged[:duration_ms] ||= ((merged[:completed_at] - merged[:started_at]) * 1000).to_i if merged[:completed_at]
-  merged[:total_tokens] = (merged[:input_tokens] || 0) + (merged[:output_tokens] || 0)
-
-  # Calculate costs
-  input_price = case merged[:model_id]
-                when /gpt-4o-mini/ then 0.15
-                when /gpt-4o/ then 5.0
-                else 1.0
-                end
-  output_price = input_price * 4
-
-  merged[:input_cost] = ((merged[:input_tokens] || 0) / 1_000_000.0 * input_price).round(6)
-  merged[:output_cost] = ((merged[:output_tokens] || 0) / 1_000_000.0 * output_price).round(6)
-  merged[:total_cost] = merged[:input_cost] + merged[:output_cost]
 
   RubyLLM::Agents::Execution.create!(merged)
 end
@@ -1293,7 +1255,6 @@ puts '=' * 60
 # Helper for moderator executions
 def create_moderator_execution(attrs = {})
   defaults = {
-    agent_version: '1.0',
     model_id: 'omni-moderation-latest',
     model_provider: 'openai',
     status: 'success',
@@ -1899,109 +1860,6 @@ create_image_generator_execution(
 puts '  Created 1 image generator error execution'
 
 # =============================================================================
-# WORKFLOW EXECUTIONS
-# =============================================================================
-puts "\n#{'=' * 60}"
-puts 'Creating Workflow Executions...'
-puts '=' * 60
-
-# ContentAnalyzerWorkflow (Parallel) - Acme content analysis
-5.times do |i|
-  create_workflow_execution(
-    tenant_id: acme.llm_tenant_id,
-    agent_type: 'ContentAnalyzerWorkflow',
-    model_id: 'gpt-4o-mini',
-    parameters: { text: "Content to analyze for sentiment, keywords, and summary #{i + 1}..." },
-    response: {
-      aggregated: {
-        sentiment: 'positive',
-        keywords: %w[technology innovation growth],
-        summary: 'Key points summarized...'
-      }
-    },
-    metadata: {
-      workflow_type: 'parallel',
-      branches: {
-        sentiment: { status: 'success', duration_ms: rand(500..1500) },
-        keywords: { status: 'success', duration_ms: rand(400..1200) },
-        summary: { status: 'success', duration_ms: rand(600..1800) }
-      },
-      fail_fast: false,
-      total_branches: 3,
-      completed_branches: 3
-    },
-    created_at: Time.current - (i * 25).minutes
-  )
-end
-puts '  Created 5 ContentAnalyzerWorkflow (parallel) executions'
-
-# ContentPipelineWorkflow (Pipeline) - Enterprise content processing
-5.times do |i|
-  create_workflow_execution(
-    tenant_id: enterprise.llm_tenant_id,
-    agent_type: 'ContentPipelineWorkflow',
-    model_id: 'gpt-4o',
-    parameters: { text: "Raw content to extract, classify, and format #{i + 1}..." },
-    response: {
-      final_output: {
-        extracted_data: { entities: ['Company A', 'Product B'], dates: ['2024-01-15'] },
-        classification: 'business_report',
-        formatted: "# Business Report\n\n..."
-      }
-    },
-    metadata: {
-      workflow_type: 'pipeline',
-      steps: {
-        extract: { status: 'success', duration_ms: rand(800..2000), agent: 'ExtractorAgent' },
-        classify: { status: 'success', duration_ms: rand(400..1000), agent: 'ClassifierAgent' },
-        format: { status: 'success', duration_ms: rand(600..1500), agent: 'FormatterAgent' }
-      },
-      total_steps: 3,
-      completed_steps: 3,
-      timeout: 60
-    },
-    created_at: Time.current - (i * 35).minutes
-  )
-end
-puts '  Created 5 ContentPipelineWorkflow (pipeline) executions'
-
-# SupportRouterWorkflow (Router) - Startup customer support
-routes = %i[billing technical default billing technical]
-5.times do |i|
-  chosen_route = routes[i]
-  agent = case chosen_route
-          when :billing then 'BillingAgent'
-          when :technical then 'TechnicalAgent'
-          else 'GeneralAgent'
-          end
-  create_workflow_execution(
-    tenant_id: startup.llm_tenant_id,
-    agent_type: 'SupportRouterWorkflow',
-    model_id: 'gpt-4o-mini',
-    temperature: 0.0,
-    parameters: { message: "Customer support message #{i + 1}..." },
-    response: {
-      routed_to: chosen_route,
-      classification: {
-        chosen_route: chosen_route,
-        confidence: rand(0.85..0.99).round(3),
-        reasoning: "Message contains #{chosen_route}-related keywords"
-      },
-      agent_response: "Response from #{agent}..."
-    },
-    metadata: {
-      workflow_type: 'router',
-      available_routes: %i[billing technical default],
-      chosen_route: chosen_route,
-      routed_agent: agent,
-      classification_model: 'gpt-4o-mini'
-    },
-    created_at: Time.current - (i * 20).minutes
-  )
-end
-puts '  Created 5 SupportRouterWorkflow (router) executions'
-
-# =============================================================================
 # EMBEDDER DEMONSTRATIONS
 # =============================================================================
 puts "\n#{'=' * 60}"
@@ -2188,12 +2046,6 @@ puts "\nImage Generator Executions:"
   end
 end
 
-puts "\nWorkflow Executions:"
-%w[ContentAnalyzerWorkflow ContentPipelineWorkflow SupportRouterWorkflow].each do |workflow|
-  count = RubyLLM::Agents::Execution.where(agent_type: workflow).count
-  puts "  #{workflow}: #{count} executions" if count.positive?
-end
-
 puts "\nEmbedders Available:"
 %w[ApplicationEmbedder DocumentEmbedder SearchEmbedder BatchEmbedder CleanTextEmbedder CodeEmbedder].each do |embedder|
   klass = "Embedders::#{embedder}".safe_constantize
@@ -2225,12 +2077,6 @@ puts "\nImage Generators Available:"
    IllustrationGenerator].each do |generator|
   klass = "Images::#{generator}".safe_constantize
   puts "  #{generator}: model=#{klass.model}, size=#{klass.size}, quality=#{klass.quality}" if klass
-end
-
-puts "\nWorkflows Available:"
-%w[ContentAnalyzerWorkflow ContentPipelineWorkflow SupportRouterWorkflow].each do |workflow|
-  klass = workflow.safe_constantize
-  puts "  #{workflow}: #{klass.description}" if klass
 end
 
 puts "\nTotal: #{Organization.count} organizations, #{RubyLLM::Agents::Execution.count} executions"

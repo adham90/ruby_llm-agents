@@ -367,11 +367,8 @@
               <!-- Agent + Badges -->
               <td class="px-4 py-3">
                 <div class="flex items-center gap-1.5 min-w-0">
-                  <% if execution.respond_to?(:workflow_type) && execution.workflow_type.present? %>
-                    <%= render "ruby_llm/agents/shared/workflow_type_badge", workflow_type: execution.workflow_type, size: :xs, show_label: false %>
-                  <% end %>
                   <span class="font-medium text-gray-900 dark:text-gray-100 truncate">
-                    <%= execution.agent_type.gsub(/Agent$|Workflow$|Pipeline$|Parallel$|Router$/, '') %>
+                    <%= execution.agent_type.gsub(/Agent$/, '') %>
                   </span>
                   <% unless execution.status_running? %>
                     <% if execution.streaming? %>

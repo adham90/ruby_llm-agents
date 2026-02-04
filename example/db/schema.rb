@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_04_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_04_220954) do
   create_table "organizations", force: :cascade do |t|
     t.boolean "active", default: true
     t.string "anthropic_api_key"
@@ -26,6 +26,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_04_000001) do
     t.index ["active"], name: "index_organizations_on_active"
     t.index ["plan"], name: "index_organizations_on_plan"
     t.index ["slug"], name: "index_organizations_on_slug", unique: true
+  end
+
+  create_table "ruby_llm_agents_execution_details", force: :cascade do |t|
+    t.json "attempts", default: [], null: false
+    t.integer "cache_creation_tokens", default: 0
+    t.datetime "cached_at"
+    t.json "classification_result"
+    t.datetime "created_at", null: false
+    t.text "error_message"
+    t.integer "execution_id", null: false
+    t.json "fallback_chain"
+    t.json "messages_summary", default: {}, null: false
+    t.json "parameters", default: {}, null: false
+    t.json "response", default: {}
+    t.string "routed_to"
+    t.text "system_prompt"
+    t.json "tool_calls", default: [], null: false
+    t.datetime "updated_at", null: false
+    t.text "user_prompt"
+    t.index ["execution_id"], name: "index_ruby_llm_agents_execution_details_on_execution_id", unique: true
   end
 
   create_table "ruby_llm_agents_executions", force: :cascade do |t|
@@ -82,9 +102,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_04_000001) do
     t.string "trace_id"
     t.datetime "updated_at", null: false
     t.text "user_prompt"
-    t.string "workflow_id"
-    t.string "workflow_step"
-    t.string "workflow_type"
     t.index ["agent_type", "created_at"], name: "index_ruby_llm_agents_executions_on_agent_type_and_created_at"
     t.index ["agent_type", "status"], name: "index_ruby_llm_agents_executions_on_agent_type_and_status"
     t.index ["agent_type"], name: "index_ruby_llm_agents_executions_on_agent_type"
@@ -107,9 +124,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_04_000001) do
     t.index ["tool_calls_count"], name: "index_ruby_llm_agents_executions_on_tool_calls_count"
     t.index ["total_cost"], name: "index_ruby_llm_agents_executions_on_total_cost"
     t.index ["trace_id"], name: "index_ruby_llm_agents_executions_on_trace_id"
-    t.index ["workflow_id", "workflow_step"], name: "idx_on_workflow_id_workflow_step_85a6d10aef"
-    t.index ["workflow_id"], name: "index_ruby_llm_agents_executions_on_workflow_id"
-    t.index ["workflow_type"], name: "index_ruby_llm_agents_executions_on_workflow_type"
   end
 
   create_table "ruby_llm_agents_tenants", force: :cascade do |t|
@@ -149,6 +163,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_04_000001) do
     t.index ["tenant_record_type", "tenant_record_id"], name: "index_ruby_llm_agents_tenant_budgets_on_tenant_record"
   end
 
+  add_foreign_key "ruby_llm_agents_execution_details", "ruby_llm_agents_executions", column: "execution_id", on_delete: :cascade
   add_foreign_key "ruby_llm_agents_executions", "ruby_llm_agents_executions", column: "parent_execution_id", on_delete: :nullify
   add_foreign_key "ruby_llm_agents_executions", "ruby_llm_agents_executions", column: "root_execution_id", on_delete: :nullify
 end

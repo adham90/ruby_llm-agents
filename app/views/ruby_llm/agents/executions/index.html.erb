@@ -3,10 +3,10 @@
     <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Executions</h1>
     <%= render "ruby_llm/agents/shared/doc_link" %>
   </div>
-  <p class="text-gray-500 dark:text-gray-400 mt-1">All agent and workflow execution history</p>
+  <p class="text-gray-500 dark:text-gray-400 mt-1">All agent execution history</p>
 </div>
 
 <div id="executions_content">
-  <%= render partial: "ruby_llm/agents/executions/filters", locals: { agent_types: @agent_types, model_ids: @model_ids, workflow_types: @workflow_types, filter_stats: @filter_stats } %>
+  <%= render partial: "ruby_llm/agents/executions/filters", locals: { agent_types: @agent_types, model_ids: @model_ids, filter_stats: @filter_stats } %>
   <%= render partial: "ruby_llm/agents/executions/list", locals: { executions: @executions, pagination: @pagination, filter_stats: @filter_stats } %>
 </div>

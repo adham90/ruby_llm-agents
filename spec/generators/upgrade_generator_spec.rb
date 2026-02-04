@@ -22,6 +22,10 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
     allow(ActiveRecord::Base.connection).to receive(:table_exists?)
       .with(:ruby_llm_agents_tenant_budgets)
       .and_return(false)  # Old table doesn't exist
+    # Default execution_details table to exist to avoid migration generation
+    allow(ActiveRecord::Base.connection).to receive(:table_exists?)
+      .with(:ruby_llm_agents_execution_details)
+      .and_return(true)
   end
 
   describe "when table does not exist" do
@@ -52,8 +56,11 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
         .with(:ruby_llm_agents_executions)
         .and_return(true)
 
-      # Mock all columns as existing
-      allow(ActiveRecord::Base.connection).to receive(:column_exists?).and_return(true)
+      # Mock all columns as existing except deprecated ones (which should be removed already)
+      # agent_version and workflow_id should NOT exist
+      allow(ActiveRecord::Base.connection).to receive(:column_exists?) do |table, column|
+        ![:agent_version, :workflow_id].include?(column)
+      end
 
       run_generator
     end
@@ -71,10 +78,13 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
         .and_return(true)
 
       # Mock specific columns as existing/missing
+      # agent_version and workflow_id should NOT exist (already removed)
       allow(ActiveRecord::Base.connection).to receive(:column_exists?) do |table, column|
         # Simulate: prompts and attempts exist, but streaming and others don't
+        # Deprecated columns should NOT exist
+        deprecated_columns = [:agent_version, :workflow_id]
         existing_columns = [:system_prompt, :attempts]
-        existing_columns.include?(column)
+        existing_columns.include?(column) && !deprecated_columns.include?(column)
       end
 
       run_generator
@@ -172,7 +182,10 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
       allow(ActiveRecord::Base.connection).to receive(:table_exists?)
         .with(:ruby_llm_agents_executions)
         .and_return(true)
-      allow(ActiveRecord::Base.connection).to receive(:column_exists?).and_return(true)
+      # All columns exist except deprecated ones (which should be removed already)
+      allow(ActiveRecord::Base.connection).to receive(:column_exists?) do |table, column|
+        ![:agent_version, :workflow_id].include?(column)
+      end
     end
 
     it "runs without error when app/agents exists" do
