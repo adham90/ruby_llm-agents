@@ -41,8 +41,7 @@ module MigrationHelpers
       :v0_4_0_tenant_id,
       :v0_4_0_messages_summary,
       :v0_4_0_tenant_name,
-      :v0_4_0_token_limits,
-      :v0_4_0_api_configurations
+      :v0_4_0_token_limits
     ]
   }.freeze
 
@@ -56,8 +55,7 @@ module MigrationHelpers
     :v0_4_0_tenant_id,
     :v0_4_0_messages_summary,
     :v0_4_0_tenant_name,
-    :v0_4_0_token_limits,
-    :v0_4_0_api_configurations
+    :v0_4_0_token_limits
   ].freeze
 
   # Version-to-starting migration mapping
@@ -65,7 +63,7 @@ module MigrationHelpers
     "0.1.0" => 0,
     "0.2.3" => 2,
     "0.3.3" => 3,
-    "0.4.0" => 10
+    "0.4.0" => 9
   }.freeze
 
   included do

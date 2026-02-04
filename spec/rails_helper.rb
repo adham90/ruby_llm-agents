@@ -46,7 +46,6 @@ Mime::Type.register "text/vnd.turbo-stream.html", :turbo_stream unless Mime::Typ
 # This is needed because RSpec loads spec files before to_prepare callbacks run
 require "ruby_llm/agents/infrastructure/execution_logger_job"
 require "ruby_llm/agents/core/instrumentation"
-require "ruby_llm/agents/core/resolved_config"
 require "ruby_llm/agents/core/base"
 
 # Force loading of autoloaded constants that specs reference

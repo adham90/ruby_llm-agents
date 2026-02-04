@@ -7,7 +7,6 @@ module RubyLLM
     # Encapsulates all tenant-related functionality:
     # - Budget limits and enforcement (via Budgetable concern)
     # - Usage tracking: cost, tokens, executions (via Trackable concern)
-    # - API configuration per tenant (via Configurable concern)
     #
     # @example Creating a tenant
     #   Tenant.create!(
@@ -30,7 +29,6 @@ module RubyLLM
     #
     # @see Tenant::Budgetable
     # @see Tenant::Trackable
-    # @see Tenant::Configurable
     # @see LLMTenant
     # @api public
     class Tenant < ::ActiveRecord::Base
@@ -39,7 +37,6 @@ module RubyLLM
       # Include concerns for organized functionality
       include Tenant::Budgetable
       include Tenant::Trackable
-      include Tenant::Configurable
       include Tenant::Resettable
       include Tenant::Incrementable
 

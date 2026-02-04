@@ -24,8 +24,7 @@ module RubyLLM
         "executions/index" => "Execution-Tracking",
         "executions/show" => "Execution-Tracking",
         "tenants/index" => "Multi-Tenancy",
-        "system_config/show" => "Configuration",
-        "api_configurations/show" => "Configuration"
+        "system_config/show" => "Configuration"
       }.freeze
 
       # Returns the documentation URL for the current page or a specific page key
@@ -59,27 +58,11 @@ module RubyLLM
 
       # Returns the URL for "All Tenants" (clears tenant filter)
       #
-      # Handles two scenarios:
-      # 1. Query param routes - removes tenant_id from query params
-      # 2. Path-based tenant routes - navigates to equivalent global route
+      # Removes tenant_id from query params to show unfiltered results.
       #
       # @return [String] URL without tenant filtering
       def all_tenants_url
-        # Map tenant-specific path routes to their global equivalents
-        tenant_route_mappings = {
-          "tenant" => ruby_llm_agents.api_configuration_path,
-          "edit_tenant" => ruby_llm_agents.edit_api_configuration_path
-        }
-
-        # Check if current action has a global equivalent
-        if tenant_route_mappings.key?(action_name)
-          base_path = tenant_route_mappings[action_name]
-          query = request.query_parameters.except("tenant_id")
-          query.any? ? "#{base_path}?#{query.to_query}" : base_path
-        else
-          # For query param routes, just remove tenant_id
-          url_for(request.query_parameters.except("tenant_id"))
-        end
+        url_for(request.query_parameters.except("tenant_id"))
       end
 
       # Formats large numbers with human-readable suffixes (K, M, B)

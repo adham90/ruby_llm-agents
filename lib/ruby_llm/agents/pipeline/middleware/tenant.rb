@@ -8,18 +8,16 @@ module RubyLLM
         #
         # This middleware extracts tenant information from the context options,
         # sets the tenant_id, tenant_object, and tenant_config on the context,
-        # and applies the resolved API configuration to RubyLLM.
+        # and applies any tenant-specific API keys to RubyLLM.
         #
         # Supports three formats:
         # - Object with llm_tenant_id method (recommended for ActiveRecord models)
         # - Hash with :id key (simple/legacy format)
         # - nil (no tenant - single-tenant mode)
         #
-        # API key resolution priority:
-        # 1. Tenant object's llm_api_keys method (if present)
-        # 2. Tenant-specific database config (ApiConfiguration)
-        # 3. Global database config
-        # 4. RubyLLM.configuration (set via initializer or environment)
+        # API keys are configured via:
+        # - RubyLLM.configuration (set via initializer or environment variables)
+        # - Tenant object's llm_api_keys method (for per-tenant overrides)
         #
         # @example With ActiveRecord model
         #   # Model uses llm_tenant DSL
@@ -88,16 +86,10 @@ module RubyLLM
 
           # Applies API configuration to RubyLLM based on resolved tenant
           #
-          # This method resolves API keys from multiple sources and applies
-          # them to RubyLLM.config before the agent executes.
-          #
           # @param context [Context] The execution context
           def apply_api_configuration!(context)
-            # First, try to apply keys from tenant object's llm_api_keys method
+            # Apply keys from tenant object's llm_api_keys method if present
             apply_tenant_object_api_keys!(context)
-
-            # Then, apply database configuration (tenant > global > ruby_llm_config)
-            apply_database_api_configuration!(context)
           end
 
           # Applies API keys from tenant object's llm_api_keys method
@@ -114,22 +106,6 @@ module RubyLLM
           rescue StandardError => e
             # Log but don't fail if API key extraction fails
             warn_api_key_error("tenant object", e)
-          end
-
-          # Applies API configuration from the database
-          #
-          # @param context [Context] The execution context
-          def apply_database_api_configuration!(context)
-            return unless api_configuration_available?
-
-            resolved = ApiConfiguration.resolve(tenant_id: context.tenant_id)
-            resolved.apply_to_ruby_llm!
-
-            # Store resolved config on context for observability
-            context[:resolved_api_config] = resolved
-          rescue StandardError => e
-            # Log but don't fail if DB lookup fails
-            warn_api_key_error("database", e)
           end
 
           # Applies a hash of API keys to RubyLLM configuration
@@ -152,18 +128,6 @@ module RubyLLM
           # @return [String] Setter method name (e.g., "openai_api_key=")
           def api_key_setter_for(provider)
             "#{provider}_api_key="
-          end
-
-          # Checks if ApiConfiguration model is available
-          #
-          # @return [Boolean]
-          def api_configuration_available?
-            return false unless defined?(RubyLLM::Agents::ApiConfiguration)
-
-            # Check if table exists
-            ApiConfiguration.table_exists?
-          rescue StandardError
-            false
           end
 
           # Logs a warning about API key resolution failure

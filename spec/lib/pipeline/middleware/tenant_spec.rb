@@ -154,14 +154,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Tenant do
     end
   end
 
-  describe "API key resolution" do
-    # Skip if ApiConfiguration table doesn't exist
-    before do
-      unless ActiveRecord::Base.connection.table_exists?(:ruby_llm_agents_api_configurations)
-        skip "ApiConfiguration table not available"
-      end
-    end
-
+  describe "API key application from tenant object" do
     around do |example|
       # Save original RubyLLM config
       saved_openai = RubyLLM.config.openai_api_key
@@ -174,11 +167,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Tenant do
         config.openai_api_key = saved_openai
         config.anthropic_api_key = saved_anthropic
       end
-    end
-
-    before do
-      # Clean up any existing configurations
-      RubyLLM::Agents::ApiConfiguration.delete_all
     end
 
     context "with tenant object providing llm_api_keys" do
@@ -201,98 +189,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Tenant do
         middleware.call(context)
 
         expect(RubyLLM.config.openai_api_key).to eq("sk-tenant-object-key")
-      end
-    end
-
-    context "with database configuration" do
-      it "applies global database API keys when no tenant" do
-        global_config = RubyLLM::Agents::ApiConfiguration.global
-        global_config.update!(openai_api_key: "sk-global-db-key")
-
-        context = build_context
-        allow(app).to receive(:call).with(context).and_return(context)
-
-        middleware.call(context)
-
-        expect(RubyLLM.config.openai_api_key).to eq("sk-global-db-key")
-      end
-
-      it "applies tenant-specific database API keys" do
-        # Set global key
-        global_config = RubyLLM::Agents::ApiConfiguration.global
-        global_config.update!(openai_api_key: "sk-global-key")
-
-        # Set tenant-specific key
-        tenant_config = RubyLLM::Agents::ApiConfiguration.for_tenant!("specific_tenant")
-        tenant_config.update!(openai_api_key: "sk-tenant-specific-key")
-
-        context = build_context(tenant: { id: "specific_tenant" })
-        allow(app).to receive(:call).with(context).and_return(context)
-
-        middleware.call(context)
-
-        expect(RubyLLM.config.openai_api_key).to eq("sk-tenant-specific-key")
-      end
-
-      it "falls back to global when tenant has no config" do
-        global_config = RubyLLM::Agents::ApiConfiguration.global
-        global_config.update!(openai_api_key: "sk-global-fallback")
-
-        # No tenant-specific config created
-
-        context = build_context(tenant: { id: "missing_tenant" })
-        allow(app).to receive(:call).with(context).and_return(context)
-
-        middleware.call(context)
-
-        expect(RubyLLM.config.openai_api_key).to eq("sk-global-fallback")
-      end
-
-      it "stores resolved config on context for observability" do
-        global_config = RubyLLM::Agents::ApiConfiguration.global
-        global_config.update!(openai_api_key: "sk-observable-key")
-
-        context = build_context
-        allow(app).to receive(:call).with(context).and_return(context)
-
-        middleware.call(context)
-
-        expect(context[:resolved_api_config]).to be_a(RubyLLM::Agents::ResolvedConfig)
-      end
-    end
-
-    context "priority chain" do
-      let(:tenant_with_keys) do
-        Class.new do
-          def llm_tenant_id
-            "priority_tenant"
-          end
-
-          def llm_api_keys
-            { openai: "sk-tenant-object-priority" }
-          end
-        end.new
-      end
-
-      it "tenant object keys take precedence over database keys" do
-        # Set database keys (both global and tenant)
-        global_config = RubyLLM::Agents::ApiConfiguration.global
-        global_config.update!(openai_api_key: "sk-global-db")
-
-        tenant_config = RubyLLM::Agents::ApiConfiguration.for_tenant!("priority_tenant")
-        tenant_config.update!(openai_api_key: "sk-tenant-db")
-
-        context = build_context(tenant: tenant_with_keys)
-        allow(app).to receive(:call).with(context).and_return(context)
-
-        middleware.call(context)
-
-        # Tenant object keys applied first, then DB config
-        # The final value depends on the order of application
-        # DB config is applied second, so it would override
-        # But tenant object keys should be the primary source
-        # This tests that both are called without error
-        expect(RubyLLM.config.openai_api_key).to be_present
       end
     end
 

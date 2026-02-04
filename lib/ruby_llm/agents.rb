@@ -9,7 +9,6 @@ require_relative "agents/core/version"
 require_relative "agents/core/configuration"
 require_relative "agents/core/deprecations"
 require_relative "agents/core/errors"
-require_relative "agents/core/resolved_config"
 require_relative "agents/core/llm_tenant"
 
 # Infrastructure - Reliability

@@ -330,21 +330,6 @@ RSpec.describe "Data Preservation During Upgrades", type: :migration do
       end
     end
 
-    it "preserves api_configuration records" do
-      data = MigrationTestData.seed_v0_4_0_data(count: 1)
-      original_config = data[:api_configurations].first
-
-      current = ActiveRecord::Base.connection.select_all(
-        "SELECT * FROM ruby_llm_agents_api_configurations"
-      ).to_a
-
-      expect(current.length).to eq(1)
-
-      found = current.first
-      expect(found["scope_type"]).to eq(original_config[:scope_type])
-      expect(found["default_model"]).to eq(original_config[:default_model])
-    end
-
     it "preserves execution tenant_id associations" do
       data = MigrationTestData.seed_v0_4_0_data(count: 5)
       original_tenant_ids = data[:executions].map { |e| e[:tenant_id] }

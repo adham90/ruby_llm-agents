@@ -232,7 +232,7 @@ module MigrationTestData
     # @return [Hash] Created records grouped by table
     def seed_v0_4_0_data(count: 3)
       connection = ActiveRecord::Base.connection
-      result = { executions: [], tenant_budgets: [], api_configurations: [] }
+      result = { executions: [], tenant_budgets: [] }
 
       # Create tenant budgets first
       tenant_ids = %w[tenant_1 tenant_2 tenant_3]
@@ -266,33 +266,6 @@ module MigrationTestData
         budget[:id] = connection.select_value("SELECT last_insert_rowid()")
         result[:tenant_budgets] << budget
       end
-
-      # Create API configuration
-      api_config = {
-        scope_type: "global",
-        scope_id: nil,
-        openai_api_key: "encrypted_key_openai",
-        anthropic_api_key: "encrypted_key_anthropic",
-        default_model: "gpt-4",
-        request_timeout: 30,
-        max_retries: 3,
-        inherit_global_defaults: true,
-        created_at: Time.current,
-        updated_at: Time.current
-      }
-
-      columns = api_config.keys.join(", ")
-      placeholders = api_config.keys.map { "?" }.join(", ")
-
-      connection.execute(
-        ActiveRecord::Base.sanitize_sql_array([
-          "INSERT INTO ruby_llm_agents_api_configurations (#{columns}) VALUES (#{placeholders})",
-          *api_config.values
-        ])
-      )
-
-      api_config[:id] = connection.select_value("SELECT last_insert_rowid()")
-      result[:api_configurations] << api_config
 
       # Create executions with full v0.4.0 fields
       count.times do |i|

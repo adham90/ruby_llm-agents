@@ -37,7 +37,6 @@ RSpec.describe "Version Upgrade Paths", type: :migration do
 
       # Verify new tables exist
       expect(table_exists?(:ruby_llm_agents_tenant_budgets)).to be true
-      expect(table_exists?(:ruby_llm_agents_api_configurations)).to be true
 
       # Verify data preserved
       expect(record_count).to eq(5)
@@ -210,16 +209,6 @@ RSpec.describe "Version Upgrade Paths", type: :migration do
       rollback_migration(:v0_4_0_tenant_budgets)
 
       expect(table_exists?(:ruby_llm_agents_tenant_budgets)).to be false
-    end
-
-    it "can rollback v0.4.0 api_configurations table" do
-      build_schema_for_version("0.4.0")
-
-      expect(table_exists?(:ruby_llm_agents_api_configurations)).to be true
-
-      rollback_migration(:v0_4_0_api_configurations)
-
-      expect(table_exists?(:ruby_llm_agents_api_configurations)).to be false
     end
 
     it "can rollback tool calls migration" do

@@ -277,23 +277,6 @@ RSpec.describe "Schema Evolution Compatibility", type: :migration do
       }.to raise_error(ActiveRecord::RecordNotUnique)
     end
 
-    it "schema supports ApiConfiguration model operations" do
-      connection = ActiveRecord::Base.connection
-
-      # Insert global config
-      connection.execute(
-        ActiveRecord::Base.sanitize_sql_array([
-          "INSERT INTO ruby_llm_agents_api_configurations
-           (scope_type, scope_id, default_model, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?)",
-          "global", nil, "gpt-4", Time.current, Time.current
-        ])
-      )
-
-      # Select
-      result = connection.select_all("SELECT * FROM ruby_llm_agents_api_configurations")
-      expect(result.to_a.length).to eq(1)
-    end
   end
 
   describe "table existence across versions" do
@@ -319,18 +302,6 @@ RSpec.describe "Schema Evolution Compatibility", type: :migration do
       expect(table_exists?(:ruby_llm_agents_tenant_budgets)).to be true
     end
 
-    it "api_configurations table only exists in 0.4.0" do
-      %w[0.1.0 0.2.3 0.3.3].each do |version|
-        reset_database!
-        build_schema_for_version(version)
-        expect(table_exists?(:ruby_llm_agents_api_configurations)).to be(false),
-          "Expected api_configurations table NOT to exist in version #{version}"
-      end
-
-      reset_database!
-      build_schema_for_version("0.4.0")
-      expect(table_exists?(:ruby_llm_agents_api_configurations)).to be true
-    end
   end
 
   describe "column count evolution" do

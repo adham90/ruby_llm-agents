@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **BREAKING: Removed ApiConfiguration table and model** - The `ruby_llm_agents_api_configurations` table has been removed entirely. API keys should now be configured via environment variables and the `ruby_llm` gem configuration, following 12-factor app principles. Per-tenant API keys can still be provided via the `llm_tenant` DSL's `api_keys:` option on your model.
+
+### Migration Guide
+
+If you were using the `ApiConfiguration` model:
+
+1. Export any API keys stored in the database
+2. Set them as environment variables instead:
+   ```bash
+   export OPENAI_API_KEY="sk-..."
+   export ANTHROPIC_API_KEY="sk-ant-..."
+   ```
+3. Configure in your initializer:
+   ```ruby
+   # config/initializers/ruby_llm.rb
+   RubyLLM.configure do |config|
+     config.openai_api_key = ENV["OPENAI_API_KEY"]
+     config.anthropic_api_key = ENV["ANTHROPIC_API_KEY"]
+   end
+   ```
+4. Run the migration to drop the table:
+   ```ruby
+   class RemoveApiConfigurations < ActiveRecord::Migration[7.1]
+     def up
+       drop_table :ruby_llm_agents_api_configurations, if_exists: true
+     end
+   end
+   ```
+
+For per-tenant API keys, use the `llm_tenant` DSL:
+```ruby
+class Organization < ApplicationRecord
+  include RubyLLM::Agents::LLMTenant
+
+  encrypts :openai_api_key, :anthropic_api_key
+
+  llm_tenant(
+    id: :slug,
+    api_keys: {
+      openai: :openai_api_key,
+      anthropic: :anthropic_api_key
+    }
+  )
+end
+```
+
 ## [1.3.4] - 2026-01-29
 
 ### Improved
