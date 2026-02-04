@@ -228,7 +228,6 @@ rails generate ruby_llm_agents:image_generator banner --cache 1.day
 | `--size` | Image size | `1024x1024` |
 | `--quality` | Quality level (standard, hd) | `standard` |
 | `--style` | Style (vivid, natural) | `vivid` |
-| `--content_policy` | Content policy level | `standard` |
 | `--cache` | Cache duration | None |
 
 **Creates:**
@@ -271,7 +270,6 @@ rails generate ruby_llm_agents:image_editor product
 
 # With options
 rails generate ruby_llm_agents:image_editor background --model gpt-image-1 --size 1024x1024
-rails generate ruby_llm_agents:image_editor photo --content_policy strict
 ```
 
 **Options:**
@@ -280,7 +278,6 @@ rails generate ruby_llm_agents:image_editor photo --content_policy strict
 |--------|-------------|---------|
 | `--model` | Image model | `gpt-image-1` |
 | `--size` | Output image size | `1024x1024` |
-| `--content_policy` | Content policy level | `standard` |
 | `--cache` | Cache duration | None |
 
 **Creates:**
@@ -308,7 +305,6 @@ rails generate ruby_llm_agents:image_transformer oil --template "oil painting, {
 | `--size` | Output image size | `1024x1024` |
 | `--strength` | Transformation strength (0.0-1.0) | `0.75` |
 | `--template` | Prompt template | None |
-| `--content_policy` | Content policy level | `standard` |
 | `--cache` | Cache duration | None |
 
 **Creates:**

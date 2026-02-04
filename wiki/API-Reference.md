@@ -488,13 +488,6 @@ RubyLLM::Agents.configure do |config|
   config.on_alert = ->(event, payload) {
     # Handle alerts (Slack, PagerDuty, etc.)
   }
-
-  # Redaction
-  config.redaction = {
-    fields: %w[password],
-    patterns: [/.../],
-    placeholder: "[REDACTED]"
-  }
 end
 ```
 

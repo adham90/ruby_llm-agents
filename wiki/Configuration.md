@@ -180,22 +180,6 @@ config.on_alert = ->(event, payload) {
 
 See [Alerts](Alerts) for details.
 
-### PII Redaction
-
-```ruby
-config.redaction = {
-  fields: %w[ssn credit_card phone_number],
-  patterns: [
-    /\b\d{3}-\d{2}-\d{4}\b/,  # SSN
-    /\b\d{16}\b/              # Credit card
-  ],
-  placeholder: "[REDACTED]",
-  max_value_length: 1000
-}
-```
-
-See [PII Redaction](PII-Redaction) for details.
-
 ### Async/Fiber Concurrency
 
 | Option | Default | Description |
@@ -268,10 +252,6 @@ end
 | `default_embedding_dimensions` | Integer | `nil` | Default embedding dimensions |
 | `default_embedding_batch_size` | Integer | `100` | Default batch size for embeddings |
 | `track_embeddings` | Boolean | `true` | Track embedding executions |
-| `default_moderation_model` | String | `"omni-moderation-latest"` | Default moderation model |
-| `default_moderation_threshold` | Float | `nil` | Default moderation threshold (0.0-1.0) |
-| `default_moderation_action` | Symbol | `:block` | Default action: `:block`, `:raise`, `:warn`, `:log` |
-| `track_moderation` | Boolean | `true` | Track moderation to executions table |
 | `default_transcription_model` | String | `"whisper-1"` | Default transcription model |
 | `track_transcriptions` | Boolean | `true` | Track transcription executions |
 | `default_tts_provider` | Symbol | `:openai` | Default TTS provider |
@@ -282,8 +262,7 @@ end
 | `retention_period` | Duration | `30.days` | Execution record retention |
 | `cache_store` | Cache | `Rails.cache` | Custom cache store |
 | `budgets` | Hash | `nil` | Budget configuration |
-| `alerts` | Hash | `nil` | Alert configuration |
-| `redaction` | Hash | `nil` | PII redaction configuration |
+| `on_alert` | Proc | `nil` | Alert handler callback |
 | `persist_prompts` | Boolean | `true` | Store prompts in executions |
 | `persist_responses` | Boolean | `true` | Store responses in executions |
 | `multi_tenancy_enabled` | Boolean | `false` | Enable multi-tenancy |
@@ -315,7 +294,6 @@ end
 
 - [Budget Controls](Budget-Controls) - Cost limits
 - [Alerts](Alerts) - Notification setup
-- [PII Redaction](PII-Redaction) - Data protection
 - [Multi-Tenancy](Multi-Tenancy) - Tenant isolation
 - [Async/Fiber](Async-Fiber) - Concurrent execution
 - [Dashboard](Dashboard) - Monitoring UI

@@ -196,11 +196,6 @@ For large responses:
 
 ```ruby
 config.persist_responses = false  # Don't store large responses
-
-# Or truncate
-config.redaction = {
-  max_value_length: 10_000  # Truncate at 10KB
-}
 ```
 
 ## Sync vs Async Comparison

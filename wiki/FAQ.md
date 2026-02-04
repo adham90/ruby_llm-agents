@@ -229,18 +229,9 @@ After 10 errors in 60 seconds, requests are blocked for 5 minutes.
 By default:
 - Agent type, model, status
 - Token counts, costs, duration
-- Parameters (redacted)
+- Parameters
 - Prompts (optional)
 - Responses (optional)
-
-### How do I redact sensitive data?
-
-```ruby
-config.redaction = {
-  fields: %w[ssn credit_card],
-  patterns: [/\d{3}-\d{2}-\d{4}/]
-}
-```
 
 ### How do I disable prompt storage?
 

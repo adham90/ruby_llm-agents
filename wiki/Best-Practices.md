@@ -235,19 +235,7 @@ end
 
 ## Security
 
-### 16. Enable PII Redaction
-
-Protect sensitive data in logs:
-
-```ruby
-config.redaction = {
-  fields: %w[password api_key email ssn],
-  patterns: [/\b\d{3}-\d{2}-\d{4}\b/],
-  placeholder: "[REDACTED]"
-}
-```
-
-### 17. Control Prompt Persistence
+### 16. Control Prompt Persistence
 
 Disable for sensitive applications:
 
@@ -256,15 +244,21 @@ config.persist_prompts = false
 config.persist_responses = false
 ```
 
-### 18. Use Content Moderation
+### 17. Use before_call for Content Safety
 
-Block harmful content:
+Implement custom content moderation:
 
 ```ruby
 class SafeAgent < ApplicationAgent
-  moderation :both,
-    threshold: 0.7,
-    on_flagged: :block
+  before_call :check_content_safety
+
+  private
+
+  def check_content_safety(context)
+    # Use your preferred moderation service
+    result = ModerationService.check(context.params[:query])
+    raise "Content blocked" if result.flagged?
+  end
 end
 ```
 

@@ -284,6 +284,106 @@ end
 
 This is equivalent to setting each option individually but provides better organization for complex configurations.
 
+## Callbacks
+
+### before_call
+
+Register callbacks that run before the LLM call. Use these for input validation, preprocessing, moderation, or PII redaction.
+
+```ruby
+class MyAgent < ApplicationAgent
+  # Method name
+  before_call :validate_input
+  before_call :sanitize_pii
+
+  # Block
+  before_call { |context| context.params[:timestamp] = Time.current }
+
+  private
+
+  def validate_input(context)
+    raise ArgumentError, "Query required" if context.params[:query].blank?
+  end
+
+  def sanitize_pii(context)
+    # Custom PII redaction logic
+    context.params[:query] = RedactionService.redact(context.params[:query])
+  end
+end
+```
+
+**Callback behavior:**
+- Receives the pipeline context as the first argument
+- Can mutate the context (params, prompts, etc.)
+- Raising an exception blocks execution
+- Return value is ignored
+
+### after_call
+
+Register callbacks that run after the LLM call completes. Use these for logging, notifications, post-processing, or analytics.
+
+```ruby
+class MyAgent < ApplicationAgent
+  # Method name
+  after_call :log_response
+  after_call :notify_completion
+
+  # Block
+  after_call { |context, response| Analytics.track(context, response) }
+
+  private
+
+  def log_response(context, response)
+    Rails.logger.info("Agent response: #{response.content.truncate(100)}")
+  end
+
+  def notify_completion(context, response)
+    WebhookService.notify(agent: self.class.name, success: response.present?)
+  end
+end
+```
+
+**Callback behavior:**
+- Receives the pipeline context and response as arguments
+- Return value is ignored
+- Exceptions are logged but don't affect the result
+
+### Example: Custom Moderation
+
+```ruby
+class ModeratedAgent < ApplicationAgent
+  model "gpt-4o"
+
+  before_call :check_content_safety
+
+  private
+
+  def check_content_safety(context)
+    result = ContentModerationService.check(context.params[:query])
+    raise ContentPolicyViolation, result.reason if result.flagged?
+  end
+end
+```
+
+### Example: PII Redaction
+
+```ruby
+class SecureAgent < ApplicationAgent
+  model "gpt-4o"
+
+  before_call :redact_sensitive_data
+
+  private
+
+  def redact_sensitive_data(context)
+    context.params.each do |key, value|
+      next unless value.is_a?(String)
+      context.params[key] = PIIRedactor.redact(value)
+    end
+  end
+end
+```
+
 ## Instance Methods to Override
 
 ### system_prompt

@@ -1,6 +1,38 @@
 # Dashboard Simplification Plan
 
-## Current State
+## Current Navigation Structure
+
+```
+CURRENT NAV BAR
+┌─────────────────────────────────────────────────────────────────────┐
+│ 🤖 RubyLLM Agents    [Dashboard] [Agents] [Executions] [Tenants] ⚙️│
+└─────────────────────────────────────────────────────────────────────┘
+
+4 main pages + Settings dropdown (System Config, Logout)
+```
+
+**Question: Should we remove the Agents page?**
+
+The Agents page shows:
+- List of all registered agents with stats (runs, cost, success rate)
+- Agent detail view with:
+  - Configuration (model, temperature, tools) ← **visible in code**
+  - Execution metrics (runs, cost, success) ← **available on Dashboard + Executions**
+  - Version comparison ← **unique feature**
+  - Circuit breaker status ← **unique feature**
+
+| Keep Agents Page | Remove Agents Page |
+|------------------|-------------------|
+| Dedicated per-agent analytics | Config is in code already |
+| Version comparison feature | Metrics on Dashboard already |
+| Circuit breaker status | Filter Executions by agent |
+| Familiar pattern for users | One less page to maintain |
+
+**Recommendation:** Consider removing if version comparison and circuit breaker status aren't heavily used. The Dashboard's "Top Agents" table + Executions filtering covers most use cases.
+
+---
+
+## Current Dashboard State
 
 The dashboard is feature-rich with ~1500 lines across controller, views, and helpers:
 
@@ -362,6 +394,83 @@ Highcharts: Still used but simpler config
 
 ---
 
+---
+
+## Navigation Simplification Options
+
+### Current: 4 Pages
+```
+[Dashboard] [Agents] [Executions] [Tenants]
+```
+
+### Option X: Keep All 4
+No change to navigation. Simplify each page individually.
+
+### Option Y: Remove Agents Page (3 Pages)
+```
+[Dashboard] [Executions] [Tenants]
+```
+
+- Dashboard shows top agents summary
+- Executions can filter by agent
+- Agent config is in code
+- Removes ~300 lines (controller + views)
+
+### Option Z: Minimal (2 Pages)
+```
+[Dashboard] [Executions]
+```
+
+- Merge Tenants into Settings/System Config
+- Only if multi-tenancy is rarely used
+- Most aggressive simplification
+
+---
+
+## Full Simplified Layout (Option B + Option Y)
+
+```
+SIMPLIFIED LAYOUT
+┌─────────────────────────────────────────────────────────────────────┐
+│ 🤖 RubyLLM Agents         [Dashboard] [Executions] [Tenants]    ⚙️  │
+├─────────────────────────────────────────────────────────────────────┤
+│ Dashboard                                        [Today] [7 Days]   │
+├─────────────────────────────────────────────────────────────────────┤
+│ ⚠️  Alerts (only when critical issues exist)                        │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌─────────────┐ │
+│  │ EXECUTIONS   │ │ ERRORS       │ │ COST         │ │ TOKENS      │ │
+│  │    1,234     │ │     12       │ │   $45.67     │ │    2.3M     │ │
+│  └──────────────┘ └──────────────┘ └──────────────┘ └─────────────┘ │
+│                                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│ Recent Activity                                      [View All →]   │
+├────┬──────────────────┬──────────┬────────┬────────┬────────────────┤
+│ ●  │ Agent            │ Model    │ Tokens │ Cost   │ When           │
+├────┼──────────────────┼──────────┼────────┼────────┼────────────────┤
+│ 🟢 │ ChatBot          │ gpt-4    │ 1.2K   │ $0.05  │ 2m ago         │
+│ 🔴 │ Analyzer         │ claude-3 │ 856    │ $0.03  │ 5m ago         │
+│ 🟢 │ Summarizer       │ gpt-4    │ 2.1K   │ $0.08  │ 8m ago         │
+├────┴──────────────────┴──────────┴────────┴────────┴────────────────┤
+│                                                                     │
+│  Top Agents                              Top Models                 │
+│  ─────────────────────────────────────────────────────────────────  │
+│  ChatBot        456  $23.45  98%    gpt-4-turbo    567  $45   99%   │
+│  Analyzer       234  $12.30  95%    claude-3       234  $18   97%   │
+│  Summarizer     189   $8.90  97%    gpt-3.5        189   $3   99%   │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+
+Total code reduction: ~50-60%
+- Dashboard: ~600 lines removed
+- Agents page: ~300 lines removed (if Option Y)
+- No Highcharts dependency
+- Minimal JavaScript
+```
+
+---
+
 ## Questions to Clarify
 
 1. Is the interactive chart actually used? Do users switch between metrics?
@@ -369,3 +478,5 @@ Highcharts: Still used but simpler config
 3. Is the Cost by Model pie chart providing value beyond the table?
 4. Should Tenant Budget move to the Tenants page, or be removed entirely?
 5. Are Top Errors useful, or do users just look at the executions list?
+6. **Should we remove the Agents page entirely?** (Version comparison + circuit breaker status are the unique features)
+7. **Is the Tenants page used often enough to keep in nav?**

@@ -54,15 +54,6 @@ config.on_alert = ->(event, payload) {
 }
 ```
 
-### 6. PII Redaction
-
-```ruby
-config.redaction = {
-  fields: %w[ssn credit_card email phone],
-  patterns: [/\b\d{3}-\d{2}-\d{4}\b/]
-}
-```
-
 ## Complete Production Configuration
 
 ```ruby
@@ -81,13 +72,6 @@ RubyLLM::Agents.configure do |config|
   config.retention_period = 90.days
   config.persist_prompts = true
   config.persist_responses = true
-
-  # Security
-  config.redaction = {
-    fields: %w[password token api_key ssn credit_card],
-    patterns: [/\b\d{3}-\d{2}-\d{4}\b/],
-    placeholder: "[REDACTED]"
-  }
 
   # Cost Control
   config.budgets = {
@@ -346,7 +330,6 @@ end
 
 - [ ] Dashboard requires authentication
 - [ ] API keys in environment variables (not code)
-- [ ] PII redaction configured
 - [ ] HTTPS enforced
 - [ ] Rate limiting in place
 - [ ] Budget limits set

@@ -1,6 +1,6 @@
 # Image Operations
 
-Generate, analyze, edit, and transform images with templates, content policy, and cost tracking.
+Generate, analyze, edit, and transform images with templates and cost tracking.
 
 This guide covers all image-related capabilities:
 - **Image Generation** - Create images from text prompts
@@ -16,7 +16,7 @@ This guide covers all image-related capabilities:
 
 # Image Generation
 
-Generate images from text prompts with templates, content policy, and cost tracking.
+Generate images from text prompts with templates and cost tracking.
 
 ## Overview
 
@@ -24,7 +24,6 @@ The `ImageGenerator` base class provides a DSL for creating image generators wit
 - Built-in execution tracking and cost monitoring
 - Budget controls (image generation counts toward limits)
 - Multi-tenancy support
-- Content policy enforcement
 - Prompt templates for consistent styling
 - Caching for repeated prompts
 
@@ -186,55 +185,6 @@ result.save_all("./outputs", prefix: "generated")
 # Get binary data
 blob = result.to_blob
 blobs = result.blobs
-```
-
-## Content Policy
-
-Validate prompts before generation to prevent inappropriate content.
-
-### Policy Levels
-
-```ruby
-class SafeGenerator < ApplicationImageGenerator
-  model "gpt-image-1"
-  content_policy :strict    # Blocks violence, nudity, hate, weapons, drugs
-end
-
-class ModerateGenerator < ApplicationImageGenerator
-  model "gpt-image-1"
-  content_policy :moderate  # Blocks explicit content, gore, hate speech
-end
-
-class StandardGenerator < ApplicationImageGenerator
-  model "gpt-image-1"
-  content_policy :standard  # Relies on model's built-in filters (default)
-end
-
-class UnfilteredGenerator < ApplicationImageGenerator
-  model "gpt-image-1"
-  content_policy :none      # No validation
-end
-```
-
-### Policy Level Details
-
-| Level | Blocks |
-|-------|--------|
-| `:strict` | Violence, nudity, hate, weapons, drugs |
-| `:moderate` | Explicit content, gore, hate speech |
-| `:standard` | No blocking (uses model's filters) |
-| `:none` | No validation |
-
-### Manual Validation
-
-```ruby
-# Check if prompt is valid
-ImageGenerator::ContentPolicy.valid?("A beautiful sunset", :strict)
-# => true
-
-# Validate (raises on violation)
-ImageGenerator::ContentPolicy.validate!("Violent scene", :strict)
-# => raises ContentPolicyViolation
 ```
 
 ## Prompt Templates
@@ -531,7 +481,6 @@ class ProductImageGenerator < ApplicationImageGenerator
   model "gpt-image-1"
   size "1024x1024"
   quality "hd"
-  content_policy :strict
 
   template "Professional product photography of {prompt}, " \
            "white background, soft studio lighting, commercial quality, " \
@@ -550,7 +499,6 @@ class LogoGenerator < ApplicationImageGenerator
   size "1024x1024"
   quality "hd"
   style "vivid"
-  content_policy :strict
 
   template "Minimalist logo design for {prompt}, " \
            "clean lines, professional, vector style, " \
@@ -1144,7 +1092,6 @@ The `ImageEditor` base class provides a DSL for creating image editors with:
 - Prompt-guided content generation
 - Multiple edit generation
 - Built-in execution tracking and cost monitoring
-- Content policy enforcement
 - Multi-tenancy support
 
 ## Quick Start
@@ -1194,15 +1141,6 @@ result.urls           # ["https://...", ...]
 class BackgroundEditor < ApplicationImageEditor
   model "gpt-image-1"
   size "1024x1024"
-end
-```
-
-### Content Policy
-
-```ruby
-class SafeEditor < ApplicationImageEditor
-  model "gpt-image-1"
-  content_policy :strict  # Validate edit prompts
 end
 ```
 
