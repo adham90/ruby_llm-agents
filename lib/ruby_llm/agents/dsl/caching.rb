@@ -43,8 +43,39 @@ module RubyLLM
           @cache_ttl = ttl
         end
 
-        # Alias for cache_for (for backward compatibility)
-        alias cache cache_for
+        # Unified cache configuration method (simplified DSL)
+        #
+        # Configures caching with a cleaner syntax using keyword arguments.
+        #
+        # @param ttl_or_options [ActiveSupport::Duration, Hash] TTL or options hash
+        # @param for_duration [ActiveSupport::Duration] TTL for cached responses
+        # @param key [Array<Symbol>] Parameters to include in cache key
+        # @return [void]
+        #
+        # @example Simple TTL (positional argument for backward compatibility)
+        #   cache 1.hour
+        #
+        # @example With keyword arguments (preferred)
+        #   cache for: 1.hour
+        #   cache for: 30.minutes, key: [:query, :user_id]
+        #
+        def cache(ttl_or_options = nil, for: nil, key: nil)
+          # Handle positional argument (backward compatibility)
+          if ttl_or_options && !ttl_or_options.is_a?(Hash)
+            @cache_enabled = true
+            @cache_ttl = ttl_or_options
+            return
+          end
+
+          # Handle keyword arguments
+          for_duration = binding.local_variable_get(:for)
+          if for_duration
+            @cache_enabled = true
+            @cache_ttl = for_duration
+          end
+
+          @cache_key_includes = Array(key) if key
+        end
 
         # Returns whether caching is enabled for this agent
         #

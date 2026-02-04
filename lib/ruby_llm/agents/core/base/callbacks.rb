@@ -75,6 +75,39 @@ module RubyLLM
         @callbacks[:after] << (block || method_name)
       end
 
+      # Simplified alias for before_call (block-only)
+      #
+      # This is the preferred method in the simplified DSL.
+      #
+      # @yield [context] Block to execute before the LLM call
+      # @yieldparam context [Pipeline::Context] The execution context
+      # @return [void]
+      #
+      # @example
+      #   before { |ctx| ctx.params[:timestamp] = Time.current }
+      #   before { |ctx| validate_input!(ctx.params[:query]) }
+      #
+      def before(&block)
+        before_call(&block)
+      end
+
+      # Simplified alias for after_call (block-only)
+      #
+      # This is the preferred method in the simplified DSL.
+      #
+      # @yield [context, response] Block to execute after the LLM call
+      # @yieldparam context [Pipeline::Context] The execution context
+      # @yieldparam response [Object] The LLM response
+      # @return [void]
+      #
+      # @example
+      #   after { |ctx, result| Rails.logger.info("Completed: #{result}") }
+      #   after { |ctx, result| notify_slack(result) if result.confidence < 0.5 }
+      #
+      def after(&block)
+        after_call(&block)
+      end
+
       # Get all registered callbacks
       #
       # @return [Hash] Hash with :before and :after arrays

@@ -2,6 +2,49 @@
 
 The Agent DSL provides a clean, declarative way to configure your AI agents.
 
+## Simplified DSL (Recommended)
+
+The simplified DSL puts prompts front and center - the heart of any agent:
+
+```ruby
+class SearchAgent < ApplicationAgent
+  model "gpt-4o"
+
+  system "You are a helpful search assistant. Be concise."
+  prompt "Search for: {query} (limit: {limit})"
+
+  param :limit, default: 10  # Override auto-detected param with default
+
+  returns do
+    array :results do
+      string :title
+      string :url
+      string :snippet
+    end
+  end
+
+  on_failure do
+    retries times: 3, backoff: :exponential
+    fallback to: "gpt-4o-mini"
+    circuit_breaker after: 5, cooldown: 5.minutes
+  end
+
+  cache for: 1.hour
+
+  before { |ctx| validate_query!(ctx.params[:query]) }
+  after { |ctx, result| log_search(result) }
+end
+```
+
+### Key Features
+
+- **`prompt`** - Define user prompt with `{placeholder}` syntax (auto-registers required params)
+- **`system`** - System instructions
+- **`returns`** - Structured output schema (alias for `schema`)
+- **`on_failure`** - Error handling configuration (alias for `reliability`)
+- **`cache for:, key:`** - Caching with cleaner syntax
+- **`before`/`after`** - Simplified callbacks (block-only)
+
 ## Class-Level Configuration
 
 ### model
@@ -23,6 +66,81 @@ end
 | OpenAI | `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`, `gpt-3.5-turbo` |
 | Anthropic | `claude-3-5-sonnet`, `claude-3-opus`, `claude-3-haiku` |
 | Google | `gemini-2.0-flash`, `gemini-1.5-pro`, `gemini-1.5-flash` |
+
+### prompt (Simplified DSL)
+
+Define the user prompt with automatic parameter detection:
+
+```ruby
+class SearchAgent < ApplicationAgent
+  # Parameters {query} and {category} are auto-registered as required
+  prompt "Search for {query} in {category}"
+end
+```
+
+Override auto-detected parameters with defaults:
+
+```ruby
+class SearchAgent < ApplicationAgent
+  prompt "Search for {query} in {category} (limit: {limit})"
+
+  param :limit, default: 10  # Now optional with default
+end
+```
+
+For dynamic prompts, use a block:
+
+```ruby
+class SummarizerAgent < ApplicationAgent
+  param :text
+  param :language, default: "english"
+
+  prompt do
+    base = "Summarize the following"
+    base += " in #{language}" if language != "english"
+    "#{base}: #{text}"
+  end
+end
+```
+
+### system (Simplified DSL)
+
+Define system instructions:
+
+```ruby
+class MyAgent < ApplicationAgent
+  system "You are a helpful assistant. Be concise and accurate."
+end
+```
+
+For dynamic system prompts:
+
+```ruby
+class MyAgent < ApplicationAgent
+  param :user_role, default: "user"
+
+  system do
+    "You are helping a #{user_role}. Adjust your response accordingly."
+  end
+end
+```
+
+### returns (Simplified DSL)
+
+Define structured output (alias for `schema`):
+
+```ruby
+class AnalysisAgent < ApplicationAgent
+  prompt "Analyze: {data}"
+
+  returns do
+    string :summary, description: "A brief summary"
+    array :insights, of: :string, description: "Key insights"
+    number :confidence, description: "Confidence score 0-1"
+    boolean :needs_review, description: "Whether human review is needed"
+  end
+end
+```
 
 ### description
 
@@ -63,25 +181,24 @@ class MyAgent < ApplicationAgent
 end
 ```
 
-### cache_for (Preferred)
+### cache (Simplified DSL)
 
-Enable response caching with TTL:
+Enable response caching with cleaner syntax:
+
+```ruby
+class MyAgent < ApplicationAgent
+  cache for: 1.hour                          # Cache for 1 hour
+  cache for: 30.minutes, key: [:query]       # With explicit cache key params
+end
+```
+
+### cache_for (Alternative)
 
 ```ruby
 class MyAgent < ApplicationAgent
   cache_for 1.hour     # Cache for 1 hour
   # cache_for 30.minutes
   # cache_for 1.day
-end
-```
-
-### cache (Deprecated)
-
-> **Deprecated:** Use `cache_for` instead. This method still works but may be removed in a future version.
-
-```ruby
-class MyAgent < ApplicationAgent
-  cache 1.hour  # Deprecated - use cache_for instead
 end
 ```
 
@@ -92,6 +209,14 @@ Enable real-time response streaming:
 ```ruby
 class MyAgent < ApplicationAgent
   streaming true
+end
+```
+
+Or use `.stream()` at call time (preferred):
+
+```ruby
+MyAgent.stream(query: "Hello") do |chunk|
+  print chunk.content
 end
 ```
 
@@ -181,6 +306,8 @@ class MyAgent < ApplicationAgent
 end
 ```
 
+**Auto-detected parameters:** When using the `prompt` DSL with `{placeholder}` syntax, parameters are automatically registered as required unless you explicitly define them with `param`.
+
 **Supported Types:**
 
 | Type | Ruby Class | Example |
@@ -204,60 +331,36 @@ See [Parameters](Parameters) for details.
 
 ## Reliability Configuration
 
-### retries
+### on_failure (Simplified DSL)
 
-Configure automatic retry behavior:
-
-```ruby
-class MyAgent < ApplicationAgent
-  retries max: 3                              # Max 3 retries
-  retries max: 3, backoff: :exponential       # With exponential backoff
-  retries max: 3, backoff: :constant          # Fixed delay between retries
-  retries max: 3, base: 0.5, max_delay: 10.0  # Custom backoff timing
-end
-```
-
-See [Automatic Retries](Automatic-Retries) for details.
-
-### fallback_models
-
-Specify fallback models if primary fails:
+Group all error handling in one block with intuitive syntax:
 
 ```ruby
 class MyAgent < ApplicationAgent
   model "gpt-4o"
-  fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
+
+  on_failure do
+    retries times: 3, backoff: :exponential  # Retry up to 3 times
+    fallback to: ["gpt-4o-mini", "gpt-3.5-turbo"]  # Try these models next
+    timeout 30  # Total timeout for all attempts
+    circuit_breaker after: 5, cooldown: 5.minutes  # Open after 5 failures
+  end
 end
 ```
 
-See [Model Fallbacks](Model-Fallbacks) for details.
+**Available options in `on_failure`:**
 
-### circuit_breaker
+| Method | Description |
+|--------|-------------|
+| `retries times:, backoff:, base:, max_delay:` | Configure retry behavior |
+| `fallback to:` | Fallback models (string or array) |
+| `timeout` | Total timeout for all attempts |
+| `circuit_breaker after:, within:, cooldown:` | Circuit breaker configuration |
+| `non_fallback_errors` | Errors that should fail immediately |
 
-Prevent cascading failures:
+### reliability (Alternative)
 
-```ruby
-class MyAgent < ApplicationAgent
-  circuit_breaker errors: 10, within: 60, cooldown: 300
-end
-```
-
-See [Circuit Breakers](Circuit-Breakers) for details.
-
-### total_timeout
-
-Maximum time for all attempts (including retries):
-
-```ruby
-class MyAgent < ApplicationAgent
-  retries max: 5
-  total_timeout 30  # Abort everything after 30 seconds
-end
-```
-
-### reliability (Block DSL)
-
-Group all reliability settings in a single block (v0.4.0+):
+The block DSL for reliability configuration:
 
 ```ruby
 class MyAgent < ApplicationAgent
@@ -272,13 +375,37 @@ class MyAgent < ApplicationAgent
 end
 ```
 
-This is equivalent to setting each option individually but provides better organization for complex configurations.
+### Individual Methods
+
+You can also configure reliability options individually:
+
+```ruby
+class MyAgent < ApplicationAgent
+  retries max: 3, backoff: :exponential
+  fallback_models "gpt-4o-mini", "gpt-3.5-turbo"
+  circuit_breaker errors: 10, within: 60, cooldown: 300
+  total_timeout 30
+end
+```
+
+See [Automatic Retries](Automatic-Retries), [Model Fallbacks](Model-Fallbacks), and [Circuit Breakers](Circuit-Breakers) for details.
 
 ## Callbacks
 
-### before_call
+### before / after (Simplified DSL)
 
-Register callbacks that run before the LLM call. Use these for input validation, preprocessing, moderation, or PII redaction.
+Simplified block-only callbacks:
+
+```ruby
+class MyAgent < ApplicationAgent
+  before { |ctx| ctx.params[:timestamp] = Time.current }
+  after { |ctx, result| Analytics.track(result) }
+end
+```
+
+### before_call / after_call (Full API)
+
+Register callbacks with method names or blocks:
 
 ```ruby
 class MyAgent < ApplicationAgent
@@ -289,96 +416,31 @@ class MyAgent < ApplicationAgent
   # Block
   before_call { |context| context.params[:timestamp] = Time.current }
 
+  # After callbacks
+  after_call :log_response
+  after_call { |context, response| Analytics.track(context, response) }
+
   private
 
   def validate_input(context)
     raise ArgumentError, "Query required" if context.params[:query].blank?
   end
 
-  def sanitize_pii(context)
-    # Custom PII redaction logic
-    context.params[:query] = RedactionService.redact(context.params[:query])
-  end
-end
-```
-
-**Callback behavior:**
-- Receives the pipeline context as the first argument
-- Can mutate the context (params, prompts, etc.)
-- Raising an exception blocks execution
-- Return value is ignored
-
-### after_call
-
-Register callbacks that run after the LLM call completes. Use these for logging, notifications, post-processing, or analytics.
-
-```ruby
-class MyAgent < ApplicationAgent
-  # Method name
-  after_call :log_response
-  after_call :notify_completion
-
-  # Block
-  after_call { |context, response| Analytics.track(context, response) }
-
-  private
-
   def log_response(context, response)
     Rails.logger.info("Agent response: #{response.content.truncate(100)}")
   end
-
-  def notify_completion(context, response)
-    WebhookService.notify(agent: self.class.name, success: response.present?)
-  end
 end
 ```
 
 **Callback behavior:**
-- Receives the pipeline context and response as arguments
-- Return value is ignored
-- Exceptions are logged but don't affect the result
-
-### Example: Custom Moderation
-
-```ruby
-class ModeratedAgent < ApplicationAgent
-  model "gpt-4o"
-
-  before_call :check_content_safety
-
-  private
-
-  def check_content_safety(context)
-    result = ContentModerationService.check(context.params[:query])
-    raise ContentPolicyViolation, result.reason if result.flagged?
-  end
-end
-```
-
-### Example: PII Redaction
-
-```ruby
-class SecureAgent < ApplicationAgent
-  model "gpt-4o"
-
-  before_call :redact_sensitive_data
-
-  private
-
-  def redact_sensitive_data(context)
-    context.params.each do |key, value|
-      next unless value.is_a?(String)
-      context.params[key] = PIIRedactor.redact(value)
-    end
-  end
-end
-```
+- `before_call`: Receives pipeline context, can mutate it, raising blocks execution
+- `after_call`: Receives context and response, return value ignored
 
 ## Instance Methods to Override
 
 ### system_prompt
 
-Define the agent's role and instructions:
+Define the agent's role and instructions (alternative to `system` DSL):
 
 ```ruby
 private
@@ -393,7 +455,7 @@ end
 
 ### user_prompt
 
-Define the main request (required):
+Define the main request (alternative to `prompt` DSL):
 
 ```ruby
 def user_prompt
@@ -406,7 +468,7 @@ end
 
 ### schema
 
-Define structured output format:
+Define structured output format (alternative to `returns` DSL):
 
 ```ruby
 def schema
@@ -486,7 +548,44 @@ def cache_key_data
 end
 ```
 
-## Complete Example
+## Complete Example (Simplified DSL)
+
+```ruby
+class ContentGeneratorAgent < ApplicationAgent
+  model "gpt-4o"
+  description "Generates SEO-optimized blog articles from topics"
+  temperature 0.7
+
+  system <<~PROMPT
+    You are a professional content writer.
+    Write in a {tone} tone with clear structure.
+  PROMPT
+
+  prompt "Write a {word_count}-word article about: {topic}"
+
+  param :tone, default: "professional"
+  param :word_count, default: 500
+  param :user_id, required: true
+
+  returns do
+    string :title, description: "Article title"
+    string :content, description: "Full article content"
+    array :tags, of: :string, description: "Relevant tags"
+  end
+
+  on_failure do
+    retries times: 3, backoff: :exponential
+    fallback to: "gpt-4o-mini"
+    timeout 120
+  end
+
+  cache for: 2.hours
+
+  after { |ctx, result| result[:generated_at] = Time.current }
+end
+```
+
+## Complete Example (Traditional DSL)
 
 ```ruby
 class ContentGeneratorAgent < ApplicationAgent

@@ -6,7 +6,52 @@
 # that apply to all agents, or override them per-agent as needed.
 #
 # ============================================================================
-# AGENT DSL REFERENCE
+# SIMPLIFIED DSL REFERENCE (Recommended)
+# ============================================================================
+#
+# PROMPTS (First-Class):
+# ----------------------
+#   system "You are a helpful assistant."    # System instructions
+#   prompt "Search for: {query}"             # User prompt with {placeholder} syntax
+#
+#   # Placeholders are auto-registered as required params
+#   # Override with `param :name, default: value` to make optional
+#
+#   # Dynamic prompts with blocks:
+#   prompt do
+#     "Process #{query} with #{format} formatting"
+#   end
+#
+# STRUCTURED OUTPUT:
+# ------------------
+#   returns do
+#     string :summary, description: "Brief summary"
+#     array :items, of: :string
+#     number :score
+#     boolean :approved
+#   end
+#
+# ERROR HANDLING:
+# ---------------
+#   on_failure do
+#     retries times: 3, backoff: :exponential
+#     fallback to: ["gpt-4o-mini", "gpt-3.5-turbo"]
+#     timeout 30
+#     circuit_breaker after: 5, cooldown: 5.minutes
+#   end
+#
+# CACHING:
+# --------
+#   cache for: 1.hour                    # Enable caching
+#   cache for: 1.hour, key: [:query]     # Explicit cache key params
+#
+# CALLBACKS:
+# ----------
+#   before { |ctx| validate!(ctx.params[:query]) }
+#   after { |ctx, result| log_result(result) }
+#
+# ============================================================================
+# TRADITIONAL DSL REFERENCE
 # ============================================================================
 #
 # MODEL CONFIGURATION:
@@ -146,18 +191,18 @@ class ApplicationAgent < RubyLLM::Agents::Base
   # Shared Caching
   # ============================================
 
-  # cache_for 1.hour  # Enable caching for all agents
+  # cache for: 1.hour  # Enable caching for all agents
 
   # ============================================
   # Shared Reliability Settings
   # ============================================
   # Configure once here, all agents inherit these settings
   #
-  # reliability do
-  #   retries max: 2, backoff: :exponential, base: 0.4, max_delay: 3.0
-  #   fallback_models "gpt-4o-mini", "claude-3-haiku-20240307"
-  #   total_timeout 30
-  #   circuit_breaker errors: 5, within: 60, cooldown: 300
+  # on_failure do
+  #   retries times: 2, backoff: :exponential
+  #   fallback to: ["gpt-4o-mini", "claude-3-haiku-20240307"]
+  #   timeout 30
+  #   circuit_breaker after: 5, cooldown: 5.minutes
   # end
 
   # ============================================
