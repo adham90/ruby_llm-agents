@@ -3,24 +3,15 @@
   selected_agents = params[:agent_types].present? ? (params[:agent_types].is_a?(Array) ? params[:agent_types] : params[:agent_types].split(",")) : []
   selected_statuses = params[:statuses].present? ? (params[:statuses].is_a?(Array) ? params[:statuses] : params[:statuses].split(",")) : []
   selected_models = params[:model_ids].present? ? (params[:model_ids].is_a?(Array) ? params[:model_ids] : params[:model_ids].split(",")) : []
-  selected_execution_type = params[:execution_type].presence
 
-  has_filters = selected_agents.any? || selected_statuses.any? || params[:days].present? || selected_models.any? || params[:tenant_id].present? || selected_execution_type.present?
+  has_filters = selected_agents.any? || selected_statuses.any? || params[:days].present? || selected_models.any? || params[:tenant_id].present?
   active_filter_count = [
     selected_agents.any? ? 1 : 0,
     selected_statuses.any? ? 1 : 0,
     params[:days].present? ? 1 : 0,
     selected_models.any? ? 1 : 0,
-    params[:tenant_id].present? ? 1 : 0,
-    selected_execution_type.present? ? 1 : 0
+    params[:tenant_id].present? ? 1 : 0
   ].sum
-
-  # Execution type options (replaces the old tabs)
-  execution_type_options = [
-    { value: "", label: "All Executions" },
-    { value: "agents", label: "Agents Only" },
-    { value: "workflows", label: "Workflows" }
-  ]
 
   status_options = [
     { value: "success", label: "Success", color: "bg-green-500" },
@@ -79,18 +70,6 @@
 
       <%# Responsive flex: column on mobile, row on desktop %>
       <div class="flex flex-col md:flex-row md:items-center gap-2">
-        <%# Execution Type Filter (replaces tabs) %>
-        <div class="md:w-auto">
-          <%= render "ruby_llm/agents/shared/select_dropdown",
-              name: "execution_type",
-              filter_id: "execution_type",
-              options: execution_type_options,
-              selected: selected_execution_type,
-              icon: "M4 6h16M4 10h16M4 14h16M4 18h16",
-              width: "w-44",
-              full_width: true %>
-        </div>
-
         <%# Status Filter %>
         <div class="md:w-auto">
           <%= render "ruby_llm/agents/shared/filter_dropdown",
@@ -194,7 +173,7 @@
               <span class="md:hidden">Clear</span>
             <% end %>
           <% end %>
-          <%= link_to ruby_llm_agents.export_executions_path(agent_types: selected_agents.presence, statuses: selected_statuses.presence, days: params[:days].presence, model_ids: selected_models.presence, tenant_id: params[:tenant_id].presence, execution_type: selected_execution_type),
+          <%= link_to ruby_llm_agents.export_executions_path(agent_types: selected_agents.presence, statuses: selected_statuses.presence, days: params[:days].presence, model_ids: selected_models.presence, tenant_id: params[:tenant_id].presence),
               class: "flex-1 md:flex-initial flex items-center justify-center gap-2 px-3 py-2 md:p-2 text-sm md:text-base text-gray-600 md:text-gray-400 dark:text-gray-300 md:dark:text-gray-400 bg-gray-50 md:bg-transparent dark:bg-gray-700 md:dark:bg-transparent hover:text-gray-600 md:hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 md:dark:hover:bg-gray-700 rounded-lg transition-colors",
               title: "Export CSV" do %>
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
