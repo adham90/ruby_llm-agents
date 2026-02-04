@@ -224,16 +224,6 @@ RSpec.describe RubyLLM::Agents::Speaker do
       end
     end
 
-    describe ".version" do
-      it "sets and returns version" do
-        base_speaker.version "2.0"
-        expect(base_speaker.version).to eq("2.0")
-      end
-
-      it "returns default when not set" do
-        expect(base_speaker.version).to eq("1.0")
-      end
-    end
   end
 
   describe "#call" do
@@ -528,7 +518,6 @@ RSpec.describe RubyLLM::Agents::Speaker do
         provider :openai
         model "tts-1"
         voice "nova"
-        version "1.0"
       end
     end
 
@@ -536,7 +525,7 @@ RSpec.describe RubyLLM::Agents::Speaker do
       speaker = test_speaker.new(text: "Hello world")
       key = speaker.agent_cache_key
 
-      expect(key).to start_with("ruby_llm_agents/speech/CacheKeySpeaker/1.0/")
+      expect(key).to start_with("ruby_llm_agents/speech/CacheKeySpeaker/")
     end
 
     it "generates different keys for different texts" do

@@ -21,7 +21,6 @@ module MigrationTestData
 
         record = {
           agent_type: "TestAgent#{i}",
-          agent_version: "1.0",
           model_id: "gpt-4",
           model_provider: "openai",
           temperature: 0.7,
@@ -77,7 +76,6 @@ module MigrationTestData
         record = {
           # v0.1.0 fields
           agent_type: "StreamingAgent#{i}",
-          agent_version: "2.0",
           model_id: "claude-3-opus",
           model_provider: "anthropic",
           temperature: 0.5,
@@ -157,7 +155,6 @@ module MigrationTestData
         record = {
           # v0.1.0 fields
           agent_type: "ToolAgent#{i}",
-          agent_version: "3.0",
           model_id: "gpt-4-turbo",
           model_provider: "openai",
           temperature: 0.0,
@@ -285,7 +282,6 @@ module MigrationTestData
         record = {
           # v0.1.0 fields
           agent_type: "FullAgent#{i}",
-          agent_version: "4.0",
           model_id: "gpt-4",
           model_provider: "openai",
           temperature: 0.7,
@@ -376,7 +372,6 @@ module MigrationTestData
       # Create root execution
       root = {
         agent_type: "RootAgent",
-        agent_version: "1.0",
         model_id: "gpt-4",
         model_provider: "openai",
         temperature: 0.7,
@@ -428,7 +423,6 @@ module MigrationTestData
       3.times do |i|
         child = {
           agent_type: "ChildAgent#{i}",
-          agent_version: "1.0",
           model_id: "gpt-3.5-turbo",
           model_provider: "openai",
           temperature: 0.5,
@@ -484,7 +478,6 @@ module MigrationTestData
 
         values = [
           "BulkAgent",
-          "1.0",
           %w[gpt-4 gpt-3.5-turbo claude-3-opus].sample,
           %w[openai anthropic].sample,
           0.7,
@@ -508,13 +501,13 @@ module MigrationTestData
         connection.execute(
           ActiveRecord::Base.sanitize_sql_array([
             "INSERT INTO ruby_llm_agents_executions (
-              agent_type, agent_version, model_id, model_provider, temperature,
+              agent_type, model_id, model_provider, temperature,
               started_at, completed_at, duration_ms, status,
               input_tokens, output_tokens, total_tokens,
               input_cost, output_cost, total_cost,
               parameters, response, metadata,
               created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             *values
           ])
         )

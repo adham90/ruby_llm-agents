@@ -47,12 +47,10 @@ RSpec.describe RubyLLM::Agents::ImageEditor::DSL do
   describe "combined with inherited methods" do
     it "can configure all options" do
       editor_class.model "custom-editor"
-      editor_class.version "v2"
       editor_class.size "2048x2048"
       editor_class.cache_for 7200
 
       expect(editor_class.model).to eq("custom-editor")
-      expect(editor_class.version).to eq("v2")
       expect(editor_class.size).to eq("2048x2048")
       expect(editor_class.cache_ttl).to eq(7200)
     end

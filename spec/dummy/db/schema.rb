@@ -7,7 +7,6 @@ ActiveRecord::Schema.define do
   create_table :ruby_llm_agents_executions, force: :cascade do |t|
     # Agent identification
     t.string :agent_type, null: false
-    t.string :agent_version, null: false, default: "1.0"
     t.string :execution_type, null: false, default: "chat"
 
     # Model configuration

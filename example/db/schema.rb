@@ -30,7 +30,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_04_000001) do
 
   create_table "ruby_llm_agents_executions", force: :cascade do |t|
     t.string "agent_type", null: false
-    t.string "agent_version", default: "1.0"
     t.json "attempts", default: [], null: false
     t.integer "attempts_count", default: 0, null: false
     t.integer "cache_creation_tokens", default: 0
@@ -86,7 +85,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_04_000001) do
     t.string "workflow_id"
     t.string "workflow_step"
     t.string "workflow_type"
-    t.index ["agent_type", "agent_version"], name: "idx_on_agent_type_agent_version_6719e42ac5"
     t.index ["agent_type", "created_at"], name: "index_ruby_llm_agents_executions_on_agent_type_and_created_at"
     t.index ["agent_type", "status"], name: "index_ruby_llm_agents_executions_on_agent_type_and_status"
     t.index ["agent_type"], name: "index_ruby_llm_agents_executions_on_agent_type"

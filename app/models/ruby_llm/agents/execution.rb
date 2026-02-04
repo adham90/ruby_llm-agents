@@ -8,8 +8,6 @@ module RubyLLM
     #
     # @!attribute [rw] agent_type
     #   @return [String] Full class name of the agent (e.g., "SearchAgent")
-    # @!attribute [rw] agent_version
-    #   @return [String] Version string for cache invalidation
     # @!attribute [rw] model_id
     #   @return [String] LLM model identifier used
     # @!attribute [rw] temperature
@@ -85,7 +83,6 @@ module RubyLLM
       # Validations
       validates :agent_type, :model_id, :started_at, presence: true
       validates :status, inclusion: { in: statuses.keys }
-      validates :agent_version, presence: true
       validates :temperature, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 2 }, allow_nil: true
       validates :input_tokens, :output_tokens, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
       validates :duration_ms, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true

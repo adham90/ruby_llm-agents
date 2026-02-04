@@ -28,20 +28,6 @@ RSpec.describe RubyLLM::Agents::Base do
       end
     end
 
-    describe ".version" do
-      it "sets and gets the version" do
-        klass = Class.new(described_class) do
-          version "2.0"
-        end
-        expect(klass.version).to eq("2.0")
-      end
-
-      it "defaults to 1.0" do
-        klass = Class.new(described_class)
-        expect(klass.version).to eq("1.0")
-      end
-    end
-
     describe ".param" do
       it "defines required parameters" do
         klass = Class.new(described_class) do

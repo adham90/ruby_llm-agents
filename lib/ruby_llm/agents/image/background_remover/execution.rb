@@ -203,7 +203,6 @@ module RubyLLM
           [
             "background_remover",
             self.class.name,
-            self.class.version,
             resolve_model,
             resolve_output_format.to_s,
             resolve_alpha_matting.to_s,

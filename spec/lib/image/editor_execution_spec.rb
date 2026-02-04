@@ -10,7 +10,6 @@ RSpec.describe RubyLLM::Agents::ImageEditor::Execution do
         "TestImageEditor"
       end
 
-      version "1.0.0"
       model "dall-e-3"
       cache_for 1.hour
       size "1024x1024"
@@ -138,10 +137,6 @@ RSpec.describe RubyLLM::Agents::ImageEditor::Execution do
 
         def self.name
           "ExecutionTestEditor"
-        end
-
-        def self.version
-          "1.0.0"
         end
 
         def self.model

@@ -365,7 +365,6 @@ module RubyLLM
           [
             "image_analyzer",
             self.class.name,
-            self.class.version,
             resolve_model,
             resolve_analysis_type.to_s,
             resolve_extract_colors.to_s,

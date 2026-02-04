@@ -10,7 +10,6 @@ RSpec.describe RubyLLM::Agents::ImageTransformer::Execution do
         "TestImageTransformer"
       end
 
-      version "1.0.0"
       model "sdxl"
       cache_for 1.hour
       size "1024x1024"
@@ -129,10 +128,6 @@ RSpec.describe RubyLLM::Agents::ImageTransformer::Execution do
 
         def self.name
           "ExecutionTestTransformer"
-        end
-
-        def self.version
-          "1.0.0"
         end
 
         def self.model

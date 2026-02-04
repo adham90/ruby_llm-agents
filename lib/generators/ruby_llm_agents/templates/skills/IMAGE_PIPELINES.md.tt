@@ -129,7 +129,6 @@ result = Images::SmartPipeline.call(
 module Images
   class EcommercePipeline < ApplicationImagePipeline
     description "Generate and process product images"
-    version "1.0"
 
     step :generate, generator: ProductGenerator
     step :upscale, upscaler: PhotoUpscaler, scale: 2

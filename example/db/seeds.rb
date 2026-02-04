@@ -18,7 +18,6 @@ puts 'Seeding test data for ruby_llm-agents...'
 # Helper to generate realistic execution data
 def create_execution(attrs = {})
   defaults = {
-    agent_version: '1.0',
     model_id: 'gpt-4o-mini',
     model_provider: 'openai',
     temperature: 0.7,

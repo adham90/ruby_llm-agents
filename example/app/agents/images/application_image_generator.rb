@@ -15,7 +15,6 @@
 #   size "1024x1024"               # Image size ("256x256", "512x512", "1024x1024", "1792x1024", "1024x1792")
 #   quality "hd"                   # Quality ("standard", "hd")
 #   style "vivid"                  # Style ("vivid", "natural")
-#   version "1.0"                  # Generator version (affects cache keys)
 #   description "..."              # Human-readable generator description
 #
 # CONTENT POLICY:

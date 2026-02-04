@@ -94,24 +94,6 @@ RSpec.describe RubyLLM::Agents::Execution::Analytics do
     end
   end
 
-  describe ".compare_versions" do
-    before do
-      create(:execution, agent_type: "TestAgent", agent_version: "1.0", total_cost: 1.0, duration_ms: 1000)
-      create(:execution, agent_type: "TestAgent", agent_version: "2.0", total_cost: 0.5, duration_ms: 500)
-    end
-
-    it "returns comparison data" do
-      result = execution_class.compare_versions("TestAgent", "1.0", "2.0", period: :today)
-      expect(result[:version1][:version]).to eq("1.0")
-      expect(result[:version2][:version]).to eq("2.0")
-    end
-
-    it "calculates improvement percentages" do
-      result = execution_class.compare_versions("TestAgent", "1.0", "2.0", period: :today)
-      expect(result[:improvements]).to include(:cost_change_pct, :speed_change_pct)
-    end
-  end
-
   describe ".trend_analysis" do
     before do
       create(:execution, created_at: Time.current)

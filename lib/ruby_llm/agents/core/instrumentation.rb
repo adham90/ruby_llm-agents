@@ -240,7 +240,6 @@ module RubyLLM
 
         execution_data = {
           agent_type: self.class.name,
-          agent_version: self.class.version,
           model_id: model,
           temperature: temperature,
           started_at: started_at,
@@ -499,7 +498,6 @@ module RubyLLM
 
         execution_data = {
           agent_type: self.class.name,
-          agent_version: self.class.version,
           model_id: model,
           temperature: temperature,
           started_at: Time.current,
@@ -855,7 +853,6 @@ module RubyLLM
 
         execution_data = {
           agent_type: self.class.name,
-          agent_version: self.class.version,
           model_id: model,
           temperature: temperature,
           status: "success",

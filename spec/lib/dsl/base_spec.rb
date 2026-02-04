@@ -48,24 +48,6 @@ RSpec.describe RubyLLM::Agents::DSL::Base do
     end
   end
 
-  describe "#version" do
-    it "returns default version when not set" do
-      expect(test_class.version).to eq("1.0")
-    end
-
-    it "sets and returns the version" do
-      test_class.version("2.5")
-      expect(test_class.version).to eq("2.5")
-    end
-
-    it "inherits from parent class" do
-      test_class.version("3.0")
-
-      child_class = Class.new(test_class)
-      expect(child_class.version).to eq("3.0")
-    end
-  end
-
   describe "#description" do
     it "returns nil when not set" do
       expect(test_class.description).to be_nil

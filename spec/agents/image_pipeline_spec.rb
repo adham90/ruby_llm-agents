@@ -60,7 +60,6 @@ RSpec.describe RubyLLM::Agents::ImagePipeline do
           step :generate, generator: gen
           step :upscale, upscaler: up, scale: 2
 
-          version "v1"
           description "Test pipeline"
         end
       end
@@ -78,10 +77,6 @@ RSpec.describe RubyLLM::Agents::ImagePipeline do
       it "captures step options" do
         upscale_step = test_pipeline_class.steps.find { |s| s[:name] == :upscale }
         expect(upscale_step[:config][:scale]).to eq(2)
-      end
-
-      it "sets version" do
-        expect(test_pipeline_class.version).to eq("v1")
       end
 
       it "sets description" do
@@ -246,7 +241,6 @@ RSpec.describe RubyLLM::Agents::ImagePipeline do
 
       Class.new(described_class) do
         step :generate, generator: gen
-        version "parent"
         stop_on_error false
       end
     end
@@ -261,10 +255,6 @@ RSpec.describe RubyLLM::Agents::ImagePipeline do
 
     it "inherits steps from parent" do
       expect(child_class.steps.size).to eq(2)
-    end
-
-    it "inherits version from parent" do
-      expect(child_class.version).to eq("parent")
     end
 
     it "inherits stop_on_error from parent" do

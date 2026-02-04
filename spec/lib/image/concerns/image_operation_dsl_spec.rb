@@ -31,17 +31,6 @@ RSpec.describe RubyLLM::Agents::Concerns::ImageOperationDSL do
     end
   end
 
-  describe "#version" do
-    it "sets and gets the version" do
-      test_class.version "v2"
-      expect(test_class.version).to eq("v2")
-    end
-
-    it "defaults to 'v1'" do
-      expect(test_class.version).to eq("v1")
-    end
-  end
-
   describe "#description" do
     it "sets and gets the description" do
       test_class.description "Test operation"
@@ -92,7 +81,6 @@ RSpec.describe RubyLLM::Agents::Concerns::ImageOperationDSL do
         end
 
         model "parent-model"
-        version "v2"
         description "Parent description"
         cache_for 3600
       end
@@ -108,10 +96,6 @@ RSpec.describe RubyLLM::Agents::Concerns::ImageOperationDSL do
 
     it "inherits model from parent" do
       expect(child_class.model).to eq("parent-model")
-    end
-
-    it "inherits version from parent" do
-      expect(child_class.version).to eq("v2")
     end
 
     it "inherits description from parent" do

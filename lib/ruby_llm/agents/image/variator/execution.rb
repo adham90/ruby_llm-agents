@@ -156,7 +156,6 @@ module RubyLLM
           [
             "image_variator",
             self.class.name,
-            self.class.version,
             resolve_model,
             resolve_size,
             resolve_variation_strength.to_s,

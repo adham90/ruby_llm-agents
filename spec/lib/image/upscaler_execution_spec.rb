@@ -10,7 +10,6 @@ RSpec.describe RubyLLM::Agents::ImageUpscaler::Execution do
         "TestImageUpscaler"
       end
 
-      version "1.0.0"
       model "real-esrgan"
       cache_for 1.hour
       scale 4
@@ -99,10 +98,6 @@ RSpec.describe RubyLLM::Agents::ImageUpscaler::Execution do
 
         def self.name
           "ExecutionTestUpscaler"
-        end
-
-        def self.version
-          "1.0.0"
         end
 
         def self.model

@@ -37,7 +37,6 @@ module Images
 <% end -%>
 
     description "<%= class_name %> image processing pipeline"
-    version "1.0"
 <%- if class_name.include?("::") -%>
 <%- class_name.split("::").length.times do |i| -%>
 <%= "  " * (class_name.split("::").length - i) %>end

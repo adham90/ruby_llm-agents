@@ -107,18 +107,6 @@ class CachedGenerator < ApplicationImageGenerator
 end
 ```
 
-### Version Control
-
-Bump version to invalidate cache when changing templates:
-
-```ruby
-class StyledGenerator < ApplicationImageGenerator
-  model "gpt-image-1"
-  version "2.0"
-  cache_for 1.week
-end
-```
-
 ### Description
 
 Add a description for documentation and dashboard display:
@@ -1551,7 +1539,6 @@ class ProductPipeline < ApplicationImagePipeline
   step :analyze, analyzer: ProductAnalyzer
 
   description "Product image processing pipeline"
-  version "1.0"
 end
 ```
 
@@ -1715,9 +1702,6 @@ class CachedPipeline < ApplicationImagePipeline
   step :upscale, upscaler: PhotoUpscaler
 
   cache_for 1.hour
-
-  # Version bump invalidates cache
-  version "2.0"
 end
 ```
 
@@ -1728,7 +1712,6 @@ class DocumentedPipeline < ApplicationImagePipeline
   step :generate, generator: ProductGenerator
 
   description "Generates professional product images"
-  version "1.0"
 end
 ```
 
@@ -1800,7 +1783,6 @@ class EcommercePipeline < ApplicationImagePipeline
   step :analyze, analyzer: ProductAnalyzer
 
   description "Complete e-commerce product image workflow"
-  version "1.0"
 end
 
 result = Images::EcommercePipeline.call(
@@ -1830,7 +1812,6 @@ class ModerationPipeline < ApplicationImagePipeline
   step :analyze, analyzer: ContentModerationAnalyzer
 
   description "Content safety analysis"
-  version "1.0"
 
   after_pipeline :log_moderation_result
 
@@ -1864,7 +1845,6 @@ class MarketingPipeline < ApplicationImagePipeline
 
   cache_for 1.day
   description "High-quality marketing asset generation"
-  version "1.0"
 
   before_pipeline :validate_prompt
 

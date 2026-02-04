@@ -180,7 +180,6 @@ module RubyLLM
           [
             "image_transformer",
             self.class.name,
-            self.class.version,
             resolve_model,
             resolve_size,
             resolve_strength.to_s,

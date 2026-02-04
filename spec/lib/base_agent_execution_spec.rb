@@ -12,7 +12,6 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
       end
 
       model "gpt-4o"
-      version "1.0"
       timeout 30
 
       param :query, required: true

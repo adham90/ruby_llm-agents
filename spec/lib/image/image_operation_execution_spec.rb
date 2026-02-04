@@ -14,10 +14,6 @@ RSpec.describe RubyLLM::Agents::Concerns::ImageOperationExecution do
         "TestImageOperation"
       end
 
-      def self.version
-        "1.0.0"
-      end
-
       def self.model
         "dall-e-3"
       end

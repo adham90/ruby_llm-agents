@@ -142,8 +142,7 @@ RSpec.describe RubyLLM::Agents::LLMTenant do
       # removed from the executions table. These tests now use direct tenant_id queries.
       RubyLLM::Agents::Execution.create!(
         agent_type: "TestAgent",
-        agent_version: "1.0",
-        model_id: "gpt-4",
+                model_id: "gpt-4",
         started_at: Time.current,
         status: "success",
         total_cost: 0.50,
@@ -152,8 +151,7 @@ RSpec.describe RubyLLM::Agents::LLMTenant do
 
       RubyLLM::Agents::Execution.create!(
         agent_type: "TestAgent",
-        agent_version: "1.0",
-        model_id: "gpt-4",
+                model_id: "gpt-4",
         started_at: Time.current,
         status: "success",
         total_cost: 0.25,
@@ -179,8 +177,7 @@ RSpec.describe RubyLLM::Agents::LLMTenant do
     before do
       RubyLLM::Agents::Execution.create!(
         agent_type: "TestAgent",
-        agent_version: "1.0",
-        model_id: "gpt-4",
+                model_id: "gpt-4",
         started_at: Time.current,
         status: "success",
         total_tokens: 1000,
@@ -206,8 +203,7 @@ RSpec.describe RubyLLM::Agents::LLMTenant do
       2.times do
         RubyLLM::Agents::Execution.create!(
           agent_type: "TestAgent",
-          agent_version: "1.0",
-          model_id: "gpt-4",
+                    model_id: "gpt-4",
           started_at: Time.current,
           status: "success",
           tenant_id: organization.llm_tenant_id
@@ -236,8 +232,7 @@ RSpec.describe RubyLLM::Agents::LLMTenant do
     before do
       RubyLLM::Agents::Execution.create!(
         agent_type: "TestAgent",
-        agent_version: "1.0",
-        model_id: "gpt-4",
+                model_id: "gpt-4",
         started_at: Time.current,
         status: "success",
         total_cost: 0.50,
@@ -416,8 +411,7 @@ RSpec.describe RubyLLM::Agents::LLMTenant do
       # Create an execution from yesterday
       RubyLLM::Agents::Execution.create!(
         agent_type: "TestAgent",
-        agent_version: "1.0",
-        model_id: "gpt-4",
+                model_id: "gpt-4",
         started_at: 1.day.ago,
         created_at: 1.day.ago,
         status: "success",
@@ -428,8 +422,7 @@ RSpec.describe RubyLLM::Agents::LLMTenant do
       # Create an execution from today
       RubyLLM::Agents::Execution.create!(
         agent_type: "TestAgent",
-        agent_version: "1.0",
-        model_id: "gpt-4",
+                model_id: "gpt-4",
         started_at: Time.current,
         status: "success",
         total_cost: 0.5,

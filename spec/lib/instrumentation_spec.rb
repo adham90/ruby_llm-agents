@@ -11,7 +11,6 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
     let(:execution) do
       RubyLLM::Agents::Execution.create!(
         agent_type: "TestAgent",
-        agent_version: "1.0",
         model_id: "gpt-4",
         started_at: Time.current,
         status: "running"
@@ -267,10 +266,6 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
 
         def self.name
           "TestInstrumentationAgent"
-        end
-
-        def self.version
-          "1.0.0"
         end
 
         def self.streaming
@@ -1098,10 +1093,6 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
           "OrchestrationTestAgent"
         end
 
-        def self.version
-          "2.0.0"
-        end
-
         def self.streaming
           false
         end
@@ -1182,7 +1173,6 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
         expect(execution).to be_a(RubyLLM::Agents::Execution)
         expect(execution.status).to eq("running")
         expect(execution.agent_type).to eq("OrchestrationTestAgent")
-        expect(execution.agent_version).to eq("2.0.0")
         expect(execution.model_id).to eq("gpt-4")
       end
 
@@ -1274,7 +1264,6 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       let(:execution) do
         RubyLLM::Agents::Execution.create!(
           agent_type: "TestAgent",
-          agent_version: "1.0",
           model_id: "gpt-4",
           started_at: 5.seconds.ago,
           status: "running"
@@ -1371,7 +1360,6 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       let(:execution) do
         exec = RubyLLM::Agents::Execution.create!(
           agent_type: "TestAgent",
-          agent_version: "1.0",
           model_id: "gpt-4",
           started_at: 5.seconds.ago,
           status: "running",
@@ -1559,7 +1547,6 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       let(:execution) do
         RubyLLM::Agents::Execution.create!(
           agent_type: "TestAgent",
-          agent_version: "1.0",
           model_id: "gpt-4",
           started_at: Time.current,
           status: "success",

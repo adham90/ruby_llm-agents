@@ -186,7 +186,6 @@ module RubyLLM
           [
             "image_upscaler",
             self.class.name,
-            self.class.version,
             resolve_model,
             resolve_scale.to_s,
             resolve_face_enhance.to_s,

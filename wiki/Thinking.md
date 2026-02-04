@@ -219,7 +219,6 @@ See the complete example in your Rails app:
 # app/agents/thinking_agent.rb
 class ThinkingAgent < ApplicationAgent
   description "Demonstrates extended thinking/reasoning support"
-  version "1.0"
 
   model "claude-opus-4-5-20250514"
   temperature 0.0

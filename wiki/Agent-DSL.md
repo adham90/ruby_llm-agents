@@ -52,16 +52,6 @@ class MyAgent < ApplicationAgent
 end
 ```
 
-### version
-
-Version string for cache invalidation:
-
-```ruby
-class MyAgent < ApplicationAgent
-  version "2.0"  # Changing this invalidates cached responses
-end
-```
-
 ### timeout
 
 Maximum time for a single request (in seconds):
@@ -503,9 +493,8 @@ class ContentGeneratorAgent < ApplicationAgent
   model "gpt-4o"
   description "Generates SEO-optimized blog articles from topics"
   temperature 0.7
-  version "1.2"
   timeout 90
-  cache_for 2.hours  # Use cache_for instead of cache
+  cache_for 2.hours
 
   # Grouped reliability configuration
   reliability do

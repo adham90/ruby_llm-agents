@@ -18,7 +18,6 @@ module SchemaBuilder
       connection.create_table :ruby_llm_agents_executions, force: false, if_not_exists: true do |t|
         # Agent identification
         t.string :agent_type, null: false
-        t.string :agent_version, default: "1.0"
 
         # Model configuration
         t.string :model_id, null: false
@@ -61,7 +60,6 @@ module SchemaBuilder
       connection.add_index :ruby_llm_agents_executions, :created_at, if_not_exists: true
       connection.add_index :ruby_llm_agents_executions, [:agent_type, :created_at], if_not_exists: true
       connection.add_index :ruby_llm_agents_executions, [:agent_type, :status], if_not_exists: true
-      connection.add_index :ruby_llm_agents_executions, [:agent_type, :agent_version], if_not_exists: true
       connection.add_index :ruby_llm_agents_executions, :duration_ms, if_not_exists: true
       connection.add_index :ruby_llm_agents_executions, :total_cost, if_not_exists: true
     end

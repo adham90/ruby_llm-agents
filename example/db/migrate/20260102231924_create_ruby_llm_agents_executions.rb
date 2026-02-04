@@ -5,7 +5,6 @@ class CreateRubyLLMAgentsExecutions < ActiveRecord::Migration[8.1]
     create_table :ruby_llm_agents_executions do |t|
       # Agent identification
       t.string :agent_type, null: false
-      t.string :agent_version, default: '1.0'
 
       # Model configuration
       t.string :model_id, null: false
@@ -87,7 +86,6 @@ class CreateRubyLLMAgentsExecutions < ActiveRecord::Migration[8.1]
     add_index :ruby_llm_agents_executions, :created_at
     add_index :ruby_llm_agents_executions, %i[agent_type created_at]
     add_index :ruby_llm_agents_executions, %i[agent_type status]
-    add_index :ruby_llm_agents_executions, %i[agent_type agent_version]
     add_index :ruby_llm_agents_executions, :duration_ms
     add_index :ruby_llm_agents_executions, :total_cost
 

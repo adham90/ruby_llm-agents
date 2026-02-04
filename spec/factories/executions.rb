@@ -3,7 +3,6 @@
 FactoryBot.define do
   factory :execution, class: "RubyLLM::Agents::Execution" do
     agent_type { "TestAgent" }
-    agent_version { "1.0" }
     model_id { "gpt-4" }
     temperature { 0.5 }
     started_at { 1.minute.ago }

@@ -79,17 +79,11 @@ module RubyLLM
           #   @param agent_type [String] The agent class name
           #   @return [ActiveRecord::Relation]
 
-          # @!method by_version(version)
-          #   Filters to a specific agent version
-          #   @param version [String] The version string
-          #   @return [ActiveRecord::Relation]
-
           # @!method by_model(model_id)
           #   Filters to a specific LLM model
           #   @param model_id [String] The model identifier
           #   @return [ActiveRecord::Relation]
           scope :by_agent, ->(agent_type) { where(agent_type: agent_type.to_s) }
-          scope :by_version, ->(version) { where(agent_version: version.to_s) }
           scope :by_model, ->(model_id) { where(model_id: model_id.to_s) }
 
           # @!endgroup

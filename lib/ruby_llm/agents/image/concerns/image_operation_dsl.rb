@@ -5,7 +5,7 @@ module RubyLLM
     module Concerns
       # Shared DSL methods for all image operation classes
       #
-      # Provides common configuration options like model, version,
+      # Provides common configuration options like model,
       # description, and caching that are shared across ImageVariator,
       # ImageEditor, ImageTransformer, and ImageUpscaler.
       #
@@ -19,18 +19,6 @@ module RubyLLM
             @model = value
           else
             @model || inherited_or_default(:model, default_model)
-          end
-        end
-
-        # Set or get the version
-        #
-        # @param value [String, nil] Version identifier
-        # @return [String] The version
-        def version(value = nil)
-          if value
-            @version = value
-          else
-            @version || inherited_or_default(:version, "v1")
           end
         end
 

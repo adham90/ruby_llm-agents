@@ -188,7 +188,6 @@ module RubyLLM
           def build_running_execution_data(context)
             data = {
               agent_type: context.agent_class&.name,
-              agent_version: config(:version, "1.0"),
               model_id: context.model,
               status: "running",
               started_at: context.started_at,
@@ -315,7 +314,6 @@ module RubyLLM
 
             data = {
               agent_type: context.agent_class&.name,
-              agent_version: config(:version, "1.0"),
               model_id: context.model,
               status: determine_status(context, status),
               duration_ms: context.duration_ms,

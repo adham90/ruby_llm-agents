@@ -13,7 +13,6 @@
 # --------------------
 #   model "whisper-1"              # Transcription model identifier
 #   language "en"                  # ISO 639-1 language code (optional)
-#   version "1.0"                  # Transcriber version (affects cache keys)
 #   description "..."              # Human-readable transcriber description
 #
 # OUTPUT FORMAT:

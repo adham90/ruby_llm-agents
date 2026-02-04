@@ -29,18 +29,7 @@ class ApplicationAgent < RubyLLM::Agents::Base
 end
 ```
 
-### 2. Set Explicit Versions
-
-Invalidate cache when agent logic changes:
-
-```ruby
-class SearchAgent < ApplicationAgent
-  version "2.1"  # Bump when changing prompts or logic
-  cache_for 1.hour
-end
-```
-
-### 3. Type Your Parameters
+### 2. Type Your Parameters
 
 Catch type errors early:
 
@@ -52,7 +41,7 @@ class MyAgent < ApplicationAgent
 end
 ```
 
-### 4. Use Structured Output
+### 3. Use Structured Output
 
 Ensure predictable responses:
 
@@ -68,7 +57,7 @@ end
 
 ## Reliability
 
-### 5. Enable Reliability for Production
+### 4. Enable Reliability for Production
 
 Don't rely on single requests:
 
@@ -85,7 +74,7 @@ class ProductionAgent < ApplicationAgent
 end
 ```
 
-### 6. Use the reliability Block
+### 5. Use the reliability Block
 
 Group related config together:
 
@@ -105,7 +94,7 @@ total_timeout 30
 
 ## Cost Management
 
-### 7. Set Budgets
+### 6. Set Budgets
 
 Prevent runaway costs:
 
@@ -120,7 +109,7 @@ RubyLLM::Agents.configure do |config|
 end
 ```
 
-### 8. Cache Expensive Operations
+### 7. Cache Expensive Operations
 
 Reduce API calls:
 
@@ -135,7 +124,7 @@ class ExpensiveAgent < ApplicationAgent
 end
 ```
 
-### 9. Use cache_for over cache
+### 8. Use cache_for over cache
 
 Clearer intent, no deprecation warning:
 
@@ -149,7 +138,7 @@ cache 1.hour
 
 ## Observability
 
-### 10. Monitor via Dashboard
+### 9. Monitor via Dashboard
 
 Track costs, errors, and latency:
 
@@ -161,7 +150,7 @@ mount RubyLLM::Agents::Engine => "/agents"
 config.dashboard_auth = ->(c) { c.current_user&.admin? }
 ```
 
-### 11. Add Meaningful Metadata
+### 10. Add Meaningful Metadata
 
 Enable filtering and debugging:
 
@@ -176,7 +165,7 @@ def metadata
 end
 ```
 
-### 12. Set Up Alerts
+### 11. Set Up Alerts
 
 Get notified of issues:
 
@@ -193,7 +182,7 @@ config.on_alert = ->(event, payload) {
 
 ## Development
 
-### 13. Test with dry_run
+### 12. Test with dry_run
 
 Debug prompts without API calls:
 
@@ -203,7 +192,7 @@ puts result.content[:user_prompt]
 puts result.content[:system_prompt]
 ```
 
-### 14. Use Generators
+### 13. Use Generators
 
 Scaffold quickly:
 
@@ -212,7 +201,7 @@ rails generate ruby_llm_agents:agent search query:required limit:10
 rails generate ruby_llm_agents:embedder document --dimensions 512
 ```
 
-### 15. Write Agent Tests
+### 14. Write Agent Tests
 
 Mock LLM responses:
 
@@ -235,7 +224,7 @@ end
 
 ## Security
 
-### 16. Control Prompt Persistence
+### 15. Control Prompt Persistence
 
 Disable for sensitive applications:
 
@@ -244,7 +233,7 @@ config.persist_prompts = false
 config.persist_responses = false
 ```
 
-### 17. Use before_call for Content Safety
+### 16. Use before_call for Content Safety
 
 Implement custom content moderation:
 
@@ -264,7 +253,7 @@ end
 
 ## Performance
 
-### 19. Use Streaming for Long Responses
+### 17. Use Streaming for Long Responses
 
 Better UX for chat interfaces:
 
@@ -278,7 +267,7 @@ ChatAgent.call(message: msg) do |chunk|
 end
 ```
 
-### 20. Use Appropriate Models
+### 18. Use Appropriate Models
 
 Match model to task:
 
@@ -304,7 +293,7 @@ end
 
 ## Multi-Tenancy
 
-### 21. Isolate Tenant Data
+### 19. Isolate Tenant Data
 
 Set up proper tenant resolution:
 
@@ -313,7 +302,7 @@ config.multi_tenancy_enabled = true
 config.tenant_resolver = -> { Current.tenant&.id }
 ```
 
-### 22. Set Per-Tenant Budgets
+### 20. Set Per-Tenant Budgets
 
 Prevent tenant cost overruns:
 
@@ -328,7 +317,7 @@ RubyLLM::Agents::TenantBudget.create!(
 
 ## Deprecation Handling
 
-### 23. Address Deprecation Warnings
+### 21. Address Deprecation Warnings
 
 Update deprecated methods:
 

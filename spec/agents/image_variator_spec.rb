@@ -10,7 +10,6 @@ RSpec.describe RubyLLM::Agents::ImageVariator do
         size "1024x1024"
         variation_strength 0.3
         description "Test variator"
-        version "v2"
       end
     end
 
@@ -28,10 +27,6 @@ RSpec.describe RubyLLM::Agents::ImageVariator do
 
     it "sets description" do
       expect(test_variator_class.description).to eq("Test variator")
-    end
-
-    it "sets version" do
-      expect(test_variator_class.version).to eq("v2")
     end
 
     it "validates variation_strength range" do

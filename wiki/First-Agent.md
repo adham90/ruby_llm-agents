@@ -26,7 +26,6 @@ This creates `app/agents/search_intent_agent.rb`:
 class SearchIntentAgent < ApplicationAgent
   model "gemini-2.0-flash"
   temperature 0.0
-  version "1.0"
 
   param :query, required: true
   param :limit, default: 10
@@ -113,7 +112,6 @@ Here's the complete agent:
 class SearchIntentAgent < ApplicationAgent
   model "gpt-4o"
   temperature 0.0
-  version "1.0"
   cache 30.minutes
 
   param :query, required: true

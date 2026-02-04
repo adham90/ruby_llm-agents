@@ -16,7 +16,7 @@ module RubyLLM
       include Filterable
       include Sortable
 
-      CSV_COLUMNS = %w[id agent_type agent_version status model_id total_tokens total_cost
+      CSV_COLUMNS = %w[id agent_type status model_id total_tokens total_cost
                        duration_ms created_at error_class error_message].freeze
 
       # Lists all executions with filtering and pagination
@@ -98,7 +98,6 @@ module RubyLLM
         CSV.generate_line([
           execution.id,
           execution.agent_type,
-          execution.agent_version,
           execution.status,
           execution.model_id,
           execution.total_tokens,

@@ -8,7 +8,6 @@ RSpec.describe RubyLLM::Agents::ExecutionLoggerJob, type: :job do
   let(:execution_data) do
     {
       agent_type: "TestAgent",
-      agent_version: "1.0",
       model_id: "gpt-4",
       temperature: 0.5,
       started_at: 1.minute.ago,

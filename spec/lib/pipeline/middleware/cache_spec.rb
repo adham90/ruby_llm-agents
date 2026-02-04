@@ -24,10 +24,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
       def self.cache_ttl
         3600
       end
-
-      def self.version
-        "1.0"
-      end
     end
   end
 
@@ -97,7 +93,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
         cached_output = { embedding: [0.1, 0.2, 0.3] }
 
         # Pre-populate cache
-        cache_key = "ruby_llm_agents/embedding/TestAgent/1.0/test-model/#{Digest::SHA256.hexdigest('test input')}"
+        cache_key = "ruby_llm_agents/embedding/TestAgent/test-model/#{Digest::SHA256.hexdigest('test input')}"
         cache_store.write(cache_key, cached_output)
 
         # Should not call the next middleware on cache hit
@@ -124,7 +120,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
         expect(result.cached).to be_falsey
 
         # Verify it was cached
-        cache_key = "ruby_llm_agents/embedding/TestAgent/1.0/test-model/#{Digest::SHA256.hexdigest('test input')}"
+        cache_key = "ruby_llm_agents/embedding/TestAgent/test-model/#{Digest::SHA256.hexdigest('test input')}"
         expect(cache_store.read(cache_key)).to eq(expected_output)
       end
 
@@ -139,7 +135,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
         result = middleware.call(context)
 
         # Verify it was not cached
-        cache_key = "ruby_llm_agents/embedding/TestAgent/1.0/test-model/#{Digest::SHA256.hexdigest('test input')}"
+        cache_key = "ruby_llm_agents/embedding/TestAgent/test-model/#{Digest::SHA256.hexdigest('test input')}"
         expect(cache_store.read(cache_key)).to be_nil
       end
 
@@ -169,7 +165,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
 
         middleware.call(context)
 
-        cache_key = "ruby_llm_agents/embedding/TestAgent/1.0/test-model/#{Digest::SHA256.hexdigest('test input')}"
+        cache_key = "ruby_llm_agents/embedding/TestAgent/test-model/#{Digest::SHA256.hexdigest('test input')}"
         expect(cache_store.exist?(cache_key)).to be true
       end
 
@@ -188,8 +184,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
         middleware.call(context1)
         middleware.call(context2)
 
-        key1 = "ruby_llm_agents/embedding/TestAgent/1.0/test-model/#{Digest::SHA256.hexdigest('input one')}"
-        key2 = "ruby_llm_agents/embedding/TestAgent/1.0/test-model/#{Digest::SHA256.hexdigest('input two')}"
+        key1 = "ruby_llm_agents/embedding/TestAgent/test-model/#{Digest::SHA256.hexdigest('input one')}"
+        key2 = "ruby_llm_agents/embedding/TestAgent/test-model/#{Digest::SHA256.hexdigest('input two')}"
 
         expect(cache_store.read(key1)).to eq("result for input one")
         expect(cache_store.read(key2)).to eq("result for input two")
@@ -296,7 +292,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
         new_output = { embedding: [0.4, 0.5, 0.6] }
 
         # Pre-populate cache
-        cache_key = "ruby_llm_agents/embedding/TestAgent/1.0/test-model/#{Digest::SHA256.hexdigest('test input')}"
+        cache_key = "ruby_llm_agents/embedding/TestAgent/test-model/#{Digest::SHA256.hexdigest('test input')}"
         cache_store.write(cache_key, cached_output)
 
         # Should call the next middleware even though cache has a value

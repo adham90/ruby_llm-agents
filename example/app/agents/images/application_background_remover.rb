@@ -12,7 +12,6 @@
 # MODEL CONFIGURATION:
 # --------------------
 #   model "rembg"                  # Background removal model
-#   version "1.0"                  # Remover version (affects cache keys)
 #   description "..."              # Human-readable remover description
 #
 # OUTPUT FORMAT:

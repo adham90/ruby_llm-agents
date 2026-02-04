@@ -14,7 +14,6 @@ module RubyLLM
       #     step :upscale, upscaler: PhotoUpscaler, scale: 4
       #     step :analyze, analyzer: ProductAnalyzer
       #
-      #     version "1.0"
       #     description "Complete product image pipeline"
       #     stop_on_error true
       #   end
@@ -101,18 +100,6 @@ module RubyLLM
         # @return [Hash] Hash with :before and :after arrays
         def callbacks
           @callbacks ||= { before: [], after: [] }
-        end
-
-        # Set or get the version
-        #
-        # @param value [String, nil] Version identifier
-        # @return [String] The version
-        def version(value = nil)
-          if value
-            @version = value
-          else
-            @version || inherited_or_default(:version, "v1")
-          end
         end
 
         # Set or get the description

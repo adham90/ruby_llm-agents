@@ -10,7 +10,6 @@ RSpec.describe RubyLLM::Agents::ImageVariator::Execution do
         "TestImageVariator"
       end
 
-      version "1.0.0"
       model "dall-e-3"
       cache_for 1.hour
       size "1024x1024"
@@ -99,10 +98,6 @@ RSpec.describe RubyLLM::Agents::ImageVariator::Execution do
 
         def self.name
           "ExecutionTestVariator"
-        end
-
-        def self.version
-          "1.0.0"
         end
 
         def self.model

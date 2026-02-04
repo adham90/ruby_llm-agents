@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- **BREAKING: Removed `version` DSL method** - The `version` DSL method has been removed from all agent types. This method was originally intended for cache invalidation but added complexity without significant benefit. Cache keys are now content-based, automatically generated from a hash of your prompts and parameters. This means caches invalidate automatically when you change your prompts—no manual version bumping required. If you need traceability, use `execution_metadata` instead (see migration guide below). The `agent_version` column is no longer written to; existing data will remain. The `by_version` scope and version filtering in the dashboard have also been removed.
+
 - **BREAKING: Removed ApiConfiguration table and model** - The `ruby_llm_agents_api_configurations` table has been removed entirely. API keys should now be configured via environment variables and the `ruby_llm` gem configuration, following 12-factor app principles. Per-tenant API keys can still be provided via the `llm_tenant` DSL's `api_keys:` option on your model.
 
 - **BREAKING: Removed built-in moderation system** - The `moderation` DSL, `Moderator` class, `ModerationResult`, and `ModerationError` have been removed. Use the new `before_call` hook to implement custom moderation logic with your preferred moderation service.
@@ -23,7 +25,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Migration Guide
 
-If you were using the `ApiConfiguration` model:
+**If you were using the `version` DSL:**
+
+1. Remove `version "X.Y"` calls from your agent classes—they'll now raise an error
+2. Cache invalidation is now automatic (content-based). When you change prompts, the cache key changes automatically
+3. If you need traceability (e.g., to track which "version" of an agent produced a result), use `execution_metadata`:
+   ```ruby
+   class ApplicationAgent < RubyLLM::Agents::BaseAgent
+     def execution_metadata
+       {
+         git_sha: ENV['GIT_SHA'] || `git rev-parse --short HEAD 2>/dev/null`.strip.presence,
+         deploy_version: ENV['DEPLOY_VERSION']
+       }.compact
+     end
+   end
+   ```
+4. The `agent_version` column can optionally be removed (safe to leave in place):
+   ```ruby
+   class RemoveAgentVersionFromExecutions < ActiveRecord::Migration[7.1]
+     def change
+       safety_assured do
+         remove_index :ruby_llm_agents_executions, [:agent_type, :agent_version], if_exists: true
+         remove_column :ruby_llm_agents_executions, :agent_version, :string
+       end
+     end
+   end
+   ```
+
+**If you were using the `ApiConfiguration` model:**
 
 1. Export any API keys stored in the database
 2. Set them as environment variables instead:

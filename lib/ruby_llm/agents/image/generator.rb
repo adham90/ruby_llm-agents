@@ -275,7 +275,6 @@ module RubyLLM
           "ruby_llm_agents",
           "image_generator",
           self.class.name,
-          self.class.version,
           resolved_model,
           resolved_size,
           resolved_quality,

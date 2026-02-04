@@ -7,7 +7,6 @@ module RubyLLM
       #
       # Provides common configuration methods that every agent type needs:
       # - model: The LLM model to use
-      # - version: Cache invalidation version
       # - description: Human-readable description
       # - timeout: Request timeout
       #
@@ -16,7 +15,6 @@ module RubyLLM
       #     extend DSL::Base
       #
       #     model "gpt-4o"
-      #     version "2.0"
       #     description "A helpful agent"
       #   end
       #
@@ -32,20 +30,6 @@ module RubyLLM
         def model(value = nil)
           @model = value if value
           @model || inherited_or_default(:model, default_model)
-        end
-
-        # Sets or returns the version string for cache invalidation
-        #
-        # Change this when you want to invalidate cached results
-        # (e.g., after changing prompts or behavior).
-        #
-        # @param value [String, nil] Version string
-        # @return [String] The current version
-        # @example
-        #   version "2.0"
-        def version(value = nil)
-          @version = value if value
-          @version || inherited_or_default(:version, "1.0")
         end
 
         # Sets or returns the description for this agent class

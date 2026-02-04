@@ -165,7 +165,6 @@ module RubyLLM
           [
             "image_editor",
             self.class.name,
-            self.class.version,
             resolve_model,
             resolve_size,
             Digest::SHA256.hexdigest(prompt),

@@ -17,7 +17,6 @@
 #   voice_id "abc123"              # Custom/cloned voice ID (ElevenLabs)
 #   speed 1.0                      # Speech speed (0.25 to 4.0 for OpenAI)
 #   output_format :mp3             # Output format (:mp3, :opus, :aac, :flac, :wav, :pcm)
-#   version "1.0"                  # Speaker version (affects cache keys)
 #   description "..."              # Human-readable speaker description
 #
 # VOICE SETTINGS (ElevenLabs):

@@ -15,7 +15,6 @@ module RubyLLM
     # @example Creating an agent
     #   class SearchAgent < RubyLLM::Agents::BaseAgent
     #     model "gpt-4o"
-    #     version "1.0"
     #     description "Searches for relevant documents"
     #     timeout 30
     #
@@ -291,9 +290,12 @@ module RubyLLM
 
       # Generates the cache key for this agent invocation
       #
-      # @return [String] Cache key in format "ruby_llm_agent/ClassName/version/hash"
+      # Cache keys are content-based, using a hash of the prompts and parameters.
+      # This automatically invalidates caches when prompts change.
+      #
+      # @return [String] Cache key in format "ruby_llm_agent/ClassName/hash"
       def agent_cache_key
-        ["ruby_llm_agent", self.class.name, self.class.version, cache_key_hash].join("/")
+        ["ruby_llm_agent", self.class.name, cache_key_hash].join("/")
       end
 
       # Generates a hash of the cache key data

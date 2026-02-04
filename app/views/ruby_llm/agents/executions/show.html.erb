@@ -58,7 +58,7 @@
   <!-- Desktop: Row 2 - Info line + relative time -->
   <div class="hidden sm:flex sm:items-center sm:justify-between mt-1.5">
     <p class="text-xs text-gray-500 dark:text-gray-400">
-      #<%= @execution.id %> · v<%= @execution.agent_version %>
+      #<%= @execution.id %>
       <% if @execution.model_provider.present? %>
         · <%= @execution.model_provider %>
       <% end %>
@@ -88,7 +88,7 @@
       <% end %>
     </div>
     <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-      #<%= @execution.id %> · v<%= @execution.agent_version %>
+      #<%= @execution.id %>
       <% if @execution.model_provider.present? %>
         · <%= @execution.model_provider %>
       <% end %>
@@ -856,10 +856,6 @@
       <p class="font-mono text-gray-900 dark:text-gray-100"><%= @execution.temperature || 'N/A' %></p>
     </div>
     <div>
-      <span class="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Version</span>
-      <p class="font-mono text-gray-900 dark:text-gray-100"><%= @execution.agent_version || '1.0' %></p>
-    </div>
-    <div>
       <span class="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">Status</span>
       <p class="font-mono text-gray-900 dark:text-gray-100"><%= @execution.status %></p>
     </div>
@@ -1124,7 +1120,6 @@
     const diagnostics = {
       execution_id: <%= @execution.id %>,
       agent_type: "<%= @execution.agent_type %>",
-      agent_version: "<%= @execution.agent_version || '1.0' %>",
       model_id: "<%= @execution.model_id %>",
       status: "<%= @execution.status %>",
       temperature: <%= @execution.temperature || 'null' %>,

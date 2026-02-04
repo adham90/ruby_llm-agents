@@ -14,7 +14,6 @@
 #   model "gpt-4o"           # LLM model identifier
 #   temperature 0.7          # Response randomness (0.0-2.0)
 #   timeout 60               # Request timeout in seconds
-#   version "1.0"            # Agent version (affects cache keys)
 #   description "..."        # Human-readable agent description
 #
 # CACHING:

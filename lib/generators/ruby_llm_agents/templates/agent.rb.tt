@@ -14,7 +14,6 @@ class <%= class_name %>Agent < ApplicationAgent
 
     model "<%= options[:model] %>"
     temperature <%= options[:temperature] %>
-    version "1.0"
     # timeout 30  # Per-request timeout in seconds (default: 60)
 
     # ============================================

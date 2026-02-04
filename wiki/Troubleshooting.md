@@ -161,17 +161,12 @@ JSON::Schema::ValidationError: property missing
 
 **Solutions:**
 
-1. Bump version:
-   ```ruby
-   version "2.0"  # Invalidates all caches
-   ```
-
-2. Skip cache:
+1. Skip cache:
    ```ruby
    MyAgent.call(query: "test", skip_cache: true)
    ```
 
-3. Clear cache:
+2. Clear cache:
    ```ruby
    Rails.cache.clear
    ```

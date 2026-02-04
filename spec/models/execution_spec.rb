@@ -156,16 +156,6 @@ RSpec.describe RubyLLM::Agents::Execution, type: :model do
       end
     end
 
-    describe ".by_version" do
-      it "filters by agent version" do
-        v1 = create(:execution, agent_version: "1.0")
-        v2 = create(:execution, agent_version: "2.0")
-
-        expect(described_class.by_version("1.0")).to include(v1)
-        expect(described_class.by_version("1.0")).not_to include(v2)
-      end
-    end
-
     describe ".by_model" do
       it "filters by model" do
         gpt4 = create(:execution, model_id: "gpt-4")

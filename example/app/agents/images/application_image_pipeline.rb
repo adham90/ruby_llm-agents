@@ -46,7 +46,6 @@
 #
 # METADATA:
 # ---------
-#   version "1.0"              # Version identifier (affects cache key)
 #   description "My pipeline"  # Human-readable description
 #
 # ============================================================================

@@ -10,7 +10,6 @@ RSpec.describe RubyLLM::Agents::BackgroundRemover::Execution do
         "TestBackgroundRemover"
       end
 
-      version "1.0.0"
       model "rembg"
       cache_for 1.hour
       output_format :png
@@ -100,10 +99,6 @@ RSpec.describe RubyLLM::Agents::BackgroundRemover::Execution do
 
         def self.name
           "ExecutionTestRemover"
-        end
-
-        def self.version
-          "1.0.0"
         end
 
         def self.model

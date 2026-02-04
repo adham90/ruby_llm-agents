@@ -13,7 +13,6 @@ module RubyLLM
     #   class SearchAgent < ApplicationAgent
     #     model "gpt-4o"
     #     temperature 0.0
-    #     version "1.0"
     #     timeout 30
     #     cache_for 1.hour
     #

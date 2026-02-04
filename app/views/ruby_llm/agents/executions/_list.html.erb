@@ -22,10 +22,6 @@
                 current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
 
             <%= render "ruby_llm/agents/shared/sortable_header",
-                column: "agent_version", label: "Version",
-                current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
-
-            <%= render "ruby_llm/agents/shared/sortable_header",
                 column: "total_tokens", label: "Tokens",
                 current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
 
@@ -83,10 +79,6 @@
                 <span title="<%= execution.model_id %>">
                   <%= execution.model_id&.split("/")&.last || execution.model_id || "-" %>
                 </span>
-              </td>
-
-              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                v<%= execution.agent_version %>
               </td>
 
               <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-mono">
