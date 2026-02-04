@@ -48,7 +48,6 @@ module RubyLLM
         @agents_by_type = {
           agent: @agents.select { |a| a[:agent_type] == "agent" },
           embedder: @agents.select { |a| a[:agent_type] == "embedder" },
-          moderator: @agents.select { |a| a[:agent_type] == "moderator" },
           speaker: @agents.select { |a| a[:agent_type] == "speaker" },
           transcriber: @agents.select { |a| a[:agent_type] == "transcriber" },
           image_generator: @agents.select { |a| a[:agent_type] == "image_generator" }
@@ -60,7 +59,7 @@ module RubyLLM
         Rails.logger.error("[RubyLLM::Agents] Error loading agents: #{e.message}")
         @agents = []
         @deleted_agents = []
-        @agents_by_type = { agent: [], embedder: [], moderator: [], speaker: [], transcriber: [], image_generator: [] }
+        @agents_by_type = { agent: [], embedder: [], speaker: [], transcriber: [], image_generator: [] }
         @agent_count = 0
         @deleted_count = 0
         @sort_params = { column: DEFAULT_AGENT_SORT_COLUMN, direction: DEFAULT_AGENT_SORT_DIRECTION }
@@ -242,8 +241,6 @@ module RubyLLM
         case @agent_type_kind
         when "embedder"
           load_embedder_config
-        when "moderator"
-          load_moderator_config
         when "speaker"
           load_speaker_config
         when "transcriber"
@@ -281,16 +278,6 @@ module RubyLLM
           batch_size: safe_config_call(:batch_size),
           cache_enabled: safe_config_call(:cache_enabled?) || false,
           cache_ttl: safe_config_call(:cache_ttl)
-        )
-      end
-
-      # Loads configuration specific to Moderators
-      #
-      # @return [void]
-      def load_moderator_config
-        @config.merge!(
-          threshold: safe_config_call(:threshold),
-          categories: safe_config_call(:categories)
         )
       end
 

@@ -80,15 +80,6 @@ module RubyLLM
           @style || inherited_or_default(:style, default_image_style)
         end
 
-        # Sets or returns the content policy level
-        #
-        # @param level [Symbol, nil] Policy level (:none, :standard, :moderate, :strict)
-        # @return [Symbol] The content policy level
-        def content_policy(level = nil)
-          @content_policy = level if level
-          @content_policy || inherited_or_default(:content_policy, :standard)
-        end
-
         # Sets or returns negative prompt (things to avoid in generation)
         #
         # @param value [String, nil] Negative prompt text
@@ -162,7 +153,6 @@ module RubyLLM
           subclass.instance_variable_set(:@version, @version)
           subclass.instance_variable_set(:@description, @description)
           subclass.instance_variable_set(:@cache_ttl, @cache_ttl)
-          subclass.instance_variable_set(:@content_policy, @content_policy)
           subclass.instance_variable_set(:@negative_prompt, @negative_prompt)
           subclass.instance_variable_set(:@seed, @seed)
           subclass.instance_variable_set(:@guidance_scale, @guidance_scale)
@@ -246,7 +236,6 @@ module RubyLLM
         execution_started_at = Time.current
 
         validate_prompt!
-        validate_content_policy!
 
         # Generate image(s)
         images = generate_images
@@ -321,14 +310,6 @@ module RubyLLM
         if prompt.length > max_length
           raise ArgumentError, "Prompt exceeds maximum length of #{max_length} characters"
         end
-      end
-
-      # Validates prompt against content policy
-      def validate_content_policy!
-        policy = self.class.content_policy
-        return if policy == :none || policy == :standard
-
-        ContentPolicy.validate!(prompt, policy)
       end
 
       # Generate images using RubyLLM.paint
@@ -450,6 +431,5 @@ end
 
 # Load supporting modules after class is defined (they reopen the class)
 require_relative "generator/pricing"
-require_relative "generator/content_policy"
 require_relative "generator/templates"
 require_relative "generator/active_storage_support"

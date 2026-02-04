@@ -57,7 +57,6 @@ module RubyLLM
           subclass.instance_variable_set(:@version, @version)
           subclass.instance_variable_set(:@description, @description)
           subclass.instance_variable_set(:@cache_ttl, @cache_ttl)
-          subclass.instance_variable_set(:@content_policy, @content_policy)
           subclass.instance_variable_set(:@template_string, @template_string)
           subclass.instance_variable_set(:@negative_prompt, @negative_prompt)
           subclass.instance_variable_set(:@guidance_scale, @guidance_scale)

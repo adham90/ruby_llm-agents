@@ -18,7 +18,6 @@ module RubyLLM
         # Tracking is enabled/disabled per agent type via configuration:
         # - track_executions (conversation agents)
         # - track_embeddings
-        # - track_moderations
         # - track_image_generations
         # - track_audio
         #
@@ -435,8 +434,7 @@ module RubyLLM
             response_data[:input_tokens] = context.input_tokens if context.input_tokens
             response_data[:output_tokens] = context.output_tokens if context.output_tokens
 
-            # Apply redaction for sensitive data
-            Redactor.redact(response_data)
+            response_data
           rescue StandardError => e
             error("Failed to serialize response: #{e.message}")
             nil
@@ -471,8 +469,6 @@ module RubyLLM
             case context.agent_type
             when :embedding
               cfg.track_embeddings
-            when :moderation
-              cfg.track_moderation
             when :image
               cfg.track_image_generation
             when :audio

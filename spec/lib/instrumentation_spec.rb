@@ -335,8 +335,8 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
           messages_summary
         end
 
-        def test_redacted_parameters
-          redacted_parameters
+        def test_sanitized_parameters
+          sanitized_parameters
         end
 
         def test_execution_metadata
@@ -355,16 +355,16 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
           capture_response(response)
         end
 
-        def test_redacted_system_prompt
-          redacted_system_prompt
+        def test_stored_system_prompt
+          stored_system_prompt
         end
 
-        def test_redacted_user_prompt
-          redacted_user_prompt
+        def test_stored_user_prompt
+          stored_user_prompt
         end
 
-        def test_redacted_response(response)
-          redacted_response(response)
+        def test_stored_response(response)
+          stored_response(response)
         end
 
         def test_extract_routing_data(attempt_tracker, error)
@@ -758,10 +758,10 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       end
     end
 
-    describe "#redacted_parameters" do
+    describe "#sanitized_parameters" do
       it "excludes skip_cache and dry_run" do
         test_instance.options = { query: "test", skip_cache: true, dry_run: true }
-        result = test_instance.test_redacted_parameters
+        result = test_instance.test_sanitized_parameters
 
         expect(result).not_to have_key(:skip_cache)
         expect(result).not_to have_key(:dry_run)
@@ -802,90 +802,44 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       end
     end
 
-    describe "#redacted_system_prompt" do
+    describe "#stored_system_prompt" do
       it "returns nil when system prompt is nil" do
         instance = test_class.new
         allow(instance).to receive(:safe_system_prompt).and_return(nil)
 
-        result = instance.test_redacted_system_prompt
+        result = instance.test_stored_system_prompt
 
         expect(result).to be_nil
       end
 
-      it "redacts sensitive data from system prompt when patterns configured" do
-        RubyLLM::Agents.configure do |config|
-          config.redaction = { patterns: [/sk-[a-zA-Z0-9]+/] }
-        end
-        instance = test_class.new
-        allow(instance).to receive(:safe_system_prompt).and_return("API key is sk-secret123")
-
-        result = instance.test_redacted_system_prompt
-
-        expect(result).to include("[REDACTED]")
-        expect(result).not_to include("sk-secret123")
-      end
-
-      it "returns prompt unchanged when no patterns configured" do
+      it "returns prompt unchanged" do
         RubyLLM::Agents.reset_configuration!
-        result = test_instance.test_redacted_system_prompt
+        result = test_instance.test_stored_system_prompt
 
         expect(result).to eq("You are a test assistant.")
       end
     end
 
-    describe "#redacted_user_prompt" do
+    describe "#stored_user_prompt" do
       it "returns nil when user prompt is nil" do
         instance = test_class.new
         allow(instance).to receive(:safe_user_prompt).and_return(nil)
 
-        result = instance.test_redacted_user_prompt
+        result = instance.test_stored_user_prompt
 
         expect(result).to be_nil
       end
 
-      it "redacts sensitive data from user prompt when patterns configured" do
-        RubyLLM::Agents.configure do |config|
-          config.redaction = { patterns: [/sk-[a-zA-Z0-9]+/] }
-        end
-        instance = test_class.new
-        allow(instance).to receive(:safe_user_prompt).and_return("My API key is sk-myapikey123")
-
-        result = instance.test_redacted_user_prompt
-
-        expect(result).to include("[REDACTED]")
-        expect(result).not_to include("sk-myapikey123")
-      end
-
-      it "returns prompt unchanged when no patterns configured" do
+      it "returns prompt unchanged" do
         RubyLLM::Agents.reset_configuration!
-        result = test_instance.test_redacted_user_prompt
+        result = test_instance.test_stored_user_prompt
 
         expect(result).to eq("Hello world")
       end
     end
 
-    describe "#redacted_response" do
-      it "redacts sensitive data from response when patterns configured" do
-        RubyLLM::Agents.configure do |config|
-          config.redaction = { patterns: [/sk-[a-zA-Z0-9]+/] }
-        end
-        mock_response = double("Response",
-          content: "Here is your API key: sk-secret123",
-          model_id: "gpt-4",
-          input_tokens: 100,
-          output_tokens: 50,
-          cached_tokens: 0,
-          cache_creation_tokens: 0,
-          tool_calls: nil)
-        allow(mock_response).to receive(:respond_to?).and_return(true)
-
-        result = test_instance.test_redacted_response(mock_response)
-
-        expect(result[:content]).to include("[REDACTED]")
-        expect(result[:content]).not_to include("sk-secret123")
-      end
-
-      it "preserves non-sensitive data" do
+    describe "#stored_response" do
+      it "preserves response data" do
         RubyLLM::Agents.reset_configuration!
         mock_response = double("Response",
           content: "Hello world",
@@ -897,7 +851,7 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
           tool_calls: nil)
         allow(mock_response).to receive(:respond_to?).and_return(true)
 
-        result = test_instance.test_redacted_response(mock_response)
+        result = test_instance.test_stored_response(mock_response)
 
         expect(result[:content]).to eq("Hello world")
         expect(result[:model_id]).to eq("gpt-4")

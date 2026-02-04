@@ -191,17 +191,6 @@ module RubyLLM
       #   Set to false to reduce storage or for privacy compliance.
       #   @return [Boolean] Enable response persistence (default: true)
 
-      # @!attribute [rw] redaction
-      #   Redaction configuration for PII and sensitive data.
-      #   @return [Hash, nil] Redaction config with :fields, :patterns, :placeholder, :max_value_length keys
-      #   @example
-      #     config.redaction = {
-      #       fields: %w[password api_key email ssn],
-      #       patterns: [/\b\d{3}-\d{2}-\d{4}\b/],
-      #       placeholder: "[REDACTED]",
-      #       max_value_length: 5000
-      #     }
-
       # @!attribute [rw] multi_tenancy_enabled
       #   Whether multi-tenancy features are enabled.
       #   When false, the gem behaves exactly as before (backward compatible).
@@ -276,35 +265,6 @@ module RubyLLM
       #   @return [Boolean] Enable embedding tracking (default: true)
       #   @example
       #     config.track_embeddings = false
-
-      # @!attribute [rw] default_moderation_model
-      #   The default moderation model identifier for all agents.
-      #   Can be overridden per-agent using the `moderation` DSL method.
-      #   @return [String] Model identifier (default: "omni-moderation-latest")
-      #   @example
-      #     config.default_moderation_model = "text-moderation-007"
-
-      # @!attribute [rw] default_moderation_threshold
-      #   The default threshold for moderation scores.
-      #   Content with scores at or above this threshold will be flagged.
-      #   Set to nil to use the provider's default flagging.
-      #   @return [Float, nil] Threshold (0.0-1.0) or nil for provider default (default: nil)
-      #   @example
-      #     config.default_moderation_threshold = 0.8
-
-      # @!attribute [rw] default_moderation_action
-      #   The default action when content is flagged.
-      #   Can be overridden per-agent using the `moderation` DSL method.
-      #   @return [Symbol] Action (:block, :raise, :warn, :log) (default: :block)
-      #   @example
-      #     config.default_moderation_action = :raise
-
-      # @!attribute [rw] track_moderation
-      #   Whether to track moderation executions in the database.
-      #   When enabled, moderation operations are logged as executions.
-      #   @return [Boolean] Enable moderation tracking (default: true)
-      #   @example
-      #     config.track_moderation = false
 
       # @!attribute [rw] default_transcription_model
       #   The default transcription model identifier for all transcribers.
@@ -395,7 +355,6 @@ module RubyLLM
                     :on_alert,
                     :persist_prompts,
                     :persist_responses,
-                    :redaction,
                     :multi_tenancy_enabled,
                     :persist_messages_summary,
                     :default_retryable_patterns,
@@ -403,10 +362,6 @@ module RubyLLM
                     :default_embedding_dimensions,
                     :default_embedding_batch_size,
                     :track_embeddings,
-                    :default_moderation_model,
-                    :default_moderation_threshold,
-                    :default_moderation_action,
-                    :track_moderation,
                     :default_transcription_model,
                     :track_transcriptions,
                     :default_tts_provider,
@@ -640,7 +595,6 @@ module RubyLLM
         @on_alert = nil
         @persist_prompts = true
         @persist_responses = true
-        @redaction = nil
 
         # Multi-tenancy defaults (disabled for backward compatibility)
         @multi_tenancy_enabled = false
@@ -656,12 +610,6 @@ module RubyLLM
         @default_embedding_dimensions = nil
         @default_embedding_batch_size = 100
         @track_embeddings = true
-
-        # Moderation defaults
-        @default_moderation_model = "omni-moderation-latest"
-        @default_moderation_threshold = nil
-        @default_moderation_action = :block
-        @track_moderation = true
 
         # Transcription defaults
         @default_transcription_model = "whisper-1"
@@ -750,36 +698,6 @@ module RubyLLM
         default_retryable_patterns.values.flatten.uniq
       end
 
-      # Returns merged redaction fields (default sensitive keys + configured)
-      #
-      # @return [Array<String>] Field names to redact
-      def redaction_fields
-        default_fields = %w[password token api_key secret credential auth key access_token]
-        configured_fields = redaction&.dig(:fields) || []
-        (default_fields + configured_fields).map(&:downcase).uniq
-      end
-
-      # Returns redaction patterns
-      #
-      # @return [Array<Regexp>] Patterns to match and redact
-      def redaction_patterns
-        redaction&.dig(:patterns) || []
-      end
-
-      # Returns the redaction placeholder string
-      #
-      # @return [String] Placeholder to replace redacted values
-      def redaction_placeholder
-        redaction&.dig(:placeholder) || "[REDACTED]"
-      end
-
-      # Returns the maximum value length before truncation
-      #
-      # @return [Integer, nil] Max length, or nil for no limit
-      def redaction_max_value_length
-        redaction&.dig(:max_value_length)
-      end
-
       # Returns whether multi-tenancy is enabled
       #
       # @return [Boolean] true if multi-tenancy is enabled
@@ -853,7 +771,6 @@ module RubyLLM
         when :images then "images"
         when :audio then "audio"
         when :embedders then "embedders"
-        when :moderators then "moderators"
         when :text then "text"
         when :image then "image"
         end
@@ -881,7 +798,6 @@ module RubyLLM
           "#{base}/images",
           "#{base}/audio",
           "#{base}/embedders",
-          "#{base}/moderators",
           "#{base}/tools"
         ]
       end

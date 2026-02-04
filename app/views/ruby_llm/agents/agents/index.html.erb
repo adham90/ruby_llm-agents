@@ -15,7 +15,6 @@
     all: <%= @agent_count %>,
     agent: <%= @agents_by_type[:agent].size %>,
     embedder: <%= @agents_by_type[:embedder].size %>,
-    moderator: <%= @agents_by_type[:moderator].size %>,
     speaker: <%= @agents_by_type[:speaker].size %>,
     transcriber: <%= @agents_by_type[:transcriber].size %>,
     audio: <%= audio_count %>,
@@ -54,11 +53,6 @@
               :class="activeSubTab === 'embedder' ? 'bg-purple-600 text-white' : 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800'"
               class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
         Embedders (<%= @agents_by_type[:embedder].size %>)
-      </button>
-      <button type="button" @click="activeSubTab = 'moderator'; updateUrl()"
-              :class="activeSubTab === 'moderator' ? 'bg-orange-600 text-white' : 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-800'"
-              class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
-        Moderators (<%= @agents_by_type[:moderator].size %>)
       </button>
       <% if audio_count > 0 %>
         <button type="button" @click="activeSubTab = 'audio'; updateUrl()"

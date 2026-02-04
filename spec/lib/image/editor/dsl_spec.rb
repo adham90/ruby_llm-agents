@@ -30,24 +30,6 @@ RSpec.describe RubyLLM::Agents::ImageEditor::DSL do
     end
   end
 
-  describe "#content_policy" do
-    it "sets and gets the content policy" do
-      editor_class.content_policy :strict
-      expect(editor_class.content_policy).to eq(:strict)
-    end
-
-    it "defaults to :standard" do
-      expect(editor_class.content_policy).to eq(:standard)
-    end
-
-    it "accepts all valid policy levels" do
-      [:none, :standard, :moderate, :strict].each do |level|
-        editor_class.content_policy level
-        expect(editor_class.content_policy).to eq(level)
-      end
-    end
-  end
-
   describe "default_model" do
     it "uses default_editor_model from config" do
       expect(editor_class.model).to eq("gpt-image-1")
@@ -67,13 +49,11 @@ RSpec.describe RubyLLM::Agents::ImageEditor::DSL do
       editor_class.model "custom-editor"
       editor_class.version "v2"
       editor_class.size "2048x2048"
-      editor_class.content_policy :moderate
       editor_class.cache_for 7200
 
       expect(editor_class.model).to eq("custom-editor")
       expect(editor_class.version).to eq("v2")
       expect(editor_class.size).to eq("2048x2048")
-      expect(editor_class.content_policy).to eq(:moderate)
       expect(editor_class.cache_ttl).to eq(7200)
     end
   end

@@ -7,9 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`before_call` and `after_call` callbacks for conversation agents** - Agent-level hooks that run before and after LLM calls. Use method names or blocks. Callbacks can mutate context, raise to block execution, or inspect responses. Follows the same pattern as image pipeline's `before_pipeline`/`after_pipeline` hooks.
+
 ### Removed
 
 - **BREAKING: Removed ApiConfiguration table and model** - The `ruby_llm_agents_api_configurations` table has been removed entirely. API keys should now be configured via environment variables and the `ruby_llm` gem configuration, following 12-factor app principles. Per-tenant API keys can still be provided via the `llm_tenant` DSL's `api_keys:` option on your model.
+
+- **BREAKING: Removed built-in moderation system** - The `moderation` DSL, `Moderator` class, `ModerationResult`, and `ModerationError` have been removed. Use the new `before_call` hook to implement custom moderation logic with your preferred moderation service.
+
+- **BREAKING: Removed built-in PII redaction** - The `Redactor` utility and redaction configuration options have been removed. Use the new `before_call` hook to implement custom redaction logic.
+
+- **BREAKING: Removed image content policy** - The `content_policy` DSL for image generators, editors, and transformers has been removed. Implement custom content filtering in your application layer if needed.
 
 ### Migration Guide
 

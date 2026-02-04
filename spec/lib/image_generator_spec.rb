@@ -77,21 +77,6 @@ RSpec.describe RubyLLM::Agents::ImageGenerator do
       end
     end
 
-    describe ".content_policy" do
-      it "returns default content_policy" do
-        expect(described_class.content_policy).to eq(:standard)
-      end
-
-      context "when configured" do
-        before { described_class.content_policy(:strict) }
-        after { described_class.instance_variable_set(:@content_policy, nil) }
-
-        it "returns configured content_policy" do
-          expect(described_class.content_policy).to eq(:strict)
-        end
-      end
-    end
-
     describe ".negative_prompt" do
       it "returns nil by default" do
         expect(described_class.negative_prompt).to be_nil
@@ -348,7 +333,6 @@ RSpec.describe RubyLLM::Agents::ImageGenerator do
         size "512x512"
         quality "hd"
         style "natural"
-        content_policy :strict
         negative_prompt "blurry"
         seed 42
         template "Photo of {prompt}"
@@ -373,10 +357,6 @@ RSpec.describe RubyLLM::Agents::ImageGenerator do
 
     it "inherits style setting" do
       expect(custom_generator_class.style).to eq("natural")
-    end
-
-    it "inherits content_policy setting" do
-      expect(custom_generator_class.content_policy).to eq(:strict)
     end
 
     it "inherits negative_prompt setting" do

@@ -792,51 +792,14 @@ RSpec.describe RubyLLM::Agents::Base do
     end
   end
 
-  describe "#execution_model_available?" do
-    let(:agent_class) do
+  describe "callbacks" do
+    let(:callback_agent_class) do
       Class.new(described_class) do
         model "gpt-4"
         param :query, required: true
 
-        def user_prompt
-          query
-        end
-      end
-    end
-
-    it "returns true when Execution table exists" do
-      agent = agent_class.new(query: "test")
-      expect(agent.send(:execution_model_available?)).to be true
-    end
-
-    it "memoizes the result" do
-      agent = agent_class.new(query: "test")
-
-      # Call twice
-      first_call = agent.send(:execution_model_available?)
-      second_call = agent.send(:execution_model_available?)
-
-      expect(first_call).to eq(second_call)
-    end
-
-    it "returns false when table_exists? raises an error" do
-      agent = agent_class.new(query: "test")
-
-      # Reset the memoized value
-      agent.remove_instance_variable(:@execution_model_available) if agent.instance_variable_defined?(:@execution_model_available)
-
-      allow(RubyLLM::Agents::Execution).to receive(:table_exists?).and_raise(StandardError.new("Connection error"))
-
-      expect(agent.send(:execution_model_available?)).to be false
-    end
-  end
-
-  describe "execute with moderation" do
-    let(:moderated_agent_class) do
-      Class.new(described_class) do
-        model "gpt-4"
-        moderation :input, on_flagged: :block
-        param :query, required: true
+        before_call :track_before_call
+        after_call :track_after_call
 
         def system_prompt
           "Test prompt"
@@ -847,51 +810,31 @@ RSpec.describe RubyLLM::Agents::Base do
         end
 
         def self.name
-          "ModeratedTestAgent"
+          "CallbackTestAgent"
+        end
+
+        def before_call_executed?
+          @before_call_executed
+        end
+
+        def after_call_executed?
+          @after_call_executed
+        end
+
+        private
+
+        def track_before_call(context)
+          @before_call_executed = true
+        end
+
+        def track_after_call(context, response)
+          @after_call_executed = true
         end
       end
     end
 
-    def mock_moderation_result(flagged:, categories: [])
-      double(
-        "ModerationResult",
-        flagged?: flagged,
-        flagged_categories: categories,
-        category_scores: {},
-        model: "omni-moderation-latest",
-        id: "modr-123"
-      )
-    end
-
-    it "blocks execution when input moderation is flagged" do
-      agent = moderated_agent_class.new(query: "bad content")
-
-      # Mock the moderation to flag content
-      allow(RubyLLM).to receive(:moderate).and_return(
-        mock_moderation_result(flagged: true, categories: [:hate])
-      )
-
-      # Create a context for pipeline execution
-      context = RubyLLM::Agents::Pipeline::Context.new(
-        input: "bad content",
-        agent_class: moderated_agent_class,
-        agent_instance: agent
-      )
-
-      agent.execute(context)
-
-      expect(context.output).to be_a(RubyLLM::Agents::Result)
-      expect(context.output.status).to eq(:input_moderation_blocked)
-      expect(context.output.moderation_flagged?).to be true
-    end
-
-    it "continues execution when moderation passes" do
-      agent = moderated_agent_class.new(query: "good content")
-
-      # Mock the moderation to pass
-      allow(RubyLLM).to receive(:moderate).and_return(
-        mock_moderation_result(flagged: false)
-      )
+    it "runs before_call callback before LLM call" do
+      agent = callback_agent_class.new(query: "test")
 
       # Mock the LLM response
       mock_response = build_mock_response(content: "Test response", input_tokens: 100, output_tokens: 50)
@@ -901,77 +844,106 @@ RSpec.describe RubyLLM::Agents::Base do
 
       # Create a context for pipeline execution
       context = RubyLLM::Agents::Pipeline::Context.new(
-        input: "good content",
-        agent_class: moderated_agent_class,
+        input: "test",
+        agent_class: callback_agent_class,
         agent_instance: agent
       )
 
       agent.execute(context)
 
-      expect(context.output).to be_a(RubyLLM::Agents::Result)
-      expect(context.output.status).to eq(:success)
-      expect(context.output.moderation_flagged?).to be false
+      expect(agent.before_call_executed?).to be true
     end
-  end
 
-  describe "execute with output moderation" do
-    let(:output_moderated_agent_class) do
-      Class.new(described_class) do
+    it "runs after_call callback after LLM call" do
+      agent = callback_agent_class.new(query: "test")
+
+      # Mock the LLM response
+      mock_response = build_mock_response(content: "Test response", input_tokens: 100, output_tokens: 50)
+      mock_chat = build_mock_chat_client(response: mock_response)
+      stub_ruby_llm_chat(mock_chat)
+      stub_agent_configuration
+
+      # Create a context for pipeline execution
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: callback_agent_class,
+        agent_instance: agent
+      )
+
+      agent.execute(context)
+
+      expect(agent.after_call_executed?).to be true
+    end
+
+    it "allows before_call to block execution by raising" do
+      blocking_agent_class = Class.new(described_class) do
         model "gpt-4"
-        moderation :output, on_flagged: :block
         param :query, required: true
 
-        def system_prompt
-          "Test prompt"
-        end
+        before_call :block_execution
 
         def user_prompt
           query
         end
 
         def self.name
-          "OutputModeratedTestAgent"
+          "BlockingCallbackAgent"
+        end
+
+        private
+
+        def block_execution(context)
+          raise "Execution blocked"
         end
       end
-    end
 
-    def mock_moderation_result(flagged:, categories: [])
-      double(
-        "ModerationResult",
-        flagged?: flagged,
-        flagged_categories: categories,
-        category_scores: {},
-        model: "omni-moderation-latest",
-        id: "modr-123"
+      agent = blocking_agent_class.new(query: "test")
+
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: blocking_agent_class,
+        agent_instance: agent
       )
+
+      expect { agent.execute(context) }.to raise_error("Execution blocked")
     end
 
-    it "blocks execution when output moderation is flagged" do
-      agent = output_moderated_agent_class.new(query: "test")
+    it "supports block-based callbacks" do
+      block_callback_executed = false
 
-      # Mock the LLM response first
-      mock_response = build_mock_response(content: "Bad response", input_tokens: 100, output_tokens: 50)
+      block_agent_class = Class.new(described_class) do
+        model "gpt-4"
+        param :query, required: true
+
+        def user_prompt
+          query
+        end
+
+        def self.name
+          "BlockCallbackAgent"
+        end
+      end
+
+      # Add block callback at class level
+      block_agent_class.before_call { |_context| block_callback_executed = true }
+
+      agent = block_agent_class.new(query: "test")
+
+      # Mock the LLM response
+      mock_response = build_mock_response(content: "Test response", input_tokens: 100, output_tokens: 50)
       mock_chat = build_mock_chat_client(response: mock_response)
       stub_ruby_llm_chat(mock_chat)
       stub_agent_configuration
 
-      # Mock output moderation to flag the response
-      allow(RubyLLM).to receive(:moderate).and_return(
-        mock_moderation_result(flagged: true, categories: [:hate])
-      )
-
-      # Create a context for pipeline execution
       context = RubyLLM::Agents::Pipeline::Context.new(
         input: "test",
-        agent_class: output_moderated_agent_class,
+        agent_class: block_agent_class,
         agent_instance: agent
       )
 
       agent.execute(context)
 
-      expect(context.output).to be_a(RubyLLM::Agents::Result)
-      expect(context.output.status).to eq(:output_moderation_blocked)
-      expect(context.output.moderation_flagged?).to be true
+      expect(block_callback_executed).to be true
     end
   end
 end

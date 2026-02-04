@@ -271,10 +271,10 @@ module RubyLLM
 
         # Create detail record with prompts and parameters
         detail_data = {
-          parameters: redacted_parameters,
+          parameters: sanitized_parameters,
           messages_summary: config.persist_messages_summary ? messages_summary : {},
-          system_prompt: config.persist_prompts ? redacted_system_prompt : nil,
-          user_prompt: config.persist_prompts ? redacted_user_prompt : nil
+          system_prompt: config.persist_prompts ? stored_system_prompt : nil,
+          user_prompt: config.persist_prompts ? stored_user_prompt : nil
         }
         detail_data.merge!(@_pending_detail_data) if @_pending_detail_data
         @_pending_detail_data = nil
@@ -443,7 +443,7 @@ module RubyLLM
           attempts: attempt_tracker.to_json_array
         }
         if @last_response && config.persist_responses
-          detail_update[:response] = redacted_response(@last_response)
+          detail_update[:response] = stored_response(@last_response)
         end
         if respond_to?(:accumulated_tool_calls) && accumulated_tool_calls.present?
           detail_update[:tool_calls] = accumulated_tool_calls
@@ -541,44 +541,25 @@ module RubyLLM
         end
       end
 
-      # Sanitizes parameters by removing sensitive data
+      # Sanitizes parameters by removing internal options
       #
-      # @deprecated Use {#redacted_parameters} instead
-      # @return [Hash] Sanitized parameters safe for logging
+      # @return [Hash] Parameters safe for logging
       def sanitized_parameters
-        redacted_parameters
+        @options.except(:skip_cache, :dry_run)
       end
 
-      # Returns parameters with sensitive data redacted using the Redactor
+      # Returns the system prompt for storage
       #
-      # Uses the configured redaction rules to remove sensitive fields and
-      # apply pattern-based redaction. Also converts ActiveRecord objects
-      # to ID references.
-      #
-      # @return [Hash] Redacted parameters safe for logging
-      def redacted_parameters
-        params = @options.except(:skip_cache, :dry_run)
-        Redactor.redact(params)
+      # @return [String, nil] The system prompt
+      def stored_system_prompt
+        safe_system_prompt
       end
 
-      # Returns the system prompt with redaction applied
+      # Returns the user prompt for storage
       #
-      # @return [String, nil] The redacted system prompt
-      def redacted_system_prompt
-        prompt = safe_system_prompt
-        return nil unless prompt
-
-        Redactor.redact_string(prompt)
-      end
-
-      # Returns the user prompt with redaction applied
-      #
-      # @return [String, nil] The redacted user prompt
-      def redacted_user_prompt
-        prompt = safe_user_prompt
-        return nil unless prompt
-
-        Redactor.redact_string(prompt)
+      # @return [String, nil] The user prompt
+      def stored_user_prompt
+        safe_user_prompt
       end
 
       # Returns a summary of messages (first and last, truncated)
@@ -598,7 +579,7 @@ module RubyLLM
         if msgs.first
           summary[:first] = {
             role: msgs.first[:role].to_s,
-            content: Redactor.redact_string(msgs.first[:content].to_s).truncate(max_len)
+            content: msgs.first[:content].to_s.truncate(max_len)
           }
         end
 
@@ -606,20 +587,19 @@ module RubyLLM
         if msgs.size > 1 && msgs.last
           summary[:last] = {
             role: msgs.last[:role].to_s,
-            content: Redactor.redact_string(msgs.last[:content].to_s).truncate(max_len)
+            content: msgs.last[:content].to_s.truncate(max_len)
           }
         end
 
         summary
       end
 
-      # Returns the response with redaction applied
+      # Returns the response for storage
       #
       # @param response [RubyLLM::Message] The LLM response
-      # @return [Hash] Redacted response data
-      def redacted_response(response)
-        data = safe_serialize_response(response)
-        Redactor.redact(data)
+      # @return [Hash] Response data
+      def stored_response(response)
+        safe_serialize_response(response)
       end
 
       # Hook for subclasses to add custom metadata to executions
@@ -913,7 +893,7 @@ module RubyLLM
           execution = RubyLLM::Agents::Execution.create!(execution_data)
           # Create detail with cache-related fields
           detail_data = {
-            parameters: redacted_parameters,
+            parameters: sanitized_parameters,
             messages_summary: config.persist_messages_summary ? messages_summary : {},
             cached_at: completed_at,
             cache_creation_tokens: 0

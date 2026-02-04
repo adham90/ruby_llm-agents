@@ -59,7 +59,6 @@ RSpec.describe RubyLLM::Agents::Configuration do
       expect(config.on_alert).to be_nil
       expect(config.persist_prompts).to be true
       expect(config.persist_responses).to be true
-      expect(config.redaction).to be_nil
     end
 
     it "sets embedding defaults" do
@@ -151,72 +150,6 @@ RSpec.describe RubyLLM::Agents::Configuration do
     it "accepts nil" do
       config.on_alert = nil
       expect(config.on_alert).to be_nil
-    end
-  end
-
-  describe "#redaction_fields" do
-    it "returns default sensitive fields when redaction is nil" do
-      config.redaction = nil
-      expect(config.redaction_fields).to include("password", "token", "api_key", "secret")
-    end
-
-    it "merges custom fields with defaults" do
-      config.redaction = { fields: %w[ssn credit_card] }
-      expect(config.redaction_fields).to include("password", "ssn", "credit_card")
-    end
-
-    it "deduplicates and downcases fields" do
-      config.redaction = { fields: %w[PASSWORD Token] }
-      fields = config.redaction_fields
-      expect(fields.count("password")).to eq(1)
-      expect(fields.count("token")).to eq(1)
-    end
-  end
-
-  describe "#redaction_patterns" do
-    it "returns empty array when redaction is nil" do
-      config.redaction = nil
-      expect(config.redaction_patterns).to eq([])
-    end
-
-    it "returns configured patterns" do
-      ssn_pattern = /\b\d{3}-\d{2}-\d{4}\b/
-      config.redaction = { patterns: [ssn_pattern] }
-      expect(config.redaction_patterns).to eq([ssn_pattern])
-    end
-  end
-
-  describe "#redaction_placeholder" do
-    it "returns default placeholder when redaction is nil" do
-      config.redaction = nil
-      expect(config.redaction_placeholder).to eq("[REDACTED]")
-    end
-
-    it "returns default placeholder when not configured" do
-      config.redaction = { fields: %w[password] }
-      expect(config.redaction_placeholder).to eq("[REDACTED]")
-    end
-
-    it "returns configured placeholder" do
-      config.redaction = { placeholder: "***" }
-      expect(config.redaction_placeholder).to eq("***")
-    end
-  end
-
-  describe "#redaction_max_value_length" do
-    it "returns nil when redaction is nil" do
-      config.redaction = nil
-      expect(config.redaction_max_value_length).to be_nil
-    end
-
-    it "returns nil when not configured" do
-      config.redaction = { fields: %w[password] }
-      expect(config.redaction_max_value_length).to be_nil
-    end
-
-    it "returns configured max length" do
-      config.redaction = { max_value_length: 5000 }
-      expect(config.redaction_max_value_length).to eq(5000)
     end
   end
 
@@ -667,10 +600,6 @@ RSpec.describe RubyLLM::Agents::Configuration do
         it "returns app/agents/embedders for :embedders category" do
           expect(config.path_for(:embedders)).to eq("app/agents/embedders")
         end
-
-        it "returns app/agents/moderators for :moderators category" do
-          expect(config.path_for(:moderators)).to eq("app/agents/moderators")
-        end
       end
     end
 
@@ -697,11 +626,6 @@ RSpec.describe RubyLLM::Agents::Configuration do
       it "includes embedders path" do
         paths = config.all_autoload_paths
         expect(paths).to include("app/agents/embedders")
-      end
-
-      it "includes moderators path" do
-        paths = config.all_autoload_paths
-        expect(paths).to include("app/agents/moderators")
       end
     end
   end
@@ -760,24 +684,6 @@ RSpec.describe RubyLLM::Agents::Configuration do
     it "returns false when async is not available" do
       allow(config).to receive(:async_available?).and_return(false)
       expect(config.async_context?).to be false
-    end
-  end
-
-  describe "moderation configuration" do
-    it "sets default moderation model" do
-      expect(config.default_moderation_model).to eq("omni-moderation-latest")
-    end
-
-    it "sets default moderation threshold to nil" do
-      expect(config.default_moderation_threshold).to be_nil
-    end
-
-    it "sets default moderation action to :block" do
-      expect(config.default_moderation_action).to eq(:block)
-    end
-
-    it "enables moderation tracking by default" do
-      expect(config.track_moderation).to be true
     end
   end
 

@@ -121,7 +121,6 @@ module RubyLLM
       # - @transcriber_stats: Transcribers
       # - @speaker_stats: Speakers
       # - @image_generator_stats: Image generators
-      # - @moderator_stats: Moderators
       #
       # @param base_scope [ActiveRecord::Relation] Base scope to filter from
       # @return [Array<Hash>] Array of base agent stats (for backward compatibility)
@@ -154,13 +153,12 @@ module RubyLLM
           }
         end.sort_by { |a| [-(a[:executions] || 0), -(a[:total_cost] || 0)] }
 
-        # Split stats by agent type for 6-tab display
+        # Split stats by agent type for 5-tab display
         @agent_stats = all_stats.select { |a| a[:detected_type] == "agent" }
         @embedder_stats = all_stats.select { |a| a[:detected_type] == "embedder" }
         @transcriber_stats = all_stats.select { |a| a[:detected_type] == "transcriber" }
         @speaker_stats = all_stats.select { |a| a[:detected_type] == "speaker" }
         @image_generator_stats = all_stats.select { |a| a[:detected_type] == "image_generator" }
-        @moderator_stats = all_stats.select { |a| a[:detected_type] == "moderator" }
 
         # Return base agents for backward compatibility
         @agent_stats

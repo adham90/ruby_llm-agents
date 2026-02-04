@@ -66,12 +66,11 @@ module RubyLLM
           # Find all descendants of all base classes
           agents = RubyLLM::Agents::Base.descendants.map(&:name).compact
           embedders = RubyLLM::Agents::Embedder.descendants.map(&:name).compact
-          moderators = RubyLLM::Agents::Moderator.descendants.map(&:name).compact
           speakers = RubyLLM::Agents::Speaker.descendants.map(&:name).compact
           transcribers = RubyLLM::Agents::Transcriber.descendants.map(&:name).compact
           image_generators = RubyLLM::Agents::ImageGenerator.descendants.map(&:name).compact
 
-          (agents + embedders + moderators + speakers + transcribers + image_generators).uniq
+          (agents + embedders + speakers + transcribers + image_generators).uniq
         rescue StandardError => e
           Rails.logger.error("[RubyLLM::Agents] Error loading agents from file system: #{e.message}")
           []
@@ -114,7 +113,7 @@ module RubyLLM
           agent_class = find(agent_type)
           stats = fetch_stats(agent_type)
 
-          # Detect the agent type (agent, embedder, moderator, speaker, transcriber, image_generator)
+          # Detect the agent type (agent, embedder, speaker, transcriber, image_generator)
           detected_type = detect_agent_type(agent_class)
 
           {
@@ -177,7 +176,7 @@ module RubyLLM
         # Detects the agent type from class hierarchy
         #
         # @param agent_class [Class, nil] The agent class
-        # @return [String] "agent", "embedder", "moderator", "speaker", "transcriber", or "image_generator"
+        # @return [String] "agent", "embedder", "speaker", "transcriber", or "image_generator"
         def detect_agent_type(agent_class)
           return "agent" unless agent_class
 
@@ -185,8 +184,6 @@ module RubyLLM
 
           if ancestors.include?("RubyLLM::Agents::Embedder")
             "embedder"
-          elsif ancestors.include?("RubyLLM::Agents::Moderator")
-            "moderator"
           elsif ancestors.include?("RubyLLM::Agents::Speaker")
             "speaker"
           elsif ancestors.include?("RubyLLM::Agents::Transcriber")

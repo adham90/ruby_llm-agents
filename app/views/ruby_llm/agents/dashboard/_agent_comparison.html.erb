@@ -5,8 +5,7 @@
     @embedder_stats,
     @transcriber_stats,
     @speaker_stats,
-    @image_generator_stats,
-    @moderator_stats
+    @image_generator_stats
   ].flatten.compact
    .select { |a| a[:executions].to_i > 0 }
    .sort_by { |a| -a[:executions].to_i }

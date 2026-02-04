@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative "../concerns/image_operation_dsl"
-require_relative "../generator/content_policy"
 
 module RubyLLM
   module Agents
@@ -67,18 +66,6 @@ module RubyLLM
             result
           else
             @preserve_composition = value
-          end
-        end
-
-        # Set or get the content policy level
-        #
-        # @param level [Symbol, nil] Policy level (:none, :standard, :moderate, :strict)
-        # @return [Symbol] The content policy level
-        def content_policy(level = nil)
-          if level
-            @content_policy = level
-          else
-            @content_policy || inherited_or_default(:content_policy, :standard)
           end
         end
 

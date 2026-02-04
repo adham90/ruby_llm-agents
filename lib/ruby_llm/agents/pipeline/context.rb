@@ -234,7 +234,6 @@ module RubyLLM
           when /image/, /generator/, /analyzer/, /editor/, /transform/, /upscale/, /variat/, /background/
             :image
           when /transcrib/, /speak/ then :audio
-          when /moderat/ then :moderation
           else :conversation
           end
         end

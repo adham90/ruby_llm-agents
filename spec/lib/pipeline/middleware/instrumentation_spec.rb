@@ -503,22 +503,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       middleware.call(context)
     end
 
-    it "checks track_moderation for moderation agents" do
-      agent_class = Class.new do
-        def self.name; "ModAgent"; end
-        def self.agent_type; :moderation; end
-        def self.model; "mod-model"; end
-      end
-
-      middleware = described_class.new(app, agent_class)
-      context = RubyLLM::Agents::Pipeline::Context.new(input: "test", agent_class: agent_class)
-
-      expect(config).to receive(:track_moderation).and_return(false)
-      allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
-
-      middleware.call(context)
-    end
-
     it "checks track_image_generation for image agents" do
       agent_class = Class.new do
         def self.name; "ImageAgent"; end
