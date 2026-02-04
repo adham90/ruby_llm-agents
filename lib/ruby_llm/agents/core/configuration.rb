@@ -339,6 +339,18 @@ module RubyLLM
       #   @example
       #     config.tool_result_max_length = 5000
 
+      # @!attribute [rw] redaction
+      #   Configuration for PII and sensitive data redaction.
+      #   When set, sensitive data is redacted before storing in execution records.
+      #   @return [Hash, nil] Redaction config with :fields, :patterns, :placeholder, :max_value_length keys
+      #   @example
+      #     config.redaction = {
+      #       fields: %w[ssn credit_card phone_number email],
+      #       patterns: [/\b\d{3}-\d{2}-\d{4}\b/],
+      #       placeholder: "[REDACTED]",
+      #       max_value_length: 5000
+      #     }
+
       # Attributes without validation (simple accessors)
       attr_accessor :default_model,
                     :async_logging,
@@ -395,7 +407,8 @@ module RubyLLM
                     :default_background_output_format,
                     :root_directory,
                     :root_namespace,
-                    :tool_result_max_length
+                    :tool_result_max_length,
+                    :redaction
 
       # Attributes with validation (readers only, custom setters below)
       attr_reader :default_temperature,
@@ -666,6 +679,9 @@ module RubyLLM
 
         # Tool tracking defaults
         @tool_result_max_length = 10_000
+
+        # Redaction defaults (disabled by default)
+        @redaction = nil
       end
 
       # Returns the configured cache store, falling back to Rails.cache
@@ -800,6 +816,34 @@ module RubyLLM
           "#{base}/embedders",
           "#{base}/tools"
         ]
+      end
+
+      # Returns the redaction fields (parameter names to redact)
+      #
+      # @return [Array<String>] Fields to redact
+      def redaction_fields
+        redaction&.dig(:fields) || []
+      end
+
+      # Returns the redaction regex patterns
+      #
+      # @return [Array<Regexp>] Patterns to match and redact
+      def redaction_patterns
+        redaction&.dig(:patterns) || []
+      end
+
+      # Returns the redaction placeholder string
+      #
+      # @return [String] Placeholder for redacted values (default: "[REDACTED]")
+      def redaction_placeholder
+        redaction&.dig(:placeholder) || "[REDACTED]"
+      end
+
+      # Returns the max value length for redaction
+      #
+      # @return [Integer, nil] Max length before truncation, or nil for no limit
+      def redaction_max_value_length
+        redaction&.dig(:max_value_length)
       end
 
       private
