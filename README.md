@@ -31,13 +31,12 @@ class SearchIntentAgent < ApplicationAgent
   model "gpt-4o"
   temperature 0.0
 
-  param :query, required: true
+  # Prompts with {placeholder} syntax - params auto-registered
+  system "You are a search intent analyzer. Extract structured data from queries."
+  prompt "Extract search intent from: {query}"
 
-  def user_prompt
-    "Extract search intent from: #{query}"
-  end
-
-  schema do
+  # Structured output with returns DSL
+  returns do
     string :refined_query, description: "Cleaned search query"
     array :filters, of: :string, description: "Extracted filters"
   end
@@ -68,17 +67,13 @@ result = ChatAgent.call(
 class ReliableAgent < ApplicationAgent
   model "gpt-4o"
 
-  reliability do
-    retries max: 3, backoff: :exponential
-    fallback_models "gpt-4o-mini", "claude-3-5-sonnet"
-    circuit_breaker errors: 10, within: 60, cooldown: 300
-    total_timeout 30
-  end
+  prompt "{query}"
 
-  param :query, required: true
-
-  def user_prompt
-    query
+  on_failure do
+    retries times: 3, backoff: :exponential
+    fallback to: ["gpt-4o-mini", "claude-3-5-sonnet"]
+    circuit_breaker after: 10, within: 60, cooldown: 5.minutes
+    timeout 30
   end
 end
 ```
