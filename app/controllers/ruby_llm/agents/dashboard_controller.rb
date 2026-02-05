@@ -32,37 +32,11 @@ module RubyLLM
 
       # Returns chart data as JSON for live updates
       #
-      # @param range [String] Time range: "today", "7d", "30d", "60d", "90d", or custom "YYYY-MM-DD_YYYY-MM-DD"
-      # @param compare [String] If "true", include comparison data from previous period
-      # @return [JSON] Chart data with series (and optional comparison series)
+      # @param range [String] Time range: "today", "7d", or "30d"
+      # @return [JSON] Chart data with series
       def chart_data
         range = params[:range].presence || "today"
-        compare = params[:compare] == "true"
-
-        if custom_range?(range)
-          from_date, to_date = parse_custom_range(range)
-          data = tenant_scoped_executions.activity_chart_json_for_dates(from: from_date, to: to_date)
-        else
-          data = tenant_scoped_executions.activity_chart_json(range: range)
-        end
-
-        if compare
-          offset_days = range_to_days(range)
-          comparison_data = if custom_range?(range)
-            from_date, to_date = parse_custom_range(range)
-            tenant_scoped_executions.activity_chart_json_for_dates(
-              from: from_date - offset_days.days,
-              to: to_date - offset_days.days
-            )
-          else
-            tenant_scoped_executions.activity_chart_json(
-              range: range,
-              offset_days: offset_days
-            )
-          end
-          data[:comparison] = comparison_data
-        end
-
+        data = tenant_scoped_executions.activity_chart_json(range: range)
         render json: data
       end
 
@@ -70,47 +44,15 @@ module RubyLLM
 
       # Converts range parameter to number of days
       #
-      # @param range [String] Range parameter (today, 7d, 30d, 60d, 90d, or custom YYYY-MM-DD_YYYY-MM-DD)
+      # @param range [String] Range parameter (today, 7d, 30d)
       # @return [Integer] Number of days
       def range_to_days(range)
         case range
         when "today" then 1
         when "7d" then 7
         when "30d" then 30
-        when "60d" then 60
-        when "90d" then 90
-        else
-          # Handle custom range format "YYYY-MM-DD_YYYY-MM-DD"
-          if range&.include?("_")
-            from_str, to_str = range.split("_")
-            from_date = Date.parse(from_str) rescue nil
-            to_date = Date.parse(to_str) rescue nil
-            if from_date && to_date
-              (to_date - from_date).to_i + 1
-            else
-              1
-            end
-          else
-            1
-          end
+        else 1
         end
-      end
-
-      # Checks if a range is a custom date range
-      #
-      # @param range [String] Range parameter
-      # @return [Boolean] True if custom date range format
-      def custom_range?(range)
-        range&.match?(/\A\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}\z/)
-      end
-
-      # Parses a custom range string into date objects
-      #
-      # @param range [String] Custom range in format "YYYY-MM-DD_YYYY-MM-DD"
-      # @return [Array<Date>] [from_date, to_date]
-      def parse_custom_range(range)
-        from_str, to_str = range.split("_")
-        [Date.parse(from_str), Date.parse(to_str)]
       end
 
       # Builds per-agent comparison statistics for all agent types
