@@ -1,17 +1,21 @@
 # frozen_string_literal: true
 
+# SummaryAgent - Generates concise summaries
+#
+# Demonstrates the simplified DSL with configurable sentence count.
+#
 class SummaryAgent < ApplicationAgent
-  description 'Generates concise 2-3 sentence summaries of text'
-  model 'gpt-4o-mini'
+  description "Generates concise summaries of text"
+  model "gpt-4o-mini"
   temperature 0.3
 
-  param :text, required: true
+  system "You are a summarization assistant. Be concise and capture the key points."
+  prompt "Summarize this text in {sentence_count} sentences:\n\n{text}"
 
-  def system_prompt
-    'You are a summarization assistant.'
-  end
+  param :sentence_count, default: 3
 
-  def user_prompt
-    "Summarize this text in 2-3 sentences:\n\n#{text}"
+  returns do
+    string :summary, description: "The summarized text"
+    array :key_points, of: :string, description: "Main points covered"
   end
 end

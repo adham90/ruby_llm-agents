@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative 'concerns/loggable'
-require_relative 'concerns/measurable'
+require_relative "concerns/loggable"
+require_relative "concerns/measurable"
 
 # AnalyzerAgent - Analyzes support request intent and category
 #
@@ -10,44 +10,41 @@ require_relative 'concerns/measurable'
 #
 # Example usage:
 #
-#   agent = AnalyzerAgent.new(message: "I was charged twice for my subscription")
-#   result = agent.call
-#   # => { category: "billing", confidence: 0.95, intent: "refund_request" }
+#   result = AnalyzerAgent.call(message: "I was charged twice for my subscription")
+#   result.content  # => { category: "billing", confidence: 0.95, intent: "refund_request" }
 #
 class AnalyzerAgent < ApplicationAgent
   extend Concerns::Loggable::DSL
   include Concerns::Loggable::Execution
   include Concerns::Measurable::Execution
 
-  description 'Analyzes support request intent and determines routing category'
-  model 'gpt-4o-mini'
+  description "Analyzes support request intent and determines routing category"
+  model "gpt-4o-mini"
   temperature 0.0
 
   log_level :info
   log_format :simple
   log_include :duration, :tokens
 
-  param :message, required: true
+  # Prompts using simplified DSL
+  system <<~PROMPT
+    You are a support request analyzer. Categorize incoming messages into one of:
+    - billing: Payment issues, charges, refunds, invoices, subscription changes
+    - technical: Bugs, errors, crashes, performance issues, how-to questions
+    - account: Login issues, profile changes, password resets, account settings
+    - general: Everything else
+  PROMPT
 
-  def system_prompt
-    <<~PROMPT
-      You are a support request analyzer. Categorize incoming messages into one of:
-      - billing: Payment issues, charges, refunds, invoices, subscription changes
-      - technical: Bugs, errors, crashes, performance issues, how-to questions
-      - account: Login issues, profile changes, password resets, account settings
-      - general: Everything else
+  prompt "Analyze this support request and determine its category:\n\n{message}"
 
-      Return a structured response with:
-      - category: One of the categories above
-      - confidence: Your confidence level (0.0 to 1.0)
-      - intent: A brief description of what the user wants
-    PROMPT
+  # Structured output
+  returns do
+    string :category, enum: %w[billing technical account general], description: "The request category"
+    number :confidence, description: "Confidence level from 0.0 to 1.0"
+    string :intent, description: "Brief description of what the user wants"
   end
 
-  def user_prompt
-    "Analyze this support request and determine its category:\n\n#{message}"
-  end
-
+  # Override call to integrate concerns
   def call
     measure_execution do
       log_before_execution(message)

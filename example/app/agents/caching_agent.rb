@@ -1,15 +1,13 @@
 # frozen_string_literal: true
 
-# CachingAgent - Demonstrates the cache_for DSL
+# CachingAgent - Demonstrates the simplified cache DSL
 #
 # This agent showcases response caching:
-# - Enables caching with a 1-hour TTL
+# - Enables caching with a 1-hour TTL using `cache for:`
 # - Uses temperature 0.0 for deterministic (cacheable) results
-# - Version affects cache key for invalidation
 #
 # Cache keys are generated from:
 # - Agent class name
-# - Version string
 # - All parameters
 # - Prompts content
 #
@@ -26,34 +24,21 @@
 #   # => Forces new API call
 #
 class CachingAgent < ApplicationAgent
-  description 'Demonstrates response caching for repeated queries'
-  version '1.0'
-
-  model 'gpt-4o-mini'
+  description "Demonstrates response caching for repeated queries"
+  model "gpt-4o-mini"
   temperature 0.0 # Deterministic output is essential for caching
   timeout 30
 
-  # Enable response caching with 1-hour TTL
+  # Prompts using simplified DSL
+  system "You are a knowledgeable assistant. Provide clear, consistent answers. Be concise but thorough."
+  prompt "Please answer this question: {query}"
+
+  # Enable response caching with simplified syntax
   # Responses are stored in Rails.cache
-  cache_for 1.hour
+  cache for: 1.hour
 
-  param :query, required: true
-
-  def system_prompt
-    <<~PROMPT
-      You are a knowledgeable assistant. Provide clear, consistent answers.
-      Be concise but thorough.
-    PROMPT
-  end
-
-  def user_prompt
-    "Please answer this question: #{query}"
-  end
-
-  def metadata
-    {
-      showcase: 'caching',
-      features: %w[cache_for temperature_zero version]
-    }
+  returns do
+    string :answer, description: "The response to the query"
+    array :key_points, of: :string, description: "Main points in the answer"
   end
 end
