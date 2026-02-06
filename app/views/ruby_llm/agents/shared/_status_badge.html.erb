@@ -11,7 +11,7 @@
   end
 %>
 <span class="inline-flex items-center gap-1 font-mono">
-  <span class="badge <%= badge_class %>" style="font-size: 10px; padding: 1px 6px;"><%= status.to_s %></span>
+  <span class="badge badge-sm <%= badge_class %>"><%= status.to_s %></span>
   <% if local_assigns[:attempts_count] && attempts_count.to_i > 1 %>
     <span class="text-xs text-gray-400 dark:text-gray-600" title="<%= attempts_count %> attempts">&times;<%= attempts_count %></span>
   <% end %>

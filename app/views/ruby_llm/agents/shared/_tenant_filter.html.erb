@@ -1,9 +1,10 @@
 <% if tenant_filter_enabled? && available_tenants.any? %>
-  <div class="tenant-filter">
-    <%= form_with url: request.path, method: :get, local: true, class: "tenant-filter-form" do |f| %>
-      <label for="tenant_id">Tenant:</label>
-      <select name="tenant_id" id="tenant_id" onchange="this.form.submit()">
-        <option value="">All Tenants</option>
+  <div class="flex items-center gap-2 font-mono text-xs">
+    <span class="text-gray-400 dark:text-gray-600">tenant:</span>
+    <%= form_with url: request.path, method: :get, local: true, class: "inline" do |f| %>
+      <select name="tenant_id" id="tenant_id" onchange="this.form.submit()"
+              class="bg-transparent border border-gray-200 dark:border-gray-800 rounded px-2 py-0.5 text-xs font-mono text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 focus:border-gray-400 dark:focus:border-gray-600">
+        <option value="">all tenants</option>
         <% available_tenants.each do |tenant| %>
           <option value="<%= tenant %>" <%= 'selected' if tenant == current_tenant_id %>>
             <%= tenant %>

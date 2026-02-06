@@ -27,7 +27,7 @@
   <div class="font-mono text-xs text-gray-400 dark:text-gray-500 flex flex-wrap items-center gap-1.5">
     <%= render "ruby_llm/agents/shared/status_badge", status: @execution.status %>
     <% secondary_badges.each do |badge| %>
-      <span class="badge <%= badge[:css] %>" style="font-size: 10px; padding: 1px 6px;"><%= badge[:label] %></span>
+      <span class="badge badge-sm <%= badge[:css] %>"><%= badge[:label] %></span>
     <% end %>
     <span class="text-gray-800 dark:text-gray-200"><%= @execution.model_id %></span>
     <% if @execution.model_provider.present? %>
@@ -94,10 +94,10 @@
     <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">attempts (<%= @execution.respond_to?(:attempts_count) && @execution.attempts_count ? @execution.attempts_count : @execution.attempts.size %>)</span>
     <div class="font-mono text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1.5">
       <% if @execution.used_fallback? %>
-        <span class="badge badge-orange" style="font-size: 10px; padding: 1px 6px;">fallback: <%= @execution.chosen_model_id %></span>
+        <span class="badge badge-sm badge-orange">fallback: <%= @execution.chosen_model_id %></span>
       <% end %>
       <% if @execution.has_retries? %>
-        <span class="badge badge-cyan" style="font-size: 10px; padding: 1px 6px;">retried</span>
+        <span class="badge badge-sm badge-cyan">retried</span>
       <% end %>
     </div>
     <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
@@ -139,11 +139,11 @@
             <td class="px-3 py-2 text-xs font-mono text-gray-900 dark:text-gray-100"><%= attempt['model_id'] %></td>
             <td class="px-3 py-2">
               <% if attempt['short_circuited'] %>
-                <span class="badge badge-timeout" style="font-size: 10px; padding: 1px 6px;">blocked</span>
+                <span class="badge badge-sm badge-timeout">blocked</span>
               <% elsif attempt['error_class'].present? %>
-                <span class="badge badge-error" style="font-size: 10px; padding: 1px 6px;">failed</span>
+                <span class="badge badge-sm badge-error">failed</span>
               <% else %>
-                <span class="badge badge-success" style="font-size: 10px; padding: 1px 6px;">success</span>
+                <span class="badge badge-sm badge-success">success</span>
               <% end %>
             </td>
             <td class="px-3 py-2 text-xs font-mono text-gray-500 dark:text-gray-400">
@@ -214,10 +214,10 @@
     <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">error</span>
     <div class="font-mono text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1.5">
       <% if @execution.rate_limited? %>
-        <span class="badge badge-orange" style="font-size: 10px; padding: 1px 6px;">rate limited</span>
+        <span class="badge badge-sm badge-orange">rate limited</span>
       <% end %>
       <% if @execution.retryable %>
-        <span class="badge badge-cyan" style="font-size: 10px; padding: 1px 6px;">retryable</span>
+        <span class="badge badge-sm badge-cyan">retryable</span>
       <% end %>
     </div>
     <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
@@ -232,7 +232,7 @@
   </div>
 
   <p class="font-mono text-xs text-red-700 dark:text-red-400 mb-2"><%= @execution.error_class %></p>
-  <pre class="bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-200 rounded p-4 text-xs overflow-x-auto font-mono"><%= @execution.error_message %></pre>
+  <pre class="bg-red-50 dark:bg-red-500/10 text-red-900 dark:text-red-200 rounded p-4 text-xs overflow-x-auto font-mono"><%= @execution.error_message %></pre>
 <% end %>
 
 <!-- ── parameters ──────────────────── -->
@@ -307,9 +307,9 @@
               <div class="flex items-center gap-2 font-mono text-xs">
                 <span class="text-gray-400 dark:text-gray-600"><%= index + 1 %></span>
                 <code class="font-semibold text-gray-900 dark:text-gray-100"><%= tool_name %></code>
-                <span class="badge <%= status_css %>" style="font-size: 10px; padding: 1px 6px;"><%= tool_status %></span>
+                <span class="badge badge-sm <%= status_css %>"><%= tool_status %></span>
                 <% if tool_duration.present? %>
-                  <span class="badge badge-purple" style="font-size: 10px; padding: 1px 6px;"><%= tool_duration %>ms</span>
+                  <span class="badge badge-sm badge-purple"><%= tool_duration %>ms</span>
                 <% end %>
               </div>
               <div class="flex items-center gap-2 font-mono text-xs text-gray-400 dark:text-gray-600">
@@ -344,7 +344,7 @@
           <% end %>
 
           <% if tool_status == 'error' && tool_error.present? %>
-            <div class="px-3 py-2 border-t border-red-100 dark:border-red-900/50 bg-red-50 dark:bg-red-900/20">
+            <div class="px-3 py-2 border-t border-red-100 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10">
               <p class="text-[10px] text-red-600 dark:text-red-400 uppercase tracking-wider font-mono mb-1">error</p>
               <pre class="text-xs text-red-700 dark:text-red-300 font-mono whitespace-pre-wrap break-words"><%= tool_error %></pre>
             </div>
@@ -468,7 +468,7 @@
       <div>
         <div class="flex items-center gap-2 mb-1 font-mono text-xs">
           <span class="text-gray-400 dark:text-gray-600">first</span>
-          <span class="badge <%= role_css %>" style="font-size: 10px; padding: 1px 6px;"><%= first_role %></span>
+          <span class="badge badge-sm <%= role_css %>"><%= first_role %></span>
           <% if first_truncated %>
             <span class="text-gray-400 dark:text-gray-600 italic">(truncated)</span>
           <% end %>
@@ -492,7 +492,7 @@
       <div>
         <div class="flex items-center gap-2 mb-1 font-mono text-xs">
           <span class="text-gray-400 dark:text-gray-600">last</span>
-          <span class="badge <%= role_css %>" style="font-size: 10px; padding: 1px 6px;"><%= last_role %></span>
+          <span class="badge badge-sm <%= role_css %>"><%= last_role %></span>
           <% if last_truncated %>
             <span class="text-gray-400 dark:text-gray-600 italic">(truncated)</span>
           <% end %>

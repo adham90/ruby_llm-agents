@@ -35,7 +35,7 @@
       %>
       <div class="group flex items-center gap-3 py-1.5 px-2 -mx-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer"
            onclick="window.location='<%= ruby_llm_agents.execution_path(execution) %>'">
-        <span class="w-20 flex-shrink-0"><span class="badge <%= status_badge_class %>" style="font-size: 10px; padding: 1px 6px;"><%= execution.status %></span></span>
+        <span class="w-20 flex-shrink-0"><span class="badge badge-sm <%= status_badge_class %>"><%= execution.status %></span></span>
         <% if show_agent_column %>
           <span class="flex-1 min-w-0 truncate text-gray-900 dark:text-gray-200"><%= execution.agent_type.gsub(/Agent$/, "") %></span>
         <% end %>

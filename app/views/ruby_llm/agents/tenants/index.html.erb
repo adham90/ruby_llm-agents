@@ -91,7 +91,7 @@
         </span>
         <span class="w-16 flex-shrink-0 hidden md:block">
           <% if enforcement_badge.present? %>
-            <span class="badge <%= enforcement_badge %>" style="font-size: 10px; padding: 1px 6px;"><%= enforcement %></span>
+            <span class="badge badge-sm <%= enforcement_badge %>"><%= enforcement %></span>
           <% else %>
             <span class="text-gray-300 dark:text-gray-700">none</span>
           <% end %>

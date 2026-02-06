@@ -107,28 +107,6 @@
     </script>
 
     <style type="text/tailwindcss">
-    /* Component styles (used across pages) */
-    .card {
-      @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6;
-    }
-    .card-compact {
-      @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mb-4;
-    }
-    .stat-card {
-      @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 transition-shadow;
-    }
-    .stat-card:hover {
-      @apply shadow-md;
-    }
-    .stat-value {
-      @apply text-2xl font-bold text-gray-900 dark:text-gray-100 mt-2;
-    }
-    @media (min-width: 1024px) {
-      .stat-value { font-size: 1.5rem; }
-    }
-    .stat-label {
-      @apply text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-medium;
-    }
     .badge {
       @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
     }
@@ -153,8 +131,8 @@
     .badge-orange {
       @apply bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300;
     }
-    [x-cloak] {
-      display: none !important;
+    .badge-sm {
+      @apply inline-flex items-center px-1.5 py-px rounded-full text-[10px] font-medium;
     }
     </style>
   </head>

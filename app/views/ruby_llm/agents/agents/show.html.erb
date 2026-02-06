@@ -10,7 +10,7 @@
     <div class="flex items-center gap-3 mb-1.5">
       <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono"><%= @agent_type.gsub(/Agent$/, '') %></span>
       <div class="font-mono text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1.5">
-        <span class="badge <%= @agent_active ? 'badge-success' : 'badge-error' %>" style="font-size: 10px; padding: 1px 6px;"><%= @agent_active ? 'active' : 'inactive' %></span>
+        <span class="badge badge-sm <%= @agent_active ? 'badge-success' : 'badge-error' %>"><%= @agent_active ? 'active' : 'inactive' %></span>
         <% if @config %>
           <span class="text-gray-800 dark:text-gray-200"><%= @config[:model] %></span>
           <% if @config[:temperature] %>

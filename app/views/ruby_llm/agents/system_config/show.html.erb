@@ -50,7 +50,7 @@
 <div class="font-mono text-xs space-y-1.5">
   <div class="flex items-center gap-3 py-0.5">
     <span class="w-36 flex-shrink-0 text-gray-500 dark:text-gray-400">async logging</span>
-    <span class="badge <%= @config.async_logging ? 'badge-success' : 'badge-timeout' %>" style="font-size: 10px; padding: 1px 6px;"><%= @config.async_logging ? 'on' : 'off' %></span>
+    <span class="badge badge-sm <%= @config.async_logging ? 'badge-success' : 'badge-timeout' %>"><%= @config.async_logging ? 'on' : 'off' %></span>
   </div>
   <div class="flex items-center gap-3 py-0.5">
     <span class="w-36 flex-shrink-0 text-gray-500 dark:text-gray-400">retention</span>
@@ -111,7 +111,7 @@
   <div class="flex items-center gap-3 py-0.5">
     <span class="w-36 flex-shrink-0 text-gray-500 dark:text-gray-400">basic auth</span>
     <% if @config.basic_auth_username.present? && @config.basic_auth_password.present? %>
-      <span class="badge badge-success" style="font-size: 10px; padding: 1px 6px;">configured</span>
+      <span class="badge badge-sm badge-success">configured</span>
     <% else %>
       <span class="text-gray-300 dark:text-gray-700">—</span>
     <% end %>
@@ -119,7 +119,7 @@
   <div class="flex items-center gap-3 py-0.5">
     <span class="w-36 flex-shrink-0 text-gray-500 dark:text-gray-400">custom auth</span>
     <% if @config.dashboard_auth.present? %>
-      <span class="badge badge-success" style="font-size: 10px; padding: 1px 6px;">configured</span>
+      <span class="badge badge-sm badge-success">configured</span>
     <% else %>
       <span class="text-gray-300 dark:text-gray-700">—</span>
     <% end %>
@@ -176,7 +176,7 @@
       <%
         enforcement_badge = @config.budget_enforcement == :hard ? "badge-error" : "badge-timeout"
       %>
-      <span class="badge <%= enforcement_badge %>" style="font-size: 10px; padding: 1px 6px;"><%= @config.budget_enforcement %></span>
+      <span class="badge badge-sm <%= enforcement_badge %>"><%= @config.budget_enforcement %></span>
     <% else %>
       <span class="text-gray-300 dark:text-gray-700">—</span>
     <% end %>
@@ -221,7 +221,7 @@
   <div class="flex items-center gap-3 py-0.5">
     <span class="w-36 flex-shrink-0 text-gray-500 dark:text-gray-400">alert handler</span>
     <% if alerts_enabled %>
-      <span class="badge badge-success" style="font-size: 10px; padding: 1px 6px;">configured</span>
+      <span class="badge badge-sm badge-success">configured</span>
     <% else %>
       <span class="text-gray-300 dark:text-gray-700">—</span>
     <% end %>
@@ -236,16 +236,16 @@
 <div class="font-mono text-xs space-y-1.5">
   <div class="flex items-center gap-3 py-0.5">
     <span class="w-36 flex-shrink-0 text-gray-500 dark:text-gray-400">persist prompts</span>
-    <span class="badge <%= @config.persist_prompts ? 'badge-success' : 'badge-timeout' %>" style="font-size: 10px; padding: 1px 6px;"><%= @config.persist_prompts ? 'on' : 'off' %></span>
+    <span class="badge badge-sm <%= @config.persist_prompts ? 'badge-success' : 'badge-timeout' %>"><%= @config.persist_prompts ? 'on' : 'off' %></span>
   </div>
   <div class="flex items-center gap-3 py-0.5">
     <span class="w-36 flex-shrink-0 text-gray-500 dark:text-gray-400">persist responses</span>
-    <span class="badge <%= @config.persist_responses ? 'badge-success' : 'badge-timeout' %>" style="font-size: 10px; padding: 1px 6px;"><%= @config.persist_responses ? 'on' : 'off' %></span>
+    <span class="badge badge-sm <%= @config.persist_responses ? 'badge-success' : 'badge-timeout' %>"><%= @config.persist_responses ? 'on' : 'off' %></span>
   </div>
   <div class="flex items-center gap-3 py-0.5">
     <span class="w-36 flex-shrink-0 text-gray-500 dark:text-gray-400">pii redaction</span>
     <% if redaction_enabled %>
-      <span class="badge badge-success" style="font-size: 10px; padding: 1px 6px;">on</span>
+      <span class="badge badge-sm badge-success">on</span>
       <span class="text-gray-400 dark:text-gray-600"><%= @config.redaction_fields.count %> fields</span>
       <span class="text-gray-300 dark:text-gray-700">&middot;</span>
       <span class="text-gray-400 dark:text-gray-600"><%= @config.redaction_patterns.count %> patterns</span>

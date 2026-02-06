@@ -43,7 +43,7 @@
         <%
           enforcement_badge = enforcement == "hard" ? "badge-error" : "badge-timeout"
         %>
-        <span class="badge <%= enforcement_badge %>" style="font-size: 10px; padding: 1px 6px;"><%= enforcement %></span>
+        <span class="badge badge-sm <%= enforcement_badge %>"><%= enforcement %></span>
       <% end %>
       <% if @tenant.effective_daily_limit %>
         <span class="text-gray-300 dark:text-gray-700">&middot;</span>

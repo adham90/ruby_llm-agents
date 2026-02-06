@@ -102,7 +102,7 @@ module RubyLLM
       # @return [ActiveSupport::SafeBuffer] HTML badge element
       def render_enabled_badge(enabled)
         if enabled
-          '<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300">Enabled</span>'.html_safe
+          '<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300">Enabled</span>'.html_safe
         else
           '<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">Disabled</span>'.html_safe
         end
@@ -114,7 +114,7 @@ module RubyLLM
       # @return [ActiveSupport::SafeBuffer] HTML badge element
       def render_configured_badge(configured)
         if configured
-          '<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300">Configured</span>'.html_safe
+          '<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300">Configured</span>'.html_safe
         else
           '<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">Not configured</span>'.html_safe
         end
@@ -235,7 +235,7 @@ module RubyLLM
                         end
 
         if is_improvement
-          content_tag(:span, class: "inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/50 rounded-full") do
+          content_tag(:span, class: "inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-500/20 rounded-full") do
             safe_join([
               content_tag(:svg, class: "w-3 h-3", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24") do
                 content_tag(:path, nil, "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "2", d: "M5 10l7-7m0 0l7 7m-7-7v18")
@@ -244,7 +244,7 @@ module RubyLLM
             ])
           end
         elsif is_regression
-          content_tag(:span, class: "inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/50 rounded-full") do
+          content_tag(:span, class: "inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-500/20 rounded-full") do
             safe_join([
               content_tag(:svg, class: "w-3 h-3", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24") do
                 content_tag(:path, nil, "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "2", d: "M19 14l-7 7m0 0l-7-7m7 7V3")
@@ -357,7 +357,7 @@ module RubyLLM
       # @return [ActiveSupport::SafeBuffer] HTML summary banner
       def comparison_summary_badge(improvements_count, regressions_count, v2_label)
         if improvements_count >= 3 && regressions_count == 0
-          content_tag(:span, class: "inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/50 rounded-lg") do
+          content_tag(:span, class: "inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-500/20 rounded-lg") do
             safe_join([
               content_tag(:svg, class: "w-4 h-4", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24") do
                 content_tag(:path, nil, "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "2", d: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z")
@@ -366,7 +366,7 @@ module RubyLLM
             ])
           end
         elsif regressions_count >= 3 && improvements_count == 0
-          content_tag(:span, class: "inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/50 rounded-lg") do
+          content_tag(:span, class: "inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-500/20 rounded-lg") do
             safe_join([
               content_tag(:svg, class: "w-4 h-4", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24") do
                 content_tag(:path, nil, "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "2", d: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z")
@@ -375,7 +375,7 @@ module RubyLLM
             ])
           end
         elsif improvements_count > 0 || regressions_count > 0
-          content_tag(:span, class: "inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 rounded-lg") do
+          content_tag(:span, class: "inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/20 rounded-lg") do
             safe_join([
               content_tag(:svg, class: "w-4 h-4", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24") do
                 content_tag(:path, nil, "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "2", d: "M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4")
@@ -518,14 +518,14 @@ module RubyLLM
 
             escaped_value = ERB::Util.html_escape(token[:value])
             if is_key
-              result << %(<span class="text-purple-600">#{escaped_value}</span>)
+              result << %(<span class="text-purple-600 dark:text-purple-400">#{escaped_value}</span>)
             else
-              result << %(<span class="text-green-600">#{escaped_value}</span>)
+              result << %(<span class="text-green-600 dark:text-green-400">#{escaped_value}</span>)
             end
           when :number
-            result << %(<span class="text-blue-600">#{token[:value]}</span>)
+            result << %(<span class="text-blue-600 dark:text-blue-400">#{token[:value]}</span>)
           when :boolean
-            result << %(<span class="text-amber-600">#{token[:value]}</span>)
+            result << %(<span class="text-amber-600 dark:text-amber-400">#{token[:value]}</span>)
           when :null
             result << %(<span class="text-gray-400">#{token[:value]}</span>)
           else
