@@ -7,12 +7,9 @@
   has_total_timeout = config[:total_timeout].present?
   has_circuit_breaker = config[:circuit_breaker].present?
   has_any_reliability = has_retries || has_fallbacks || has_total_timeout || has_circuit_breaker
-
-  class_tools = @agent_class.respond_to?(:tools) ? (@agent_class.tools || []) : []
-  has_dynamic_tools = @agent_class.instance_methods(false).include?(:tools)
 %>
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4 font-mono text-xs">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 font-mono text-xs">
   <!-- Basic -->
   <div>
     <span class="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider">basic</span>
@@ -88,51 +85,4 @@
       <div class="mt-1 py-1 text-gray-400 dark:text-gray-600">none configured</div>
     <% end %>
   </div>
-
-  <!-- Tools -->
-  <div>
-    <div class="flex items-center gap-1.5">
-      <span class="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider">tools</span>
-      <% if class_tools.any? %>
-        <span class="text-gray-400 dark:text-gray-600">(<%= class_tools.size %>)</span>
-      <% elsif has_dynamic_tools %>
-        <span class="text-purple-500">dynamic</span>
-      <% else %>
-        <span class="text-gray-400 dark:text-gray-600">(0)</span>
-      <% end %>
-    </div>
-    <% if class_tools.any? %>
-      <div class="mt-1.5 space-y-0.5">
-        <% class_tools.each do |tool_class| %>
-          <div class="py-1 text-gray-900 dark:text-gray-200">
-            <%= tool_class.respond_to?(:tool_name) ? tool_class.tool_name : tool_class.name.demodulize %>
-          </div>
-        <% end %>
-      </div>
-    <% elsif has_dynamic_tools %>
-      <div class="mt-1 py-1 text-gray-400 dark:text-gray-600">configured at runtime</div>
-    <% else %>
-      <div class="mt-1 py-1 text-gray-400 dark:text-gray-600">none</div>
-    <% end %>
-  </div>
 </div>
-
-<% if config[:params].present? && config[:params].any? %>
-  <div class="font-mono text-xs mt-3">
-    <span class="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider">parameters</span>
-    <div class="mt-1 flex flex-wrap gap-x-4 gap-y-px">
-      <% config[:params].each do |name, opts| %>
-        <div class="flex items-center gap-2 py-1">
-          <span class="text-gray-900 dark:text-gray-200"><%= name %></span>
-          <% if opts[:required] %>
-            <span class="text-red-500">required</span>
-          <% elsif opts[:default].present? %>
-            <span class="text-gray-400 dark:text-gray-600">= <%= opts[:default].inspect %></span>
-          <% else %>
-            <span class="text-gray-400 dark:text-gray-600">optional</span>
-          <% end %>
-        </div>
-      <% end %>
-    </div>
-  </div>
-<% end %>

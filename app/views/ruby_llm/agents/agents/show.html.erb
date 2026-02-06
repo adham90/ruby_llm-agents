@@ -7,7 +7,7 @@
 <div class="flex items-center gap-3 mb-1.5">
   <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono"><%= @agent_type.gsub(/Agent$/, '') %></span>
   <div class="font-mono text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1.5">
-    <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= @agent_active ? 'bg-green-500' : 'bg-gray-400' %>"></span>
+    <span class="badge <%= @agent_active ? 'badge-success' : 'badge-error' %>" style="font-size: 10px; padding: 1px 6px;"><%= @agent_active ? 'active' : 'inactive' %></span>
     <% if @config %>
       <span class="text-gray-800 dark:text-gray-200"><%= @config[:model] %></span>
       <% if @config[:temperature] %>
@@ -36,9 +36,9 @@
   <p class="font-mono text-xs text-gray-500 dark:text-gray-400 mb-4"><%= @config[:description] %></p>
 <% end %>
 
-<!-- Stats -->
+<!-- Stats (all-time) -->
 <% success_rate = @stats[:success_rate] || 0 %>
-<div class="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-gray-400 dark:text-gray-500 mb-2">
+<div class="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-gray-400 dark:text-gray-500 mb-1">
   <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats[:count]) %></span> runs</span>
   <span class="<%= success_rate >= 95 ? 'text-green-500' : success_rate >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= success_rate %>% ok</span>
   <span><span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(@stats[:total_cost] || 0, precision: 4) %></span> cost</span>
@@ -47,34 +47,100 @@
   <span><span class="text-gray-800 dark:text-gray-200"><%= @cache_hit_rate %>%</span> cache</span>
 </div>
 
-<!-- Status + finish reasons -->
-<div class="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-gray-400 dark:text-gray-500">
-  <% status_colors = { "success" => "bg-green-500", "error" => "bg-red-500", "timeout" => "bg-yellow-500", "running" => "bg-blue-500" } %>
+<!-- Stats (today) -->
+<% if @stats_today[:count] > 0 %>
+  <% today_success_rate = @stats_today[:success_rate] || 0 %>
+  <div class="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-gray-400 dark:text-gray-500 mb-2">
+    <span class="text-gray-300 dark:text-gray-700">today</span>
+    <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats_today[:count]) %></span> runs</span>
+    <span class="<%= today_success_rate >= 95 ? 'text-green-500' : today_success_rate >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= today_success_rate %>% ok</span>
+    <span><span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(@stats_today[:total_cost] || 0, precision: 4) %></span> cost</span>
+    <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats_today[:total_tokens] || 0) %></span> tok</span>
+    <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats_today[:avg_duration_ms] || 0) %></span>ms avg</span>
+  </div>
+<% end %>
+
+<!-- Status + finish reasons (badges) -->
+<div class="flex flex-wrap items-center gap-2 font-mono text-xs mt-2 mb-2">
+  <%
+    status_badge = { "success" => "badge-success", "error" => "badge-error", "timeout" => "badge-timeout", "running" => "badge-running" }
+  %>
   <% @status_distribution.each do |status, count| %>
-    <div class="flex items-center gap-1.5">
-      <span class="w-1.5 h-1.5 rounded-full <%= status_colors[status] || 'bg-gray-400' %> <%= status == 'running' ? 'animate-pulse' : '' %>"></span>
-      <span><%= number_with_delimiter(count) %> <%= status %></span>
-    </div>
+    <span class="badge <%= status_badge[status] || 'badge-timeout' %>"><%= number_with_delimiter(count) %> <%= status %></span>
   <% end %>
   <% if @finish_reason_distribution.present? && @finish_reason_distribution.any? %>
     <span class="text-gray-300 dark:text-gray-700">|</span>
-    <% finish_colors = { 'stop' => 'bg-green-500', 'length' => 'bg-yellow-500', 'content_filter' => 'bg-red-500', 'tool_calls' => 'bg-blue-500' } %>
+    <%
+      finish_badge = { 'stop' => 'badge-success', 'length' => 'badge-orange', 'content_filter' => 'badge-error', 'tool_calls' => 'badge-cyan' }
+    %>
     <% @finish_reason_distribution.each do |reason, count| %>
-      <div class="flex items-center gap-1.5">
-        <span class="w-1.5 h-1.5 rounded-full <%= finish_colors[reason] || 'bg-gray-400' %>"></span>
-        <span><%= number_with_delimiter(count) %> <%= reason || 'unknown' %></span>
-      </div>
+      <span class="badge <%= finish_badge[reason] || 'badge-timeout' %>"><%= number_with_delimiter(count) %> <%= reason || 'unknown' %></span>
+    <% end %>
+  <% end %>
+  <% if @streaming_rate > 0 %>
+    <span class="text-gray-300 dark:text-gray-700">|</span>
+    <span class="text-gray-400 dark:text-gray-500"><span class="text-gray-800 dark:text-gray-200"><%= @streaming_rate %>%</span> streaming</span>
+    <% if @avg_ttft && @avg_ttft > 0 %>
+      <span class="text-gray-400 dark:text-gray-500"><span class="text-gray-800 dark:text-gray-200"><%= @avg_ttft.round %>ms</span> ttft</span>
     <% end %>
   <% end %>
 </div>
+
+<!-- ── tools ──────────────────────── -->
+<% if @config && @agent_type_kind == "agent" %>
+  <%
+    class_tools = @agent_class.respond_to?(:tools) ? (@agent_class.tools || []) : []
+    has_dynamic_tools = @agent_class.instance_methods(false).include?(:tools)
+  %>
+  <div class="flex items-center gap-3 mt-6 mb-3">
+    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">tools (<%= class_tools.size %>)</span>
+    <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+  </div>
+  <div class="flex flex-wrap gap-1.5 font-mono text-xs">
+    <% if class_tools.any? %>
+      <% class_tools.each do |tool_class| %>
+        <span class="badge badge-cyan"><%= tool_class.respond_to?(:tool_name) ? tool_class.tool_name : tool_class.name.demodulize %></span>
+      <% end %>
+    <% end %>
+    <% if has_dynamic_tools %>
+      <span class="badge badge-purple">dynamic</span>
+    <% end %>
+    <% if class_tools.empty? && !has_dynamic_tools %>
+      <span class="text-gray-400 dark:text-gray-600">none</span>
+    <% end %>
+  </div>
+
+  <% if @config[:params].present? && @config[:params].any? %>
+    <div class="font-mono text-xs mt-3">
+      <span class="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider">parameters</span>
+      <div class="mt-1 flex flex-wrap gap-x-4 gap-y-px">
+        <% @config[:params].each do |name, opts| %>
+          <div class="flex items-center gap-2 py-1">
+            <span class="text-gray-900 dark:text-gray-200"><%= name %></span>
+            <% if opts[:required] %>
+              <span class="text-red-500">required</span>
+            <% elsif opts[:default].present? %>
+              <span class="text-gray-400 dark:text-gray-600">= <%= opts[:default].inspect %></span>
+            <% else %>
+              <span class="text-gray-400 dark:text-gray-600">optional</span>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+<% end %>
 
 <!-- Sparklines (30d) -->
 <%
   sparkline_chars = %w[▁ ▂ ▃ ▄ ▅ ▆ ▇ █]
   exec_values = @trend_data.map { |d| d["count"] || d[:count] || 0 }
   cost_values = @trend_data.map { |d| (d["total_cost"] || d[:total_cost] || 0).to_f }
+  error_values = @trend_data.map { |d| d["error_count"] || d[:error_count] || 0 }
   exec_max = exec_values.max.to_f
   cost_max = cost_values.max.to_f
+  error_max = error_values.max.to_f
+  error_total = error_values.sum
 
   make_sparkline = ->(values, max_val) {
     return "▁" * values.length if max_val == 0
@@ -101,6 +167,13 @@
     <span class="text-green-500 leading-none" style="font-size: 14px; letter-spacing: -0.5px;"><%= cost_spark %></span>
     <span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(cost_total, precision: 4) %></span>
   </div>
+  <% if error_total > 0 %>
+    <div class="flex items-center gap-3">
+      <span class="text-gray-400 dark:text-gray-600 w-16">errors</span>
+      <span class="text-red-500 leading-none" style="font-size: 14px; letter-spacing: -0.5px;"><%= make_sparkline.call(error_values, error_max) %></span>
+      <span class="text-gray-800 dark:text-gray-200"><%= error_total %></span>
+    </div>
+  <% end %>
 </div>
 
 <!-- ── circuit breaker ──────────────── -->
@@ -223,5 +296,5 @@
     </div>
   <% end %>
 
-  <%= render "ruby_llm/agents/shared/executions_table", executions: @executions, pagination: @pagination %>
+  <%= render "ruby_llm/agents/shared/executions_table", executions: @executions, pagination: @pagination, hide_agent_column: true %>
 </div>

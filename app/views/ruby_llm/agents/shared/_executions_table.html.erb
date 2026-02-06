@@ -1,13 +1,16 @@
 <%# Show tenant column when multi-tenancy is enabled and no specific tenant is selected %>
 <% show_tenant_column = tenant_filter_enabled? && current_tenant_id.blank? %>
+<% show_agent_column = !local_assigns.fetch(:hide_agent_column, false) %>
 
 <% if executions.empty? %>
   <div class="font-mono text-xs text-gray-400 dark:text-gray-600 py-4 px-2">no executions found</div>
 <% else %>
   <!-- Column headers -->
   <div class="flex items-center gap-3 px-2 -mx-2 font-mono text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider mb-1">
-    <span class="w-2 flex-shrink-0"></span>
-    <span class="w-28">agent</span>
+    <span class="w-20 flex-shrink-0">status</span>
+    <% if show_agent_column %>
+      <span class="w-28">agent</span>
+    <% end %>
     <% if show_tenant_column %>
       <span class="w-20 hidden sm:block">tenant</span>
     <% end %>
@@ -22,18 +25,20 @@
   <div class="font-mono text-xs space-y-px">
     <% executions.each do |execution| %>
       <%
-        dot_color = case execution.status.to_s
-          when "running" then "bg-blue-500 animate-pulse"
-          when "success" then "bg-green-500"
-          when "error" then "bg-red-500"
-          when "timeout" then "bg-yellow-500"
-          else "bg-gray-400"
+        status_badge_class = case execution.status.to_s
+          when "running" then "badge-running"
+          when "success" then "badge-success"
+          when "error" then "badge-error"
+          when "timeout" then "badge-timeout"
+          else "badge-timeout"
         end
       %>
       <div class="group flex items-center gap-3 py-1.5 px-2 -mx-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer"
            onclick="window.location='<%= ruby_llm_agents.execution_path(execution) %>'">
-        <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= dot_color %>"></span>
-        <span class="w-28 truncate text-gray-900 dark:text-gray-200"><%= execution.agent_type.gsub(/Agent$/, "") %></span>
+        <span class="w-20 flex-shrink-0"><span class="badge <%= status_badge_class %>" style="font-size: 10px; padding: 1px 6px;"><%= execution.status %></span></span>
+        <% if show_agent_column %>
+          <span class="w-28 truncate text-gray-900 dark:text-gray-200"><%= execution.agent_type.gsub(/Agent$/, "") %></span>
+        <% end %>
         <% if show_tenant_column %>
           <span class="w-20 truncate text-gray-400 dark:text-gray-600 hidden sm:inline"><%= execution.tenant_id.present? ? truncate(execution.tenant_id, length: 15) : "—" %></span>
         <% end %>
