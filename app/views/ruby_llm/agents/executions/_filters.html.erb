@@ -35,7 +35,7 @@
     { value: m, label: short_name }
   end || []
 %>
-<div id="filters-container" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3 mb-6"
+<div id="filters-container" class="mb-6"
      x-data="{ mobileOpen: false }">
   <%= form_with url: ruby_llm_agents.executions_path, method: :get,
                 local: true,

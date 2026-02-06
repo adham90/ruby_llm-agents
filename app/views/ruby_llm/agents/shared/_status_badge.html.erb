@@ -1,19 +1,18 @@
 <%
-  # Status indicator - dot + text in mono style
+  # Status badge pill
   # Usage: render "ruby_llm/agents/shared/status_badge", status: execution.status
 
-  dot_color = case status.to_s
-    when "running" then "bg-blue-500 animate-pulse"
-    when "success" then "bg-green-500"
-    when "error" then "bg-red-500"
-    when "timeout" then "bg-yellow-500"
-    else "bg-gray-400"
+  badge_class = case status.to_s
+    when "running" then "badge-running"
+    when "success" then "badge-success"
+    when "error" then "badge-error"
+    when "timeout" then "badge-timeout"
+    else "badge-timeout"
   end
 %>
-<span class="inline-flex items-center gap-1 font-mono text-xs">
-  <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= dot_color %>"></span>
-  <span class="text-gray-500 dark:text-gray-400"><%= status.to_s %></span>
+<span class="inline-flex items-center gap-1 font-mono">
+  <span class="badge <%= badge_class %>" style="font-size: 10px; padding: 1px 6px;"><%= status.to_s %></span>
   <% if local_assigns[:attempts_count] && attempts_count.to_i > 1 %>
-    <span class="text-gray-400 dark:text-gray-600" title="<%= attempts_count %> attempts">&times;<%= attempts_count %></span>
+    <span class="text-xs text-gray-400 dark:text-gray-600" title="<%= attempts_count %> attempts">&times;<%= attempts_count %></span>
   <% end %>
 </span>
