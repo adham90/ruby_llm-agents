@@ -4,87 +4,81 @@
 </nav>
 
 <!-- ── agent header ──────────────── -->
-<div class="flex items-center gap-3 mb-1.5">
-  <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono"><%= @agent_type.gsub(/Agent$/, '') %></span>
-  <div class="font-mono text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1.5">
-    <span class="badge <%= @agent_active ? 'badge-success' : 'badge-error' %>" style="font-size: 10px; padding: 1px 6px;"><%= @agent_active ? 'active' : 'inactive' %></span>
-    <% if @config %>
-      <span class="text-gray-800 dark:text-gray-200"><%= @config[:model] %></span>
-      <% if @config[:temperature] %>
-        <span class="text-gray-300 dark:text-gray-700">&middot;</span>
-        <span>temp <%= @config[:temperature] %></span>
+<div class="flex items-start justify-between gap-8 mb-2">
+  <!-- Left: identity -->
+  <div class="min-w-0">
+    <div class="flex items-center gap-3 mb-1.5">
+      <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono"><%= @agent_type.gsub(/Agent$/, '') %></span>
+      <div class="font-mono text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1.5">
+        <span class="badge <%= @agent_active ? 'badge-success' : 'badge-error' %>" style="font-size: 10px; padding: 1px 6px;"><%= @agent_active ? 'active' : 'inactive' %></span>
+        <% if @config %>
+          <span class="text-gray-800 dark:text-gray-200"><%= @config[:model] %></span>
+          <% if @config[:temperature] %>
+            <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+            <span>temp <%= @config[:temperature] %></span>
+          <% end %>
+          <% if @config[:timeout] %>
+            <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+            <span><%= @config[:timeout] %>s</span>
+          <% end %>
+          <% if @config[:dimensions] %>
+            <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+            <span><%= @config[:dimensions] %> dims</span>
+          <% end %>
+          <% if @config[:voice] %>
+            <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+            <span>voice: <%= @config[:voice] %></span>
+          <% end %>
+        <% end %>
+      </div>
+      <%= render "ruby_llm/agents/shared/doc_link" %>
+    </div>
+    <% if @config && @config[:description].present? %>
+      <p class="font-mono text-xs text-gray-500 dark:text-gray-400 mb-2"><%= @config[:description] %></p>
+    <% end %>
+    <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
+      <%
+        status_badge = { "success" => "badge-success", "error" => "badge-error", "timeout" => "badge-timeout", "running" => "badge-running" }
+      %>
+      <% @status_distribution.each do |status, count| %>
+        <span class="badge <%= status_badge[status] || 'badge-timeout' %>"><%= number_with_delimiter(count) %> <%= status %></span>
       <% end %>
-      <% if @config[:timeout] %>
-        <span class="text-gray-300 dark:text-gray-700">&middot;</span>
-        <span><%= @config[:timeout] %>s</span>
+      <% if @streaming_rate > 0 %>
+        <span class="text-gray-300 dark:text-gray-700">|</span>
+        <span class="text-gray-400 dark:text-gray-500"><span class="text-gray-800 dark:text-gray-200"><%= @streaming_rate %>%</span> streaming</span>
+        <% if @avg_ttft && @avg_ttft > 0 %>
+          <span class="text-gray-400 dark:text-gray-500"><span class="text-gray-800 dark:text-gray-200"><%= @avg_ttft.round %>ms</span> ttft</span>
+        <% end %>
       <% end %>
-      <% if @config[:dimensions] %>
-        <span class="text-gray-300 dark:text-gray-700">&middot;</span>
-        <span><%= @config[:dimensions] %> dims</span>
-      <% end %>
-      <% if @config[:voice] %>
-        <span class="text-gray-300 dark:text-gray-700">&middot;</span>
-        <span>voice: <%= @config[:voice] %></span>
-      <% end %>
+    </div>
+  </div>
+
+  <!-- Right: stats -->
+  <div class="flex-shrink-0 text-right font-mono text-xs text-gray-400 dark:text-gray-500 space-y-1">
+    <% success_rate = @stats[:success_rate] || 0 %>
+    <div class="flex items-center justify-end gap-x-4">
+      <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats[:count]) %></span> runs</span>
+      <span class="<%= success_rate >= 95 ? 'text-green-500' : success_rate >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= success_rate %>% ok</span>
+      <span><span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(@stats[:total_cost] || 0, precision: 4) %></span> cost</span>
+    </div>
+    <div class="flex items-center justify-end gap-x-4">
+      <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats[:total_tokens] || 0) %></span> tok</span>
+      <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats[:avg_duration_ms] || 0) %></span>ms avg</span>
+      <span><span class="text-gray-800 dark:text-gray-200"><%= @cache_hit_rate %>%</span> cache</span>
+    </div>
+    <% if @stats_today[:count] > 0 %>
+      <% today_success_rate = @stats_today[:success_rate] || 0 %>
+      <div class="flex items-center justify-end gap-x-4 pt-1 border-t border-gray-200 dark:border-gray-800">
+        <span class="text-gray-300 dark:text-gray-700">today</span>
+        <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats_today[:count]) %></span> runs</span>
+        <span class="<%= today_success_rate >= 95 ? 'text-green-500' : today_success_rate >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= today_success_rate %>% ok</span>
+        <span><span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(@stats_today[:total_cost] || 0, precision: 4) %></span> cost</span>
+        <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats_today[:avg_duration_ms] || 0) %></span>ms</span>
+      </div>
     <% end %>
   </div>
-  <%= render "ruby_llm/agents/shared/doc_link" %>
-  <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
 </div>
-
-<% if @config && @config[:description].present? %>
-  <p class="font-mono text-xs text-gray-500 dark:text-gray-400 mb-4"><%= @config[:description] %></p>
-<% end %>
-
-<!-- Stats (all-time) -->
-<% success_rate = @stats[:success_rate] || 0 %>
-<div class="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-gray-400 dark:text-gray-500 mb-1">
-  <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats[:count]) %></span> runs</span>
-  <span class="<%= success_rate >= 95 ? 'text-green-500' : success_rate >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= success_rate %>% ok</span>
-  <span><span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(@stats[:total_cost] || 0, precision: 4) %></span> cost</span>
-  <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats[:total_tokens] || 0) %></span> tok</span>
-  <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats[:avg_duration_ms] || 0) %></span>ms avg</span>
-  <span><span class="text-gray-800 dark:text-gray-200"><%= @cache_hit_rate %>%</span> cache</span>
-</div>
-
-<!-- Stats (today) -->
-<% if @stats_today[:count] > 0 %>
-  <% today_success_rate = @stats_today[:success_rate] || 0 %>
-  <div class="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-gray-400 dark:text-gray-500 mb-2">
-    <span class="text-gray-300 dark:text-gray-700">today</span>
-    <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats_today[:count]) %></span> runs</span>
-    <span class="<%= today_success_rate >= 95 ? 'text-green-500' : today_success_rate >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= today_success_rate %>% ok</span>
-    <span><span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(@stats_today[:total_cost] || 0, precision: 4) %></span> cost</span>
-    <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats_today[:total_tokens] || 0) %></span> tok</span>
-    <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats_today[:avg_duration_ms] || 0) %></span>ms avg</span>
-  </div>
-<% end %>
-
-<!-- Status + finish reasons (badges) -->
-<div class="flex flex-wrap items-center gap-2 font-mono text-xs mt-2 mb-2">
-  <%
-    status_badge = { "success" => "badge-success", "error" => "badge-error", "timeout" => "badge-timeout", "running" => "badge-running" }
-  %>
-  <% @status_distribution.each do |status, count| %>
-    <span class="badge <%= status_badge[status] || 'badge-timeout' %>"><%= number_with_delimiter(count) %> <%= status %></span>
-  <% end %>
-  <% if @finish_reason_distribution.present? && @finish_reason_distribution.any? %>
-    <span class="text-gray-300 dark:text-gray-700">|</span>
-    <%
-      finish_badge = { 'stop' => 'badge-success', 'length' => 'badge-orange', 'content_filter' => 'badge-error', 'tool_calls' => 'badge-cyan' }
-    %>
-    <% @finish_reason_distribution.each do |reason, count| %>
-      <span class="badge <%= finish_badge[reason] || 'badge-timeout' %>"><%= number_with_delimiter(count) %> <%= reason || 'unknown' %></span>
-    <% end %>
-  <% end %>
-  <% if @streaming_rate > 0 %>
-    <span class="text-gray-300 dark:text-gray-700">|</span>
-    <span class="text-gray-400 dark:text-gray-500"><span class="text-gray-800 dark:text-gray-200"><%= @streaming_rate %>%</span> streaming</span>
-    <% if @avg_ttft && @avg_ttft > 0 %>
-      <span class="text-gray-400 dark:text-gray-500"><span class="text-gray-800 dark:text-gray-200"><%= @avg_ttft.round %>ms</span> ttft</span>
-    <% end %>
-  <% end %>
-</div>
+<div class="border-t border-gray-200 dark:border-gray-800 mb-2"></div>
 
 <!-- 30d trend chart -->
 <%
