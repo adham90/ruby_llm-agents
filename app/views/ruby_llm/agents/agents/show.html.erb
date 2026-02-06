@@ -86,51 +86,6 @@
   <% end %>
 </div>
 
-<!-- ── tools ──────────────────────── -->
-<% if @config && @agent_type_kind == "agent" %>
-  <%
-    class_tools = @agent_class.respond_to?(:tools) ? (@agent_class.tools || []) : []
-    has_dynamic_tools = @agent_class.instance_methods(false).include?(:tools)
-  %>
-  <div class="flex items-center gap-3 mt-6 mb-3">
-    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">tools (<%= class_tools.size %>)</span>
-    <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
-  </div>
-  <div class="flex flex-wrap gap-1.5 font-mono text-xs">
-    <% if class_tools.any? %>
-      <% class_tools.each do |tool_class| %>
-        <span class="badge badge-cyan"><%= tool_class.respond_to?(:tool_name) ? tool_class.tool_name : tool_class.name.demodulize %></span>
-      <% end %>
-    <% end %>
-    <% if has_dynamic_tools %>
-      <span class="badge badge-purple">dynamic</span>
-    <% end %>
-    <% if class_tools.empty? && !has_dynamic_tools %>
-      <span class="text-gray-400 dark:text-gray-600">none</span>
-    <% end %>
-  </div>
-
-  <% if @config[:params].present? && @config[:params].any? %>
-    <div class="font-mono text-xs mt-3">
-      <span class="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider">parameters</span>
-      <div class="mt-1 flex flex-wrap gap-x-4 gap-y-px">
-        <% @config[:params].each do |name, opts| %>
-          <div class="flex items-center gap-2 py-1">
-            <span class="text-gray-900 dark:text-gray-200"><%= name %></span>
-            <% if opts[:required] %>
-              <span class="text-red-500">required</span>
-            <% elsif opts[:default].present? %>
-              <span class="text-gray-400 dark:text-gray-600">= <%= opts[:default].inspect %></span>
-            <% else %>
-              <span class="text-gray-400 dark:text-gray-600">optional</span>
-            <% end %>
-          </div>
-        <% end %>
-      </div>
-    </div>
-  <% end %>
-<% end %>
-
 <!-- 30d trend chart -->
 <%
   trend_exec_total = @trend_data.sum { |d| d["count"] || d[:count] || 0 }
@@ -217,6 +172,51 @@
   });
 })();
 </script>
+
+<!-- ── tools ──────────────────────── -->
+<% if @config && @agent_type_kind == "agent" %>
+  <%
+    class_tools = @agent_class.respond_to?(:tools) ? (@agent_class.tools || []) : []
+    has_dynamic_tools = @agent_class.instance_methods(false).include?(:tools)
+  %>
+  <div class="flex items-center gap-3 mt-6 mb-3">
+    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">tools (<%= class_tools.size %>)</span>
+    <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+  </div>
+  <div class="flex flex-wrap gap-1.5 font-mono text-xs">
+    <% if class_tools.any? %>
+      <% class_tools.each do |tool_class| %>
+        <span class="badge badge-cyan"><%= tool_class.respond_to?(:tool_name) ? tool_class.tool_name : tool_class.name.demodulize %></span>
+      <% end %>
+    <% end %>
+    <% if has_dynamic_tools %>
+      <span class="badge badge-purple">dynamic</span>
+    <% end %>
+    <% if class_tools.empty? && !has_dynamic_tools %>
+      <span class="text-gray-400 dark:text-gray-600">none</span>
+    <% end %>
+  </div>
+
+  <% if @config[:params].present? && @config[:params].any? %>
+    <div class="font-mono text-xs mt-3">
+      <span class="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider">parameters</span>
+      <div class="mt-1 flex flex-wrap gap-x-4 gap-y-px">
+        <% @config[:params].each do |name, opts| %>
+          <div class="flex items-center gap-2 py-1">
+            <span class="text-gray-900 dark:text-gray-200"><%= name %></span>
+            <% if opts[:required] %>
+              <span class="text-red-500">required</span>
+            <% elsif opts[:default].present? %>
+              <span class="text-gray-400 dark:text-gray-600">= <%= opts[:default].inspect %></span>
+            <% else %>
+              <span class="text-gray-400 dark:text-gray-600">optional</span>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+<% end %>
 
 <!-- ── circuit breaker ──────────────── -->
 <% if @config && @agent_type_kind == "agent" && @circuit_breaker_status.present? %>
