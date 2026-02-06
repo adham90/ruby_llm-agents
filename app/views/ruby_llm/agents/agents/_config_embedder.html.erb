@@ -1,70 +1,27 @@
 <%# Configuration partial for Embedder types %>
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-  <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-    Configuration
-  </h3>
-
-  <!-- Embedding Configuration -->
-  <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-    Embedding Settings
-  </p>
-
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Model</p>
-      <p class="font-medium text-gray-900 dark:text-gray-100">
-        <%= config[:model] %>
-      </p>
+<div class="font-mono text-xs">
+  <span class="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider">embedding settings</span>
+  <div class="mt-1 space-y-px">
+    <div class="flex items-center gap-3 py-1 px-2 -mx-2">
+      <span class="w-24 text-gray-400 dark:text-gray-600">model</span>
+      <span class="text-gray-900 dark:text-gray-200"><%= config[:model] %></span>
     </div>
-
-    <div>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Dimensions</p>
-      <p class="font-medium text-gray-900 dark:text-gray-100">
-        <% if config[:dimensions] %>
-          <%= config[:dimensions] %>
-        <% else %>
-          <span class="text-gray-400 dark:text-gray-500">Default</span>
-        <% end %>
-      </p>
+    <div class="flex items-center gap-3 py-1 px-2 -mx-2">
+      <span class="w-24 text-gray-400 dark:text-gray-600">dimensions</span>
+      <span class="text-gray-900 dark:text-gray-200"><%= config[:dimensions] || 'default' %></span>
     </div>
-
-    <div>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Batch Size</p>
-      <p class="font-medium text-gray-900 dark:text-gray-100">
-        <% if config[:batch_size] %>
-          <%= config[:batch_size] %> texts
-        <% else %>
-          <span class="text-gray-400 dark:text-gray-500">Default</span>
-        <% end %>
-      </p>
+    <div class="flex items-center gap-3 py-1 px-2 -mx-2">
+      <span class="w-24 text-gray-400 dark:text-gray-600">batch size</span>
+      <span class="text-gray-900 dark:text-gray-200"><%= config[:batch_size] ? "#{config[:batch_size]} texts" : 'default' %></span>
     </div>
-
-    <div>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Cache</p>
-      <p class="font-medium text-gray-900 dark:text-gray-100">
-        <% if config[:cache_enabled] %>
-          Enabled (<%= config[:cache_ttl].inspect %>)
-        <% else %>
-          <span class="text-gray-400 dark:text-gray-500">Disabled</span>
-        <% end %>
-      </p>
-    </div>
-  </div>
-
-  <!-- Info Section -->
-  <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
-    <div class="flex items-start gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
-      <div class="flex-shrink-0 mt-0.5">
-        <svg class="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-        </svg>
-      </div>
-      <div>
-        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Embedder</p>
-        <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-          Generates vector embeddings for text content. Use for semantic search, similarity matching, and RAG applications.
-        </p>
-      </div>
+    <div class="flex items-center gap-3 py-1 px-2 -mx-2">
+      <span class="w-24 text-gray-400 dark:text-gray-600">cache</span>
+      <% if config[:cache_enabled] %>
+        <span class="text-green-500">enabled</span>
+        <span class="text-gray-400 dark:text-gray-600">(<%= config[:cache_ttl].inspect %>)</span>
+      <% else %>
+        <span class="text-gray-400 dark:text-gray-600">disabled</span>
+      <% end %>
     </div>
   </div>
 </div>

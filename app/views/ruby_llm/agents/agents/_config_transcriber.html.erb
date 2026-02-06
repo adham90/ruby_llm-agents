@@ -1,91 +1,38 @@
 <%# Configuration partial for Transcriber types %>
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-  <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-    Configuration
-  </h3>
-
-  <!-- Transcription Configuration -->
-  <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-    Transcription Settings
-  </p>
-
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Model</p>
-      <p class="font-medium text-gray-900 dark:text-gray-100">
-        <%= config[:model] %>
-      </p>
+<div class="font-mono text-xs">
+  <span class="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider">transcription settings</span>
+  <div class="mt-1 space-y-px">
+    <div class="flex items-center gap-3 py-1 px-2 -mx-2">
+      <span class="w-24 text-gray-400 dark:text-gray-600">model</span>
+      <span class="text-gray-900 dark:text-gray-200"><%= config[:model] %></span>
     </div>
-
-    <div>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Language</p>
-      <p class="font-medium text-gray-900 dark:text-gray-100">
-        <% if config[:language] %>
-          <%= config[:language].upcase %>
-        <% else %>
-          <span class="text-gray-400 dark:text-gray-500">Auto-detect</span>
-        <% end %>
-      </p>
+    <div class="flex items-center gap-3 py-1 px-2 -mx-2">
+      <span class="w-24 text-gray-400 dark:text-gray-600">language</span>
+      <span class="text-gray-900 dark:text-gray-200"><%= config[:language] ? config[:language].upcase : 'auto-detect' %></span>
     </div>
-
-    <div>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Output Format</p>
-      <p class="font-medium text-gray-900 dark:text-gray-100">
-        <%= config[:output_format] || :text %>
-      </p>
+    <div class="flex items-center gap-3 py-1 px-2 -mx-2">
+      <span class="w-24 text-gray-400 dark:text-gray-600">format</span>
+      <span class="text-gray-900 dark:text-gray-200"><%= config[:output_format] || :text %></span>
     </div>
-
-    <div>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Timestamps</p>
-      <p class="font-medium text-gray-900 dark:text-gray-100">
-        <% if config[:include_timestamps] && config[:include_timestamps] != :none %>
-          <%= config[:include_timestamps].to_s.titleize %>
-        <% else %>
-          <span class="text-gray-400 dark:text-gray-500">None</span>
-        <% end %>
-      </p>
+    <div class="flex items-center gap-3 py-1 px-2 -mx-2">
+      <span class="w-24 text-gray-400 dark:text-gray-600">timestamps</span>
+      <span class="text-gray-900 dark:text-gray-200"><%= (config[:include_timestamps] && config[:include_timestamps] != :none) ? config[:include_timestamps].to_s.titleize : 'none' %></span>
     </div>
-  </div>
-
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Cache</p>
-      <p class="font-medium text-gray-900 dark:text-gray-100">
-        <% if config[:cache_enabled] %>
-          Enabled (<%= config[:cache_ttl].inspect %>)
-        <% else %>
-          <span class="text-gray-400 dark:text-gray-500">Disabled</span>
-        <% end %>
-      </p>
+    <div class="flex items-center gap-3 py-1 px-2 -mx-2">
+      <span class="w-24 text-gray-400 dark:text-gray-600">cache</span>
+      <% if config[:cache_enabled] %>
+        <span class="text-green-500">enabled</span>
+        <span class="text-gray-400 dark:text-gray-600">(<%= config[:cache_ttl].inspect %>)</span>
+      <% else %>
+        <span class="text-gray-400 dark:text-gray-600">disabled</span>
+      <% end %>
     </div>
-
-    <div class="col-span-3">
-      <p class="text-sm text-gray-500 dark:text-gray-400">Fallback Models</p>
-      <p class="font-medium text-gray-900 dark:text-gray-100">
-        <% fallback_models = Array(config[:fallback_models]).compact %>
-        <% if fallback_models.any? %>
-          <%= fallback_models.join(" → ") %>
-        <% else %>
-          <span class="text-gray-400 dark:text-gray-500">None configured</span>
-        <% end %>
-      </p>
-    </div>
-  </div>
-
-  <!-- Info Section -->
-  <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
-    <div class="flex items-start gap-3 p-3 rounded-lg bg-teal-50 dark:bg-teal-900/20">
-      <div class="flex-shrink-0 mt-0.5">
-        <svg class="w-5 h-5 text-teal-500" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"/>
-        </svg>
+    <% fallback_models = Array(config[:fallback_models]).compact %>
+    <% if fallback_models.any? %>
+      <div class="flex items-center gap-3 py-1 px-2 -mx-2">
+        <span class="w-24 text-gray-400 dark:text-gray-600">fallbacks</span>
+        <span class="text-gray-900 dark:text-gray-200"><%= fallback_models.join(" → ") %></span>
       </div>
-      <div>
-        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Transcriber</p>
-        <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-          Converts audio to text with support for multiple languages, timestamps, and output formats like SRT and VTT.
-        </p>
-      </div>
-    </div>
+    <% end %>
   </div>
 </div>

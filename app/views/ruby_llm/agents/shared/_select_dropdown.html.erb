@@ -6,58 +6,34 @@
   #     filter_id: "days",
   #     options: [
   #       { value: "", label: "All Time" },
-  #       { value: "1", label: "Today" },
-  #       { value: "7", label: "Last 7 Days" },
-  #       { value: "30", label: "Last 30 Days" }
+  #       { value: "7", label: "Last 7 Days" }
   #     ],
-  #     selected: "7",
-  #     icon: "M8 7V3m8 4V3...", # optional SVG path
-  #     width: "w-40",           # optional, default w-40
-  #     full_width: false        # optional, for mobile
+  #     selected: "7"
 
   selected = local_assigns[:selected].to_s
-  width = local_assigns[:width] || "w-40"
-  full_width = local_assigns[:full_width] || false
-
-  # Find current option
   current_option = options.find { |o| o[:value].to_s == selected } || options.first
   current_label = current_option[:label]
-
   has_selection = selected.present?
 %>
 <div class="relative" x-data="{ open: false }" @click.outside="open = false" data-filter="<%= filter_id %>">
-  <%# Trigger button %>
   <button type="button" @click="open = !open"
-    class="<%= full_width ? 'w-full md:w-auto justify-between md:justify-start' : '' %> flex items-center gap-2 px-3 py-2 text-sm
-           bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg
-           hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors
-           <%= has_selection ? 'border-blue-300 dark:border-blue-600' : '' %>">
-    <div class="flex items-center gap-2">
-      <% if local_assigns[:icon].present? %>
-        <svg class="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<%= icon %>"/>
-        </svg>
-      <% end %>
-      <span class="text-gray-700 dark:text-gray-200"><%= current_label %></span>
-    </div>
-    <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    class="flex items-center gap-1.5 px-2 py-1 font-mono text-xs rounded
+           hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors
+           <%= has_selection ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500' %>">
+    <span><%= current_label %></span>
+    <svg class="w-3 h-3 text-gray-400 dark:text-gray-600 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
     </svg>
   </button>
 
-  <%# Dropdown menu %>
   <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-100"
        x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
        x-transition:leave="transition ease-in duration-75"
        x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-       class="absolute z-20 mt-1 <%= full_width ? 'left-0 right-0 md:left-auto md:right-auto md:min-w-max' : 'min-w-max' %>
-              bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
+       class="absolute z-20 mt-1 min-w-max bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
     <% options.each do |option| %>
       <%
         is_selected = option[:value].to_s == selected
-        item_classes = is_selected ?
-          "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" :
-          "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
       %>
       <button type="button"
               @click="
@@ -65,17 +41,12 @@
                 open = false;
                 $el.closest('form').requestSubmit();
               "
-              class="w-full flex items-center gap-2 px-3 py-2 text-sm text-left <%= item_classes %>">
-        <% if option[:icon].present? %>
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<%= option[:icon] %>"/>
-          </svg>
-        <% end %>
+              class="w-full flex items-center gap-2 px-3 py-1.5 font-mono text-xs text-left
+                     <%= is_selected ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400' %>
+                     hover:bg-gray-50 dark:hover:bg-gray-700">
         <%= option[:label] %>
         <% if is_selected %>
-          <svg class="w-4 h-4 ml-auto text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-          </svg>
+          <span class="ml-auto text-gray-400 dark:text-gray-600">&check;</span>
         <% end %>
       </button>
     <% end %>
