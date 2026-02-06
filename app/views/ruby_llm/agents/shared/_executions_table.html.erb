@@ -9,16 +9,16 @@
   <div class="flex items-center gap-3 px-2 -mx-2 font-mono text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider mb-1">
     <span class="w-20 flex-shrink-0">status</span>
     <% if show_agent_column %>
-      <span class="w-28">agent</span>
+      <span class="flex-1 min-w-0">agent</span>
     <% end %>
     <% if show_tenant_column %>
-      <span class="w-20 hidden sm:block">tenant</span>
+      <span class="flex-1 min-w-0 hidden sm:block">tenant</span>
     <% end %>
-    <span class="w-28 hidden lg:block">model</span>
-    <span class="w-16 text-right">duration</span>
-    <span class="w-16 text-right hidden md:block">tokens</span>
-    <span class="w-16 text-right hidden md:block">cost</span>
-    <span class="ml-auto text-right">time</span>
+    <span class="flex-1 min-w-0 hidden lg:block">model</span>
+    <span class="w-16 flex-shrink-0 text-right">duration</span>
+    <span class="w-16 flex-shrink-0 text-right hidden md:block">tokens</span>
+    <span class="w-16 flex-shrink-0 text-right hidden md:block">cost</span>
+    <span class="w-24 flex-shrink-0 text-right">time</span>
   </div>
 
   <!-- Rows -->
@@ -37,22 +37,22 @@
            onclick="window.location='<%= ruby_llm_agents.execution_path(execution) %>'">
         <span class="w-20 flex-shrink-0"><span class="badge <%= status_badge_class %>" style="font-size: 10px; padding: 1px 6px;"><%= execution.status %></span></span>
         <% if show_agent_column %>
-          <span class="w-28 truncate text-gray-900 dark:text-gray-200"><%= execution.agent_type.gsub(/Agent$/, "") %></span>
+          <span class="flex-1 min-w-0 truncate text-gray-900 dark:text-gray-200"><%= execution.agent_type.gsub(/Agent$/, "") %></span>
         <% end %>
         <% if show_tenant_column %>
-          <span class="w-20 truncate text-gray-400 dark:text-gray-600 hidden sm:inline"><%= execution.tenant_id.present? ? truncate(execution.tenant_id, length: 15) : "—" %></span>
+          <span class="flex-1 min-w-0 truncate text-gray-400 dark:text-gray-600 hidden sm:inline"><%= execution.tenant_id.present? ? truncate(execution.tenant_id, length: 30) : "—" %></span>
         <% end %>
-        <span class="w-28 truncate text-gray-400 dark:text-gray-600 hidden lg:inline"><%= execution.model_id %></span>
-        <span class="w-16 text-right text-gray-500 dark:text-gray-400">
+        <span class="flex-1 min-w-0 truncate text-gray-400 dark:text-gray-600 hidden lg:inline"><%= execution.model_id %></span>
+        <span class="w-16 flex-shrink-0 text-right text-gray-500 dark:text-gray-400">
           <% if execution.status_running? %>
             <span class="text-blue-500 animate-pulse">...</span>
           <% else %>
             <%= execution.duration_ms ? format_duration_ms(execution.duration_ms) : "—" %>
           <% end %>
         </span>
-        <span class="w-16 text-right text-gray-500 dark:text-gray-400 hidden md:inline"><%= number_with_delimiter(execution.total_tokens || 0) %></span>
-        <span class="w-16 text-right text-gray-500 dark:text-gray-400 hidden md:inline">$<%= number_with_precision(execution.total_cost || 0, precision: 4) %></span>
-        <span class="ml-auto text-gray-400 dark:text-gray-600 text-right whitespace-nowrap"><%= time_ago_in_words(execution.created_at) %></span>
+        <span class="w-16 flex-shrink-0 text-right text-gray-500 dark:text-gray-400 hidden md:inline"><%= number_with_delimiter(execution.total_tokens || 0) %></span>
+        <span class="w-16 flex-shrink-0 text-right text-gray-500 dark:text-gray-400 hidden md:inline">$<%= number_with_precision(execution.total_cost || 0, precision: 4) %></span>
+        <span class="w-24 flex-shrink-0 text-gray-400 dark:text-gray-600 text-right whitespace-nowrap"><%= time_ago_in_words(execution.created_at) %></span>
       </div>
       <% if execution.status_error? && execution.error_message.present? %>
         <div class="flex items-center gap-1 pl-5 py-0.5 text-red-400 dark:text-red-500/70 text-xs font-mono">

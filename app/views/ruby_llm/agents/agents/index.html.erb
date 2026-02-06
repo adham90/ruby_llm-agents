@@ -76,20 +76,20 @@
     <!-- Column headers -->
     <div class="flex items-center gap-3 px-2 -mx-2 font-mono text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider mb-1">
       <%= link_to "name#{sort_arrow.call('name')}".html_safe, sort_url.call("name"),
-          class: "w-40 hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('name')}" %>
+          class: "flex-[2] min-w-0 hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('name')}" %>
       <%= link_to "type#{sort_arrow.call('agent_type')}".html_safe, sort_url.call("agent_type"),
-          class: "w-20 hidden sm:block hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('agent_type')}" %>
+          class: "flex-1 min-w-0 hidden sm:block hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('agent_type')}" %>
       <span class="w-1.5 flex-shrink-0"></span>
       <%= link_to "model#{sort_arrow.call('model')}".html_safe, sort_url.call("model"),
-          class: "w-32 hidden lg:block hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('model')}" %>
+          class: "flex-[2] min-w-0 hidden lg:block hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('model')}" %>
       <%= link_to "runs#{sort_arrow.call('execution_count')}".html_safe, sort_url.call("execution_count"),
-          class: "w-14 text-right hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('execution_count')}" %>
+          class: "w-14 flex-shrink-0 text-right hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('execution_count')}" %>
       <%= link_to "cost#{sort_arrow.call('total_cost')}".html_safe, sort_url.call("total_cost"),
-          class: "w-16 text-right hidden md:block hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('total_cost')}" %>
+          class: "w-16 flex-shrink-0 text-right hidden md:block hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('total_cost')}" %>
       <%= link_to "ok%#{sort_arrow.call('success_rate')}".html_safe, sort_url.call("success_rate"),
-          class: "w-12 text-right hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('success_rate')}" %>
+          class: "w-12 flex-shrink-0 text-right hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('success_rate')}" %>
       <%= link_to "last run#{sort_arrow.call('last_executed')}".html_safe, sort_url.call("last_executed"),
-          class: "ml-auto text-right hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('last_executed')}" %>
+          class: "w-24 flex-shrink-0 text-right hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('last_executed')}" %>
     </div>
 
     <!-- Data rows -->
@@ -108,16 +108,16 @@
              class="group flex items-center gap-3 py-1.5 px-2 -mx-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer"
              onclick="window.location='<%= ruby_llm_agents.agent_path(ERB::Util.url_encode(agent[:name]), subtab: params[:subtab]) %>'"
              title="<%= agent[:description] %>">
-          <span class="w-40 truncate text-gray-900 dark:text-gray-200">
+          <span class="flex-[2] min-w-0 truncate text-gray-900 dark:text-gray-200">
             <%= agent[:name].split('::').last.gsub(/Agent$/, '') %><span class="hidden lg:inline text-gray-400 dark:text-gray-600 ml-1 text-[10px]">v<%= agent[:version] %></span>
           </span>
-          <span class="w-20 truncate text-gray-500 dark:text-gray-400 hidden sm:inline"><%= agent[:agent_type]&.to_s || 'agent' %></span>
+          <span class="flex-1 min-w-0 truncate text-gray-500 dark:text-gray-400 hidden sm:inline"><%= agent[:agent_type]&.to_s || 'agent' %></span>
           <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= dot_color %>"></span>
-          <span class="w-32 truncate text-gray-400 dark:text-gray-600 hidden lg:inline"><%= agent[:model]&.split("/")&.last || "—" %></span>
-          <span class="w-14 text-right text-gray-500 dark:text-gray-400"><%= number_with_delimiter(agent[:execution_count] || 0) %><span class="text-gray-400 dark:text-gray-600">r</span></span>
-          <span class="w-16 text-right text-gray-500 dark:text-gray-400 hidden md:inline">$<%= number_with_precision(agent[:total_cost] || 0, precision: 2) %></span>
-          <span class="w-12 text-right <%= success_rate >= 95 ? 'text-green-500' : success_rate >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= success_rate.round %>%</span>
-          <span class="ml-auto text-gray-400 dark:text-gray-600 text-right whitespace-nowrap">
+          <span class="flex-[2] min-w-0 truncate text-gray-400 dark:text-gray-600 hidden lg:inline"><%= agent[:model]&.split("/")&.last || "—" %></span>
+          <span class="w-14 flex-shrink-0 text-right text-gray-500 dark:text-gray-400"><%= number_with_delimiter(agent[:execution_count] || 0) %><span class="text-gray-400 dark:text-gray-600">r</span></span>
+          <span class="w-16 flex-shrink-0 text-right text-gray-500 dark:text-gray-400 hidden md:inline">$<%= number_with_precision(agent[:total_cost] || 0, precision: 2) %></span>
+          <span class="w-12 flex-shrink-0 text-right <%= success_rate >= 95 ? 'text-green-500' : success_rate >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= success_rate.round %>%</span>
+          <span class="w-24 flex-shrink-0 text-gray-400 dark:text-gray-600 text-right whitespace-nowrap">
             <% if agent[:last_executed] %>
               <%= time_ago_in_words(agent[:last_executed]) %>
             <% else %>
@@ -134,14 +134,14 @@
              class="group flex items-center gap-3 py-1.5 px-2 -mx-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer"
              onclick="window.location='<%= ruby_llm_agents.agent_path(ERB::Util.url_encode(agent[:name]), subtab: params[:subtab]) %>'"
              title="<%= agent[:description] %>">
-          <span class="w-40 truncate text-gray-500 dark:text-gray-400 line-through"><%= agent[:name].split('::').last.gsub(/Agent$/, '') %></span>
-          <span class="w-20 truncate text-gray-400 dark:text-gray-600 hidden sm:inline"><%= agent[:agent_type]&.to_s || 'agent' %></span>
+          <span class="flex-[2] min-w-0 truncate text-gray-500 dark:text-gray-400 line-through"><%= agent[:name].split('::').last.gsub(/Agent$/, '') %></span>
+          <span class="flex-1 min-w-0 truncate text-gray-400 dark:text-gray-600 hidden sm:inline"><%= agent[:agent_type]&.to_s || 'agent' %></span>
           <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-gray-400 dark:bg-gray-600"></span>
-          <span class="w-32 truncate text-gray-400 dark:text-gray-600 hidden lg:inline"><%= agent[:model]&.split("/")&.last || "—" %></span>
-          <span class="w-14 text-right text-gray-400 dark:text-gray-600"><%= number_with_delimiter(agent[:execution_count] || 0) %><span class="text-gray-400 dark:text-gray-600">r</span></span>
-          <span class="w-16 text-right text-gray-400 dark:text-gray-600 hidden md:inline">$<%= number_with_precision(agent[:total_cost] || 0, precision: 2) %></span>
-          <span class="w-12 text-right text-gray-400 dark:text-gray-600"><%= success_rate.round %>%</span>
-          <span class="ml-auto text-gray-400 dark:text-gray-600 text-right whitespace-nowrap">
+          <span class="flex-[2] min-w-0 truncate text-gray-400 dark:text-gray-600 hidden lg:inline"><%= agent[:model]&.split("/")&.last || "—" %></span>
+          <span class="w-14 flex-shrink-0 text-right text-gray-400 dark:text-gray-600"><%= number_with_delimiter(agent[:execution_count] || 0) %><span class="text-gray-400 dark:text-gray-600">r</span></span>
+          <span class="w-16 flex-shrink-0 text-right text-gray-400 dark:text-gray-600 hidden md:inline">$<%= number_with_precision(agent[:total_cost] || 0, precision: 2) %></span>
+          <span class="w-12 flex-shrink-0 text-right text-gray-400 dark:text-gray-600"><%= success_rate.round %>%</span>
+          <span class="w-24 flex-shrink-0 text-gray-400 dark:text-gray-600 text-right whitespace-nowrap">
             <% if agent[:last_executed] %>
               <%= time_ago_in_words(agent[:last_executed]) %>
             <% else %>
