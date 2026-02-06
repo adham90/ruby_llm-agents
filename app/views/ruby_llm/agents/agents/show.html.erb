@@ -21,6 +21,22 @@
             <span class="text-gray-300 dark:text-gray-700">&middot;</span>
             <span><%= @config[:timeout] %>s</span>
           <% end %>
+          <% if @config[:cache_enabled] %>
+            <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+            <%
+              ttl = @config[:cache_ttl]
+              cache_label = if ttl.is_a?(ActiveSupport::Duration)
+                secs = ttl.to_i
+                if secs >= 3600 then "#{secs / 3600}h"
+                elsif secs >= 60 then "#{secs / 60}m"
+                else "#{secs}s"
+                end
+              else
+                ttl.to_s
+              end
+            %>
+            <span>cache <%= cache_label %></span>
+          <% end %>
           <% if @config[:dimensions] %>
             <span class="text-gray-300 dark:text-gray-700">&middot;</span>
             <span><%= @config[:dimensions] %> dims</span>
@@ -29,28 +45,17 @@
             <span class="text-gray-300 dark:text-gray-700">&middot;</span>
             <span>voice: <%= @config[:voice] %></span>
           <% end %>
+          <% if @streaming_rate && @streaming_rate > 0 %>
+            <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+            <span>streaming</span>
+          <% end %>
         <% end %>
       </div>
       <%= render "ruby_llm/agents/shared/doc_link" %>
     </div>
     <% if @config && @config[:description].present? %>
-      <p class="font-mono text-xs text-gray-500 dark:text-gray-400 mb-2"><%= @config[:description] %></p>
+      <p class="font-mono text-xs text-gray-500 dark:text-gray-400"><%= @config[:description] %></p>
     <% end %>
-    <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
-      <%
-        status_badge = { "success" => "badge-success", "error" => "badge-error", "timeout" => "badge-timeout", "running" => "badge-running" }
-      %>
-      <% @status_distribution.each do |status, count| %>
-        <span class="badge <%= status_badge[status] || 'badge-timeout' %>"><%= number_with_delimiter(count) %> <%= status %></span>
-      <% end %>
-      <% if @streaming_rate > 0 %>
-        <span class="text-gray-300 dark:text-gray-700">|</span>
-        <span class="text-gray-400 dark:text-gray-500"><span class="text-gray-800 dark:text-gray-200"><%= @streaming_rate %>%</span> streaming</span>
-        <% if @avg_ttft && @avg_ttft > 0 %>
-          <span class="text-gray-400 dark:text-gray-500"><span class="text-gray-800 dark:text-gray-200"><%= @avg_ttft.round %>ms</span> ttft</span>
-        <% end %>
-      <% end %>
-    </div>
   </div>
 
   <!-- Right: stats -->
@@ -61,10 +66,12 @@
       <span class="<%= success_rate >= 95 ? 'text-green-500' : success_rate >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= success_rate %>% ok</span>
       <span><span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(@stats[:total_cost] || 0, precision: 4) %></span> cost</span>
     </div>
-    <div class="flex items-center justify-end gap-x-4">
-      <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats[:total_tokens] || 0) %></span> tok</span>
-      <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats[:avg_duration_ms] || 0) %></span>ms avg</span>
-      <span><span class="text-gray-800 dark:text-gray-200"><%= @cache_hit_rate %>%</span> cache</span>
+    <div class="flex items-center justify-end gap-x-4 text-gray-500 dark:text-gray-600">
+      <span><span class="text-gray-600 dark:text-gray-400"><%= number_with_delimiter(@stats[:total_tokens] || 0) %></span> tokens</span>
+      <span><span class="text-gray-600 dark:text-gray-400"><%= number_with_delimiter(@stats[:avg_duration_ms] || 0) %></span>ms avg</span>
+      <% if (@config && @config[:cache_enabled]) || @cache_hit_rate > 0 %>
+        <span><span class="text-gray-600 dark:text-gray-400"><%= @cache_hit_rate %>%</span> cache</span>
+      <% end %>
     </div>
     <% if @stats_today[:count] > 0 %>
       <% today_success_rate = @stats_today[:success_rate] || 0 %>
@@ -81,23 +88,11 @@
 <div class="border-t border-gray-200 dark:border-gray-800 mb-2"></div>
 
 <!-- 30d trend chart -->
-<%
-  trend_exec_total = @trend_data.sum { |d| d["count"] || d[:count] || 0 }
-  trend_cost_total = @trend_data.sum { |d| (d["total_cost"] || d[:total_cost] || 0).to_f }
-  trend_error_total = @trend_data.sum { |d| d["error_count"] || d[:error_count] || 0 }
-%>
 <div class="flex items-center gap-3 mt-6 mb-2">
-  <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">30d</span>
+  <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">last 30 days</span>
   <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
 </div>
 <div id="agent-trend-chart" style="width: 100%; height: 160px;"></div>
-<div class="flex flex-wrap gap-x-4 font-mono text-xs text-gray-400 dark:text-gray-500 mt-1">
-  <span>executions: <span class="text-gray-800 dark:text-gray-200"><%= trend_exec_total %></span></span>
-  <span>&middot;</span>
-  <span>cost: <span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(trend_cost_total, precision: 4) %></span></span>
-  <span>&middot;</span>
-  <span>errors: <span class="<%= trend_error_total > 0 ? 'text-red-500' : 'text-gray-800 dark:text-gray-200' %>"><%= trend_error_total %></span></span>
-</div>
 <script>
 (function() {
   const trendData = <%= raw @trend_data.map { |d|
@@ -173,77 +168,104 @@
     class_tools = @agent_class.respond_to?(:tools) ? (@agent_class.tools || []) : []
     has_dynamic_tools = @agent_class.instance_methods(false).include?(:tools)
   %>
-  <div class="flex items-center gap-3 mt-6 mb-3">
-    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">tools (<%= class_tools.size %>)</span>
-    <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
-  </div>
-  <div class="flex flex-wrap gap-1.5 font-mono text-xs">
-    <% if class_tools.any? %>
+  <% if class_tools.any? || has_dynamic_tools %>
+    <div class="flex items-center gap-3 mt-6 mb-3">
+      <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">tools (<%= class_tools.size %>)</span>
+      <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+    </div>
+    <div class="flex flex-wrap gap-1.5 font-mono text-xs">
       <% class_tools.each do |tool_class| %>
         <span class="badge badge-cyan"><%= tool_class.respond_to?(:tool_name) ? tool_class.tool_name : tool_class.name.demodulize %></span>
       <% end %>
-    <% end %>
-    <% if has_dynamic_tools %>
-      <span class="badge badge-purple">dynamic</span>
-    <% end %>
-    <% if class_tools.empty? && !has_dynamic_tools %>
-      <span class="text-gray-400 dark:text-gray-600">none</span>
-    <% end %>
-  </div>
+      <% if has_dynamic_tools %>
+        <span class="badge badge-purple">dynamic</span>
+      <% end %>
+    </div>
+  <% end %>
 
   <% if @config[:params].present? && @config[:params].any? %>
-    <div class="font-mono text-xs mt-3">
-      <span class="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider">parameters</span>
-      <div class="mt-1 flex flex-wrap gap-x-4 gap-y-px">
-        <% @config[:params].each do |name, opts| %>
-          <div class="flex items-center gap-2 py-1">
-            <span class="text-gray-900 dark:text-gray-200"><%= name %></span>
-            <% if opts[:required] %>
-              <span class="text-red-500">required</span>
-            <% elsif opts[:default].present? %>
-              <span class="text-gray-400 dark:text-gray-600">= <%= opts[:default].inspect %></span>
-            <% else %>
-              <span class="text-gray-400 dark:text-gray-600">optional</span>
-            <% end %>
-          </div>
-        <% end %>
-      </div>
+    <div class="mt-3">
+      <span class="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider font-mono">parameters</span>
+    </div>
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-0.5 font-mono text-xs mt-1.5">
+      <% @config[:params].each do |name, opts| %>
+        <div class="flex items-center gap-2 py-0.5">
+          <span class="text-gray-900 dark:text-gray-200"><%= name %></span>
+          <% if opts[:required] %>
+            <span class="text-red-500">required</span>
+          <% elsif opts[:default].present? %>
+            <span class="text-gray-400 dark:text-gray-600">= <%= opts[:default].inspect %></span>
+          <% else %>
+            <span class="text-gray-400 dark:text-gray-600">optional</span>
+          <% end %>
+        </div>
+      <% end %>
     </div>
   <% end %>
 <% end %>
 
 <!-- ── model health ──────────────── -->
-<% if @config && @agent_type_kind == "agent" && @circuit_breaker_status.present? %>
+<%
+  if @config && @agent_type_kind == "agent"
+    retries_config = @config[:retries] || {}
+    fallback_models = Array(@config[:fallback_models]).compact
+    has_retries = (retries_config[:max] || 0) > 0
+    has_fallbacks = fallback_models.any?
+    has_circuit_breaker = @config[:circuit_breaker].present?
+    has_any_reliability = has_retries || has_fallbacks || has_circuit_breaker
+    show_model_health = has_any_reliability || @circuit_breaker_status.present?
+  end
+%>
+<% if show_model_health %>
   <div class="flex items-center gap-3 mt-6 mb-3">
     <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">model health</span>
     <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
   </div>
-  <p class="font-mono text-[10px] text-gray-400 dark:text-gray-600 mb-2">
-    Models are monitored for errors. After too many failures, a model is temporarily paused and requests are routed to fallbacks.
-  </p>
-  <div class="font-mono text-xs space-y-0.5">
-    <% @circuit_breaker_status.each do |model_id, status| %>
-      <div class="flex items-center gap-3 py-1.5 px-2 -mx-2">
-        <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= status[:open] ? 'bg-red-500 animate-pulse' : 'bg-green-500' %>"></span>
-        <span class="text-gray-900 dark:text-gray-200"><%= model_id %></span>
-        <% if status[:open] %>
-          <span class="text-red-500">paused</span>
-          <% if status[:cooldown_remaining] %>
-            <span class="text-gray-400 dark:text-gray-600">retrying in <%= status[:cooldown_remaining] %>s</span>
+  <% if has_any_reliability %>
+    <div class="font-mono text-xs text-gray-400 dark:text-gray-500 mb-2 flex flex-wrap gap-x-1.5 gap-y-0.5">
+      <% if has_retries %>
+        <span>retries: <%= retries_config[:max] %> max</span>
+      <% end %>
+      <% if has_retries && (has_fallbacks || has_circuit_breaker) %>
+        <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+      <% end %>
+      <% if has_fallbacks %>
+        <span>fallbacks: <%= fallback_models.join(" → ") %></span>
+      <% end %>
+      <% if has_fallbacks && has_circuit_breaker %>
+        <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+      <% end %>
+      <% if has_circuit_breaker %>
+        <% cb = @config[:circuit_breaker] %>
+        <span>pauses after <%= cb[:errors] %> errors in <%= cb[:within] %>s</span>
+      <% end %>
+    </div>
+  <% end %>
+  <% if @circuit_breaker_status.present? %>
+    <div class="font-mono text-xs">
+      <% @circuit_breaker_status.each do |model_id, status| %>
+        <div class="flex items-center gap-3 py-1 px-2 -mx-2">
+          <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= status[:open] ? 'bg-red-500 animate-pulse' : 'bg-green-500' %>"></span>
+          <span class="text-gray-900 dark:text-gray-200"><%= model_id %></span>
+          <% if status[:open] %>
+            <span class="text-red-500">paused</span>
+            <% if status[:cooldown_remaining] %>
+              <span class="text-gray-400 dark:text-gray-600">retrying in <%= status[:cooldown_remaining] %>s</span>
+            <% end %>
+          <% else %>
+            <span class="text-green-500">healthy</span>
+            <% if status[:failure_count] && status[:failure_count] > 0 %>
+              <span class="text-yellow-500"><%= status[:failure_count] %>/<%= status[:threshold] %> failures before pause</span>
+            <% end %>
           <% end %>
-        <% else %>
-          <span class="text-green-500">healthy</span>
-          <% if status[:failure_count] && status[:failure_count] > 0 %>
-            <span class="text-yellow-500"><%= status[:failure_count] %>/<%= status[:threshold] %> failures before pause</span>
-          <% end %>
-        <% end %>
-      </div>
-    <% end %>
-  </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
 <% end %>
 
-<!-- ── config ──────────────────────── -->
-<% if @config && @agent_type_kind %>
+<!-- ── config (non-agent types only) ── -->
+<% if @config && @agent_type_kind && @agent_type_kind != "agent" %>
   <div class="flex items-center gap-3 mt-6 mb-3">
     <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">config</span>
     <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
