@@ -1,283 +1,251 @@
-<!-- Page Header -->
-<div class="mb-5 flex items-center justify-between">
-  <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Dashboard</h1>
-  <%= render "ruby_llm/agents/shared/doc_link" %>
-</div>
-
 <!-- Action Center (only when critical alerts exist) -->
 <%= render partial: "ruby_llm/agents/dashboard/action_center", locals: { critical_alerts: @critical_alerts } %>
 
-<!-- Activity Section -->
-<div class="mb-8 pb-6 border-b border-gray-100 dark:border-gray-800">
-  <div class="flex items-center justify-between mb-3">
-    <div class="flex items-center gap-4">
-      <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Activity</h2>
-      <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-        <% total = @now_strip[:success_today] + @now_strip[:errors_today] %>
-        <span><span class="font-medium text-gray-900 dark:text-gray-100"><%= number_with_delimiter(total) %></span> runs</span>
-        <span class="text-gray-300 dark:text-gray-600">·</span>
-        <span class="<%= @now_strip[:errors_today] > 0 ? 'text-red-600 dark:text-red-400' : '' %>">
-          <span class="font-medium <%= @now_strip[:errors_today] > 0 ? '' : 'text-gray-900 dark:text-gray-100' %>"><%= @now_strip[:errors_today] %></span> errors<% if total > 0 && @now_strip[:errors_today] > 0 %> <span class="text-gray-400">(<%= (@now_strip[:errors_today].to_f / total * 100).round(1) %>%)</span><% end %>
-        </span>
-        <span class="text-gray-300 dark:text-gray-600">·</span>
-        <span><span class="font-medium text-gray-900 dark:text-gray-100">$<%= number_with_precision(@now_strip[:cost_today], precision: 2) %></span></span>
-      </div>
-    </div>
-    <div class="flex text-sm">
-      <%= link_to "Today", ruby_llm_agents.root_path(range: "today"),
-          class: "px-2 py-1 rounded #{@selected_range == 'today' ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-medium' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'}" %>
-      <%= link_to "7d", ruby_llm_agents.root_path(range: "7d"),
-          class: "px-2 py-1 rounded #{@selected_range == '7d' ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-medium' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'}" %>
-      <%= link_to "30d", ruby_llm_agents.root_path(range: "30d"),
-          class: "px-2 py-1 rounded #{@selected_range == '30d' ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-medium' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'}" %>
+<!-- Stats Strip + Range Selector -->
+<div class="flex items-center justify-between mb-2">
+  <div class="flex items-center gap-4">
+    <h1 class="text-[10px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-widest font-mono">overview</h1>
+    <div class="flex items-center gap-1.5 font-mono text-xs text-gray-400 dark:text-gray-500">
+      <% total = @now_strip[:success_today] + @now_strip[:errors_today] %>
+      <span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(total) %></span> runs
+      <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+      <span class="<%= @now_strip[:errors_today] > 0 ? 'text-red-500' : 'text-gray-800 dark:text-gray-200' %>"><%= @now_strip[:errors_today] %></span> errors<% if total > 0 && @now_strip[:errors_today] > 0 %> <span class="text-gray-300 dark:text-gray-600">(<%= (@now_strip[:errors_today].to_f / total * 100).round(1) %>%)</span><% end %>
+      <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+      <span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(@now_strip[:cost_today], precision: 2) %></span>
     </div>
   </div>
-
-  <div id="activity-chart" style="width: 100%; height: 220px;"></div>
-
-  <script>
-    (function() {
-      const range = '<%= @selected_range %>';
-      const chartUrl = '<%= ruby_llm_agents.chart_data_path %>?range=' + range;
-      const hourMs = 3600000;
-      const dayMs = 24 * hourMs;
-
-      function getTimeRangeMs(range) {
-        if (range === 'today') return dayMs;
-        if (range === '7d') return 7 * dayMs;
-        if (range === '30d') return 30 * dayMs;
-        return dayMs;
-      }
-
-      function convertToDatetimePoints(data, range) {
-        const now = Date.now();
-        const numPoints = data.length;
-        return data.map((val, i) => [
-          now - (numPoints - 1 - i) * (range === 'today' ? hourMs : dayMs),
-          val
-        ]);
-      }
-
-      function initChart() {
-        fetch(chartUrl)
-          .then(res => res.json())
-          .then(data => {
-            const timeRange = getTimeRangeMs(range);
-            const dateFormat = range === 'today' ? '%H:%M' : '%b %d';
-            const now = Date.now();
-
-            Highcharts.chart('activity-chart', {
-              chart: { type: 'areaspline', backgroundColor: 'transparent', spacing: [5, 0, 5, 0] },
-              title: { text: null },
-              xAxis: {
-                type: 'datetime',
-                min: now - timeRange,
-                max: now,
-                labels: { style: { color: '#9CA3AF', fontSize: '10px' }, format: '{value:' + dateFormat + '}' },
-                lineColor: 'transparent',
-                tickLength: 0
-              },
-              yAxis: {
-                title: { text: null },
-                min: 0,
-                allowDecimals: false,
-                labels: { style: { color: '#9CA3AF', fontSize: '10px' } },
-                gridLineColor: 'rgba(156, 163, 175, 0.1)'
-              },
-              legend: { enabled: false },
-              credits: { enabled: false },
-              tooltip: {
-                backgroundColor: 'rgba(17, 24, 39, 0.9)',
-                borderColor: 'transparent',
-                borderRadius: 4,
-                style: { color: '#F3F4F6', fontSize: '11px' },
-                shared: true,
-                formatter: function() {
-                  let html = '<b>' + Highcharts.dateFormat(dateFormat, this.x) + '</b>';
-                  this.points.forEach(p => html += '<br/>' + p.series.name + ': ' + p.y);
-                  return html;
-                }
-              },
-              plotOptions: {
-                areaspline: {
-                  stacking: 'normal',
-                  lineWidth: 1.5,
-                  marker: { enabled: false, states: { hover: { enabled: true, radius: 3 } } }
-                }
-              },
-              series: [
-                {
-                  name: 'Errors',
-                  data: convertToDatetimePoints(data.series[1].data, range),
-                  color: '#EF4444',
-                  fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, 'rgba(239, 68, 68, 0.15)'], [1, 'rgba(239, 68, 68, 0)']] }
-                },
-                {
-                  name: 'Success',
-                  data: convertToDatetimePoints(data.series[0].data, range),
-                  color: '#10B981',
-                  fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, 'rgba(16, 185, 129, 0.15)'], [1, 'rgba(16, 185, 129, 0)']] }
-                }
-              ]
-            });
-          })
-          .catch(err => console.log('[RubyLLM::Agents] Chart error:', err));
-      }
-
-      document.readyState === 'loading'
-        ? document.addEventListener('DOMContentLoaded', initChart)
-        : initChart();
-    })();
-  </script>
+  <div class="flex font-mono text-xs gap-0.5">
+    <%= link_to "today", ruby_llm_agents.root_path(range: "today"),
+        class: "px-2 py-0.5 #{@selected_range == 'today' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}" %>
+    <%= link_to "7d", ruby_llm_agents.root_path(range: "7d"),
+        class: "px-2 py-0.5 #{@selected_range == '7d' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}" %>
+    <%= link_to "30d", ruby_llm_agents.root_path(range: "30d"),
+        class: "px-2 py-0.5 #{@selected_range == '30d' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}" %>
+  </div>
 </div>
+
+<!-- Activity Chart -->
+<div id="activity-chart" style="width: 100%; height: 180px;"></div>
+
+<script>
+  (function() {
+    const range = '<%= @selected_range %>';
+    const chartUrl = '<%= ruby_llm_agents.chart_data_path %>?range=' + range;
+    const hourMs = 3600000;
+    const dayMs = 24 * hourMs;
+
+    function getTimeRangeMs(r) {
+      if (r === 'today') return dayMs;
+      if (r === '7d') return 7 * dayMs;
+      return 30 * dayMs;
+    }
+
+    function toDatetimePoints(data, r) {
+      const now = Date.now();
+      const step = r === 'today' ? hourMs : dayMs;
+      return data.map((val, i) => [now - (data.length - 1 - i) * step, val]);
+    }
+
+    function initChart() {
+      fetch(chartUrl)
+        .then(res => res.json())
+        .then(data => {
+          const now = Date.now();
+          const fmt = range === 'today' ? '%H:%M' : '%b %d';
+
+          Highcharts.chart('activity-chart', {
+            chart: { type: 'areaspline', backgroundColor: 'transparent', spacing: [5, 0, 0, 0] },
+            title: { text: null },
+            xAxis: {
+              type: 'datetime',
+              min: now - getTimeRangeMs(range),
+              max: now,
+              labels: { style: { color: '#6B7280', fontSize: '9px', fontFamily: 'ui-monospace, monospace' }, format: '{value:' + fmt + '}' },
+              lineColor: 'transparent',
+              tickLength: 0,
+              gridLineWidth: 0
+            },
+            yAxis: {
+              title: { text: null },
+              min: 0,
+              allowDecimals: false,
+              labels: { style: { color: '#6B7280', fontSize: '9px', fontFamily: 'ui-monospace, monospace' } },
+              gridLineColor: 'rgba(107, 114, 128, 0.08)'
+            },
+            legend: { enabled: false },
+            credits: { enabled: false },
+            tooltip: {
+              backgroundColor: 'rgba(0, 0, 0, 0.85)',
+              borderColor: 'transparent',
+              borderRadius: 3,
+              style: { color: '#E5E7EB', fontSize: '10px', fontFamily: 'ui-monospace, monospace' },
+              shared: true,
+              formatter: function() {
+                let html = '<span style="color:#9CA3AF">' + Highcharts.dateFormat(fmt, this.x) + '</span>';
+                this.points.forEach(p => html += '<br/>' + p.series.name + ': <b>' + p.y + '</b>');
+                return html;
+              }
+            },
+            plotOptions: {
+              areaspline: {
+                stacking: 'normal',
+                lineWidth: 1.5,
+                marker: { enabled: false, states: { hover: { enabled: true, radius: 2 } } }
+              }
+            },
+            series: [
+              {
+                name: 'errors',
+                data: toDatetimePoints(data.series[1].data, range),
+                color: '#EF4444',
+                fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, 'rgba(239, 68, 68, 0.08)'], [1, 'rgba(239, 68, 68, 0)']] }
+              },
+              {
+                name: 'success',
+                data: toDatetimePoints(data.series[0].data, range),
+                color: '#10B981',
+                fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, 'rgba(16, 185, 129, 0.08)'], [1, 'rgba(16, 185, 129, 0)']] }
+              }
+            ]
+          });
+        })
+        .catch(err => console.log('[RubyLLM::Agents] Chart error:', err));
+    }
+
+    document.readyState === 'loading'
+      ? document.addEventListener('DOMContentLoaded', initChart)
+      : initChart();
+  })();
+</script>
 
 <!-- Tenant Budget (when viewing specific tenant) -->
 <%= render partial: "ruby_llm/agents/dashboard/tenant_budget", locals: { tenant_budget: @tenant_budget } %>
 
-<!-- Recent Activity -->
-<div class="mb-8 pb-6 border-b border-gray-100 dark:border-gray-800">
-  <div class="flex items-center justify-between mb-2">
-    <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Recent Activity</h2>
-    <%= link_to "View All →", ruby_llm_agents.executions_path, class: "text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100" %>
-  </div>
-
-  <% if @recent_executions.any? %>
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="text-left text-xs text-gray-400 dark:text-gray-500">
-          <th class="py-2 font-medium">Agent</th>
-          <th class="py-2 font-medium">Status</th>
-          <th class="py-2 font-medium text-right">Duration</th>
-          <th class="py-2 font-medium text-right">When</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @recent_executions.first(5).each do |execution| %>
-          <tr class="border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
-              onclick="window.location='<%= ruby_llm_agents.execution_path(execution) %>'"
-              <% if execution.status_error? && execution.error_message.present? %>title="<%= execution.error_class %>: <%= execution.error_message.truncate(100) %>"<% end %>>
-            <td class="py-2.5 font-medium text-gray-900 dark:text-gray-100">
-              <%= execution.agent_type.gsub(/Agent$/, '') %>
-            </td>
-            <td class="py-2.5">
-              <%= render "ruby_llm/agents/shared/status_badge", status: execution.status, size: :sm %>
-            </td>
-            <td class="py-2.5 text-right text-gray-500 dark:text-gray-400">
-              <% if execution.status_running? %>
-                <span class="text-blue-500 animate-pulse">...</span>
-              <% else %>
-                <%= execution.duration_ms ? format_duration_ms(execution.duration_ms) : '-' %>
-              <% end %>
-            </td>
-            <td class="py-2.5 text-right text-gray-400 dark:text-gray-500">
-              <%= time_ago_in_words(execution.created_at) %>
-            </td>
-          </tr>
-        <% end %>
-      </tbody>
-    </table>
-  <% else %>
-    <p class="py-4 text-gray-400 dark:text-gray-500 text-sm">No executions yet</p>
-  <% end %>
+<!-- ── recent ──────────────────────────────── -->
+<div class="flex items-center gap-3 mt-8 mb-3">
+  <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">recent</span>
+  <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+  <%= link_to "all →", ruby_llm_agents.executions_path, class: "text-[10px] font-mono text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400" %>
 </div>
 
-<!-- Performance + Top Errors -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 pb-6 border-b border-gray-100 dark:border-gray-800">
-  <!-- Performance -->
+<% if @recent_executions.any? %>
+  <div class="font-mono text-xs space-y-px">
+    <% @recent_executions.first(5).each do |execution| %>
+      <div class="group flex items-center gap-3 py-1.5 px-2 -mx-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer"
+           onclick="window.location='<%= ruby_llm_agents.execution_path(execution) %>'">
+        <span class="text-gray-300 dark:text-gray-700">▸</span>
+        <span class="w-28 truncate text-gray-900 dark:text-gray-200"><%= execution.agent_type.gsub(/Agent$/, '') %></span>
+        <%# Status dot %>
+        <% dot_color = if execution.status_running?
+             'bg-blue-500 animate-pulse'
+           elsif execution.status_error?
+             'bg-red-500'
+           elsif execution.status.to_s == 'timeout'
+             'bg-yellow-500'
+           else
+             'bg-green-500'
+           end %>
+        <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= dot_color %>"></span>
+        <%# Duration %>
+        <span class="w-14 text-right text-gray-500 dark:text-gray-400">
+          <% if execution.status_running? %>
+            <span class="text-blue-500 animate-pulse">...</span>
+          <% else %>
+            <%= execution.duration_ms ? format_duration_ms(execution.duration_ms) : '—' %>
+          <% end %>
+        </span>
+        <%# Cost %>
+        <span class="w-16 text-right text-gray-500 dark:text-gray-400 hidden sm:inline">$<%= number_with_precision(execution.total_cost.to_f, precision: 4) %></span>
+        <%# Model %>
+        <span class="flex-1 truncate text-gray-400 dark:text-gray-600 hidden md:inline"><%= execution.model_id.to_s.split('/').last %></span>
+        <%# Time ago %>
+        <span class="text-gray-400 dark:text-gray-600 text-right whitespace-nowrap"><%= time_ago_in_words(execution.created_at) %></span>
+      </div>
+      <% if execution.status_error? && execution.error_class.present? %>
+        <div class="flex items-center gap-1 pl-7 py-0.5 text-red-400 dark:text-red-500/70 text-xs font-mono">
+          <span class="text-gray-300 dark:text-gray-700">└</span>
+          <span class="truncate"><%= execution.error_class.to_s.split("::").last %><%= ": #{execution.error_message.truncate(60)}" if execution.error_message.present? %></span>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+<% else %>
+  <div class="font-mono text-xs text-gray-400 dark:text-gray-600 py-4 px-2">no activity yet</div>
+<% end %>
+
+<!-- ── agents + errors ──────────────────────── -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+  <!-- Agents -->
   <div>
-    <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Performance</h2>
+    <div class="flex items-center gap-3 mb-3">
+      <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">agents</span>
+      <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+    </div>
     <%
       all_stats = [@agent_stats, @embedder_stats, @transcriber_stats, @speaker_stats, @image_generator_stats]
         .flatten.compact.select { |a| a[:executions].to_i > 0 }.sort_by { |a| -a[:executions].to_i }.first(8)
     %>
     <% if all_stats.any? %>
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-left text-xs text-gray-400 dark:text-gray-500">
-            <th class="py-2 font-medium">Agent</th>
-            <th class="py-2 font-medium text-right">Runs</th>
-            <th class="py-2 font-medium text-right">Cost</th>
-            <th class="py-2 font-medium text-right">Success</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% all_stats.each do |item| %>
-            <tr class="border-t border-gray-100 dark:border-gray-800">
-              <td class="py-2 text-gray-900 dark:text-gray-100 truncate max-w-[140px]"><%= item[:agent_type].to_s.demodulize %></td>
-              <td class="py-2 text-right text-gray-500 dark:text-gray-400"><%= number_with_delimiter(item[:executions]) %></td>
-              <td class="py-2 text-right text-gray-500 dark:text-gray-400">$<%= number_with_precision(item[:total_cost], precision: 2) %></td>
-              <td class="py-2 text-right">
-                <span class="<%= item[:success_rate] >= 95 ? 'text-green-600 dark:text-green-400' : item[:success_rate] >= 80 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400' %>"><%= item[:success_rate].round %>%</span>
-              </td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
+      <div class="font-mono text-xs space-y-px">
+        <% all_stats.each do |item| %>
+          <div class="flex items-center gap-3 py-1.5 px-2 -mx-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50">
+            <span class="w-32 truncate text-gray-900 dark:text-gray-200"><%= item[:agent_type].to_s.demodulize %></span>
+            <span class="text-gray-500 dark:text-gray-400"><%= number_with_delimiter(item[:executions]) %><span class="text-gray-400 dark:text-gray-600">r</span></span>
+            <span class="text-gray-500 dark:text-gray-400 hidden sm:inline">$<%= number_with_precision(item[:total_cost], precision: 2) %></span>
+            <span class="ml-auto <%= item[:success_rate] >= 95 ? 'text-green-500' : item[:success_rate] >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= item[:success_rate].round %>%</span>
+          </div>
+        <% end %>
+      </div>
     <% else %>
-      <p class="py-4 text-gray-400 dark:text-gray-500 text-sm">No data yet</p>
+      <div class="font-mono text-xs text-gray-400 dark:text-gray-600 py-2 px-2">&mdash;</div>
     <% end %>
   </div>
 
-  <!-- Top Errors -->
+  <!-- Errors -->
   <div>
-    <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Top Errors</h2>
+    <div class="flex items-center gap-3 mb-3">
+      <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">errors</span>
+      <% if @top_errors.any? %><span class="text-[10px] font-mono text-red-400 dark:text-red-500/70">(<%= @top_errors.sum { |e| e[:count] } %>)</span><% end %>
+      <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+    </div>
     <% if @top_errors.any? %>
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-left text-xs text-gray-400 dark:text-gray-500">
-            <th class="py-2 font-medium">Error</th>
-            <th class="py-2 font-medium text-right">Count</th>
-            <th class="py-2 font-medium text-right">Last seen</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @top_errors.first(5).each do |error| %>
-            <tr class="border-t border-gray-100 dark:border-gray-800">
-              <td class="py-2 text-gray-900 dark:text-gray-100 truncate max-w-[180px]" title="<%= error[:error_class] %>"><%= error[:error_class].to_s.split("::").last %></td>
-              <td class="py-2 text-right">
-                <span class="text-red-600 dark:text-red-400 font-medium"><%= error[:count] %></span>
-                <span class="text-gray-400 text-xs ml-1">(<%= error[:percentage] %>%)</span>
-              </td>
-              <td class="py-2 text-right text-gray-400 dark:text-gray-500"><%= error[:last_seen] ? time_ago_in_words(error[:last_seen]) : '-' %></td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
+      <div class="font-mono text-xs space-y-px">
+        <% @top_errors.first(5).each do |error| %>
+          <div class="flex items-center gap-3 py-1.5 px-2 -mx-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0"></span>
+            <span class="flex-1 truncate text-gray-900 dark:text-gray-200"><%= error[:error_class].to_s.split("::").last %></span>
+            <span class="text-red-500 font-medium"><%= error[:count] %>&times;</span>
+            <span class="text-gray-400 dark:text-gray-600 whitespace-nowrap"><%= error[:last_seen] ? time_ago_in_words(error[:last_seen]) : '—' %></span>
+          </div>
+        <% end %>
+      </div>
     <% else %>
-      <p class="py-4 text-green-600 dark:text-green-400 text-sm">✓ No errors</p>
+      <div class="font-mono text-xs text-green-500/80 py-2 px-2 flex items-center gap-2">
+        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> none
+      </div>
     <% end %>
   </div>
 </div>
 
-<!-- Models -->
-<div class="mb-6">
-  <h2 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Models</h2>
+<!-- ── models ──────────────────────────────── -->
+<div class="mt-8">
+  <div class="flex items-center gap-3 mb-3">
+    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">models</span>
+    <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+  </div>
   <% if @model_stats.any? %>
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="text-left text-xs text-gray-400 dark:text-gray-500">
-          <th class="py-2 font-medium">Model</th>
-          <th class="py-2 font-medium text-right">Runs</th>
-          <th class="py-2 font-medium text-right">$/1K tok</th>
-          <th class="py-2 font-medium text-right">Avg time</th>
-          <th class="py-2 font-medium text-right">Success</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @model_stats.first(6).each do |model| %>
-          <tr class="border-t border-gray-100 dark:border-gray-800">
-            <td class="py-2 font-mono text-xs text-gray-900 dark:text-gray-100 truncate max-w-[140px]" title="<%= model[:model_id] %>"><%= model[:model_id].to_s.split('/').last.truncate(24) %></td>
-            <td class="py-2 text-right text-gray-500 dark:text-gray-400"><%= number_with_delimiter(model[:executions]) %></td>
-            <td class="py-2 text-right text-gray-500 dark:text-gray-400">$<%= number_with_precision(model[:cost_per_1k_tokens], precision: 4) %></td>
-            <td class="py-2 text-right text-gray-500 dark:text-gray-400"><%= format_duration_ms(model[:avg_duration_ms]) %></td>
-            <td class="py-2 text-right">
-              <span class="<%= model[:success_rate] >= 95 ? 'text-green-600 dark:text-green-400' : model[:success_rate] >= 80 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400' %>"><%= model[:success_rate].round %>%</span>
-            </td>
-          </tr>
-        <% end %>
-      </tbody>
-    </table>
+    <div class="font-mono text-xs space-y-px">
+      <% @model_stats.first(6).each do |model| %>
+        <div class="flex items-center gap-3 py-1.5 px-2 -mx-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50">
+          <span class="w-40 truncate text-gray-900 dark:text-gray-200"><%= model[:model_id].to_s.split('/').last.truncate(28) %></span>
+          <span class="text-gray-500 dark:text-gray-400"><%= number_with_delimiter(model[:executions]) %><span class="text-gray-400 dark:text-gray-600">r</span></span>
+          <span class="text-gray-500 dark:text-gray-400 hidden sm:inline">$<%= number_with_precision(model[:total_cost], precision: 2) %></span>
+          <span class="text-gray-500 dark:text-gray-400 hidden md:inline"><%= format_duration_ms(model[:avg_duration_ms]) %></span>
+          <span class="ml-auto <%= model[:success_rate] >= 95 ? 'text-green-500' : model[:success_rate] >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= model[:success_rate].round %>%</span>
+        </div>
+      <% end %>
+    </div>
   <% else %>
-    <p class="py-4 text-gray-400 dark:text-gray-500 text-sm">No model data yet</p>
+    <div class="font-mono text-xs text-gray-400 dark:text-gray-600 py-2 px-2">&mdash;</div>
   <% end %>
 </div>
