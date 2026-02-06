@@ -1,3 +1,14 @@
+<%
+  sc = @sort_params[:column]
+  sd = @sort_params[:direction]
+  sort_url = ->(col) {
+    dir = (col == sc && sd == "asc") ? "desc" : "asc"
+    url_for(request.query_parameters.merge(sort: col, direction: dir))
+  }
+  sort_active = ->(col) { col == sc ? "text-gray-600 dark:text-gray-300" : "" }
+  sort_arrow = ->(col) { col == sc ? (sd == "asc" ? " ↑" : " ↓") : "" }
+%>
+
 <!-- ── tenants ──────────────────────────── -->
 <div class="flex items-center gap-3 mb-4">
   <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">tenants</span>
@@ -6,17 +17,40 @@
     <%= render "ruby_llm/agents/shared/doc_link" %>
   </div>
   <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+
+  <!-- Search -->
+  <%= form_with url: tenants_path, method: :get, class: "flex items-center", data: { turbo: false } do %>
+    <% request.query_parameters.except("q").each do |key, value| %>
+      <input type="hidden" name="<%= key %>" value="<%= value %>">
+    <% end %>
+    <input type="text"
+           name="q"
+           value="<%= @search_query %>"
+           placeholder="search tenants…"
+           class="w-40 px-2 py-0.5 bg-transparent border border-gray-200 dark:border-gray-800 rounded text-xs font-mono text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 focus:border-gray-400 dark:focus:border-gray-600"
+           autocomplete="off">
+  <% end %>
 </div>
 
 <% if @tenants.empty? %>
-  <div class="font-mono text-xs text-gray-400 dark:text-gray-600 py-4 px-2">no tenants configured</div>
+  <div class="font-mono text-xs text-gray-400 dark:text-gray-600 py-4 px-2">
+    <% if @search_query.present? %>
+      no tenants matching "<%= @search_query %>"
+    <% else %>
+      no tenants configured
+    <% end %>
+  </div>
 <% else %>
   <!-- Column headers -->
   <div class="flex items-center gap-3 px-2 -mx-2 font-mono text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider mb-1">
-    <span class="flex-[2] min-w-0">name</span>
-    <span class="w-20 flex-shrink-0 text-right hidden sm:block">daily</span>
-    <span class="w-20 flex-shrink-0 text-right hidden sm:block">monthly</span>
-    <span class="w-16 flex-shrink-0 hidden md:block">enforcement</span>
+    <%= link_to "name#{sort_arrow.call('name')}".html_safe, sort_url.call("name"),
+        class: "flex-[2] min-w-0 hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('name')}" %>
+    <%= link_to "daily#{sort_arrow.call('daily_limit')}".html_safe, sort_url.call("daily_limit"),
+        class: "w-20 flex-shrink-0 text-right hidden sm:block hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('daily_limit')}" %>
+    <%= link_to "monthly#{sort_arrow.call('monthly_limit')}".html_safe, sort_url.call("monthly_limit"),
+        class: "w-20 flex-shrink-0 text-right hidden sm:block hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('monthly_limit')}" %>
+    <%= link_to "enforcement#{sort_arrow.call('enforcement')}".html_safe, sort_url.call("enforcement"),
+        class: "w-16 flex-shrink-0 hidden md:block hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('enforcement')}" %>
     <span class="w-16 flex-shrink-0 text-right hidden md:block">cost</span>
     <span class="w-24 flex-shrink-0 text-right">last run</span>
   </div>
