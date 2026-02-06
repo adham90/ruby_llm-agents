@@ -4,7 +4,7 @@
 </nav>
 
 <!-- ── agent header ──────────────── -->
-<div class="flex items-center gap-3 mb-3">
+<div class="flex items-center gap-3 mb-1.5">
   <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono"><%= @agent_type.gsub(/Agent$/, '') %></span>
   <div class="font-mono text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1.5">
     <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= @agent_active ? 'bg-green-500' : 'bg-gray-400' %>"></span>
@@ -33,140 +33,84 @@
 </div>
 
 <% if @config && @config[:description].present? %>
-  <p class="font-mono text-xs text-gray-500 dark:text-gray-400 mb-3"><%= @config[:description] %></p>
+  <p class="font-mono text-xs text-gray-500 dark:text-gray-400 mb-4"><%= @config[:description] %></p>
 <% end %>
 
-<!-- Stats strip -->
+<!-- Stats -->
 <% success_rate = @stats[:success_rate] || 0 %>
-<div class="flex flex-wrap items-center gap-x-1.5 gap-y-1 font-mono text-xs text-gray-400 dark:text-gray-500 mb-2">
-  <span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats[:count]) %></span> runs
-  <span class="text-gray-300 dark:text-gray-700">&middot;</span>
-  <span class="<%= success_rate >= 95 ? 'text-green-500' : success_rate >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= success_rate %>%</span> ok
-  <span class="text-gray-300 dark:text-gray-700">&middot;</span>
-  <span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(@stats[:total_cost] || 0, precision: 4) %></span>
-  <span class="text-gray-300 dark:text-gray-700">&middot;</span>
-  <span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats[:total_tokens] || 0) %></span> tok
-  <span class="text-gray-300 dark:text-gray-700">&middot;</span>
-  <span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats[:avg_duration_ms] || 0) %></span>ms avg
-  <span class="text-gray-300 dark:text-gray-700">&middot;</span>
-  <span class="text-gray-800 dark:text-gray-200"><%= @cache_hit_rate %>%</span> cache
+<div class="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-gray-400 dark:text-gray-500 mb-2">
+  <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats[:count]) %></span> runs</span>
+  <span class="<%= success_rate >= 95 ? 'text-green-500' : success_rate >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= success_rate %>% ok</span>
+  <span><span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(@stats[:total_cost] || 0, precision: 4) %></span> cost</span>
+  <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats[:total_tokens] || 0) %></span> tok</span>
+  <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats[:avg_duration_ms] || 0) %></span>ms avg</span>
+  <span><span class="text-gray-800 dark:text-gray-200"><%= @cache_hit_rate %>%</span> cache</span>
 </div>
 
-<!-- Status distribution -->
-<div class="flex items-center gap-3 font-mono text-xs text-gray-400 dark:text-gray-500">
+<!-- Status + finish reasons -->
+<div class="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-gray-400 dark:text-gray-500">
   <% status_colors = { "success" => "bg-green-500", "error" => "bg-red-500", "timeout" => "bg-yellow-500", "running" => "bg-blue-500" } %>
   <% @status_distribution.each do |status, count| %>
-    <div class="flex items-center gap-1">
+    <div class="flex items-center gap-1.5">
       <span class="w-1.5 h-1.5 rounded-full <%= status_colors[status] || 'bg-gray-400' %> <%= status == 'running' ? 'animate-pulse' : '' %>"></span>
       <span><%= number_with_delimiter(count) %> <%= status %></span>
     </div>
   <% end %>
-</div>
-
-<!-- Charts -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-  <div>
-    <span class="font-mono text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider">executions (30d)</span>
-    <div id="executions-chart" style="height: 180px;"></div>
-  </div>
-  <div>
-    <span class="font-mono text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider">cost (30d)</span>
-    <div id="cost-chart" style="height: 180px;"></div>
-  </div>
-</div>
-
-<script>
-(function() {
-  const trendData = <%= raw @trend_data.to_json %>;
-  const dayMs = 86400000;
-  const now = Date.now();
-  const fmt = '%b %d';
-  const toPoints = (data, fn) => data.map((d, i) => [now - (data.length - 1 - i) * dayMs, fn(d)]);
-
-  Highcharts.chart('executions-chart', {
-    chart: { type: 'areaspline', backgroundColor: 'transparent', spacing: [5, 0, 0, 0] },
-    title: { text: null },
-    legend: { enabled: false },
-    credits: { enabled: false },
-    xAxis: {
-      type: 'datetime',
-      labels: { style: { color: '#6B7280', fontSize: '9px', fontFamily: 'ui-monospace, monospace' }, format: '{value:' + fmt + '}' },
-      lineColor: 'transparent', tickLength: 0, gridLineWidth: 0
-    },
-    yAxis: {
-      title: { text: null }, min: 0, allowDecimals: false,
-      labels: { style: { color: '#6B7280', fontSize: '9px', fontFamily: 'ui-monospace, monospace' } },
-      gridLineColor: 'rgba(107, 114, 128, 0.08)'
-    },
-    tooltip: {
-      backgroundColor: 'rgba(0, 0, 0, 0.85)', borderColor: 'transparent', borderRadius: 3,
-      style: { color: '#E5E7EB', fontSize: '10px', fontFamily: 'ui-monospace, monospace' },
-      shared: true,
-      formatter: function() {
-        var html = '<span style="color:#9CA3AF">' + Highcharts.dateFormat(fmt, this.x) + '</span>';
-        this.points.forEach(p => html += '<br>' + p.series.name + ': <b>' + p.y + '</b>');
-        return html;
-      }
-    },
-    plotOptions: { areaspline: { stacking: 'normal', lineWidth: 1.5, marker: { enabled: false, states: { hover: { enabled: true, radius: 2 } } } } },
-    series: [
-      { name: 'errors', data: toPoints(trendData, d => d.error_count || 0), color: '#EF4444', fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, 'rgba(239, 68, 68, 0.08)'], [1, 'rgba(239, 68, 68, 0)']] } },
-      { name: 'success', data: toPoints(trendData, d => d.count - (d.error_count || 0)), color: '#10B981', fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, 'rgba(16, 185, 129, 0.08)'], [1, 'rgba(16, 185, 129, 0)']] } }
-    ]
-  });
-
-  Highcharts.chart('cost-chart', {
-    chart: { type: 'spline', backgroundColor: 'transparent', spacing: [5, 0, 0, 0] },
-    title: { text: null },
-    legend: { enabled: false },
-    credits: { enabled: false },
-    xAxis: {
-      type: 'datetime',
-      labels: { style: { color: '#6B7280', fontSize: '9px', fontFamily: 'ui-monospace, monospace' }, format: '{value:' + fmt + '}' },
-      lineColor: 'transparent', tickLength: 0, gridLineWidth: 0
-    },
-    yAxis: {
-      title: { text: null }, min: 0,
-      labels: { style: { color: '#6B7280', fontSize: '9px', fontFamily: 'ui-monospace, monospace' }, format: '${value}' },
-      gridLineColor: 'rgba(107, 114, 128, 0.08)'
-    },
-    tooltip: {
-      backgroundColor: 'rgba(0, 0, 0, 0.85)', borderColor: 'transparent', borderRadius: 3,
-      style: { color: '#E5E7EB', fontSize: '10px', fontFamily: 'ui-monospace, monospace' },
-      valuePrefix: '$'
-    },
-    plotOptions: { spline: { lineWidth: 1.5, marker: { enabled: false, states: { hover: { enabled: true, radius: 2 } } } } },
-    series: [{ name: 'cost', data: toPoints(trendData, d => parseFloat(d.total_cost) || 0), color: '#10B981' }]
-  });
-})();
-</script>
-
-<!-- ── finish reasons ──────────────── -->
-<% if @finish_reason_distribution.present? && @finish_reason_distribution.any? %>
-  <div class="flex items-center gap-3 mt-8 mb-3">
-    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">finish reasons</span>
-    <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
-  </div>
-  <div class="flex flex-wrap gap-4 font-mono text-xs">
+  <% if @finish_reason_distribution.present? && @finish_reason_distribution.any? %>
+    <span class="text-gray-300 dark:text-gray-700">|</span>
     <% finish_colors = { 'stop' => 'bg-green-500', 'length' => 'bg-yellow-500', 'content_filter' => 'bg-red-500', 'tool_calls' => 'bg-blue-500' } %>
     <% @finish_reason_distribution.each do |reason, count| %>
       <div class="flex items-center gap-1.5">
         <span class="w-1.5 h-1.5 rounded-full <%= finish_colors[reason] || 'bg-gray-400' %>"></span>
-        <span class="text-gray-500 dark:text-gray-400"><%= reason || 'unknown' %></span>
-        <span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(count) %></span>
+        <span><%= number_with_delimiter(count) %> <%= reason || 'unknown' %></span>
       </div>
     <% end %>
+  <% end %>
+</div>
+
+<!-- Sparklines (30d) -->
+<%
+  sparkline_chars = %w[▁ ▂ ▃ ▄ ▅ ▆ ▇ █]
+  exec_values = @trend_data.map { |d| d["count"] || d[:count] || 0 }
+  cost_values = @trend_data.map { |d| (d["total_cost"] || d[:total_cost] || 0).to_f }
+  exec_max = exec_values.max.to_f
+  cost_max = cost_values.max.to_f
+
+  make_sparkline = ->(values, max_val) {
+    return "▁" * values.length if max_val == 0
+    values.map { |v| sparkline_chars[[(v.to_f / max_val * 7).round, 7].min] }.join
+  }
+
+  exec_spark = make_sparkline.call(exec_values, exec_max)
+  cost_spark = make_sparkline.call(cost_values, cost_max)
+  exec_total = exec_values.sum
+  cost_total = cost_values.sum
+%>
+<div class="flex items-center gap-3 mt-6 mb-2">
+  <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">30d</span>
+  <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+</div>
+<div class="flex flex-wrap gap-x-10 gap-y-2 font-mono text-xs">
+  <div class="flex items-center gap-3">
+    <span class="text-gray-400 dark:text-gray-600 w-16">executions</span>
+    <span class="text-green-500 leading-none" style="font-size: 14px; letter-spacing: -0.5px;"><%= exec_spark %></span>
+    <span class="text-gray-800 dark:text-gray-200"><%= exec_total %></span>
   </div>
-<% end %>
+  <div class="flex items-center gap-3">
+    <span class="text-gray-400 dark:text-gray-600 w-16">cost</span>
+    <span class="text-green-500 leading-none" style="font-size: 14px; letter-spacing: -0.5px;"><%= cost_spark %></span>
+    <span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(cost_total, precision: 4) %></span>
+  </div>
+</div>
 
 <!-- ── circuit breaker ──────────────── -->
 <% if @config && @agent_type_kind == "agent" && @circuit_breaker_status.present? %>
-  <div class="flex items-center gap-3 mt-8 mb-3">
+  <div class="flex items-center gap-3 mt-6 mb-3">
     <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">circuit breaker</span>
     <span class="font-mono text-[10px] text-gray-400 dark:text-gray-600">auto-refreshes 30s</span>
     <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
   </div>
-  <div class="font-mono text-xs space-y-px">
+  <div class="font-mono text-xs space-y-0.5">
     <% @circuit_breaker_status.each do |model_id, status| %>
       <div class="flex items-center gap-3 py-1.5 px-2 -mx-2">
         <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= status[:open] ? 'bg-red-500 animate-pulse' : 'bg-green-500' %>"></span>
@@ -189,7 +133,7 @@
 
 <!-- ── config ──────────────────────── -->
 <% if @config && @agent_type_kind %>
-  <div class="flex items-center gap-3 mt-8 mb-3">
+  <div class="flex items-center gap-3 mt-6 mb-3">
     <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">config</span>
     <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
   </div>
@@ -197,7 +141,7 @@
 <% end %>
 
 <!-- ── executions ──────────────────── -->
-<div class="flex items-center gap-3 mt-8 mb-3">
+<div class="flex items-center gap-3 mt-6 mb-3">
   <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">executions</span>
   <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
 </div>
@@ -271,12 +215,10 @@
         <% end %>
       <% end %>
 
-      <div class="ml-auto flex items-center gap-1.5 font-mono text-xs text-gray-400 dark:text-gray-500">
-        <span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@filter_stats[:total_count]) %></span> results
-        <span class="text-gray-300 dark:text-gray-700">&middot;</span>
-        <span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(@filter_stats[:total_cost] || 0, precision: 4) %></span>
-        <span class="text-gray-300 dark:text-gray-700">&middot;</span>
-        <span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@filter_stats[:total_tokens] || 0) %></span> tok
+      <div class="ml-auto flex items-center gap-3 font-mono text-xs text-gray-400 dark:text-gray-500">
+        <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@filter_stats[:total_count]) %></span> results</span>
+        <span><span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(@filter_stats[:total_cost] || 0, precision: 4) %></span></span>
+        <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@filter_stats[:total_tokens] || 0) %></span> tok</span>
       </div>
     </div>
   <% end %>
