@@ -131,50 +131,92 @@
   <% end %>
 <% end %>
 
-<!-- Sparklines (30d) -->
+<!-- 30d trend chart -->
 <%
-  sparkline_chars = %w[▁ ▂ ▃ ▄ ▅ ▆ ▇ █]
-  exec_values = @trend_data.map { |d| d["count"] || d[:count] || 0 }
-  cost_values = @trend_data.map { |d| (d["total_cost"] || d[:total_cost] || 0).to_f }
-  error_values = @trend_data.map { |d| d["error_count"] || d[:error_count] || 0 }
-  exec_max = exec_values.max.to_f
-  cost_max = cost_values.max.to_f
-  error_max = error_values.max.to_f
-  error_total = error_values.sum
-
-  make_sparkline = ->(values, max_val) {
-    return "▁" * values.length if max_val == 0
-    values.map { |v| sparkline_chars[[(v.to_f / max_val * 7).round, 7].min] }.join
-  }
-
-  exec_spark = make_sparkline.call(exec_values, exec_max)
-  cost_spark = make_sparkline.call(cost_values, cost_max)
-  exec_total = exec_values.sum
-  cost_total = cost_values.sum
+  trend_exec_total = @trend_data.sum { |d| d["count"] || d[:count] || 0 }
+  trend_cost_total = @trend_data.sum { |d| (d["total_cost"] || d[:total_cost] || 0).to_f }
+  trend_error_total = @trend_data.sum { |d| d["error_count"] || d[:error_count] || 0 }
 %>
 <div class="flex items-center gap-3 mt-6 mb-2">
   <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">30d</span>
   <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
 </div>
-<div class="flex flex-wrap gap-x-10 gap-y-2 font-mono text-xs">
-  <div class="flex items-center gap-3">
-    <span class="text-gray-400 dark:text-gray-600 w-16">executions</span>
-    <span class="text-green-500 leading-none" style="font-size: 14px; letter-spacing: -0.5px;"><%= exec_spark %></span>
-    <span class="text-gray-800 dark:text-gray-200"><%= exec_total %></span>
-  </div>
-  <div class="flex items-center gap-3">
-    <span class="text-gray-400 dark:text-gray-600 w-16">cost</span>
-    <span class="text-green-500 leading-none" style="font-size: 14px; letter-spacing: -0.5px;"><%= cost_spark %></span>
-    <span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(cost_total, precision: 4) %></span>
-  </div>
-  <% if error_total > 0 %>
-    <div class="flex items-center gap-3">
-      <span class="text-gray-400 dark:text-gray-600 w-16">errors</span>
-      <span class="text-red-500 leading-none" style="font-size: 14px; letter-spacing: -0.5px;"><%= make_sparkline.call(error_values, error_max) %></span>
-      <span class="text-gray-800 dark:text-gray-200"><%= error_total %></span>
-    </div>
-  <% end %>
+<div id="agent-trend-chart" style="width: 100%; height: 160px;"></div>
+<div class="flex flex-wrap gap-x-4 font-mono text-xs text-gray-400 dark:text-gray-500 mt-1">
+  <span>executions: <span class="text-gray-800 dark:text-gray-200"><%= trend_exec_total %></span></span>
+  <span>&middot;</span>
+  <span>cost: <span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(trend_cost_total, precision: 4) %></span></span>
+  <span>&middot;</span>
+  <span>errors: <span class="<%= trend_error_total > 0 ? 'text-red-500' : 'text-gray-800 dark:text-gray-200' %>"><%= trend_error_total %></span></span>
 </div>
+<script>
+(function() {
+  const trendData = <%= raw @trend_data.map { |d|
+    { date: d[:date] || d["date"], count: d[:count] || d["count"] || 0,
+      cost: (d[:total_cost] || d["total_cost"] || 0).to_f.round(6),
+      errors: d[:error_count] || d["error_count"] || 0 }
+  }.to_json %>;
+
+  const successData = trendData.map(d => [new Date(d.date).getTime(), d.count - d.errors]);
+  const errorData = trendData.map(d => [new Date(d.date).getTime(), d.errors]);
+
+  Highcharts.chart('agent-trend-chart', {
+    chart: { type: 'areaspline', backgroundColor: 'transparent', spacing: [5, 0, 0, 0] },
+    title: { text: null },
+    xAxis: {
+      type: 'datetime',
+      labels: { style: { color: '#6B7280', fontSize: '9px', fontFamily: 'ui-monospace, monospace' }, format: '{value:%b %d}' },
+      lineColor: 'transparent',
+      tickLength: 0,
+      gridLineWidth: 0
+    },
+    yAxis: {
+      title: { text: null },
+      min: 0,
+      allowDecimals: false,
+      labels: { style: { color: '#6B7280', fontSize: '9px', fontFamily: 'ui-monospace, monospace' } },
+      gridLineColor: 'rgba(107, 114, 128, 0.08)'
+    },
+    legend: { enabled: false },
+    credits: { enabled: false },
+    tooltip: {
+      backgroundColor: 'rgba(0, 0, 0, 0.85)',
+      borderColor: 'transparent',
+      borderRadius: 3,
+      style: { color: '#E5E7EB', fontSize: '10px', fontFamily: 'ui-monospace, monospace' },
+      shared: true,
+      formatter: function() {
+        let html = '<span style="color:#9CA3AF">' + Highcharts.dateFormat('%b %d', this.x) + '</span>';
+        let cost = trendData.find(d => new Date(d.date).getTime() === this.x);
+        this.points.forEach(p => html += '<br/>' + p.series.name + ': <b>' + p.y + '</b>');
+        if (cost) html += '<br/>cost: <b>$' + cost.cost.toFixed(4) + '</b>';
+        return html;
+      }
+    },
+    plotOptions: {
+      areaspline: {
+        stacking: 'normal',
+        lineWidth: 1.5,
+        marker: { enabled: false, states: { hover: { enabled: true, radius: 2 } } }
+      }
+    },
+    series: [
+      {
+        name: 'errors',
+        data: errorData,
+        color: '#EF4444',
+        fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, 'rgba(239, 68, 68, 0.08)'], [1, 'rgba(239, 68, 68, 0)']] }
+      },
+      {
+        name: 'success',
+        data: successData,
+        color: '#10B981',
+        fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, 'rgba(16, 185, 129, 0.08)'], [1, 'rgba(16, 185, 129, 0)']] }
+      }
+    ]
+  });
+})();
+</script>
 
 <!-- ── circuit breaker ──────────────── -->
 <% if @config && @agent_type_kind == "agent" && @circuit_breaker_status.present? %>
