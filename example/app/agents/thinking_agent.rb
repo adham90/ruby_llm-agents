@@ -55,7 +55,6 @@
 #
 class ThinkingAgent < ApplicationAgent
   description 'Demonstrates extended thinking/reasoning support'
-  version '1.0'
 
   # Use a model that supports thinking
   # Claude Opus 4.5 is recommended for best thinking support

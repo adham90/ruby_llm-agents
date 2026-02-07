@@ -27,7 +27,6 @@
 module Audio
   class MeetingTranscriber < ApplicationTranscriber
     description 'Transcribes business meetings with high accuracy'
-    version '1.0'
 
     # Whisper-1 for reliable meeting transcription
     model 'whisper-1'

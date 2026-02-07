@@ -28,7 +28,6 @@
 module Audio
   class PodcastSpeaker < ApplicationSpeaker
     description 'Generates podcast-style audio for long-form content'
-    version '1.0'
 
     # Standard model for faster processing of long content
     model 'tts-1'

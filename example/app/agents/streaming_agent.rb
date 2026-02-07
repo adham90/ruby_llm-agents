@@ -24,7 +24,6 @@
 #
 class StreamingAgent < ApplicationAgent
   description 'Demonstrates streaming responses for real-time output'
-  version '1.0'
 
   model 'gpt-4o-mini'
   temperature 0.8 # Higher temperature for creative responses

@@ -359,6 +359,160 @@ module MigrationTestData
       result
     end
 
+    # Seed complete data with all v2.0.0 fields
+    # Uses ruby_llm_agents_tenants (not tenant_budgets), no agent_version/workflow columns,
+    # includes execution_details records
+    #
+    # @param count [Integer] Number of records to create
+    # @return [Hash] Created records grouped by table
+    def seed_v2_0_0_data(count: 3)
+      connection = ActiveRecord::Base.connection
+      result = { executions: [], tenants: [], execution_details: [] }
+
+      # Create tenants (renamed from tenant_budgets)
+      tenant_ids = %w[tenant_1 tenant_2 tenant_3]
+      tenant_ids.each_with_index do |tenant_id, i|
+        now = Time.current
+        tenant = {
+          tenant_id: tenant_id,
+          name: "Tenant #{i + 1}",
+          daily_limit: (i + 1) * 100.0,
+          monthly_limit: (i + 1) * 1000.0,
+          daily_token_limit: (i + 1) * 1_000_000,
+          monthly_token_limit: (i + 1) * 10_000_000,
+          per_agent_daily: { "TestAgent" => (i + 1) * 10.0 }.to_json,
+          per_agent_monthly: { "TestAgent" => (i + 1) * 100.0 }.to_json,
+          enforcement: %w[none soft hard][i],
+          inherit_global_defaults: i != 2,
+          active: true,
+          metadata: { plan: "tier_#{i + 1}" }.to_json,
+          created_at: now,
+          updated_at: now
+        }
+
+        columns = tenant.keys.join(", ")
+        placeholders = tenant.keys.map { "?" }.join(", ")
+
+        connection.execute(
+          ActiveRecord::Base.sanitize_sql_array([
+            "INSERT INTO ruby_llm_agents_tenants (#{columns}) VALUES (#{placeholders})",
+            *tenant.values
+          ])
+        )
+
+        tenant[:id] = connection.select_value("SELECT last_insert_rowid()")
+        result[:tenants] << tenant
+      end
+
+      # Create executions (no agent_version or workflow columns)
+      count.times do |i|
+        now = Time.current
+        started_at = now - rand(1..60).minutes
+        tenant_id = tenant_ids[i % tenant_ids.length]
+
+        record = {
+          agent_type: "V2Agent#{i}",
+          model_id: "gpt-4",
+          model_provider: "openai",
+          temperature: 0.7,
+          started_at: started_at,
+          completed_at: now,
+          duration_ms: rand(100..5000),
+          status: "success",
+          input_tokens: rand(100..1000),
+          output_tokens: rand(50..500),
+          total_tokens: rand(150..1500),
+          input_cost: rand(1..100) / 1000.0,
+          output_cost: rand(1..100) / 1000.0,
+          total_cost: rand(2..200) / 1000.0,
+          parameters: { test: true }.to_json,
+          response: { content: "Response #{i}" }.to_json,
+          metadata: { v2: true }.to_json,
+          error_class: nil,
+          error_message: nil,
+          streaming: true,
+          time_to_first_token_ms: rand(50..200),
+          finish_reason: "end_turn",
+          request_id: SecureRandom.uuid,
+          trace_id: SecureRandom.uuid,
+          span_id: SecureRandom.hex(8),
+          parent_execution_id: nil,
+          root_execution_id: nil,
+          fallback_reason: nil,
+          retryable: true,
+          rate_limited: false,
+          cache_hit: false,
+          response_cache_key: nil,
+          cached_at: nil,
+          cached_tokens: 0,
+          cache_creation_tokens: 0,
+          system_prompt: "System prompt #{i}",
+          user_prompt: "User prompt #{i}",
+          tool_calls: [].to_json,
+          tool_calls_count: 0,
+          routed_to: nil,
+          classification_result: nil,
+          attempts: [{ model: "gpt-4", status: "success" }].to_json,
+          attempts_count: 1,
+          chosen_model_id: "gpt-4",
+          fallback_chain: %w[gpt-4 gpt-3.5-turbo].to_json,
+          tenant_id: tenant_id,
+          messages_count: rand(1..10),
+          messages_summary: { first: { role: "user" }, last: { role: "assistant" } }.to_json,
+          created_at: now,
+          updated_at: now
+        }
+
+        columns = record.keys.join(", ")
+        placeholders = record.keys.map { "?" }.join(", ")
+
+        connection.execute(
+          ActiveRecord::Base.sanitize_sql_array([
+            "INSERT INTO ruby_llm_agents_executions (#{columns}) VALUES (#{placeholders})",
+            *record.values
+          ])
+        )
+
+        record[:id] = connection.select_value("SELECT last_insert_rowid()")
+        result[:executions] << record
+
+        # Create execution_details record
+        detail = {
+          execution_id: record[:id],
+          error_message: nil,
+          system_prompt: "System prompt #{i}",
+          user_prompt: "User prompt #{i}",
+          response: { content: "Response #{i}" }.to_json,
+          messages_summary: { first: { role: "user" }, last: { role: "assistant" } }.to_json,
+          tool_calls: [].to_json,
+          attempts: [{ model: "gpt-4", status: "success" }].to_json,
+          fallback_chain: %w[gpt-4 gpt-3.5-turbo].to_json,
+          parameters: { test: true }.to_json,
+          routed_to: nil,
+          classification_result: nil,
+          cached_at: nil,
+          cache_creation_tokens: 0,
+          created_at: now,
+          updated_at: now
+        }
+
+        detail_columns = detail.keys.join(", ")
+        detail_placeholders = detail.keys.map { "?" }.join(", ")
+
+        connection.execute(
+          ActiveRecord::Base.sanitize_sql_array([
+            "INSERT INTO ruby_llm_agents_execution_details (#{detail_columns}) VALUES (#{detail_placeholders})",
+            *detail.values
+          ])
+        )
+
+        detail[:id] = connection.select_value("SELECT last_insert_rowid()")
+        result[:execution_details] << detail
+      end
+
+      result
+    end
+
     # Seed execution hierarchy (parent/child relationships)
     # Requires v0.2.3+ schema for parent_execution_id
     #

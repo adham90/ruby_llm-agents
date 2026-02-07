@@ -32,7 +32,6 @@
 module Embedders
   class SearchEmbedder < ApplicationEmbedder
     description 'High-quality embeddings for semantic search'
-    version '1.0'
 
     # Use large model for highest quality
     model 'text-embedding-3-large'

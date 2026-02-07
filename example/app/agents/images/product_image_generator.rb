@@ -30,7 +30,6 @@
 module Images
   class ProductImageGenerator < ApplicationImageGenerator
     description 'Generates high-quality product images for e-commerce'
-    version '1.0'
 
     # DALL-E 3 for highest quality
     model 'gpt-image-1'

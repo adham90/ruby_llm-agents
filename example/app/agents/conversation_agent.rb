@@ -38,7 +38,6 @@
 #
 class ConversationAgent < ApplicationAgent
   description 'Demonstrates multi-turn conversation with message history'
-  version '1.0'
 
   model 'gpt-4o-mini'
   temperature 0.7

@@ -42,6 +42,21 @@ module MigrationHelpers
       :v0_4_0_messages_summary,
       :v0_4_0_tenant_name,
       :v0_4_0_token_limits
+    ],
+    "2.0.0" => [
+      :v0_1_0_base,
+      :v0_2_3_streaming_tracing_caching,
+      :v0_3_3_tool_calls,
+      :v0_4_0_reliability,
+      :v0_4_0_tenant_budgets,
+      :v0_4_0_tenant_id,
+      :v0_4_0_messages_summary,
+      :v0_4_0_tenant_name,
+      :v0_4_0_token_limits,
+      :v2_0_0_execution_details,
+      :v2_0_0_rename_tenants,
+      :v2_0_0_remove_agent_version,
+      :v2_0_0_remove_workflow_columns
     ]
   }.freeze
 
@@ -55,7 +70,11 @@ module MigrationHelpers
     :v0_4_0_tenant_id,
     :v0_4_0_messages_summary,
     :v0_4_0_tenant_name,
-    :v0_4_0_token_limits
+    :v0_4_0_token_limits,
+    :v2_0_0_execution_details,
+    :v2_0_0_rename_tenants,
+    :v2_0_0_remove_agent_version,
+    :v2_0_0_remove_workflow_columns
   ].freeze
 
   # Version-to-starting migration mapping
@@ -63,7 +82,8 @@ module MigrationHelpers
     "0.1.0" => 0,
     "0.2.3" => 2,
     "0.3.3" => 3,
-    "0.4.0" => 9
+    "0.4.0" => 9,
+    "2.0.0" => 13
   }.freeze
 
   included do
