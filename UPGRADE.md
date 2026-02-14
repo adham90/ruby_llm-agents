@@ -2,6 +2,206 @@
 
 > Reference guide for AI coding agents to assist with upgrades
 
+## Upgrading to v2.0.0
+
+### From v1.x
+
+v2.0.0 is a **major release with breaking changes**. The schema has been redesigned for performance and several subsystems have been removed.
+
+### Quick Reference
+
+| Aspect | Status |
+|--------|--------|
+| Schema | **Breaking** - Execution data split into two tables |
+| Workflows | **Removed** - Use dedicated workflow gems |
+| `version` DSL | **Removed** - Use `metadata` for traceability |
+| `ApiConfiguration` | **Removed** - Use environment variables |
+| Moderation/PII | **Removed** - Use `before_call`/`after_call` hooks |
+| `TenantBudget` | **Deprecated** - Use `Tenant` model |
+| Agent DSL | Unchanged (`app/agents/`, `ApplicationAgent`) |
+| `.call()` API | Unchanged |
+
+### Step 1: Update Gemfile
+
+```ruby
+# Before
+gem "ruby_llm-agents", "~> 1.3"
+
+# After
+gem "ruby_llm-agents", "~> 2.0"
+```
+
+```bash
+bundle update ruby_llm-agents
+```
+
+### Step 2: Run Database Migrations
+
+The upgrade generator handles all schema transitions automatically:
+
+```bash
+rails generate ruby_llm_agents:upgrade
+rails db:migrate
+```
+
+The generator will:
+- Create the `ruby_llm_agents_execution_details` table
+- Migrate data from old columns on `executions` to `execution_details`
+- Move niche columns (`time_to_first_token_ms`, `rate_limited`, `retryable`, `fallback_reason`, `span_id`, `response_cache_key`) to `metadata` JSON
+- Remove deprecated columns (`agent_version`, workflow columns, polymorphic tenant columns)
+- Rename `ruby_llm_agents_tenant_budgets` to `ruby_llm_agents_tenants` (if applicable)
+
+### Step 3: Remove Workflow Code
+
+Workflows have been removed entirely. Find and remove workflow usage:
+
+```bash
+grep -rn "Workflow" app/ --include="*.rb"
+grep -rn "workflow" app/ --include="*.rb"
+```
+
+Migrate to a dedicated workflow library (Temporal, Sidekiq, etc.) for orchestration needs.
+
+### Step 4: Remove `version` DSL Calls
+
+```bash
+grep -rn '^\s*version\s' app/agents/ --include="*.rb"
+```
+
+```ruby
+# Before
+class MyAgent < ApplicationAgent
+  version "1.2"
+  model "gpt-4o"
+end
+
+# After
+class MyAgent < ApplicationAgent
+  model "gpt-4o"
+end
+```
+
+### Step 5: Replace Moderation/PII with Hooks
+
+If you used built-in moderation or PII redaction, replace with `before_call`/`after_call` hooks:
+
+```ruby
+# Before
+class SafeAgent < ApplicationAgent
+  moderation do
+    enabled true
+    on_violation :block
+  end
+end
+
+# After
+class SafeAgent < ApplicationAgent
+  before_call :check_content
+
+  private
+
+  def check_content
+    # Your moderation logic here
+    raise "Content blocked" if harmful?(user_prompt)
+  end
+end
+```
+
+### Step 6: Replace ApiConfiguration
+
+If you stored API keys in the `ApiConfiguration` table, move them to environment variables or the `llm_tenant` DSL:
+
+```ruby
+# Environment variables (recommended)
+# Set OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.
+
+# Per-tenant API keys via LLMTenant DSL
+class Organization < ApplicationRecord
+  include RubyLLM::Agents::LLMTenant
+
+  llm_tenant(
+    id: :slug,
+    api_keys: {
+      openai: :openai_api_key,
+      anthropic: :anthropic_api_key
+    }
+  )
+end
+```
+
+### Step 7: Update TenantBudget References
+
+`TenantBudget` is now a deprecated alias for `Tenant`:
+
+```ruby
+# Before
+RubyLLM::Agents::TenantBudget.for_tenant("tenant_123")
+
+# After
+RubyLLM::Agents::Tenant.for("tenant_123")
+```
+
+### Step 8: Update Raw SQL Queries
+
+If you have raw SQL queries referencing columns that moved to `execution_details` or `metadata`:
+
+```ruby
+# Before - these columns are no longer on the executions table
+Execution.where("time_to_first_token_ms > ?", 1000)
+Execution.where(fallback_reason: "rate_limit")
+Execution.where("error_message LIKE ?", "%timeout%")
+
+# After - use metadata helpers or join with details
+Execution.streaming  # Use scopes where possible
+Execution.with_fallback  # Uses metadata_present("fallback_reason")
+Execution.joins(:detail).where("ruby_llm_agents_execution_details.error_message LIKE ?", "%timeout%")
+```
+
+### Step 9: Update `on_alert` Handlers
+
+The alert system has been simplified to a single `on_alert` handler:
+
+```ruby
+# config/initializers/ruby_llm_agents.rb
+RubyLLM::Agents.configure do |config|
+  config.on_alert = ->(alert) {
+    # Handle alerts (budget warnings, circuit breaker trips, etc.)
+    SlackNotifier.send(alert[:message])
+  }
+end
+```
+
+### Verification Checklist
+
+```bash
+# Check gem version
+bundle show ruby_llm-agents
+
+# Verify migrations applied
+rails db:migrate:status | grep ruby_llm
+
+# Test agent loading
+rails runner "puts ApplicationAgent.name"
+
+# Test an agent call
+rails runner "puts MyAgent.call(query: 'test').success?"
+
+# Run test suite
+bundle exec rspec
+```
+
+### New Features in v2.0.0
+
+- **`before_call` and `after_call` callbacks** - Agent-level hooks for custom pre/post processing
+- **Execution details table** - Split schema for better query performance
+- **Database-agnostic metadata queries** - `metadata_present`, `metadata_true`, `metadata_value` helpers
+- **Tenants table** - DB counter columns for efficient budget tracking
+- **Redesigned dashboard** - Compact layout with sortable columns
+
+See [CHANGELOG](CHANGELOG.md) for full details.
+
+---
+
 ## Upgrading to v1.1.0
 
 ### From v1.0.0
@@ -21,11 +221,9 @@ rails db:migrate
 
 #### New Features in v1.1.0
 
-- **Wait Steps** - Human-in-the-loop workflows with `wait`, `wait_until`, `wait_for`
-- **Sub-Workflows** - Compose workflows by nesting other workflows
-- **Iteration** - Process collections with `each:` option
-- **Notifications** - Slack, Email, Webhook notifications for approvals
 - **New Agents** - `SpecialistAgent` and `ValidatorAgent`
+
+> **Note:** Workflow features introduced in v1.1.0 (Wait Steps, Sub-Workflows, Iteration) have been removed in v2.0.0.
 
 See [CHANGELOG](CHANGELOG.md) for full details.
 
@@ -148,36 +346,6 @@ grep -rn "Generator\.call\|Analyzer\.call\|Pipeline\.call" app/ lib/ --include="
 
 ## New Features Available After Upgrade
 
-### Workflow DSL with Wait Steps (v1.1.0+)
-
-Build human-in-the-loop workflows:
-
-```ruby
-class ApprovalWorkflow < RubyLLM::Agents::Workflow
-  step :analyze, AnalyzerAgent
-
-  # Wait for human approval
-  wait_for :manager_approval,
-    timeout: 24.hours,
-    notify: [:slack, :email],
-    on_timeout: :skip_next
-
-  step :execute, ExecutorAgent
-end
-```
-
-### Sub-Workflows and Iteration (v1.1.0+)
-
-```ruby
-class BatchWorkflow < RubyLLM::Agents::Workflow
-  # Nest another workflow
-  step :preprocess, PreprocessWorkflow
-
-  # Iterate over collections
-  step :process, ProcessorAgent, each: ->(ctx) { ctx[:items] }
-end
-```
-
 ### Extended Thinking (Claude models)
 ```ruby
 class ReasoningAgent < ApplicationAgent
@@ -192,16 +360,6 @@ end
 result = ReasoningAgent.call(query: "Complex problem")
 result.thinking  # Access reasoning trace
 result.content   # Final answer
-```
-
-### Content Moderation
-```ruby
-class SafeAgent < ApplicationAgent
-  moderation do
-    enabled true
-    on_violation :block  # :warn, :log, :raise
-  end
-end
 ```
 
 ### Reliability Enhancements

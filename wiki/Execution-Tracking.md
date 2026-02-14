@@ -4,48 +4,75 @@ RubyLLM::Agents automatically logs every agent execution with comprehensive meta
 
 ## What's Tracked
 
-Every execution records:
+In v2.0, execution data is split across two tables for performance. The lean `executions` table is optimized for analytics queries, while large payloads live in `execution_details`.
+
+### Executions Table (analytics)
 
 | Field | Description |
 |-------|-------------|
 | `agent_type` | Agent class name |
+| `execution_type` | Type of execution (chat, embed, etc.) |
 | `model_id` | LLM model configured for agent |
 | `chosen_model_id` | Actual model used (may differ if fallback triggered) |
+| `model_provider` | Provider name |
 | `status` | success, error, timeout |
 | `input_tokens` | Tokens in the prompt |
 | `output_tokens` | Tokens in the response |
+| `total_tokens` | Sum of input and output tokens |
+| `cached_tokens` | Cached tokens count |
 | `input_cost` | Cost of input tokens |
 | `output_cost` | Cost of output tokens |
 | `total_cost` | Total execution cost |
 | `duration_ms` | Execution time |
-| `parameters` | Input parameters (redacted) |
-| `system_prompt` | System prompt (if persisted) |
-| `user_prompt` | User prompt (if persisted) |
-| `response` | LLM response (if persisted) |
-| `error_message` | Error details (if failed) |
-| `metadata` | Custom metadata |
+| `started_at` | Execution start time |
+| `completed_at` | Execution end time |
+| `temperature` | Temperature setting |
 | `streaming` | Whether streaming was used |
-| `time_to_first_token_ms` | TTFT (streaming only) |
-| `tool_calls` | Array of tool invocations |
-| `tool_calls_count` | Number of tools called |
-
-### Reliability Fields (v0.4.0+)
-
-| Field | Description |
-|-------|-------------|
-| `attempts` | JSON array of all attempt details |
-| `attempts_count` | Number of attempts made |
-| `fallback_chain` | Models attempted in order |
-| `fallback_reason` | Why fallback was triggered |
 | `cache_hit` | Whether response came from cache |
-| `retryable` | Whether error was retryable |
-| `rate_limited` | Whether rate limit was hit |
+| `finish_reason` | `stop`, `length`, `content_filter`, `tool_calls` |
+| `error_class` | Exception class if failed |
+| `attempts_count` | Number of attempts made |
+| `tool_calls_count` | Number of tools called |
+| `messages_count` | Number of messages in conversation |
+| `trace_id` | Distributed trace ID |
+| `request_id` | Request ID |
+| `tenant_id` | Tenant identifier (multi-tenancy) |
+| `parent_execution_id` | Parent execution (nested calls) |
+| `root_execution_id` | Root execution (nested calls) |
+| `metadata` | Custom metadata (JSON) |
 
-### Multi-Tenancy Fields (v0.4.0+)
+### Execution Details Table (payloads)
 
 | Field | Description |
 |-------|-------------|
-| `tenant_id` | Tenant identifier (when multi-tenancy enabled) |
+| `system_prompt` | System prompt used |
+| `user_prompt` | User prompt used |
+| `response` | LLM response data |
+| `error_message` | Error details (if failed) |
+| `parameters` | Input parameters (sanitized) |
+| `tool_calls` | Array of tool invocations |
+| `attempts` | JSON array of all attempt details |
+| `fallback_chain` | Models attempted in order |
+| `messages_summary` | Conversation messages summary |
+| `routed_to` | Routing destination |
+| `classification_result` | Classification output |
+| `cached_at` | When cached |
+| `cache_creation_tokens` | Tokens used for cache creation |
+
+> **Note:** Detail fields are transparently accessible on Execution instances via delegation. For example, `execution.error_message` works even though the data is stored in `execution_details`.
+
+### Metadata Fields
+
+These fields are stored in the `metadata` JSON column with getter/setter methods:
+
+| Field | Description |
+|-------|-------------|
+| `time_to_first_token_ms` | TTFT (streaming only) |
+| `rate_limited` | Whether rate limit was hit |
+| `retryable` | Whether error was retryable |
+| `fallback_reason` | Why fallback was triggered |
+| `span_id` | Span ID for tracing |
+| `response_cache_key` | Cache key used |
 
 ## Viewing Executions
 
@@ -226,7 +253,7 @@ RubyLLM::Agents::Execution.trend_analysis(
 .non_streaming
 ```
 
-### Reliability (v0.4.0+)
+### Reliability
 
 ```ruby
 .with_fallback           # Executions that used fallback models
@@ -244,7 +271,7 @@ RubyLLM::Agents::Execution.trend_analysis(
 .without_tool_calls      # Executions without tool calls
 ```
 
-### Multi-Tenancy (v0.4.0+)
+### Multi-Tenancy
 
 ```ruby
 .by_tenant(tenant_id)    # Filter by specific tenant
@@ -263,13 +290,12 @@ expensive_failures = RubyLLM::Agents::Execution
   .expensive(0.50)
   .order(total_cost: :desc)
 
-# Slow streaming executions
+# Slow streaming executions with high TTFT
 slow_streams = RubyLLM::Agents::Execution
   .streaming
   .slow(5000)
-  .where("time_to_first_token_ms > ?", 1000)
 
-# High-cost agent usage by user
+# High-cost agent usage by user (metadata JSON query)
 RubyLLM::Agents::Execution
   .this_month
   .where("metadata->>'user_id' = ?", user_id)

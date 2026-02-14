@@ -11,7 +11,6 @@ RubyLLM::Agents is a Rails engine for building, managing, and monitoring LLM-pow
 - Automatic execution tracking
 - Cost analytics and budget controls
 - Reliability features (retries, fallbacks, circuit breakers)
-- Workflow orchestration
 - Real-time dashboard
 
 ### How is it different from LangChain?
@@ -250,38 +249,22 @@ Run cleanup regularly to delete old data.
 
 ---
 
-## Workflows
+## Chaining Agents
 
-### How do I chain agents?
+### How do I chain agents together?
 
-```ruby
-workflow = RubyLLM::Agents::Workflow.pipeline(
-  Agent1, Agent2, Agent3
-)
-result = workflow.call(input: data)
-```
-
-### How do I run agents in parallel?
+Compose agents by calling one from another's result:
 
 ```ruby
-workflow = RubyLLM::Agents::Workflow.parallel(
-  a: AgentA,
-  b: AgentB
-)
-result = workflow.call(input: data)
-```
-
-### How do I route to different agents?
-
-```ruby
-workflow = RubyLLM::Agents::Workflow.router(
-  classifier: IntentClassifier,
-  routes: {
-    "support" => SupportAgent,
-    "sales" => SalesAgent
-  }
+# Sequential composition
+intent_result = IntentAgent.call(query: user_input)
+response_result = ResponseAgent.call(
+  query: user_input,
+  intent: intent_result.content[:intent]
 )
 ```
+
+For complex orchestration patterns (pipelines, parallel execution, routing), use a dedicated workflow library like Temporal or Sidekiq.
 
 ---
 

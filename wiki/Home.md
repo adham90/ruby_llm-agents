@@ -10,7 +10,7 @@ Welcome to the official documentation for **RubyLLM::Agents**, a production-read
 - **[Configuration](Configuration)** - Configure the initializer
 - **[First Agent](First-Agent)** - Build your first AI agent
 - **[Generators](Generators)** - Scaffold agents, embedders, and more
-- **[Migration](Migration)** - Upgrade from v0.5.0 to v1.0.0
+- **[Migration](Migration)** - Upgrade between versions
 
 ### Core Concepts
 - **[Agent DSL](Agent-DSL)** - Declarative agent configuration
@@ -39,12 +39,6 @@ Welcome to the official documentation for **RubyLLM::Agents**, a production-read
 - **[Automatic Retries](Automatic-Retries)** - Handle transient failures
 - **[Model Fallbacks](Model-Fallbacks)** - Fallback model chains
 - **[Circuit Breakers](Circuit-Breakers)** - Prevent cascading failures
-
-#### Workflow Orchestration
-- **[Workflows Overview](Workflows)** - Compose agents
-- **[Pipeline Workflows](Pipeline-Workflows)** - Sequential execution
-- **[Parallel Workflows](Parallel-Workflows)** - Concurrent execution
-- **[Router Workflows](Router-Workflows)** - Conditional dispatch
 
 #### Concurrency
 - **[Async/Fiber](Async-Fiber)** - Fiber-based concurrent execution with rate limiting
@@ -82,12 +76,11 @@ RubyLLM::Agents is a Rails engine that provides:
 - **Automatic tracking** of every execution with costs, tokens, and timing
 - **Production reliability** with retries, fallbacks, and circuit breakers
 - **Budget controls** to prevent runaway costs
-- **Workflow orchestration** for complex multi-agent scenarios
 - **Real-time dashboard** for monitoring and debugging
 
 ## Current Version
 
-**v1.0.0-beta.3** - See [CHANGELOG](https://github.com/adham90/ruby_llm-agents/blob/main/CHANGELOG.md) for release history.
+**v2.0.0** - See [CHANGELOG](https://github.com/adham90/ruby_llm-agents/blob/main/CHANGELOG.md) for release history.
 
 ## Supported LLM Providers
 

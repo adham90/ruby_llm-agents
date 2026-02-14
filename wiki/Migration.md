@@ -2,66 +2,27 @@
 
 This guide helps you upgrade your application between RubyLLM::Agents versions.
 
+For full upgrade instructions, see [UPGRADE.md](../UPGRADE.md).
+
 ---
 
-## Upgrading to v1.1.0
+## Upgrading to v2.0.0
 
-### From v1.0.0
+### From v1.x
 
-v1.1.0 is a backwards-compatible release with new features. No breaking changes.
+v2.0.0 is a **major release with breaking changes**. See the comprehensive [v2.0 Upgrade Guide](../UPGRADE.md#upgrading-to-v200) for step-by-step instructions.
 
-```ruby
-# Update Gemfile
-gem "ruby_llm-agents", "~> 1.1.0"
-```
+**Key changes:**
+- Schema split: execution data now lives in two tables (`executions` + `execution_details`)
+- Workflow orchestration removed (use dedicated workflow gems)
+- `version` DSL, `ApiConfiguration`, built-in moderation/PII removed
+- `TenantBudget` deprecated in favor of `Tenant`
 
 ```bash
 bundle update ruby_llm-agents
 rails generate ruby_llm_agents:upgrade
 rails db:migrate
 ```
-
-### New Features in v1.1.0
-
-- **Wait Steps** - Human-in-the-loop workflows with `wait`, `wait_until`, `wait_for`
-- **Sub-Workflows** - Compose workflows by nesting other workflows as steps
-- **Iteration** - Process collections with `each:` option on steps
-- **Recursion** - Workflows can call themselves with depth limits
-- **Notifications** - Slack, Email, Webhook notifications for workflow approvals
-- **New Agents** - `SpecialistAgent` and `ValidatorAgent` for common patterns
-- **Workflows Index** - Dashboard page with filtering and navigation
-
-#### Workflow DSL Examples (v1.1.0+)
-
-Build human-in-the-loop workflows:
-
-```ruby
-class ApprovalWorkflow < RubyLLM::Agents::Workflow
-  step :analyze, AnalyzerAgent
-
-  # Wait for human approval
-  wait_for :manager_approval,
-    timeout: 24.hours,
-    notify: [:slack, :email],
-    on_timeout: :skip_next
-
-  step :execute, ExecutorAgent
-end
-```
-
-Sub-workflows and iteration:
-
-```ruby
-class BatchWorkflow < RubyLLM::Agents::Workflow
-  # Nest another workflow
-  step :preprocess, PreprocessWorkflow
-
-  # Iterate over collections
-  step :process, ProcessorAgent, each: ->(ctx) { ctx[:items] }
-end
-```
-
-See [CHANGELOG](../CHANGELOG.md) for full details.
 
 ---
 

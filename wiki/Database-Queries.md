@@ -12,9 +12,14 @@ RubyLLM::Agents::Execution
 
 ## Schema Overview
 
+In v2.0, execution data is split across two tables for performance. The lean `executions` table is optimized for analytics queries, while large payloads live in `execution_details`.
+
+### Executions Table (`ruby_llm_agents_executions`)
+
 | Column | Type | Description |
 |--------|------|-------------|
 | `agent_type` | string | Agent class name (e.g., "SearchAgent") |
+| `execution_type` | string | Type of execution (chat, embed, etc.) |
 | `model_id` | string | Configured LLM model |
 | `chosen_model_id` | string | Actual model used (for fallbacks) |
 | `model_provider` | string | Provider name |
@@ -26,31 +31,58 @@ RubyLLM::Agents::Execution
 | `input_tokens` | integer | Input token count |
 | `output_tokens` | integer | Output token count |
 | `total_tokens` | integer | Total tokens |
+| `cached_tokens` | integer | Cached tokens count |
 | `input_cost` | decimal | Cost of input tokens (USD) |
 | `output_cost` | decimal | Cost of output tokens (USD) |
 | `total_cost` | decimal | Total cost (USD) |
-| `parameters` | json | Agent parameters (sanitized) |
-| `response` | json | LLM response data |
-| `metadata` | json | Custom metadata |
+| `metadata` | json | Custom metadata (includes TTFT, rate_limited, etc.) |
 | `error_class` | string | Exception class if failed |
-| `error_message` | text | Exception message if failed |
-| `system_prompt` | text | System prompt used |
-| `user_prompt` | text | User prompt used |
 | `streaming` | boolean | Whether streaming was used |
 | `cache_hit` | boolean | Whether response was from cache |
-| `response_cache_key` | string | Cache key used |
 | `finish_reason` | string | `stop`, `length`, `content_filter`, `tool_calls` |
-| `tool_calls` | json | Array of tool call details |
 | `tool_calls_count` | integer | Number of tool calls |
-| `attempts` | json | Array of retry/fallback attempts |
 | `attempts_count` | integer | Number of attempts |
-| `fallback_reason` | string | Why fallback was triggered |
-| `time_to_first_token_ms` | integer | TTFT (streaming only) |
+| `messages_count` | integer | Number of messages in conversation |
 | `tenant_id` | string | Multi-tenant identifier |
 | `trace_id` | string | Distributed trace ID |
 | `request_id` | string | Request ID |
-| `parent_execution_id` | bigint | Parent execution (workflows) |
-| `root_execution_id` | bigint | Root execution (workflows) |
+| `parent_execution_id` | bigint | Parent execution (nested calls) |
+| `root_execution_id` | bigint | Root execution (nested calls) |
+
+### Execution Details Table (`ruby_llm_agents_execution_details`)
+
+Large payloads are stored separately for query performance:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `system_prompt` | text | System prompt used |
+| `user_prompt` | text | User prompt used |
+| `response` | json | LLM response data |
+| `error_message` | text | Error details (if failed) |
+| `parameters` | json | Input parameters (sanitized) |
+| `tool_calls` | json | Array of tool invocations |
+| `attempts` | json | Array of all attempt details |
+| `fallback_chain` | json | Models attempted in order |
+| `messages_summary` | json | Conversation messages summary |
+| `routed_to` | string | Routing destination |
+| `classification_result` | json | Classification output |
+| `cached_at` | datetime | When cached |
+| `cache_creation_tokens` | integer | Tokens used for cache creation |
+
+> **Note:** Detail fields are transparently accessible on Execution instances via delegation. For example, `execution.error_message` works even though the data is stored in `execution_details`.
+
+### Metadata JSON Fields
+
+These fields are stored in the `metadata` JSON column with getter/setter methods:
+
+| Field | Description |
+|-------|-------------|
+| `time_to_first_token_ms` | TTFT (streaming only) |
+| `rate_limited` | Whether rate limit was hit |
+| `retryable` | Whether error was retryable |
+| `fallback_reason` | Why fallback was triggered |
+| `span_id` | Span ID for tracing |
+| `response_cache_key` | Cache key used |
 
 ## Query Scopes
 
@@ -180,7 +212,7 @@ execution.used_fallback?      # Did it use fallback model?
 execution.has_retries?        # Were there multiple attempts?
 execution.rate_limited?       # Was it rate limited?
 
-# Hierarchy (workflows)
+# Hierarchy (nested executions)
 execution.root?               # Is this a root execution?
 execution.child?              # Is this a child execution?
 execution.depth               # Nesting level (0 = root)
@@ -324,7 +356,6 @@ RubyLLM::Agents::Execution.this_week.expensive(0.50)
 
 ```ruby
 RubyLLM::Agents::Execution.streaming.slow(5000)
-  .where("time_to_first_token_ms > ?", 1000)
 ```
 
 ### Cache Hit Rate
@@ -366,10 +397,12 @@ RubyLLM::Agents::Execution.with_fallback
 RubyLLM::Agents::Execution.with_tool_calls.group(:agent_type).count
 ```
 
-### Workflow Executions
+### Nested Executions
 
 ```ruby
-RubyLLM::Agents::Execution.child_executions.where.not(parent_execution_id: nil)
+RubyLLM::Agents::Execution.child_executions
+RubyLLM::Agents::Execution.root_executions
+RubyLLM::Agents::Execution.children_of(parent_execution_id)
 ```
 
 ## Rails Console Examples
@@ -380,8 +413,8 @@ puts "Today: #{Execution.today.count} executions, $#{Execution.today.sum(:total_
 puts "Errors: #{Execution.today.errors.count}"
 puts "Cache hits: #{Execution.today.cached.count}"
 
-# Find problematic executions
-Execution.today.errors.pluck(:agent_type, :error_class, :error_message)
+# Find problematic executions (error_message is in execution_details)
+Execution.today.errors.includes(:detail).map { |e| [e.agent_type, e.error_class, e.error_message] }
 
 # Cost breakdown by agent
 Execution.this_month.group(:agent_type).sum(:total_cost).sort_by(&:last).reverse

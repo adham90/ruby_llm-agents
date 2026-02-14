@@ -114,20 +114,20 @@ BEFORE (Threads):              AFTER (Fibers):
                                └─────┘   └─────┘
 ```
 
-## Parallel Workflows
+## Parallel Agent Calls
 
-Parallel workflows automatically use fibers when in async context:
+Run multiple agents concurrently using fibers:
 
 ```ruby
-class ReviewAnalyzer < RubyLLM::Agents::Workflow::Parallel
-  branch :sentiment,  agent: SentimentAgent
-  branch :summary,    agent: SummaryAgent
-  branch :categories, agent: CategoryAgent
-end
-
-# In async context, uses fibers instead of threads
 Async do
-  result = ReviewAnalyzer.call(text: "Great product!")
+  # These run concurrently as fibers, not threads
+  sentiment_task = Async { SentimentAgent.call(text: "Great product!") }
+  summary_task = Async { SummaryAgent.call(text: "Great product!") }
+  category_task = Async { CategoryAgent.call(text: "Great product!") }
+
+  sentiment = sentiment_task.wait
+  summary = summary_task.wait
+  categories = category_task.wait
 end
 ```
 
@@ -248,6 +248,5 @@ end
 
 ## Related
 
-- [Parallel Workflows](Parallel-Workflows.md)
 - [Reliability & Retries](Reliability.md)
 - [Background Jobs](Background-Jobs.md)

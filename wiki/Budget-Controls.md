@@ -337,9 +337,9 @@ rescue Faraday::TooManyRequestsError
 end
 ```
 
-## Multi-Tenant Budgets (v0.4.0+)
+## Multi-Tenant Budgets
 
-For multi-tenant applications, you can set per-tenant budget limits using the `TenantBudget` model.
+For multi-tenant applications, you can set per-tenant budget limits using the `Tenant` model.
 
 ### Configuration
 
@@ -355,15 +355,16 @@ end
 
 ```ruby
 # Create or update tenant budget
-RubyLLM::Agents::TenantBudget.find_or_create_by(tenant_id: "tenant_123") do |budget|
-  budget.daily_limit = 50.0
-  budget.monthly_limit = 500.0
-  budget.enforcement = :hard
+RubyLLM::Agents::Tenant.find_or_create_by(tenant_id: "tenant_123") do |tenant|
+  tenant.name = "Acme Corp"
+  tenant.daily_limit = 50.0
+  tenant.monthly_limit = 500.0
+  tenant.enforcement = :hard
 end
 
 # Update existing budget
-tenant_budget = RubyLLM::Agents::TenantBudget.find_by(tenant_id: "tenant_123")
-tenant_budget.update(daily_limit: 75.0)
+tenant = RubyLLM::Agents::Tenant.find_by(tenant_id: "tenant_123")
+tenant.update(daily_limit: 75.0)
 ```
 
 ### Checking Tenant Budget Status

@@ -325,8 +325,8 @@ execution.error_message   # Text
 execution.error_class     # String
 execution.metadata        # Hash (JSONB)
 execution.streaming       # Boolean
-execution.time_to_first_token_ms # Integer
-execution.attempts        # Array (JSONB)
+execution.time_to_first_token_ms # Integer (from metadata JSON)
+execution.attempts        # Array (JSONB, from execution_details)
 execution.chosen_model_id # String
 execution.finish_reason   # String
 execution.created_at      # DateTime
@@ -345,59 +345,6 @@ Execution.trend_analysis(agent_type: "Agent", days: 7)
 # Analytics
 Execution.streaming_rate
 Execution.avg_time_to_first_token
-```
-
----
-
-## RubyLLM::Agents::Workflow
-
-Workflow orchestration.
-
-### Pipeline
-
-```ruby
-workflow = RubyLLM::Agents::Workflow.pipeline(
-  Agent1,
-  Agent2,
-  Agent3,
-  timeout: 60,
-  max_cost: 1.00,
-  before_step: { Agent2 => ->(prev, ctx) { ... } },
-  on_step_failure: :skip  # or :abort
-)
-
-result = workflow.call(input: data)
-```
-
-### Parallel
-
-```ruby
-workflow = RubyLLM::Agents::Workflow.parallel(
-  branch1: Agent1,
-  branch2: Agent2,
-  timeout: 30,
-  fail_fast: true,
-  aggregate: ->(results) { ... }
-)
-
-result = workflow.call(input: data)
-```
-
-### Router
-
-```ruby
-workflow = RubyLLM::Agents::Workflow.router(
-  classifier: ClassifierAgent,
-  routes: {
-    "route1" => Agent1,
-    "route2" => Agent2
-  },
-  default: DefaultAgent,
-  classification_field: :intent,
-  confidence_threshold: 0.8
-)
-
-result = workflow.call(input: data)
 ```
 
 ---

@@ -207,7 +207,6 @@ ruby_llm-agents/
 │           ├── base.rb          # Agent base class
 │           ├── configuration.rb # Configuration
 │           ├── result.rb        # Result object
-│           ├── workflow.rb      # Workflow orchestration
 │           └── ...
 ├── spec/                 # Tests
 ├── example/             # Example Rails application
@@ -221,8 +220,8 @@ ruby_llm-agents/
 | `Base` | Agent base class with DSL |
 | `Configuration` | Global settings |
 | `Execution` | Database model |
+| `ExecutionDetail` | Large payload storage |
 | `Result` | Response wrapper |
-| `Workflow` | Orchestration |
 | `BudgetTracker` | Cost management |
 | `CircuitBreaker` | Reliability |
 

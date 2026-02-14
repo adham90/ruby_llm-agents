@@ -193,7 +193,7 @@ mount RubyLLM::Agents::Engine => "/agents"
 | [Testing Agents](https://github.com/adham90/ruby_llm-agents/wiki/Testing-Agents) | RSpec patterns, mocking, dry_run mode |
 | [Error Handling](https://github.com/adham90/ruby_llm-agents/wiki/Error-Handling) | Error types, recovery patterns |
 | [Embeddings](https://github.com/adham90/ruby_llm-agents/wiki/Embeddings) | Vector embeddings, batching, caching, preprocessing |
-| [Image Generation](https://github.com/adham90/ruby_llm-agents/wiki/Image-Generation) | Text-to-image, templates, content policy, cost tracking |
+| [Image Generation](https://github.com/adham90/ruby_llm-agents/wiki/Image-Generation) | Text-to-image, templates, pipelines, cost tracking |
 | [Dashboard](https://github.com/adham90/ruby_llm-agents/wiki/Dashboard) | Setup, authentication, analytics |
 | [Production](https://github.com/adham90/ruby_llm-agents/wiki/Production-Deployment) | Deployment best practices, background jobs |
 | [API Reference](https://github.com/adham90/ruby_llm-agents/wiki/API-Reference) | Complete class documentation |
@@ -203,7 +203,7 @@ mount RubyLLM::Agents::Engine => "/agents"
 
 - **Ruby** >= 3.1.0
 - **Rails** >= 7.0
-- **RubyLLM** >= 1.0
+- **RubyLLM** >= 1.11.0
 
 ## Contributing
 

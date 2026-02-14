@@ -307,8 +307,9 @@ config.tenant_resolver = -> { Current.tenant&.id }
 Prevent tenant cost overruns:
 
 ```ruby
-RubyLLM::Agents::TenantBudget.create!(
+RubyLLM::Agents::Tenant.create!(
   tenant_id: "acme_corp",
+  name: "Acme Corp",
   daily_limit: 50.0,
   monthly_limit: 500.0,
   enforcement: "hard"

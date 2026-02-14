@@ -169,18 +169,11 @@ execution.duration_ms             # => 2500 (total time)
 
 ```ruby
 # Average TTFT for streaming agents
-RubyLLM::Agents::Execution
-  .streaming
-  .average(:time_to_first_token_ms)
-# => 312.5
-
-# TTFT by model
-RubyLLM::Agents::Execution
-  .streaming
-  .group(:model_id)
-  .average(:time_to_first_token_ms)
-# => { "gpt-4o" => 280, "claude-3-sonnet" => 195 }
+RubyLLM::Agents::Execution.today.avg_time_to_first_token
+# => 312
 ```
+
+> **Note:** `time_to_first_token_ms` is stored in the `metadata` JSON column, not as a direct SQL column. Use the `avg_time_to_first_token` analytics method for aggregation, or access it on individual instances via `execution.time_to_first_token_ms`.
 
 ## Streaming with Structured Output
 

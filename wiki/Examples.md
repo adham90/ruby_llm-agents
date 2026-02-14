@@ -287,9 +287,11 @@ class SupportAgent < ApplicationAgent
 end
 ```
 
-## Multi-Agent Workflows
+## Multi-Agent Composition
 
 ### Content Pipeline
+
+Chain agents sequentially, passing results between them:
 
 ```ruby
 # Step 1: Research
@@ -338,37 +340,10 @@ class WriterAgent < ApplicationAgent
   end
 end
 
-# Pipeline
-content_pipeline = RubyLLM::Agents::Workflow.pipeline(
-  ResearchAgent,
-  OutlineAgent,
-  WriterAgent,
-  before_step: {
-    OutlineAgent => ->(prev, _) { { key_points: prev[:key_points] } },
-    WriterAgent => ->(prev, _) { { outline: prev[:sections] } }
-  }
-)
-
-result = content_pipeline.call(topic: "AI in Healthcare")
-```
-
-### Parallel Analysis
-
-```ruby
-analysis_workflow = RubyLLM::Agents::Workflow.parallel(
-  sentiment: SentimentAgent,
-  entities: EntityExtractorAgent,
-  summary: SummarizerAgent,
-  categories: CategoryClassifierAgent
-)
-
-result = analysis_workflow.call(text: document_content)
-# => {
-#   sentiment: { score: 0.8, label: "positive" },
-#   entities: { people: [...], places: [...] },
-#   summary: { text: "..." },
-#   categories: { primary: "tech", tags: [...] }
-# }
+# Sequential composition
+research = ResearchAgent.call(topic: "AI in Healthcare")
+outline = OutlineAgent.call(key_points: research.content[:key_points])
+article = WriterAgent.call(outline: outline.content[:sections])
 ```
 
 ### Intent Router
@@ -391,18 +366,17 @@ class IntentClassifier < ApplicationAgent
   end
 end
 
-support_router = RubyLLM::Agents::Workflow.router(
-  classifier: IntentClassifier,
-  routes: {
-    "support" => TechnicalSupportAgent,
-    "sales" => SalesAgent,
-    "billing" => BillingAgent
-  },
-  default: GeneralHelpAgent,
-  confidence_threshold: 0.7
-)
+# Route to the appropriate agent based on classification
+intent = IntentClassifier.call(message: "How do I reset my password?")
 
-result = support_router.call(message: "How do I reset my password?")
+agent_class = case intent.content[:intent]
+              when "support" then TechnicalSupportAgent
+              when "sales" then SalesAgent
+              when "billing" then BillingAgent
+              else GeneralHelpAgent
+              end
+
+result = agent_class.call(message: "How do I reset my password?")
 ```
 
 ## Testing Agents
@@ -736,32 +710,23 @@ class DocumentAnalyzer
   end
 
   def analyze
-    # Run multiple analyses in parallel using workflow
-    result = AnalysisWorkflow.call(text: @document.content)
+    sentiment = SentimentAgent.call(text: @document.content)
+    entities = EntityExtractorAgent.call(text: @document.content)
+    summary = SummarizerAgent.call(text: @document.content)
 
     {
-      sentiment: result.branches[:sentiment].content,
-      entities: result.branches[:entities].content,
-      summary: result.branches[:summary].content,
-      total_cost: result.total_cost
+      sentiment: sentiment.content,
+      entities: entities.content,
+      summary: summary.content,
+      total_cost: [sentiment, entities, summary].sum(&:total_cost)
     }
   end
-end
-
-# app/workflows/analysis_workflow.rb
-class AnalysisWorkflow < RubyLLM::Agents::Workflow::Parallel
-  fail_fast false
-
-  branch :sentiment, agent: SentimentAgent
-  branch :entities, agent: EntityExtractorAgent
-  branch :summary, agent: SummarizerAgent
 end
 ```
 
 ## Related Pages
 
 - [Agent DSL](Agent-DSL) - Configuration reference
-- [Workflows](Workflows) - Workflow patterns
 - [Prompts and Schemas](Prompts-and-Schemas) - Structuring outputs
 - [Error Handling](Error-Handling) - Error types and recovery
 - [Testing Agents](Testing-Agents) - Testing patterns
