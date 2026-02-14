@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-02-15
+
+### Added
+
+- Unified API key configuration — configure all LLM provider API keys directly in `RubyLLM::Agents.configure` block (no separate `ruby_llm.rb` initializer needed)
+- Upgrade generator suggests consolidating separate `ruby_llm.rb` initializer into unified config
+
+### Fixed
+
+- Missing API key error on fresh install (#5)
+- Cost calculation returning zero by using `Models.find` instead of `Models.resolve`
+- Tenants nav link hidden when multi-tenancy is disabled
+- `_detail_data` extraction in ExecutionLoggerJob
+
+### Changed
+
+- Minimum `ruby_llm` dependency bumped to `>= 1.12.0`
+- Cost calculation refactored to use nested pricing objects
+
 ## [2.0.0] - 2026-02-14
 
 ### Added
@@ -532,6 +551,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[2.1.0]: https://github.com/adham90/ruby_llm-agents/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.4...v2.0.0
 [1.3.4]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.3...v1.3.4
 [1.3.3]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.2...v1.3.3

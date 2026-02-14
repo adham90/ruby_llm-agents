@@ -4,6 +4,6 @@ module RubyLLM
   module Agents
     # Current version of the RubyLLM::Agents gem
     # @return [String] Semantic version string
-    VERSION = "2.0.0"
+    VERSION = "2.1.0"
   end
 end
