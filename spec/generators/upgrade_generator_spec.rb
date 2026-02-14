@@ -4,149 +4,139 @@ require "rails_helper"
 require "generators/ruby_llm_agents/upgrade_generator"
 
 RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
-  # The upgrade generator checks for existing columns in the database
-  # We need to mock the column_exists? method to test different scenarios
+  # The upgrade generator checks for existing columns/tables in the database
+  # We mock these checks to test different upgrade scenarios
 
-  # Stub Rails.root for file migration tests
   before do
     allow(Rails).to receive(:root).and_return(Pathname.new(destination_root))
-    # Stub configuration to use "llm" as root_directory for migration tests
     allow(RubyLLM::Agents.configuration).to receive(:root_directory).and_return("llm")
     allow(RubyLLM::Agents.configuration).to receive(:root_namespace).and_return("Llm")
 
-    # Default tenant table checks to avoid migration generation for most tests
-    # (tests that need tenant migration behavior should override these)
+    # Default: tenant table exists, old table doesn't
     allow(ActiveRecord::Base.connection).to receive(:table_exists?)
       .with(:ruby_llm_agents_tenants)
-      .and_return(true)  # New table "exists" by default
+      .and_return(true)
     allow(ActiveRecord::Base.connection).to receive(:table_exists?)
       .with(:ruby_llm_agents_tenant_budgets)
-      .and_return(false)  # Old table doesn't exist
-    # Default execution_details table to exist to avoid migration generation
-    allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-      .with(:ruby_llm_agents_execution_details)
-      .and_return(true)
+      .and_return(false)
   end
 
-  describe "when table does not exist" do
+  describe "when executions table does not exist (fresh install needed)" do
     before do
-      # Default all tables to not exist
-      allow(ActiveRecord::Base.connection).to receive(:table_exists?).and_return(false)
+      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
+        .with(:ruby_llm_agents_executions)
+        .and_return(false)
+      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
+        .with(:ruby_llm_agents_execution_details)
+        .and_return(false)
 
       run_generator
     end
 
-    it "creates all upgrade migrations" do
-      # When table doesn't exist, column_exists? returns false, so all migrations are created
-      expect(Dir[file("db/migrate/*_add_prompts_to_ruby_llm_agents_executions.rb")]).not_to be_empty
-      expect(Dir[file("db/migrate/*_add_attempts_to_ruby_llm_agents_executions.rb")]).not_to be_empty
-      expect(Dir[file("db/migrate/*_add_streaming_to_ruby_llm_agents_executions.rb")]).not_to be_empty
-      expect(Dir[file("db/migrate/*_add_tracing_to_ruby_llm_agents_executions.rb")]).not_to be_empty
-      expect(Dir[file("db/migrate/*_add_routing_to_ruby_llm_agents_executions.rb")]).not_to be_empty
-      expect(Dir[file("db/migrate/*_add_finish_reason_to_ruby_llm_agents_executions.rb")]).not_to be_empty
-      expect(Dir[file("db/migrate/*_add_caching_to_ruby_llm_agents_executions.rb")]).not_to be_empty
-      expect(Dir[file("db/migrate/*_add_tool_calls_to_ruby_llm_agents_executions.rb")]).not_to be_empty
-      expect(Dir[file("db/migrate/*_add_execution_type_to_ruby_llm_agents_executions.rb")]).not_to be_empty
+    it "creates the split migration" do
+      expect(Dir[file("db/migrate/*_split_execution_details_from_executions.rb")]).not_to be_empty
     end
   end
 
-  describe "when all columns already exist" do
+  describe "when on pre-2.0 schema (detail columns on executions, no execution_details table)" do
     before do
       allow(ActiveRecord::Base.connection).to receive(:table_exists?)
         .with(:ruby_llm_agents_executions)
         .and_return(true)
+      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
+        .with(:ruby_llm_agents_execution_details)
+        .and_return(false)
 
-      # Mock all columns as existing except deprecated ones (which should be removed already)
-      # agent_version and workflow_id should NOT exist
+      # Old schema has detail columns on executions
       allow(ActiveRecord::Base.connection).to receive(:column_exists?) do |table, column|
-        ![:agent_version, :workflow_id].include?(column)
+        next false unless table == :ruby_llm_agents_executions
+
+        # All old columns exist including detail columns
+        ![:agent_version].include?(column)
       end
 
       run_generator
     end
 
-    it "creates no migration files" do
+    it "creates the split migration" do
+      expect(Dir[file("db/migrate/*_split_execution_details_from_executions.rb")]).not_to be_empty
+    end
+  end
+
+  describe "when execution_details exists but old columns remain on executions" do
+    before do
+      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
+        .with(:ruby_llm_agents_executions)
+        .and_return(true)
+      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
+        .with(:ruby_llm_agents_execution_details)
+        .and_return(true)
+
+      # Simulates partial upgrade: execution_details exists but old columns still on executions
+      allow(ActiveRecord::Base.connection).to receive(:column_exists?) do |table, column|
+        next false unless table == :ruby_llm_agents_executions
+
+        # Detail columns still present on executions (not yet cleaned up)
+        %i[system_prompt user_prompt error_message response tool_calls
+           attempts fallback_chain parameters routed_to
+           classification_result cached_at cache_creation_tokens].include?(column)
+      end
+
+      run_generator
+    end
+
+    it "creates the split migration to clean up" do
+      expect(Dir[file("db/migrate/*_split_execution_details_from_executions.rb")]).not_to be_empty
+    end
+  end
+
+  describe "when deprecated columns remain on executions" do
+    before do
+      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
+        .with(:ruby_llm_agents_executions)
+        .and_return(true)
+      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
+        .with(:ruby_llm_agents_execution_details)
+        .and_return(true)
+
+      # Detail columns removed, but deprecated columns still present
+      allow(ActiveRecord::Base.connection).to receive(:column_exists?) do |table, column|
+        next false unless table == :ruby_llm_agents_executions
+
+        %i[workflow_id workflow_type workflow_step agent_version span_id].include?(column)
+      end
+
+      run_generator
+    end
+
+    it "creates the split migration to remove deprecated columns" do
+      expect(Dir[file("db/migrate/*_split_execution_details_from_executions.rb")]).not_to be_empty
+    end
+  end
+
+  describe "when fully upgraded (clean 2.0 schema)" do
+    before do
+      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
+        .with(:ruby_llm_agents_executions)
+        .and_return(true)
+      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
+        .with(:ruby_llm_agents_execution_details)
+        .and_return(true)
+
+      # No detail, niche, or deprecated columns on executions
+      allow(ActiveRecord::Base.connection).to receive(:column_exists?)
+        .and_return(false)
+
+      run_generator
+    end
+
+    it "creates no migrations" do
       migration_files = Dir[file("db/migrate/*.rb")]
       expect(migration_files).to be_empty
     end
   end
 
-  describe "when only some columns exist" do
-    before do
-      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-        .with(:ruby_llm_agents_executions)
-        .and_return(true)
-
-      # Mock specific columns as existing/missing
-      # agent_version and workflow_id should NOT exist (already removed)
-      allow(ActiveRecord::Base.connection).to receive(:column_exists?) do |table, column|
-        # Simulate: prompts and attempts exist, but streaming and others don't
-        # Deprecated columns should NOT exist
-        deprecated_columns = [:agent_version, :workflow_id]
-        existing_columns = [:system_prompt, :attempts]
-        existing_columns.include?(column) && !deprecated_columns.include?(column)
-      end
-
-      run_generator
-    end
-
-    it "skips migrations for existing columns" do
-      expect(Dir[file("db/migrate/*_add_prompts_to_ruby_llm_agents_executions.rb")]).to be_empty
-      expect(Dir[file("db/migrate/*_add_attempts_to_ruby_llm_agents_executions.rb")]).to be_empty
-    end
-
-    it "creates migrations for missing columns" do
-      expect(Dir[file("db/migrate/*_add_streaming_to_ruby_llm_agents_executions.rb")]).not_to be_empty
-      expect(Dir[file("db/migrate/*_add_tracing_to_ruby_llm_agents_executions.rb")]).not_to be_empty
-      expect(Dir[file("db/migrate/*_add_routing_to_ruby_llm_agents_executions.rb")]).not_to be_empty
-      expect(Dir[file("db/migrate/*_add_finish_reason_to_ruby_llm_agents_executions.rb")]).not_to be_empty
-      expect(Dir[file("db/migrate/*_add_caching_to_ruby_llm_agents_executions.rb")]).not_to be_empty
-      expect(Dir[file("db/migrate/*_add_tool_calls_to_ruby_llm_agents_executions.rb")]).not_to be_empty
-      expect(Dir[file("db/migrate/*_add_execution_type_to_ruby_llm_agents_executions.rb")]).not_to be_empty
-    end
-  end
-
-  describe "v2.0.0 execution_details table" do
-    context "when execution_details table does not exist" do
-      before do
-        allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-          .with(:ruby_llm_agents_executions)
-          .and_return(true)
-        allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-          .with(:ruby_llm_agents_execution_details)
-          .and_return(false)
-        allow(ActiveRecord::Base.connection).to receive(:column_exists?) do |_table, column|
-          ![:agent_version, :workflow_id].include?(column)
-        end
-        run_generator
-      end
-
-      it "creates execution_details migration" do
-        expect(Dir[file("db/migrate/*_create_ruby_llm_agents_execution_details.rb")]).not_to be_empty
-      end
-    end
-
-    context "when execution_details table already exists" do
-      before do
-        allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-          .with(:ruby_llm_agents_executions)
-          .and_return(true)
-        allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-          .with(:ruby_llm_agents_execution_details)
-          .and_return(true)
-        allow(ActiveRecord::Base.connection).to receive(:column_exists?) do |_table, column|
-          ![:agent_version, :workflow_id].include?(column)
-        end
-        run_generator
-      end
-
-      it "skips execution_details migration" do
-        expect(Dir[file("db/migrate/*_create_ruby_llm_agents_execution_details.rb")]).to be_empty
-      end
-    end
-  end
-
-  describe "v2.0.0 rename tenant_budgets to tenants" do
+  describe "tenant_budgets to tenants rename" do
     context "when old tenant_budgets exists and new tenants does not" do
       before do
         allow(ActiveRecord::Base.connection).to receive(:table_exists?)
@@ -161,9 +151,8 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
         allow(ActiveRecord::Base.connection).to receive(:table_exists?)
           .with(:ruby_llm_agents_tenants)
           .and_return(false)
-        allow(ActiveRecord::Base.connection).to receive(:column_exists?) do |_table, column|
-          ![:agent_version, :workflow_id].include?(column)
-        end
+        allow(ActiveRecord::Base.connection).to receive(:column_exists?)
+          .and_return(false)
         run_generator
       end
 
@@ -186,9 +175,8 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
         allow(ActiveRecord::Base.connection).to receive(:table_exists?)
           .with(:ruby_llm_agents_tenant_budgets)
           .and_return(false)
-        allow(ActiveRecord::Base.connection).to receive(:column_exists?) do |_table, column|
-          ![:agent_version, :workflow_id].include?(column)
-        end
+        allow(ActiveRecord::Base.connection).to receive(:column_exists?)
+          .and_return(false)
         run_generator
       end
 
@@ -211,9 +199,8 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
         allow(ActiveRecord::Base.connection).to receive(:table_exists?)
           .with(:ruby_llm_agents_tenant_budgets)
           .and_return(false)
-        allow(ActiveRecord::Base.connection).to receive(:column_exists?) do |_table, column|
-          ![:agent_version, :workflow_id].include?(column)
-        end
+        allow(ActiveRecord::Base.connection).to receive(:column_exists?)
+          .and_return(false)
         run_generator
       end
 
@@ -223,101 +210,24 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
     end
   end
 
-  describe "v2.0.0 remove agent_version column" do
-    context "when agent_version column exists" do
-      before do
-        allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-          .with(:ruby_llm_agents_executions)
-          .and_return(true)
-        allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-          .with(:ruby_llm_agents_execution_details)
-          .and_return(true)
-        # All columns exist including agent_version (but not workflow_id)
-        allow(ActiveRecord::Base.connection).to receive(:column_exists?) do |_table, column|
-          column != :workflow_id
-        end
-        run_generator
-      end
-
-      it "creates removal migration" do
-        expect(Dir[file("db/migrate/*_remove_agent_version_from_ruby_llm_agents_executions.rb")]).not_to be_empty
-      end
-    end
-
-    context "when agent_version column already removed" do
-      before do
-        allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-          .with(:ruby_llm_agents_executions)
-          .and_return(true)
-        allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-          .with(:ruby_llm_agents_execution_details)
-          .and_return(true)
-        allow(ActiveRecord::Base.connection).to receive(:column_exists?) do |_table, column|
-          ![:agent_version, :workflow_id].include?(column)
-        end
-        run_generator
-      end
-
-      it "skips removal migration" do
-        expect(Dir[file("db/migrate/*_remove_agent_version_from_ruby_llm_agents_executions.rb")]).to be_empty
-      end
-    end
-  end
-
-  describe "v2.0.0 remove workflow columns" do
-    context "when workflow_id column exists" do
-      before do
-        allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-          .with(:ruby_llm_agents_executions)
-          .and_return(true)
-        allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-          .with(:ruby_llm_agents_execution_details)
-          .and_return(true)
-        # All columns exist including workflow_id (but not agent_version)
-        allow(ActiveRecord::Base.connection).to receive(:column_exists?) do |_table, column|
-          column != :agent_version
-        end
-        run_generator
-      end
-
-      it "creates removal migration" do
-        expect(Dir[file("db/migrate/*_remove_workflow_columns_from_ruby_llm_agents_executions.rb")]).not_to be_empty
-      end
-    end
-
-    context "when workflow columns already removed" do
-      before do
-        allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-          .with(:ruby_llm_agents_executions)
-          .and_return(true)
-        allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-          .with(:ruby_llm_agents_execution_details)
-          .and_return(true)
-        allow(ActiveRecord::Base.connection).to receive(:column_exists?) do |_table, column|
-          ![:agent_version, :workflow_id].include?(column)
-        end
-        run_generator
-      end
-
-      it "skips removal migration" do
-        expect(Dir[file("db/migrate/*_remove_workflow_columns_from_ruby_llm_agents_executions.rb")]).to be_empty
-      end
-    end
-  end
-
-  describe "v2.0.0 migration content" do
+  describe "split migration content" do
     before do
-      # Default all tables to not exist
-      allow(ActiveRecord::Base.connection).to receive(:table_exists?).and_return(false)
+      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
+        .with(:ruby_llm_agents_executions)
+        .and_return(true)
+      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
+        .with(:ruby_llm_agents_execution_details)
+        .and_return(false)
+      allow(ActiveRecord::Base.connection).to receive(:column_exists?)
+        .and_return(false)
 
       run_generator
     end
 
-    it "execution_details migration creates table with expected columns" do
-      migration_file = Dir[file("db/migrate/*_create_ruby_llm_agents_execution_details.rb")].first
+    it "creates execution_details table definition" do
+      migration_file = Dir[file("db/migrate/*_split_execution_details_from_executions.rb")].first
       content = File.read(migration_file)
-      expect(content).to include("execution_details")
-      expect(content).to include("execution")
+      expect(content).to include("ruby_llm_agents_execution_details")
       expect(content).to include("error_message")
       expect(content).to include("system_prompt")
       expect(content).to include("user_prompt")
@@ -331,150 +241,25 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
       expect(content).to include("cached_at")
       expect(content).to include("cache_creation_tokens")
     end
-  end
 
-  describe "full v2.0.0 upgrade scenario" do
-    context "when all old columns and tables exist (pre-2.0.0 schema)" do
-      before do
-        allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-          .with(:ruby_llm_agents_executions)
-          .and_return(true)
-        allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-          .with(:ruby_llm_agents_execution_details)
-          .and_return(false)
-        allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-          .with(:ruby_llm_agents_tenant_budgets)
-          .and_return(true)
-        allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-          .with(:ruby_llm_agents_tenants)
-          .and_return(false)
-        # All columns exist including deprecated ones
-        allow(ActiveRecord::Base.connection).to receive(:column_exists?).and_return(true)
-        run_generator
-      end
-
-      it "creates all v2.0.0 migrations" do
-        expect(Dir[file("db/migrate/*_create_ruby_llm_agents_execution_details.rb")]).not_to be_empty
-        expect(Dir[file("db/migrate/*_rename_tenant_budgets_to_tenants.rb")]).not_to be_empty
-        expect(Dir[file("db/migrate/*_remove_agent_version_from_ruby_llm_agents_executions.rb")]).not_to be_empty
-        expect(Dir[file("db/migrate/*_remove_workflow_columns_from_ruby_llm_agents_executions.rb")]).not_to be_empty
-      end
-
-      it "skips pre-existing column migrations" do
-        expect(Dir[file("db/migrate/*_add_prompts_to_ruby_llm_agents_executions.rb")]).to be_empty
-        expect(Dir[file("db/migrate/*_add_attempts_to_ruby_llm_agents_executions.rb")]).to be_empty
-        expect(Dir[file("db/migrate/*_add_streaming_to_ruby_llm_agents_executions.rb")]).to be_empty
-      end
-    end
-
-    context "when fully upgraded to 2.0.0" do
-      before do
-        allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-          .with(:ruby_llm_agents_executions)
-          .and_return(true)
-        allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-          .with(:ruby_llm_agents_execution_details)
-          .and_return(true)
-        allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-          .with(:ruby_llm_agents_tenants)
-          .and_return(true)
-        allow(ActiveRecord::Base.connection).to receive(:table_exists?)
-          .with(:ruby_llm_agents_tenant_budgets)
-          .and_return(false)
-        # All columns exist except deprecated ones
-        allow(ActiveRecord::Base.connection).to receive(:column_exists?) do |_table, column|
-          ![:agent_version, :workflow_id].include?(column)
-        end
-        run_generator
-      end
-
-      it "creates no migrations" do
-        migration_files = Dir[file("db/migrate/*.rb")]
-        expect(migration_files).to be_empty
-      end
+    it "handles idempotent operations" do
+      migration_file = Dir[file("db/migrate/*_split_execution_details_from_executions.rb")].first
+      content = File.read(migration_file)
+      expect(content).to include("column_exists?")
+      expect(content).to include("table_exists?")
     end
   end
 
-  describe "migration content" do
-    before do
-      # Default all tables to not exist
-      allow(ActiveRecord::Base.connection).to receive(:table_exists?).and_return(false)
-
-      run_generator
-    end
-
-    it "add_prompts migration adds system_prompt and user_prompt columns" do
-      migration_file = Dir[file("db/migrate/*_add_prompts_to_ruby_llm_agents_executions.rb")].first
-      content = File.read(migration_file)
-      expect(content).to include("system_prompt")
-      expect(content).to include("user_prompt")
-    end
-
-    it "add_attempts migration adds attempts column" do
-      migration_file = Dir[file("db/migrate/*_add_attempts_to_ruby_llm_agents_executions.rb")].first
-      content = File.read(migration_file)
-      expect(content).to include("attempts")
-    end
-
-    it "add_streaming migration adds streaming column" do
-      migration_file = Dir[file("db/migrate/*_add_streaming_to_ruby_llm_agents_executions.rb")].first
-      content = File.read(migration_file)
-      expect(content).to include("streaming")
-    end
-
-    it "add_tracing migration adds trace_id column" do
-      migration_file = Dir[file("db/migrate/*_add_tracing_to_ruby_llm_agents_executions.rb")].first
-      content = File.read(migration_file)
-      expect(content).to include("trace_id")
-    end
-
-    it "add_routing migration adds fallback_reason column" do
-      migration_file = Dir[file("db/migrate/*_add_routing_to_ruby_llm_agents_executions.rb")].first
-      content = File.read(migration_file)
-      expect(content).to include("fallback_reason")
-    end
-
-    it "add_finish_reason migration adds finish_reason column" do
-      migration_file = Dir[file("db/migrate/*_add_finish_reason_to_ruby_llm_agents_executions.rb")].first
-      content = File.read(migration_file)
-      expect(content).to include("finish_reason")
-    end
-
-    it "add_caching migration adds cache_hit column" do
-      migration_file = Dir[file("db/migrate/*_add_caching_to_ruby_llm_agents_executions.rb")].first
-      content = File.read(migration_file)
-      expect(content).to include("cache_hit")
-    end
-
-    it "add_tool_calls migration adds tool_calls column" do
-      migration_file = Dir[file("db/migrate/*_add_tool_calls_to_ruby_llm_agents_executions.rb")].first
-      content = File.read(migration_file)
-      expect(content).to include("tool_calls")
-    end
-
-    it "add_execution_type migration adds execution_type column" do
-      migration_file = Dir[file("db/migrate/*_add_execution_type_to_ruby_llm_agents_executions.rb")].first
-      content = File.read(migration_file)
-      expect(content).to include("execution_type")
-    end
-  end
-
-  # ============================================
-  # Agent and Tool Migration Tests
-  # ============================================
-  # NOTE: File migration (moving agents/tools to app/llm/) has been removed
-  # from the upgrade generator as part of the database schema refactor.
-  # The upgrade generator now only handles database migration generation.
-
-  describe "generator runs without file migration" do
+  describe "generator runs safely" do
     before do
       allow(ActiveRecord::Base.connection).to receive(:table_exists?)
         .with(:ruby_llm_agents_executions)
         .and_return(true)
-      # All columns exist except deprecated ones (which should be removed already)
-      allow(ActiveRecord::Base.connection).to receive(:column_exists?) do |table, column|
-        ![:agent_version, :workflow_id].include?(column)
-      end
+      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
+        .with(:ruby_llm_agents_execution_details)
+        .and_return(true)
+      allow(ActiveRecord::Base.connection).to receive(:column_exists?)
+        .and_return(false)
     end
 
     it "runs without error when app/agents exists" do
@@ -489,15 +274,14 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
       expect { run_generator }.not_to raise_error
     end
 
-    it "does not move agent files (file migration removed)" do
+    it "does not move agent files" do
       FileUtils.mkdir_p(file("app/agents"))
       File.write(file("app/agents/test_agent.rb"), "class TestAgent; end")
       run_generator
-      # Agent files stay where they are - migration is no longer part of upgrade generator
       expect(file_exists?("app/agents/test_agent.rb")).to be true
     end
 
-    it "does not move tool files (file migration removed)" do
+    it "does not move tool files" do
       FileUtils.mkdir_p(file("app/tools"))
       File.write(file("app/tools/test_tool.rb"), "class TestTool; end")
       run_generator
@@ -509,7 +293,7 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
       expect { run_generator }.not_to raise_error
     end
 
-    it "does not create migrations when all columns exist" do
+    it "does not create migrations when fully upgraded" do
       run_generator
       migration_files = Dir[file("db/migrate/*.rb")]
       expect(migration_files).to be_empty

@@ -248,12 +248,16 @@ RSpec.describe "Version Upgrade Paths", type: :migration do
 
       apply_migrations_from_to("0.3.3", "2.0.0")
 
-      # Verify v0.4.0 features exist
-      expect(column_exists?(:attempts)).to be true
+      # Verify columns that stay on executions
+      expect(column_exists?(:attempts_count)).to be true
       expect(column_exists?(:tenant_id)).to be true
 
       # Verify v2.0.0 features
       expect(table_exists?(:ruby_llm_agents_execution_details)).to be true
+
+      # Detail columns moved to execution_details
+      expect(column_exists?(:attempts)).to be false
+      expect(column_exists?(:system_prompt)).to be false
 
       # Workflow columns removed
       expect(column_exists?(:workflow_id)).to be false

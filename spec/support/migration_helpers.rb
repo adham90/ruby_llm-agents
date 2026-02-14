@@ -54,6 +54,7 @@ module MigrationHelpers
       :v0_4_0_tenant_name,
       :v0_4_0_token_limits,
       :v2_0_0_execution_details,
+      :v2_0_0_remove_detail_columns,
       :v2_0_0_rename_tenants,
       :v2_0_0_remove_agent_version,
       :v2_0_0_remove_workflow_columns
@@ -72,6 +73,7 @@ module MigrationHelpers
     :v0_4_0_tenant_name,
     :v0_4_0_token_limits,
     :v2_0_0_execution_details,
+    :v2_0_0_remove_detail_columns,
     :v2_0_0_rename_tenants,
     :v2_0_0_remove_agent_version,
     :v2_0_0_remove_workflow_columns
@@ -83,7 +85,7 @@ module MigrationHelpers
     "0.2.3" => 2,
     "0.3.3" => 3,
     "0.4.0" => 9,
-    "2.0.0" => 13
+    "2.0.0" => 14
   }.freeze
 
   included do

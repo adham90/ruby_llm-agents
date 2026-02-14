@@ -54,11 +54,6 @@ class CreateRubyLLMAgentsExecutions < ActiveRecord::Migration<%= migration_versi
       t.bigint :parent_execution_id
       t.bigint :root_execution_id
 
-      # Workflow orchestration
-      t.string :workflow_id
-      t.string :workflow_type
-      t.string :workflow_step
-
       # Multi-tenancy
       t.string :tenant_id
 
@@ -82,8 +77,6 @@ class CreateRubyLLMAgentsExecutions < ActiveRecord::Migration<%= migration_versi
     add_index :ruby_llm_agents_executions, :request_id
     add_index :ruby_llm_agents_executions, :parent_execution_id
     add_index :ruby_llm_agents_executions, :root_execution_id
-    add_index :ruby_llm_agents_executions, [:workflow_id, :workflow_step]
-    add_index :ruby_llm_agents_executions, :workflow_type
 
     # Foreign keys for execution hierarchy
     add_foreign_key :ruby_llm_agents_executions, :ruby_llm_agents_executions,

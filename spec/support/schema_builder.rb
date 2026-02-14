@@ -348,6 +348,83 @@ module SchemaBuilder
       connection.drop_table :ruby_llm_agents_execution_details, if_exists: true
     end
 
+    # Version 2.0.0 - Remove detail and niche columns from executions
+    # (they now live in execution_details or metadata JSON)
+    def v2_0_0_remove_detail_columns
+      connection = ActiveRecord::Base.connection
+      table_name = :ruby_llm_agents_executions
+
+      # Detail columns moved to execution_details
+      %i[error_message system_prompt user_prompt response messages_summary
+         tool_calls attempts fallback_chain parameters routed_to
+         classification_result cached_at cache_creation_tokens].each do |column|
+        remove_column_if_exists(connection, table_name, column)
+      end
+
+      # Niche columns moved to metadata JSON
+      %i[span_id response_cache_key time_to_first_token_ms
+         retryable rate_limited fallback_reason].each do |column|
+        remove_column_if_exists(connection, table_name, column)
+      end
+
+      # Tenant record polymorphic removed from executions (access via Tenant model)
+      %i[tenant_record_type tenant_record_id].each do |column|
+        remove_column_if_exists(connection, table_name, column)
+      end
+
+      # Remove redundant indexes
+      %i[duration_ms total_cost messages_count attempts_count tool_calls_count
+         chosen_model_id execution_type response_cache_key agent_type tenant_id].each do |col|
+        if connection.index_exists?(table_name, col)
+          connection.remove_index table_name, col
+        end
+      end
+
+      # Ensure required columns exist
+      add_column_if_missing(connection, table_name, :execution_type, :string, null: false, default: "chat")
+      add_column_if_missing(connection, table_name, :chosen_model_id, :string)
+      add_column_if_missing(connection, table_name, :messages_count, :integer, null: false, default: 0)
+      add_column_if_missing(connection, table_name, :attempts_count, :integer, null: false, default: 1)
+      add_column_if_missing(connection, table_name, :tool_calls_count, :integer, null: false, default: 0)
+      add_column_if_missing(connection, table_name, :streaming, :boolean, default: false)
+      add_column_if_missing(connection, table_name, :finish_reason, :string)
+      add_column_if_missing(connection, table_name, :cache_hit, :boolean, default: false)
+      add_column_if_missing(connection, table_name, :cached_tokens, :integer, default: 0)
+
+      # Ensure composite tenant indexes
+      add_composite_index_if_missing(connection, table_name, [:tenant_id, :created_at])
+      add_composite_index_if_missing(connection, table_name, [:tenant_id, :status])
+    end
+
+    # Rollback for v2_0_0 remove_detail_columns
+    def v2_0_0_remove_detail_columns_down
+      connection = ActiveRecord::Base.connection
+      table_name = :ruby_llm_agents_executions
+
+      # Re-add detail columns
+      add_column_if_missing(connection, table_name, :error_message, :text)
+      add_column_if_missing(connection, table_name, :system_prompt, :text)
+      add_column_if_missing(connection, table_name, :user_prompt, :text)
+      add_column_if_missing(connection, table_name, :response, :json)
+      add_column_if_missing(connection, table_name, :messages_summary, :json)
+      add_column_if_missing(connection, table_name, :tool_calls, :json)
+      add_column_if_missing(connection, table_name, :attempts, :json)
+      add_column_if_missing(connection, table_name, :fallback_chain, :json)
+      add_column_if_missing(connection, table_name, :parameters, :json)
+      add_column_if_missing(connection, table_name, :routed_to, :string)
+      add_column_if_missing(connection, table_name, :classification_result, :json)
+      add_column_if_missing(connection, table_name, :cached_at, :datetime)
+      add_column_if_missing(connection, table_name, :cache_creation_tokens, :integer)
+
+      # Re-add niche columns
+      add_column_if_missing(connection, table_name, :span_id, :string)
+      add_column_if_missing(connection, table_name, :response_cache_key, :string)
+      add_column_if_missing(connection, table_name, :time_to_first_token_ms, :integer)
+      add_column_if_missing(connection, table_name, :retryable, :boolean)
+      add_column_if_missing(connection, table_name, :rate_limited, :boolean)
+      add_column_if_missing(connection, table_name, :fallback_reason, :string)
+    end
+
     # Version 2.0.0 - Rename tenant_budgets to tenants
     def v2_0_0_rename_tenants
       connection = ActiveRecord::Base.connection

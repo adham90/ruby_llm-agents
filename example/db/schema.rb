@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_04_220954) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_14_000001) do
   create_table "organizations", force: :cascade do |t|
     t.boolean "active", default: true
     t.string "anthropic_api_key"
@@ -50,79 +50,47 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_04_220954) do
 
   create_table "ruby_llm_agents_executions", force: :cascade do |t|
     t.string "agent_type", null: false
-    t.json "attempts", default: [], null: false
     t.integer "attempts_count", default: 0, null: false
-    t.integer "cache_creation_tokens", default: 0
     t.boolean "cache_hit", default: false
-    t.datetime "cached_at"
     t.integer "cached_tokens", default: 0
     t.string "chosen_model_id"
-    t.json "classification_result"
     t.datetime "completed_at"
     t.datetime "created_at", null: false
     t.integer "duration_ms"
     t.string "error_class"
-    t.text "error_message"
     t.string "execution_type", default: "chat"
-    t.json "fallback_chain", default: [], null: false
-    t.string "fallback_reason"
     t.string "finish_reason"
     t.decimal "input_cost", precision: 12, scale: 6
     t.integer "input_tokens"
     t.integer "messages_count", default: 0, null: false
-    t.json "messages_summary", default: {}, null: false
     t.json "metadata", default: {}, null: false
     t.string "model_id", null: false
     t.string "model_provider"
     t.decimal "output_cost", precision: 12, scale: 6
     t.integer "output_tokens"
-    t.json "parameters", default: {}, null: false
     t.bigint "parent_execution_id"
-    t.boolean "rate_limited"
     t.string "request_id"
-    t.json "response", default: {}
-    t.string "response_cache_key"
-    t.boolean "retryable"
     t.bigint "root_execution_id"
-    t.string "routed_to"
-    t.string "span_id"
     t.datetime "started_at", null: false
     t.string "status", default: "success", null: false
     t.boolean "streaming", default: false
-    t.text "system_prompt"
     t.decimal "temperature", precision: 3, scale: 2
     t.string "tenant_id"
-    t.integer "tenant_record_id"
-    t.string "tenant_record_type"
-    t.integer "time_to_first_token_ms"
-    t.json "tool_calls", default: [], null: false
     t.integer "tool_calls_count", default: 0, null: false
     t.decimal "total_cost", precision: 12, scale: 6
     t.integer "total_tokens"
     t.string "trace_id"
     t.datetime "updated_at", null: false
-    t.text "user_prompt"
     t.index ["agent_type", "created_at"], name: "index_ruby_llm_agents_executions_on_agent_type_and_created_at"
     t.index ["agent_type", "status"], name: "index_ruby_llm_agents_executions_on_agent_type_and_status"
-    t.index ["agent_type"], name: "index_ruby_llm_agents_executions_on_agent_type"
-    t.index ["attempts_count"], name: "index_ruby_llm_agents_executions_on_attempts_count"
-    t.index ["chosen_model_id"], name: "index_ruby_llm_agents_executions_on_chosen_model_id"
     t.index ["created_at"], name: "index_ruby_llm_agents_executions_on_created_at"
-    t.index ["duration_ms"], name: "index_ruby_llm_agents_executions_on_duration_ms"
-    t.index ["execution_type"], name: "index_ruby_llm_agents_executions_on_execution_type"
-    t.index ["messages_count"], name: "index_ruby_llm_agents_executions_on_messages_count"
     t.index ["parent_execution_id"], name: "index_ruby_llm_agents_executions_on_parent_execution_id"
     t.index ["request_id"], name: "index_ruby_llm_agents_executions_on_request_id"
-    t.index ["response_cache_key"], name: "index_ruby_llm_agents_executions_on_response_cache_key"
     t.index ["root_execution_id"], name: "index_ruby_llm_agents_executions_on_root_execution_id"
     t.index ["status"], name: "index_ruby_llm_agents_executions_on_status"
     t.index ["tenant_id", "agent_type"], name: "index_ruby_llm_agents_executions_on_tenant_id_and_agent_type"
     t.index ["tenant_id", "created_at"], name: "index_ruby_llm_agents_executions_on_tenant_id_and_created_at"
     t.index ["tenant_id", "status"], name: "index_ruby_llm_agents_executions_on_tenant_id_and_status"
-    t.index ["tenant_id"], name: "index_ruby_llm_agents_executions_on_tenant_id"
-    t.index ["tenant_record_type", "tenant_record_id"], name: "index_ruby_llm_agents_executions_on_tenant_record"
-    t.index ["tool_calls_count"], name: "index_ruby_llm_agents_executions_on_tool_calls_count"
-    t.index ["total_cost"], name: "index_ruby_llm_agents_executions_on_total_cost"
     t.index ["trace_id"], name: "index_ruby_llm_agents_executions_on_trace_id"
   end
 

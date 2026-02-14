@@ -9,143 +9,37 @@ module RubyLlmAgents
   #   rails generate ruby_llm_agents:upgrade
   #
   # This will create any missing migrations for upgrading from older versions.
+  # It handles all upgrade scenarios:
+  #
+  # - v0.x/v1.x -> v2.0: Splits detail columns from executions to execution_details,
+  #   removes deprecated columns, renames tenant_budgets to tenants
+  # - v2.0 -> latest: No-ops safely if already up to date
   #
   class UpgradeGenerator < ::Rails::Generators::Base
     include ::ActiveRecord::Generators::Migration
 
     source_root File.expand_path("templates", __dir__)
 
-    def create_add_prompts_migration
-      # Check if columns already exist
-      if column_exists?(:ruby_llm_agents_executions, :system_prompt)
-        say_status :skip, "system_prompt column already exists", :yellow
+    # Main upgrade: split execution_details from executions table
+    #
+    # This single migration handles ALL schema transitions:
+    # - Creates execution_details table if missing
+    # - Migrates data from old columns on executions to execution_details
+    # - Removes deprecated columns (detail, niche, workflow, agent_version)
+    # - Adds any missing columns that should stay on executions
+    def create_split_execution_details_migration
+      if already_split?
+        say_status :skip, "execution_details already split from executions", :yellow
         return
       end
 
       migration_template(
-        "add_prompts_migration.rb.tt",
-        File.join(db_migrate_path, "add_prompts_to_ruby_llm_agents_executions.rb")
+        "split_execution_details_migration.rb.tt",
+        File.join(db_migrate_path, "split_execution_details_from_executions.rb")
       )
     end
 
-    def create_add_attempts_migration
-      # Check if columns already exist
-      if column_exists?(:ruby_llm_agents_executions, :attempts)
-        say_status :skip, "attempts column already exists", :yellow
-        return
-      end
-
-      migration_template(
-        "add_attempts_migration.rb.tt",
-        File.join(db_migrate_path, "add_attempts_to_ruby_llm_agents_executions.rb")
-      )
-    end
-
-    def create_add_streaming_migration
-      # Check if columns already exist
-      if column_exists?(:ruby_llm_agents_executions, :streaming)
-        say_status :skip, "streaming column already exists", :yellow
-        return
-      end
-
-      migration_template(
-        "add_streaming_migration.rb.tt",
-        File.join(db_migrate_path, "add_streaming_to_ruby_llm_agents_executions.rb")
-      )
-    end
-
-    def create_add_tracing_migration
-      # Check if columns already exist
-      if column_exists?(:ruby_llm_agents_executions, :trace_id)
-        say_status :skip, "trace_id column already exists", :yellow
-        return
-      end
-
-      migration_template(
-        "add_tracing_migration.rb.tt",
-        File.join(db_migrate_path, "add_tracing_to_ruby_llm_agents_executions.rb")
-      )
-    end
-
-    def create_add_routing_migration
-      # Check if columns already exist
-      if column_exists?(:ruby_llm_agents_executions, :fallback_reason)
-        say_status :skip, "fallback_reason column already exists", :yellow
-        return
-      end
-
-      migration_template(
-        "add_routing_migration.rb.tt",
-        File.join(db_migrate_path, "add_routing_to_ruby_llm_agents_executions.rb")
-      )
-    end
-
-    def create_add_finish_reason_migration
-      # Check if columns already exist
-      if column_exists?(:ruby_llm_agents_executions, :finish_reason)
-        say_status :skip, "finish_reason column already exists", :yellow
-        return
-      end
-
-      migration_template(
-        "add_finish_reason_migration.rb.tt",
-        File.join(db_migrate_path, "add_finish_reason_to_ruby_llm_agents_executions.rb")
-      )
-    end
-
-    def create_add_caching_migration
-      # Check if columns already exist
-      if column_exists?(:ruby_llm_agents_executions, :cache_hit)
-        say_status :skip, "cache_hit column already exists", :yellow
-        return
-      end
-
-      migration_template(
-        "add_caching_migration.rb.tt",
-        File.join(db_migrate_path, "add_caching_to_ruby_llm_agents_executions.rb")
-      )
-    end
-
-    def create_add_tool_calls_migration
-      # Check if columns already exist
-      if column_exists?(:ruby_llm_agents_executions, :tool_calls)
-        say_status :skip, "tool_calls column already exists", :yellow
-        return
-      end
-
-      migration_template(
-        "add_tool_calls_migration.rb.tt",
-        File.join(db_migrate_path, "add_tool_calls_to_ruby_llm_agents_executions.rb")
-      )
-    end
-
-    def create_add_execution_type_migration
-      # Check if columns already exist
-      if column_exists?(:ruby_llm_agents_executions, :execution_type)
-        say_status :skip, "execution_type column already exists", :yellow
-        return
-      end
-
-      migration_template(
-        "add_execution_type_migration.rb.tt",
-        File.join(db_migrate_path, "add_execution_type_to_ruby_llm_agents_executions.rb")
-      )
-    end
-
-    def create_execution_details_table
-      # Skip if table already exists
-      if table_exists?(:ruby_llm_agents_execution_details)
-        say_status :skip, "ruby_llm_agents_execution_details table already exists", :yellow
-        return
-      end
-
-      say_status :create, "Creating execution_details table", :blue
-      migration_template(
-        "create_execution_details_migration.rb.tt",
-        File.join(db_migrate_path, "create_ruby_llm_agents_execution_details.rb")
-      )
-    end
-
+    # Rename tenant_budgets to tenants (v1.x -> v2.0 upgrade)
     def create_rename_tenant_budgets_migration
       # Skip if already using new table name
       if table_exists?(:ruby_llm_agents_tenants)
@@ -166,42 +60,13 @@ module RubyLlmAgents
       )
     end
 
-    def create_remove_agent_version_migration
-      # Skip if column already removed
-      unless column_exists?(:ruby_llm_agents_executions, :agent_version)
-        say_status :skip, "agent_version column already removed", :yellow
-        return
-      end
-
-      say_status :remove, "Removing deprecated agent_version column", :blue
-      migration_template(
-        "remove_agent_version_migration.rb.tt",
-        File.join(db_migrate_path, "remove_agent_version_from_ruby_llm_agents_executions.rb")
-      )
-    end
-
-    def create_remove_workflow_columns_migration
-      # Skip if columns already removed
-      unless column_exists?(:ruby_llm_agents_executions, :workflow_id)
-        say_status :skip, "workflow columns already removed", :yellow
-        return
-      end
-
-      say_status :remove, "Removing deprecated workflow columns", :blue
-      migration_template(
-        "remove_workflow_columns_migration.rb.tt",
-        File.join(db_migrate_path, "remove_workflow_columns_from_ruby_llm_agents_executions.rb")
-      )
-    end
-
     def show_post_upgrade_message
       say ""
       say "RubyLLM::Agents upgrade complete!", :green
       say ""
       say "Next steps:"
       say "  1. Run migrations: rails db:migrate"
-      say "  2. Update class references in your controllers, views, and tests"
-      say "  3. Run your test suite to find any broken references"
+      say "  2. Run your test suite to verify everything works"
       say ""
     end
 
@@ -213,6 +78,45 @@ module RubyLlmAgents
 
     def db_migrate_path
       "db/migrate"
+    end
+
+    # Check if the split has already been completed:
+    # - execution_details table exists
+    # - No detail columns remain on executions
+    # - No deprecated columns remain on executions
+    def already_split?
+      return false unless table_exists?(:ruby_llm_agents_execution_details)
+      return false if has_detail_columns_on_executions?
+      return false if has_deprecated_columns_on_executions?
+
+      true
+    end
+
+    # Detail columns that should only exist on execution_details, not executions
+    DETAIL_COLUMNS = %i[
+      error_message system_prompt user_prompt response messages_summary
+      tool_calls attempts fallback_chain parameters routed_to
+      classification_result cached_at cache_creation_tokens
+    ].freeze
+
+    # Niche columns that should be in metadata JSON, not separate columns
+    NICHE_COLUMNS = %i[
+      span_id response_cache_key time_to_first_token_ms
+      retryable rate_limited fallback_reason
+    ].freeze
+
+    # Deprecated columns
+    DEPRECATED_COLUMNS = %i[
+      agent_version workflow_id workflow_type workflow_step
+      tenant_record_type tenant_record_id
+    ].freeze
+
+    def has_detail_columns_on_executions?
+      DETAIL_COLUMNS.any? { |col| column_exists?(:ruby_llm_agents_executions, col) }
+    end
+
+    def has_deprecated_columns_on_executions?
+      (NICHE_COLUMNS + DEPRECATED_COLUMNS).any? { |col| column_exists?(:ruby_llm_agents_executions, col) }
     end
 
     def column_exists?(table, column)
@@ -228,6 +132,5 @@ module RubyLlmAgents
     rescue StandardError
       false
     end
-
   end
 end
