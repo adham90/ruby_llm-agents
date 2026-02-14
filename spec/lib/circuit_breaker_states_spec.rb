@@ -7,7 +7,6 @@ RSpec.describe "CircuitBreaker State Transitions" do
 
   before do
     allow(RubyLLM::Agents.configuration).to receive(:cache_store).and_return(cache_store)
-    allow(RubyLLM::Agents.configuration).to receive(:alerts_enabled?).and_return(false)
     allow(RubyLLM::Agents.configuration).to receive(:multi_tenancy_enabled?).and_return(false)
     cache_store.clear
   end

@@ -13,7 +13,6 @@
 # --------------------
 #   model "gpt-4o"                 # Vision model to use
 #   analysis_type :detailed        # Type of analysis (see below)
-#   version "1.0"                  # Analyzer version (affects cache keys)
 #   description "..."              # Human-readable analyzer description
 #
 # ANALYSIS TYPES:

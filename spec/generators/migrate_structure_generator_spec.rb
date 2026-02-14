@@ -63,13 +63,6 @@ RSpec.describe RubyLlmAgents::MigrateStructureGenerator, type: :generator do
           end
         end
       RUBY
-
-      create_directory_with_file("app/llm/workflows", "content_workflow.rb", <<~RUBY)
-        module LLM
-          class ContentWorkflow < ApplicationWorkflow
-          end
-        end
-      RUBY
     end
 
     def create_directory_with_file(dir, filename, content)
@@ -115,10 +108,6 @@ RSpec.describe RubyLlmAgents::MigrateStructureGenerator, type: :generator do
 
       it "moves text embedder files to embedders directory" do
         expect(file_exists?("app/agents/embedders/semantic_embedder.rb")).to be true
-      end
-
-      it "moves workflow files to workflows directory" do
-        expect(file_exists?("app/workflows/content_workflow.rb")).to be true
       end
     end
 
@@ -176,10 +165,6 @@ RSpec.describe RubyLlmAgents::MigrateStructureGenerator, type: :generator do
 
     it "maps text/embedders to agents/embedders" do
       expect(described_class::PATH_MAPPING["text/embedders"]).to eq("agents/embedders")
-    end
-
-    it "maps workflows to workflows" do
-      expect(described_class::PATH_MAPPING["workflows"]).to eq("workflows")
     end
 
     it "maps tools to tools" do

@@ -8,15 +8,18 @@ module RubyLLM
     # All functionality has been moved to the Tenant model with organized concerns.
     #
     # @example Migration path
-    #   # Old usage (still works)
+    #   # Old usage (still works but emits deprecation warning)
     #   TenantBudget.for_tenant("acme_corp")
-    #   TenantBudget.create!(tenant_id: "acme", daily_limit: 100)
     #
     #   # New usage (preferred)
     #   Tenant.for("acme_corp")
-    #   Tenant.create!(tenant_id: "acme", daily_limit: 100)
     #
     # @see Tenant
     TenantBudget = Tenant
+
+    ActiveSupport.deprecator.warn(
+      "RubyLLM::Agents::TenantBudget is deprecated. Use RubyLLM::Agents::Tenant instead. " \
+      "This alias will be removed in the next major version."
+    )
   end
 end

@@ -121,7 +121,6 @@ RSpec.describe "TenantBudget backward compatibility", type: :model do
     before do
       RubyLLM::Agents::Execution.create!(
         agent_type: "TestAgent",
-        agent_version: "1.0",
         model_id: "gpt-4",
         started_at: Time.current,
         status: "success",

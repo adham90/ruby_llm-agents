@@ -10,18 +10,12 @@
   #       { value: "success", label: "Success", color: "bg-green-500" },
   #       { value: "error", label: "Error", color: "bg-red-500" }
   #     ],
-  #     selected: ["success"],
-  #     icon: "M9.75 17L9 20l-1...", # optional SVG path
-  #     width: "w-48",               # optional, default w-48
-  #     full_width: false            # optional, for mobile
+  #     selected: ["success"]
 
   selected = local_assigns[:selected] || []
-  width = local_assigns[:width] || "w-48"
-  full_width = local_assigns[:full_width] || false
   show_all = local_assigns.fetch(:show_all_option, true)
   all_label = local_assigns[:all_label] || "All"
 
-  # Determine current label
   current_label = if selected.empty?
     label
   elsif selected.length == 1
@@ -31,7 +25,6 @@
     "#{selected.length} #{label}"
   end
 
-  # Get color for single selection (if applicable)
   current_color = if selected.length == 1
     opt = options.find { |o| o[:value].to_s == selected.first.to_s }
     opt&.dig(:color)
@@ -40,41 +33,28 @@
   has_selection = selected.any?
 %>
 <div class="relative" x-data="{ open: false }" @click.outside="open = false" data-filter="<%= filter_id %>">
-  <%# Trigger button %>
   <button type="button" @click="open = !open"
-    class="<%= full_width ? 'w-full md:w-auto justify-between md:justify-start' : '' %> flex items-center gap-2 px-3 py-2 text-sm
-           bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg
-           hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors
-           <%= has_selection ? 'border-blue-300 dark:border-blue-600' : '' %>">
-    <div class="flex items-center gap-2">
-      <% if current_color.present? %>
-        <span class="w-2 h-2 rounded-full <%= current_color %> <%= current_color.include?('blue') && selected.first == 'running' ? 'animate-pulse' : '' %>"></span>
-      <% elsif local_assigns[:icon].present? %>
-        <svg class="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<%= icon %>"/>
-        </svg>
-      <% elsif !has_selection && options.first&.dig(:color) %>
-        <span class="w-2 h-2 rounded-full bg-gray-400"></span>
-      <% end %>
-      <span class="text-gray-700 dark:text-gray-200"><%= current_label %></span>
-    </div>
-    <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    class="flex items-center gap-1.5 px-2 py-1 font-mono text-xs rounded
+           hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors
+           <%= has_selection ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500' %>">
+    <% if current_color.present? %>
+      <span class="w-1.5 h-1.5 rounded-full <%= current_color %> <%= current_color.include?('blue') && selected.first == 'running' ? 'animate-pulse' : '' %>"></span>
+    <% end %>
+    <span><%= current_label %></span>
+    <svg class="w-3 h-3 text-gray-400 dark:text-gray-600 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
     </svg>
   </button>
 
-  <%# Dropdown menu %>
   <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-100"
        x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
        x-transition:leave="transition ease-in duration-75"
        x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-       class="absolute z-20 mt-1 <%= full_width ? 'left-0 right-0 md:left-auto md:right-auto md:min-w-max' : 'min-w-max' %>
-              bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1
-              max-h-64 overflow-y-auto">
+       class="absolute z-20 mt-1 min-w-max bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 max-h-64 overflow-y-auto">
 
     <% if show_all %>
-      <div class="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
-        <label class="flex items-center gap-2 cursor-pointer">
+      <div class="px-3 py-1.5 border-b border-gray-100 dark:border-gray-700">
+        <label class="flex items-center gap-2 cursor-pointer font-mono text-xs">
           <input type="checkbox"
                  class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
                  <%= selected.empty? ? 'checked' : '' %>
@@ -82,24 +62,20 @@
                    $el.closest('[data-filter]').querySelectorAll('.filter-cb').forEach(c => c.checked = false);
                    $el.closest('form').requestSubmit();
                  ">
-          <span class="text-sm font-medium text-gray-700 dark:text-gray-200"><%= all_label %></span>
+          <span class="text-gray-700 dark:text-gray-200"><%= all_label %></span>
         </label>
       </div>
     <% end %>
 
     <% options.each do |option| %>
-      <div class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200
-                  hover:bg-gray-50 dark:hover:bg-gray-700">
-        <%# Checkbox: toggle this item, dropdown stays open %>
+      <div class="flex items-center gap-2 px-3 py-1.5 font-mono text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
         <input type="checkbox"
                name="<%= name %>"
                value="<%= option[:value] %>"
                class="filter-cb rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
                <%= selected.include?(option[:value].to_s) ? 'checked' : '' %>
                @change="$el.closest('form').requestSubmit()">
-
-        <%# Label: click to select ONLY this item AND close dropdown %>
-        <span class="flex-1 flex items-center gap-2 cursor-pointer"
+        <span class="flex-1 flex items-center gap-1.5 cursor-pointer"
               @click.prevent="
                 $el.closest('[data-filter]').querySelectorAll('.filter-cb').forEach(c => c.checked = false);
                 $el.previousElementSibling.checked = true;
@@ -107,11 +83,7 @@
                 $el.closest('form').requestSubmit();
               ">
           <% if option[:color].present? %>
-            <span class="w-2 h-2 rounded-full <%= option[:color] %> <%= option[:color].include?('blue') && option[:value] == 'running' ? 'animate-pulse' : '' %>"></span>
-          <% elsif option[:icon].present? %>
-            <svg class="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<%= option[:icon] %>"/>
-            </svg>
+            <span class="w-1.5 h-1.5 rounded-full <%= option[:color] %> <%= option[:color].include?('blue') && option[:value] == 'running' ? 'animate-pulse' : '' %>"></span>
           <% end %>
           <%= option[:label] %>
         </span>

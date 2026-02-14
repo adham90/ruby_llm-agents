@@ -365,7 +365,6 @@ module RubyLLM
           [
             "image_analyzer",
             self.class.name,
-            self.class.version,
             resolve_model,
             resolve_analysis_type.to_s,
             resolve_extract_colors.to_s,
@@ -387,7 +386,7 @@ module RubyLLM
           end
         end
 
-        def build_execution_metadata(result)
+        def build_metadata(result)
           {
             analysis_type: result.analysis_type,
             tags_count: result.tags.size,

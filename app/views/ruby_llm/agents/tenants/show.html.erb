@@ -1,374 +1,184 @@
-<%= render "ruby_llm/agents/shared/breadcrumbs", items: [
-  { label: "Dashboard", path: ruby_llm_agents.root_path },
-  { label: "Tenants", path: ruby_llm_agents.tenants_path },
-  { label: @tenant.display_name }
-] %>
+<!-- Back link -->
+<nav class="font-mono text-xs mb-6">
+  <%= link_to "← tenants", ruby_llm_agents.tenants_path, class: "text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" %>
+</nav>
 
-<!-- Header -->
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-  <div class="flex items-start justify-between">
-    <div>
-      <div class="flex items-center space-x-3">
-        <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
-          <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-          </svg>
-        </div>
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            <%= @tenant.display_name %>
-          </h1>
-          <% if @tenant.name.present? && @tenant.name != @tenant.tenant_id %>
-            <p class="text-sm text-gray-500 dark:text-gray-400 font-mono"><%= @tenant.tenant_id %></p>
-          <% end %>
-        </div>
-        <%
-          enforcement = @tenant.effective_enforcement.to_s
-          badge_class = case enforcement
-                        when "hard" then "bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200"
-                        when "soft" then "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200"
-                        else "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
-                        end
-        %>
-        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <%= badge_class %>">
-          <%= enforcement.capitalize %> Enforcement
-        </span>
-      </div>
-    </div>
+<%
+  enforcement = @tenant.effective_enforcement.to_s
+  total_executions = @usage_stats[:total_executions]
+  total_cost = @usage_stats[:total_cost]
+  total_tokens = @usage_stats[:total_tokens]
+  success_count = @tenant.executions.where(status: "success").count
+  success_rate = total_executions > 0 ? (success_count.to_f / total_executions * 100).round : 100
 
-    <div class="flex items-center space-x-3">
-      <%= link_to tenant_api_configuration_path(@tenant.tenant_id), class: "inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors" do %>
-        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-        </svg>
-        API Keys
-      <% end %>
+  has_any_limit = @tenant.effective_daily_limit || @tenant.effective_monthly_limit ||
+                  @tenant.effective_daily_token_limit || @tenant.effective_monthly_token_limit
 
-      <%= link_to edit_tenant_path(@tenant), class: "inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors" do %>
-        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  has_per_agent = @tenant.per_agent_daily.present? || @tenant.per_agent_monthly.present?
+
+  # Build config line parts
+  config_parts = [@tenant.tenant_id]
+  config_parts << enforcement if enforcement != "none"
+  config_parts << "daily $#{number_with_precision(@tenant.effective_daily_limit, precision: 2)}" if @tenant.effective_daily_limit
+  config_parts << "monthly $#{number_with_precision(@tenant.effective_monthly_limit, precision: 2)}" if @tenant.effective_monthly_limit
+%>
+
+<!-- ── tenant header ──────────────── -->
+<div class="flex items-start justify-between gap-8 mb-2">
+  <!-- Left: identity -->
+  <div class="min-w-0">
+    <div class="flex items-center gap-3 mb-1.5">
+      <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono"><%= @tenant.display_name %></span>
+      <%= link_to edit_tenant_path(@tenant), class: "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors", title: "Edit tenant" do %>
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
         </svg>
-        Edit
+      <% end %>
+      <%= render "ruby_llm/agents/shared/doc_link" %>
+    </div>
+    <div class="font-mono text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1.5 flex-wrap">
+      <span class="text-gray-500 dark:text-gray-400"><%= @tenant.tenant_id %></span>
+      <% if enforcement != "none" %>
+        <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+        <%
+          enforcement_badge = enforcement == "hard" ? "badge-error" : "badge-timeout"
+        %>
+        <span class="badge badge-sm <%= enforcement_badge %>"><%= enforcement %></span>
+      <% end %>
+      <% if @tenant.effective_daily_limit %>
+        <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+        <span>daily $<%= number_with_precision(@tenant.effective_daily_limit, precision: 2) %></span>
+      <% end %>
+      <% if @tenant.effective_monthly_limit %>
+        <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+        <span>monthly $<%= number_with_precision(@tenant.effective_monthly_limit, precision: 2) %></span>
       <% end %>
     </div>
   </div>
-</div>
 
-<!-- Budget Usage Stats -->
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-  <!-- Daily Spend -->
-  <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
-    <div class="flex items-center justify-between mb-2">
-      <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-medium">Daily Spend</p>
-      <span class="text-amber-500">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-      </span>
+  <!-- Right: stats -->
+  <div class="flex-shrink-0 text-right font-mono text-xs text-gray-400 dark:text-gray-500 space-y-1">
+    <div class="flex items-center justify-end gap-x-4">
+      <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(total_executions) %></span> runs</span>
+      <span class="<%= success_rate >= 95 ? 'text-green-500' : success_rate >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= success_rate %>% ok</span>
+      <span><span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(total_cost, precision: 4) %></span> cost</span>
     </div>
-    <p class="text-xl font-semibold text-gray-900 dark:text-gray-100">
-      $<%= number_with_precision(@usage_stats[:daily_spend], precision: 4) %>
-    </p>
+    <div class="flex items-center justify-end gap-x-4 text-gray-500 dark:text-gray-600">
+      <span><span class="text-gray-600 dark:text-gray-400"><%= number_with_delimiter(total_tokens) %></span> tokens</span>
+    </div>
+  </div>
+</div>
+<div class="border-t border-gray-200 dark:border-gray-800 mb-2"></div>
+
+<% if has_any_limit %>
+  <!-- ── budget ──────────────────────── -->
+  <div class="flex items-center gap-3 mt-6 mb-3">
+    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">budget</span>
+    <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+  </div>
+
+  <div class="font-mono text-xs space-y-2">
     <% if @tenant.effective_daily_limit %>
-      <div class="mt-2">
-        <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-          <span>of $<%= number_with_precision(@tenant.effective_daily_limit, precision: 2) %></span>
-          <span><%= @usage_stats[:daily_spend_percentage] %>%</span>
-        </div>
-        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-          <%
-            pct = [@usage_stats[:daily_spend_percentage], 100].min
-            bar_color = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-yellow-500' : 'bg-green-500'
-          %>
-          <div class="<%= bar_color %> h-1.5 rounded-full transition-all" style="width: <%= pct %>%"></div>
+      <%
+        pct = @usage_stats[:daily_spend_percentage]
+        bar_color = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-yellow-500' : 'bg-green-500'
+      %>
+      <div class="flex items-center gap-3">
+        <span class="w-28 flex-shrink-0 text-gray-500 dark:text-gray-400">daily cost</span>
+        <span class="w-44 flex-shrink-0 text-gray-800 dark:text-gray-200">$<%= number_with_precision(@usage_stats[:daily_spend], precision: 2) %> <span class="text-gray-400 dark:text-gray-600">/ $<%= number_with_precision(@tenant.effective_daily_limit, precision: 2) %></span></span>
+        <span class="w-12 flex-shrink-0 text-right text-gray-400 dark:text-gray-600"><%= pct %>%</span>
+        <div class="flex-1 bg-gray-200 dark:bg-gray-800 rounded-full h-1">
+          <div class="<%= bar_color %> h-1 rounded-full transition-all" style="width: <%= [pct, 100].min %>%"></div>
         </div>
       </div>
-    <% else %>
-      <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">No limit set</p>
     <% end %>
-  </div>
 
-  <!-- Monthly Spend -->
-  <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
-    <div class="flex items-center justify-between mb-2">
-      <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-medium">Monthly Spend</p>
-      <span class="text-amber-500">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-      </span>
-    </div>
-    <p class="text-xl font-semibold text-gray-900 dark:text-gray-100">
-      $<%= number_with_precision(@usage_stats[:monthly_spend], precision: 4) %>
-    </p>
     <% if @tenant.effective_monthly_limit %>
-      <div class="mt-2">
-        <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-          <span>of $<%= number_with_precision(@tenant.effective_monthly_limit, precision: 2) %></span>
-          <span><%= @usage_stats[:monthly_spend_percentage] %>%</span>
-        </div>
-        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-          <%
-            pct = [@usage_stats[:monthly_spend_percentage], 100].min
-            bar_color = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-yellow-500' : 'bg-green-500'
-          %>
-          <div class="<%= bar_color %> h-1.5 rounded-full transition-all" style="width: <%= pct %>%"></div>
+      <%
+        pct = @usage_stats[:monthly_spend_percentage]
+        bar_color = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-yellow-500' : 'bg-green-500'
+      %>
+      <div class="flex items-center gap-3">
+        <span class="w-28 flex-shrink-0 text-gray-500 dark:text-gray-400">monthly cost</span>
+        <span class="w-44 flex-shrink-0 text-gray-800 dark:text-gray-200">$<%= number_with_precision(@usage_stats[:monthly_spend], precision: 2) %> <span class="text-gray-400 dark:text-gray-600">/ $<%= number_with_precision(@tenant.effective_monthly_limit, precision: 2) %></span></span>
+        <span class="w-12 flex-shrink-0 text-right text-gray-400 dark:text-gray-600"><%= pct %>%</span>
+        <div class="flex-1 bg-gray-200 dark:bg-gray-800 rounded-full h-1">
+          <div class="<%= bar_color %> h-1 rounded-full transition-all" style="width: <%= [pct, 100].min %>%"></div>
         </div>
       </div>
-    <% else %>
-      <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">No limit set</p>
     <% end %>
-  </div>
 
-  <!-- Daily Tokens -->
-  <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
-    <div class="flex items-center justify-between mb-2">
-      <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-medium">Daily Tokens</p>
-      <span class="text-indigo-500">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
-        </svg>
-      </span>
-    </div>
-    <p class="text-xl font-semibold text-gray-900 dark:text-gray-100">
-      <%= number_with_delimiter(@usage_stats[:daily_tokens]) %>
-    </p>
     <% if @tenant.effective_daily_token_limit %>
-      <div class="mt-2">
-        <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-          <span>of <%= number_with_delimiter(@tenant.effective_daily_token_limit) %></span>
-          <span><%= @usage_stats[:daily_token_percentage] %>%</span>
-        </div>
-        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-          <%
-            pct = [@usage_stats[:daily_token_percentage], 100].min
-            bar_color = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-yellow-500' : 'bg-green-500'
-          %>
-          <div class="<%= bar_color %> h-1.5 rounded-full transition-all" style="width: <%= pct %>%"></div>
+      <%
+        pct = @usage_stats[:daily_token_percentage]
+        bar_color = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-yellow-500' : 'bg-green-500'
+      %>
+      <div class="flex items-center gap-3">
+        <span class="w-28 flex-shrink-0 text-gray-500 dark:text-gray-400">daily tokens</span>
+        <span class="w-44 flex-shrink-0 text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@usage_stats[:daily_tokens]) %> <span class="text-gray-400 dark:text-gray-600">/ <%= number_with_delimiter(@tenant.effective_daily_token_limit) %></span></span>
+        <span class="w-12 flex-shrink-0 text-right text-gray-400 dark:text-gray-600"><%= pct %>%</span>
+        <div class="flex-1 bg-gray-200 dark:bg-gray-800 rounded-full h-1">
+          <div class="<%= bar_color %> h-1 rounded-full transition-all" style="width: <%= [pct, 100].min %>%"></div>
         </div>
       </div>
-    <% else %>
-      <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">No limit set</p>
     <% end %>
-  </div>
 
-  <!-- Monthly Tokens -->
-  <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
-    <div class="flex items-center justify-between mb-2">
-      <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-medium">Monthly Tokens</p>
-      <span class="text-indigo-500">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
-        </svg>
-      </span>
-    </div>
-    <p class="text-xl font-semibold text-gray-900 dark:text-gray-100">
-      <%= number_with_delimiter(@usage_stats[:monthly_tokens]) %>
-    </p>
     <% if @tenant.effective_monthly_token_limit %>
-      <div class="mt-2">
-        <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-          <span>of <%= number_with_delimiter(@tenant.effective_monthly_token_limit) %></span>
-          <span><%= @usage_stats[:monthly_token_percentage] %>%</span>
-        </div>
-        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-          <%
-            pct = [@usage_stats[:monthly_token_percentage], 100].min
-            bar_color = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-yellow-500' : 'bg-green-500'
-          %>
-          <div class="<%= bar_color %> h-1.5 rounded-full transition-all" style="width: <%= pct %>%"></div>
+      <%
+        pct = @usage_stats[:monthly_token_percentage]
+        bar_color = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-yellow-500' : 'bg-green-500'
+      %>
+      <div class="flex items-center gap-3">
+        <span class="w-28 flex-shrink-0 text-gray-500 dark:text-gray-400">monthly tokens</span>
+        <span class="w-44 flex-shrink-0 text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@usage_stats[:monthly_tokens]) %> <span class="text-gray-400 dark:text-gray-600">/ <%= number_with_delimiter(@tenant.effective_monthly_token_limit) %></span></span>
+        <span class="w-12 flex-shrink-0 text-right text-gray-400 dark:text-gray-600"><%= pct %>%</span>
+        <div class="flex-1 bg-gray-200 dark:bg-gray-800 rounded-full h-1">
+          <div class="<%= bar_color %> h-1 rounded-full transition-all" style="width: <%= [pct, 100].min %>%"></div>
         </div>
       </div>
-    <% else %>
-      <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">No limit set</p>
     <% end %>
   </div>
-</div>
+<% end %>
 
-<!-- Summary Stats -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-  <%= render "ruby_llm/agents/shared/stat_card",
-      title: "Total Executions",
-      value: number_with_delimiter(@usage_stats[:total_executions]),
-      icon: "M13 10V3L4 14h7v7l9-11h-7z",
-      icon_color: "text-blue-500" %>
-
-  <%= render "ruby_llm/agents/shared/stat_card",
-      title: "Total Cost",
-      value: "$#{number_with_precision(@usage_stats[:total_cost], precision: 4)}",
-      icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-      icon_color: "text-amber-500" %>
-
-  <%= render "ruby_llm/agents/shared/stat_card",
-      title: "Total Tokens",
-      value: number_with_delimiter(@usage_stats[:total_tokens]),
-      icon: "M7 20l4-16m2 16l4-16M6 9h14M4 15h14",
-      icon_color: "text-indigo-500" %>
-</div>
-
-<!-- Budget Configuration -->
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-  <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Budget Configuration</h3>
-
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-    <div>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Daily Limit (USD)</p>
-      <p class="font-medium text-gray-900 dark:text-gray-100 mt-1">
-        <% if @tenant.effective_daily_limit %>
-          $<%= number_with_precision(@tenant.effective_daily_limit, precision: 2) %>
-        <% else %>
-          <span class="text-gray-400 dark:text-gray-500">Not set</span>
-        <% end %>
-      </p>
-    </div>
-
-    <div>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Monthly Limit (USD)</p>
-      <p class="font-medium text-gray-900 dark:text-gray-100 mt-1">
-        <% if @tenant.effective_monthly_limit %>
-          $<%= number_with_precision(@tenant.effective_monthly_limit, precision: 2) %>
-        <% else %>
-          <span class="text-gray-400 dark:text-gray-500">Not set</span>
-        <% end %>
-      </p>
-    </div>
-
-    <div>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Daily Token Limit</p>
-      <p class="font-medium text-gray-900 dark:text-gray-100 mt-1">
-        <% if @tenant.effective_daily_token_limit %>
-          <%= number_with_delimiter(@tenant.effective_daily_token_limit) %>
-        <% else %>
-          <span class="text-gray-400 dark:text-gray-500">Not set</span>
-        <% end %>
-      </p>
-    </div>
-
-    <div>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Monthly Token Limit</p>
-      <p class="font-medium text-gray-900 dark:text-gray-100 mt-1">
-        <% if @tenant.effective_monthly_token_limit %>
-          <%= number_with_delimiter(@tenant.effective_monthly_token_limit) %>
-        <% else %>
-          <span class="text-gray-400 dark:text-gray-500">Not set</span>
-        <% end %>
-      </p>
-    </div>
+<% if has_per_agent %>
+  <!-- ── config ──────────────────────── -->
+  <div class="flex items-center gap-3 mt-6 mb-3">
+    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">config</span>
+    <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
   </div>
 
-  <div class="border-t border-gray-100 dark:border-gray-700 mt-4 pt-4">
-    <div class="grid grid-cols-2 gap-6">
-      <div>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Enforcement Mode</p>
-        <p class="font-medium text-gray-900 dark:text-gray-100 mt-1">
-          <%= @tenant.effective_enforcement.to_s.capitalize %>
-          <span class="text-xs text-gray-500 dark:text-gray-400 ml-2">
-            <% case @tenant.effective_enforcement.to_s %>
-            <% when "hard" %>
-              (blocks requests when limits exceeded)
-            <% when "soft" %>
-              (logs warnings when limits exceeded)
-            <% else %>
-              (no enforcement)
-            <% end %>
-          </span>
-        </p>
-      </div>
-
-      <div>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Inherit Global Defaults</p>
-        <p class="font-medium text-gray-900 dark:text-gray-100 mt-1">
-          <%= @tenant.inherit_global_defaults ? "Yes" : "No" %>
-        </p>
-      </div>
+  <div class="font-mono text-xs">
+    <span class="text-gray-400 dark:text-gray-600">per-agent limits:</span>
+    <div class="mt-1 space-y-0.5 pl-2">
+      <% (@tenant.per_agent_daily || {}).each do |agent, limit| %>
+        <div class="flex items-center gap-2">
+          <span class="text-gray-900 dark:text-gray-200"><%= agent %></span>
+          <span class="text-gray-400 dark:text-gray-600">daily $<%= number_with_precision(limit, precision: 2) %></span>
+        </div>
+      <% end %>
+      <% (@tenant.per_agent_monthly || {}).each do |agent, limit| %>
+        <div class="flex items-center gap-2">
+          <span class="text-gray-900 dark:text-gray-200"><%= agent %></span>
+          <span class="text-gray-400 dark:text-gray-600">monthly $<%= number_with_precision(limit, precision: 2) %></span>
+        </div>
+      <% end %>
     </div>
   </div>
+<% end %>
 
-  <% if @tenant.per_agent_daily.present? || @tenant.per_agent_monthly.present? %>
-    <div class="border-t border-gray-100 dark:border-gray-700 mt-4 pt-4">
-      <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Per-Agent Limits</p>
-
-      <div class="space-y-2">
-        <% (@tenant.per_agent_daily || {}).each do |agent, limit| %>
-          <div class="flex items-center text-sm">
-            <code class="bg-gray-100 dark:bg-gray-700 dark:text-gray-200 px-2 py-0.5 rounded font-mono">
-              <%= agent %>
-            </code>
-            <span class="ml-2 text-gray-600 dark:text-gray-300">
-              Daily: $<%= number_with_precision(limit, precision: 2) %>
-            </span>
-          </div>
-        <% end %>
-
-        <% (@tenant.per_agent_monthly || {}).each do |agent, limit| %>
-          <div class="flex items-center text-sm">
-            <code class="bg-gray-100 dark:bg-gray-700 dark:text-gray-200 px-2 py-0.5 rounded font-mono">
-              <%= agent %>
-            </code>
-            <span class="ml-2 text-gray-600 dark:text-gray-300">
-              Monthly: $<%= number_with_precision(limit, precision: 2) %>
-            </span>
-          </div>
-        <% end %>
-      </div>
-    </div>
-  <% end %>
+<!-- ── recent executions ──────────────────── -->
+<div class="flex items-center gap-3 mt-6 mb-3">
+  <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">recent executions</span>
+  <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
 </div>
 
-<!-- Recent Executions -->
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-  <div class="flex items-center justify-between mb-4">
-    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Recent Executions</h3>
-    <%= link_to ruby_llm_agents.executions_path(tenant_id: @tenant.tenant_id), class: "text-sm text-blue-600 dark:text-blue-400 hover:underline" do %>
-      View all
+<%= render "ruby_llm/agents/shared/executions_table", executions: @executions, pagination: { total_pages: 0, current_page: 1, total_count: 0, per_page: 10 } %>
+
+<% if total_executions > 0 %>
+  <div class="mt-3 font-mono text-xs">
+    <%= link_to ruby_llm_agents.executions_path(tenant_id: @tenant.tenant_id),
+        class: "text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" do %>
+      show all <%= number_with_delimiter(total_executions) %> executions →
     <% end %>
   </div>
-
-  <% if @executions.empty? %>
-    <p class="text-gray-500 dark:text-gray-400 text-sm">No executions found for this tenant.</p>
-  <% else %>
-    <div class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-        <thead>
-          <tr>
-            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Agent</th>
-            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cost</th>
-            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tokens</th>
-            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Time</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-          <% @executions.each do |execution| %>
-            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer" data-href="<%= ruby_llm_agents.execution_path(execution) %>">
-              <td class="px-4 py-3 whitespace-nowrap">
-                <span class="text-sm font-medium text-gray-900 dark:text-gray-100"><%= execution.agent_type.gsub(/Agent$/, '') %></span>
-              </td>
-              <td class="px-4 py-3 whitespace-nowrap">
-                <%
-                  status_class = case execution.status
-                                 when "success" then "badge-success"
-                                 when "error" then "badge-error"
-                                 when "running" then "badge-running"
-                                 when "timeout" then "badge-timeout"
-                                 else "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
-                                 end
-                %>
-                <span class="badge <%= status_class %>"><%= execution.status %></span>
-              </td>
-              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                $<%= number_with_precision(execution.total_cost || 0, precision: 6) %>
-              </td>
-              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                <%= number_with_delimiter(execution.total_tokens || 0) %>
-              </td>
-              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                <%= time_ago_in_words(execution.created_at) %> ago
-              </td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-  <% end %>
-</div>
+<% end %>

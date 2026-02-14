@@ -14,10 +14,6 @@ RSpec.describe RubyLLM::Agents::Concerns::ImageOperationExecution do
         "TestImageOperation"
       end
 
-      def self.version
-        "1.0.0"
-      end
-
       def self.model
         "dall-e-3"
       end
@@ -93,7 +89,7 @@ RSpec.describe RubyLLM::Agents::Concerns::ImageOperationExecution do
         ["test", "operation", "v1", Digest::SHA256.hexdigest("test")]
       end
 
-      def build_execution_metadata(_result)
+      def build_metadata(_result)
         { test: true }
       end
     end

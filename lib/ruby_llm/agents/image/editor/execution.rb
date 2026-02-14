@@ -23,7 +23,6 @@ module RubyLLM
           resolve_tenant_context!
           check_budget! if budget_tracking_enabled?
           validate_inputs!
-          validate_content_policy!
 
           # Check cache
           cached = check_cache(ImageEditResult) if cache_enabled?
@@ -79,13 +78,6 @@ module RubyLLM
           unless File.exist?(file)
             raise ArgumentError, "#{name} file does not exist: #{file}"
           end
-        end
-
-        def validate_content_policy!
-          policy = self.class.content_policy
-          return if policy == :none || policy == :standard
-
-          ImageGenerator::ContentPolicy.validate!(prompt, policy)
         end
 
         def edit_images
@@ -173,7 +165,6 @@ module RubyLLM
           [
             "image_editor",
             self.class.name,
-            self.class.version,
             resolve_model,
             resolve_size,
             Digest::SHA256.hexdigest(prompt),
@@ -194,7 +185,7 @@ module RubyLLM
           end
         end
 
-        def build_execution_metadata(result)
+        def build_metadata(result)
           {
             count: result.count,
             size: result.size,

@@ -10,7 +10,6 @@ RSpec.describe RubyLLM::Agents::ImagePipeline::Execution do
         "TestImagePipeline"
       end
 
-      version "1.0.0"
       cache_for 1.hour
 
       step :generate, generator: RubyLLM::Agents::ImageGenerator
@@ -23,8 +22,6 @@ RSpec.describe RubyLLM::Agents::ImagePipeline::Execution do
         "MultiStepPipeline"
       end
 
-      version "1.0.0"
-
       step :generate, generator: RubyLLM::Agents::ImageGenerator
       step :upscale, upscaler: RubyLLM::Agents::ImageUpscaler
     end
@@ -35,8 +32,6 @@ RSpec.describe RubyLLM::Agents::ImagePipeline::Execution do
       def self.name
         "ConditionalPipeline"
       end
-
-      version "1.0.0"
 
       step :generate, generator: RubyLLM::Agents::ImageGenerator, if: :should_generate?
 
@@ -445,10 +440,6 @@ RSpec.describe RubyLLM::Agents::ImagePipeline::Execution do
 
         def self.name
           "CacheTestPipeline"
-        end
-
-        def self.version
-          "1.0.0"
         end
 
         def self.steps

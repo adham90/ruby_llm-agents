@@ -15,7 +15,7 @@ module RubyLLM
     #
     # @example Adding custom metadata to executions
     #   class MyAgent < ApplicationAgent
-    #     def execution_metadata
+    #     def metadata
     #       { user_id: Current.user&.id, request_id: request.uuid }
     #     end
     #   end
@@ -232,36 +232,33 @@ module RubyLLM
       # @return [RubyLLM::Agents::Execution, nil] The created record, or nil on failure
       def create_running_execution(started_at, fallback_chain: [])
         config = RubyLLM::Agents.configuration
-        metadata = execution_metadata
+        agent_metadata = metadata
+
+        # Separate niche tracing fields into metadata
+        exec_metadata = agent_metadata.dup
+        exec_metadata["span_id"] = exec_metadata.delete(:span_id) if exec_metadata[:span_id]
 
         execution_data = {
           agent_type: self.class.name,
-          agent_version: self.class.version,
           model_id: model,
           temperature: temperature,
           started_at: started_at,
           status: "running",
-          parameters: redacted_parameters,
-          metadata: metadata,
-          system_prompt: config.persist_prompts ? redacted_system_prompt : nil,
-          user_prompt: config.persist_prompts ? redacted_user_prompt : nil,
+          metadata: exec_metadata,
           streaming: self.class.streaming,
-          messages_count: resolved_messages.size,
-          messages_summary: config.persist_messages_summary ? messages_summary : {}
+          messages_count: resolved_messages.size
         }
 
         # Extract tracing fields from metadata if present
-        execution_data[:request_id] = metadata[:request_id] if metadata[:request_id]
-        execution_data[:trace_id] = metadata[:trace_id] if metadata[:trace_id]
-        execution_data[:span_id] = metadata[:span_id] if metadata[:span_id]
-        execution_data[:parent_execution_id] = metadata[:parent_execution_id] if metadata[:parent_execution_id]
-        execution_data[:root_execution_id] = metadata[:root_execution_id] if metadata[:root_execution_id]
+        execution_data[:request_id] = agent_metadata[:request_id] if agent_metadata[:request_id]
+        execution_data[:trace_id] = agent_metadata[:trace_id] if agent_metadata[:trace_id]
+        execution_data[:parent_execution_id] = agent_metadata[:parent_execution_id] if agent_metadata[:parent_execution_id]
+        execution_data[:root_execution_id] = agent_metadata[:root_execution_id] if agent_metadata[:root_execution_id]
 
-        # Add fallback chain if provided (for reliability-enabled executions)
+        # Add fallback chain tracking (count only on execution, chain stored in detail)
         if fallback_chain.any?
-          execution_data[:fallback_chain] = fallback_chain
-          execution_data[:attempts] = []
           execution_data[:attempts_count] = 0
+          @_pending_detail_data = { fallback_chain: fallback_chain, attempts: [] }
         end
 
         # Add tenant_id if multi-tenancy is enabled
@@ -269,7 +266,22 @@ module RubyLLM
           execution_data[:tenant_id] = config.current_tenant_id
         end
 
-        RubyLLM::Agents::Execution.create!(execution_data)
+        execution = RubyLLM::Agents::Execution.create!(execution_data)
+
+        # Create detail record with prompts and parameters
+        detail_data = {
+          parameters: sanitized_parameters,
+          messages_summary: config.persist_messages_summary ? messages_summary : {},
+          system_prompt: config.persist_prompts ? stored_system_prompt : nil,
+          user_prompt: config.persist_prompts ? stored_user_prompt : nil
+        }
+        detail_data.merge!(@_pending_detail_data) if @_pending_detail_data
+        @_pending_detail_data = nil
+
+        has_data = detail_data.values.any? { |v| v.present? && v != {} && v != [] }
+        execution.create_detail!(detail_data) if has_data
+
+        execution
       rescue StandardError => e
         # Log error but don't fail the agent execution itself
         Rails.logger.error("[RubyLLM::Agents] Failed to create execution record: #{e.message}")
@@ -299,25 +311,42 @@ module RubyLLM
           status: status
         }
 
-        # Add streaming metrics if available
-        update_data[:time_to_first_token_ms] = time_to_first_token_ms if respond_to?(:time_to_first_token_ms) && time_to_first_token_ms
+        # Store niche streaming metrics in metadata
+        if respond_to?(:time_to_first_token_ms) && time_to_first_token_ms
+          update_data[:metadata] = (execution.metadata || {}).merge("time_to_first_token_ms" => time_to_first_token_ms)
+        end
 
         # Add response data if available (using safe extraction)
         response_data = safe_extract_response_data(response)
         if response_data.any?
-          update_data.merge!(response_data)
+          # Separate execution-level fields from detail-level fields
+          detail_fields = response_data.extract!(:response, :tool_calls, :cache_creation_tokens)
+          update_data.merge!(response_data.except(:tool_calls_count))
+          update_data[:tool_calls_count] = detail_fields[:tool_calls]&.size || 0
           update_data[:model_id] ||= model
         end
 
-        # Add error data if failed
+        # Add error class on execution (error_message goes to detail)
         if error
-          update_data.merge!(
-            error_message: error.message,
-            error_class: error.class.name
-          )
+          update_data[:error_class] = error.class.name
         end
 
         execution.update!(update_data)
+
+        # Update or create detail record with completion data
+        detail_update = {}
+        detail_update[:response] = detail_fields[:response] if detail_fields&.dig(:response)
+        detail_update[:tool_calls] = detail_fields[:tool_calls] if detail_fields&.dig(:tool_calls)
+        detail_update[:cache_creation_tokens] = detail_fields[:cache_creation_tokens] if detail_fields&.dig(:cache_creation_tokens)
+        detail_update[:error_message] = error.message if error
+
+        if detail_update.values.any?(&:present?)
+          if execution.detail
+            execution.detail.update!(detail_update)
+          else
+            execution.create_detail!(detail_update)
+          end
+        end
 
         # Calculate costs if token data is available
         if execution.input_tokens && execution.output_tokens
@@ -368,7 +397,6 @@ module RubyLLM
           completed_at: completed_at,
           duration_ms: duration_ms,
           status: status,
-          attempts: attempt_tracker.to_json_array,
           attempts_count: attempt_tracker.attempts_count,
           chosen_model_id: attempt_tracker.chosen_model_id,
           input_tokens: attempt_tracker.total_input_tokens,
@@ -377,8 +405,11 @@ module RubyLLM
           cached_tokens: attempt_tracker.total_cached_tokens
         }
 
-        # Add streaming metrics if available
-        update_data[:time_to_first_token_ms] = time_to_first_token_ms if respond_to?(:time_to_first_token_ms) && time_to_first_token_ms
+        # Store niche streaming metrics in metadata
+        merged_metadata = execution.metadata || {}
+        if respond_to?(:time_to_first_token_ms) && time_to_first_token_ms
+          merged_metadata["time_to_first_token_ms"] = time_to_first_token_ms
+        end
 
         # Add finish reason from response if available
         if @last_response
@@ -386,30 +417,45 @@ module RubyLLM
           update_data[:finish_reason] = finish_reason if finish_reason
         end
 
-        # Add routing/retry tracking fields
+        # Store routing/retry niche fields in metadata
         routing_data = extract_routing_data(attempt_tracker, error)
-        update_data.merge!(routing_data)
+        merged_metadata["fallback_reason"] = routing_data[:fallback_reason] if routing_data[:fallback_reason]
+        merged_metadata["retryable"] = routing_data[:retryable] if routing_data.key?(:retryable)
+        merged_metadata["rate_limited"] = routing_data[:rate_limited] if routing_data.key?(:rate_limited)
 
-        # Add response data if we have a last response
-        if @last_response && config.persist_responses
-          update_data[:response] = redacted_response(@last_response)
-        end
+        update_data[:metadata] = merged_metadata if merged_metadata.any?
 
-        # Add tool calls from accumulated_tool_calls (captured from all responses)
+        # Tool calls count on execution
         if respond_to?(:accumulated_tool_calls) && accumulated_tool_calls.present?
-          update_data[:tool_calls] = accumulated_tool_calls
           update_data[:tool_calls_count] = accumulated_tool_calls.size
         end
 
-        # Add error data if failed
+        # Error class on execution (error_message goes to detail)
         if error
-          update_data.merge!(
-            error_message: error.message.to_s.truncate(65535),
-            error_class: error.class.name
-          )
+          update_data[:error_class] = error.class.name
         end
 
         execution.update!(update_data)
+
+        # Update or create detail record
+        detail_update = {
+          attempts: attempt_tracker.to_json_array
+        }
+        if @last_response && config.persist_responses
+          detail_update[:response] = stored_response(@last_response)
+        end
+        if respond_to?(:accumulated_tool_calls) && accumulated_tool_calls.present?
+          detail_update[:tool_calls] = accumulated_tool_calls
+        end
+        if error
+          detail_update[:error_message] = error.message.to_s.truncate(65535)
+        end
+
+        if execution.detail
+          execution.detail.update!(detail_update)
+        else
+          execution.create_detail!(detail_update)
+        end
 
         # Calculate costs from all attempts
         if attempt_tracker.attempts_count > 0
@@ -452,34 +498,39 @@ module RubyLLM
 
         execution_data = {
           agent_type: self.class.name,
-          agent_version: self.class.version,
           model_id: model,
           temperature: temperature,
           started_at: Time.current,
           completed_at: completed_at,
           duration_ms: 0,
           status: status,
-          parameters: sanitized_parameters,
-          metadata: execution_metadata,
-          system_prompt: safe_system_prompt,
-          user_prompt: safe_user_prompt,
-          messages_count: resolved_messages.size,
-          messages_summary: config.persist_messages_summary ? messages_summary : {}
+          metadata: metadata,
+          messages_count: resolved_messages.size
         }
 
         # Add response data if available (using safe extraction)
         response_data = safe_extract_response_data(response)
         if response_data.any?
-          execution_data.merge!(response_data)
+          detail_fields = response_data.extract!(:response, :tool_calls, :cache_creation_tokens)
+          execution_data.merge!(response_data.except(:tool_calls_count))
+          execution_data[:tool_calls_count] = detail_fields[:tool_calls]&.size || 0
           execution_data[:model_id] ||= model
         end
 
         if error
-          execution_data.merge!(
-            error_message: error.message,
-            error_class: error.class.name
-          )
+          execution_data[:error_class] = error.class.name
         end
+
+        # Detail data stored separately
+        detail_data = {
+          parameters: sanitized_parameters,
+          system_prompt: safe_system_prompt,
+          user_prompt: safe_user_prompt,
+          messages_summary: config.persist_messages_summary ? messages_summary : {},
+          error_message: error&.message
+        }.merge(detail_fields || {})
+
+        execution_data[:_detail_data] = detail_data
 
         if RubyLLM::Agents.configuration.async_logging
           RubyLLM::Agents::ExecutionLoggerJob.perform_later(execution_data)
@@ -488,44 +539,25 @@ module RubyLLM
         end
       end
 
-      # Sanitizes parameters by removing sensitive data
+      # Sanitizes parameters by removing internal options
       #
-      # @deprecated Use {#redacted_parameters} instead
-      # @return [Hash] Sanitized parameters safe for logging
+      # @return [Hash] Parameters safe for logging
       def sanitized_parameters
-        redacted_parameters
+        @options.except(:skip_cache, :dry_run)
       end
 
-      # Returns parameters with sensitive data redacted using the Redactor
+      # Returns the system prompt for storage
       #
-      # Uses the configured redaction rules to remove sensitive fields and
-      # apply pattern-based redaction. Also converts ActiveRecord objects
-      # to ID references.
-      #
-      # @return [Hash] Redacted parameters safe for logging
-      def redacted_parameters
-        params = @options.except(:skip_cache, :dry_run)
-        Redactor.redact(params)
+      # @return [String, nil] The system prompt
+      def stored_system_prompt
+        safe_system_prompt
       end
 
-      # Returns the system prompt with redaction applied
+      # Returns the user prompt for storage
       #
-      # @return [String, nil] The redacted system prompt
-      def redacted_system_prompt
-        prompt = safe_system_prompt
-        return nil unless prompt
-
-        Redactor.redact_string(prompt)
-      end
-
-      # Returns the user prompt with redaction applied
-      #
-      # @return [String, nil] The redacted user prompt
-      def redacted_user_prompt
-        prompt = safe_user_prompt
-        return nil unless prompt
-
-        Redactor.redact_string(prompt)
+      # @return [String, nil] The user prompt
+      def stored_user_prompt
+        safe_user_prompt
       end
 
       # Returns a summary of messages (first and last, truncated)
@@ -545,7 +577,7 @@ module RubyLLM
         if msgs.first
           summary[:first] = {
             role: msgs.first[:role].to_s,
-            content: Redactor.redact_string(msgs.first[:content].to_s).truncate(max_len)
+            content: msgs.first[:content].to_s.truncate(max_len)
           }
         end
 
@@ -553,20 +585,19 @@ module RubyLLM
         if msgs.size > 1 && msgs.last
           summary[:last] = {
             role: msgs.last[:role].to_s,
-            content: Redactor.redact_string(msgs.last[:content].to_s).truncate(max_len)
+            content: msgs.last[:content].to_s.truncate(max_len)
           }
         end
 
         summary
       end
 
-      # Returns the response with redaction applied
+      # Returns the response for storage
       #
       # @param response [RubyLLM::Message] The LLM response
-      # @return [Hash] Redacted response data
-      def redacted_response(response)
-        data = safe_serialize_response(response)
-        Redactor.redact(data)
+      # @return [Hash] Response data
+      def stored_response(response)
+        safe_serialize_response(response)
       end
 
       # Hook for subclasses to add custom metadata to executions
@@ -576,10 +607,10 @@ module RubyLLM
       #
       # @return [Hash] Custom metadata to store with the execution
       # @example
-      #   def execution_metadata
+      #   def metadata
       #     { user_id: Current.user&.id, experiment: "v2" }
       #   end
-      def execution_metadata
+      def metadata
         {}
       end
 
@@ -816,40 +847,37 @@ module RubyLLM
         completed_at = Time.current
         duration_ms = ((completed_at - started_at) * 1000).round
 
+        exec_metadata = metadata.dup
+        exec_metadata["response_cache_key"] = cache_key
+        exec_metadata["span_id"] = exec_metadata.delete(:span_id) if exec_metadata[:span_id]
+
         execution_data = {
           agent_type: self.class.name,
-          agent_version: self.class.version,
           model_id: model,
           temperature: temperature,
           status: "success",
           cache_hit: true,
-          response_cache_key: cache_key,
-          cached_at: completed_at,
           started_at: started_at,
           completed_at: completed_at,
           duration_ms: duration_ms,
           input_tokens: 0,
           output_tokens: 0,
           cached_tokens: 0,
-          cache_creation_tokens: 0,
           total_tokens: 0,
           input_cost: 0,
           output_cost: 0,
           total_cost: 0,
-          parameters: redacted_parameters,
-          metadata: execution_metadata,
+          metadata: exec_metadata,
           streaming: self.class.streaming,
-          messages_count: resolved_messages.size,
-          messages_summary: config.persist_messages_summary ? messages_summary : {}
+          messages_count: resolved_messages.size
         }
 
         # Add tracing fields from metadata if present
-        metadata = execution_metadata
-        execution_data[:request_id] = metadata[:request_id] if metadata[:request_id]
-        execution_data[:trace_id] = metadata[:trace_id] if metadata[:trace_id]
-        execution_data[:span_id] = metadata[:span_id] if metadata[:span_id]
-        execution_data[:parent_execution_id] = metadata[:parent_execution_id] if metadata[:parent_execution_id]
-        execution_data[:root_execution_id] = metadata[:root_execution_id] if metadata[:root_execution_id]
+        agent_metadata = metadata
+        execution_data[:request_id] = agent_metadata[:request_id] if agent_metadata[:request_id]
+        execution_data[:trace_id] = agent_metadata[:trace_id] if agent_metadata[:trace_id]
+        execution_data[:parent_execution_id] = agent_metadata[:parent_execution_id] if agent_metadata[:parent_execution_id]
+        execution_data[:root_execution_id] = agent_metadata[:root_execution_id] if agent_metadata[:root_execution_id]
 
         # Add tenant_id if multi-tenancy is enabled
         if config.multi_tenancy_enabled?
@@ -859,7 +887,15 @@ module RubyLLM
         if config.async_logging
           RubyLLM::Agents::ExecutionLoggerJob.perform_later(execution_data)
         else
-          RubyLLM::Agents::Execution.create!(execution_data)
+          execution = RubyLLM::Agents::Execution.create!(execution_data)
+          # Create detail with cache-related fields
+          detail_data = {
+            parameters: sanitized_parameters,
+            messages_summary: config.persist_messages_summary ? messages_summary : {},
+            cached_at: completed_at,
+            cache_creation_tokens: 0
+          }
+          execution.create_detail!(detail_data) if detail_data.values.any?(&:present?)
         end
       rescue StandardError => e
         Rails.logger.error("[RubyLLM::Agents] Failed to record cache hit execution: #{e.message}")
@@ -920,11 +956,22 @@ module RubyLLM
         update_data = {
           status: "error",
           completed_at: Time.current,
-          error_class: error.class.name,
-          error_message: error_message.to_s.truncate(65535)
+          error_class: error.class.name
         }
 
         execution.class.where(id: execution.id, status: "running").update_all(update_data)
+
+        # Store error_message in detail table (best-effort)
+        begin
+          detail_attrs = { error_message: error_message.to_s.truncate(65535) }
+          if execution.detail
+            execution.detail.update_columns(detail_attrs)
+          else
+            RubyLLM::Agents::ExecutionDetail.create!(detail_attrs.merge(execution_id: execution.id))
+          end
+        rescue StandardError
+          # Non-critical — error_class on execution is sufficient for filtering
+        end
       rescue StandardError => e
         Rails.logger.error("[RubyLLM::Agents] CRITICAL: Failed emergency status update for execution #{execution&.id}: #{e.message}")
       end

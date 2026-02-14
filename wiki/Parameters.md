@@ -188,20 +188,6 @@ RubyLLM::Agents::Execution
   .where("parameters->>'query' LIKE ?", "%dress%")
 ```
 
-## Parameter Redaction
-
-Sensitive parameters are automatically redacted in logs:
-
-```ruby
-class MyAgent < ApplicationAgent
-  param :api_key, required: true  # Redacted by default
-  param :password, required: true # Redacted by default
-  param :secret_token             # Redacted by default
-end
-```
-
-See [PII Redaction](PII-Redaction) for configuring redaction.
-
 ## Parameters in Cache Keys
 
 By default, all parameters are included in cache keys. Customize with `cache_key_data`:
@@ -308,4 +294,3 @@ end
 
 - [Agent DSL](Agent-DSL) - Full DSL reference
 - [Prompts and Schemas](Prompts-and-Schemas) - Using parameters in prompts
-- [PII Redaction](PII-Redaction) - Protecting sensitive parameters

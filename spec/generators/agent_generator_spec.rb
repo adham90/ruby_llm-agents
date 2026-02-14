@@ -22,11 +22,6 @@ RSpec.describe RubyLlmAgents::AgentGenerator, type: :generator do
       expect(content).to include("temperature 0.0")
     end
 
-    it "includes version" do
-      content = file_content("app/agents/search_intent_agent.rb")
-      expect(content).to include('version "1.0"')
-    end
-
     it "includes prompt methods" do
       content = file_content("app/agents/search_intent_agent.rb")
       expect(content).to include("def system_prompt")

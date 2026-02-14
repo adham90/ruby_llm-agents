@@ -23,13 +23,6 @@ module RubyLLM
         #     cache_for 1.hour
         #   end
         #
-        # @example Cache versioning
-        #   class MyEmbedder < RubyLLM::Agents::Embedder
-        #     model "text-embedding-3-small"
-        #     version "2.0"  # Change to invalidate cache
-        #     cache_for 1.hour
-        #   end
-        #
         class Cache < Base
           # Process caching
           #
@@ -91,13 +84,14 @@ module RubyLLM
 
           # Generates a cache key for the context
           #
-          # The cache key includes:
+          # Cache keys are content-based, including:
           # - Namespace prefix
           # - Agent type
           # - Agent class name
-          # - Version (for cache invalidation)
           # - Model
           # - SHA256 hash of input
+          #
+          # This means caches automatically invalidate when inputs change.
           #
           # @param context [Context] The execution context
           # @return [String] The cache key
@@ -106,7 +100,6 @@ module RubyLLM
               "ruby_llm_agents",
               context.agent_type,
               context.agent_class&.name,
-              config(:version, "1.0"),
               context.model,
               hash_input(context.input)
             ].compact

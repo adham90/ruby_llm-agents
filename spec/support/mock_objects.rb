@@ -110,69 +110,6 @@ module RubyLLM
         end
       end
 
-      # Mock step result for workflow tests
-      # Used by: workflow/instrumentation_spec.rb
-      class MockStepResult
-        attr_reader :total_cost, :input_tokens, :output_tokens, :cached_tokens,
-                    :input_cost, :output_cost, :duration_ms, :status
-
-        def initialize(
-          success: true,
-          total_cost: 0.01,
-          input_tokens: 100,
-          output_tokens: 50,
-          cached_tokens: 0,
-          input_cost: 0.005,
-          output_cost: 0.005,
-          duration_ms: 100
-        )
-          @success = success
-          @total_cost = total_cost
-          @input_tokens = input_tokens
-          @output_tokens = output_tokens
-          @cached_tokens = cached_tokens
-          @input_cost = input_cost
-          @output_cost = output_cost
-          @duration_ms = duration_ms
-          @status = success ? "success" : "error"
-        end
-
-        def success?
-          @success
-        end
-
-        # Factory methods for common test scenarios
-        class << self
-          def successful(**options)
-            new(success: true, **options)
-          end
-
-          def failed(error_message: "Test error", **options)
-            new(success: false, **options)
-          end
-
-          def expensive(total_cost: 1.0, input_tokens: 10_000, output_tokens: 5_000)
-            new(
-              total_cost: total_cost,
-              input_tokens: input_tokens,
-              output_tokens: output_tokens,
-              input_cost: total_cost * 0.6,
-              output_cost: total_cost * 0.4
-            )
-          end
-        end
-      end
-
-      # Mock branch result for parallel workflow tests
-      class MockBranchResult < MockStepResult
-        attr_reader :branch_name
-
-        def initialize(branch_name: "test_branch", **options)
-          super(**options)
-          @branch_name = branch_name
-        end
-      end
-
       # Mock moderation result for moderation tests
       class MockModerationResult
         attr_reader :flagged, :categories, :scores

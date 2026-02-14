@@ -37,7 +37,6 @@ RSpec.describe "Version Upgrade Paths", type: :migration do
 
       # Verify new tables exist
       expect(table_exists?(:ruby_llm_agents_tenant_budgets)).to be true
-      expect(table_exists?(:ruby_llm_agents_api_configurations)).to be true
 
       # Verify data preserved
       expect(record_count).to eq(5)
@@ -156,6 +155,115 @@ RSpec.describe "Version Upgrade Paths", type: :migration do
     end
   end
 
+  describe "0.4.0 to 2.0.0 (v2 upgrade)" do
+    before do
+      build_schema_for_version("0.4.0")
+    end
+
+    it "creates execution_details table" do
+      apply_migrations_from_to("0.4.0", "2.0.0")
+
+      expect(table_exists?(:ruby_llm_agents_execution_details)).to be true
+    end
+
+    it "renames tenant_budgets to tenants" do
+      expect(table_exists?(:ruby_llm_agents_tenant_budgets)).to be true
+
+      apply_migrations_from_to("0.4.0", "2.0.0")
+
+      expect(table_exists?(:ruby_llm_agents_tenants)).to be true
+      expect(table_exists?(:ruby_llm_agents_tenant_budgets)).to be false
+    end
+
+    it "adds active and metadata columns to tenants" do
+      apply_migrations_from_to("0.4.0", "2.0.0")
+
+      expect(column_exists?(:active, :ruby_llm_agents_tenants)).to be true
+      expect(column_exists?(:metadata, :ruby_llm_agents_tenants)).to be true
+    end
+
+    it "removes agent_version column" do
+      # v0.3.3 adds workflow columns which include agent_version via the v0_3_3_tool_calls step
+      # Actually agent_version was never part of our test schema - the upgrade generator checks for it
+      # For this test, manually add agent_version to verify removal
+      connection = ActiveRecord::Base.connection
+      unless connection.column_exists?(:ruby_llm_agents_executions, :agent_version)
+        connection.add_column :ruby_llm_agents_executions, :agent_version, :string, default: "1.0"
+      end
+
+      expect(column_exists?(:agent_version)).to be true
+
+      apply_migrations_from_to("0.4.0", "2.0.0")
+
+      expect(column_exists?(:agent_version)).to be false
+    end
+
+    it "removes workflow columns" do
+      expect(column_exists?(:workflow_id)).to be true
+      expect(column_exists?(:workflow_type)).to be true
+      expect(column_exists?(:workflow_step)).to be true
+
+      apply_migrations_from_to("0.4.0", "2.0.0")
+
+      expect(column_exists?(:workflow_id)).to be false
+      expect(column_exists?(:workflow_type)).to be false
+      expect(column_exists?(:workflow_step)).to be false
+    end
+
+    it "preserves execution data through upgrade" do
+      data = MigrationTestData.seed_v0_4_0_data(count: 5)
+      original_agents = data[:executions].map { |e| e[:agent_type] }
+
+      apply_migrations_from_to("0.4.0", "2.0.0")
+
+      current = all_records
+      current_agents = current.map { |r| r["agent_type"] }
+
+      expect(current_agents).to match_array(original_agents)
+      expect(record_count).to eq(5)
+    end
+
+    it "preserves tenant data through rename" do
+      data = MigrationTestData.seed_v0_4_0_data(count: 3)
+      original_tenant_ids = data[:tenant_budgets].map { |t| t[:tenant_id] }
+
+      apply_migrations_from_to("0.4.0", "2.0.0")
+
+      current_tenants = ActiveRecord::Base.connection.select_all(
+        "SELECT * FROM ruby_llm_agents_tenants"
+      ).to_a
+      current_tenant_ids = current_tenants.map { |r| r["tenant_id"] }
+
+      expect(current_tenant_ids).to match_array(original_tenant_ids)
+    end
+  end
+
+  describe "0.3.3 to 2.0.0 (full upgrade path)" do
+    before do
+      build_schema_for_version("0.3.3")
+    end
+
+    it "applies all migrations from 0.3.3 to 2.0.0" do
+      records = MigrationTestData.seed_v0_3_3_data(count: 3)
+
+      apply_migrations_from_to("0.3.3", "2.0.0")
+
+      # Verify v0.4.0 features exist
+      expect(column_exists?(:attempts)).to be true
+      expect(column_exists?(:tenant_id)).to be true
+
+      # Verify v2.0.0 features
+      expect(table_exists?(:ruby_llm_agents_execution_details)).to be true
+
+      # Workflow columns removed
+      expect(column_exists?(:workflow_id)).to be false
+      expect(column_exists?(:workflow_type)).to be false
+
+      # Data preserved
+      expect(record_count).to eq(3)
+    end
+  end
+
   describe "idempotent migration safety" do
     it "applying the same migration twice does not error" do
       build_schema_for_version("0.1.0")
@@ -188,6 +296,52 @@ RSpec.describe "Version Upgrade Paths", type: :migration do
     end
   end
 
+  describe "v2.0.0 rollback testing" do
+    it "can rollback execution_details table" do
+      build_schema_for_version("2.0.0")
+
+      expect(table_exists?(:ruby_llm_agents_execution_details)).to be true
+
+      rollback_migration(:v2_0_0_execution_details)
+
+      expect(table_exists?(:ruby_llm_agents_execution_details)).to be false
+    end
+
+    it "can rollback tenant rename" do
+      build_schema_for_version("2.0.0")
+
+      expect(table_exists?(:ruby_llm_agents_tenants)).to be true
+      expect(table_exists?(:ruby_llm_agents_tenant_budgets)).to be false
+
+      rollback_migration(:v2_0_0_rename_tenants)
+
+      expect(table_exists?(:ruby_llm_agents_tenant_budgets)).to be true
+      expect(table_exists?(:ruby_llm_agents_tenants)).to be false
+    end
+
+    it "can rollback agent_version removal" do
+      build_schema_for_version("2.0.0")
+
+      # agent_version was never in our test schema, so the migration is a no-op
+      # but the rollback should add it back
+      rollback_migration(:v2_0_0_remove_agent_version)
+
+      expect(column_exists?(:agent_version)).to be true
+    end
+
+    it "can rollback workflow columns removal" do
+      build_schema_for_version("2.0.0")
+
+      expect(column_exists?(:workflow_id)).to be false
+
+      rollback_migration(:v2_0_0_remove_workflow_columns)
+
+      expect(column_exists?(:workflow_id)).to be true
+      expect(column_exists?(:workflow_type)).to be true
+      expect(column_exists?(:workflow_step)).to be true
+    end
+  end
+
   describe "rollback testing" do
     it "can rollback v0.4.0 reliability features" do
       build_schema_for_version("0.4.0")
@@ -210,16 +364,6 @@ RSpec.describe "Version Upgrade Paths", type: :migration do
       rollback_migration(:v0_4_0_tenant_budgets)
 
       expect(table_exists?(:ruby_llm_agents_tenant_budgets)).to be false
-    end
-
-    it "can rollback v0.4.0 api_configurations table" do
-      build_schema_for_version("0.4.0")
-
-      expect(table_exists?(:ruby_llm_agents_api_configurations)).to be true
-
-      rollback_migration(:v0_4_0_api_configurations)
-
-      expect(table_exists?(:ruby_llm_agents_api_configurations)).to be false
     end
 
     it "can rollback tool calls migration" do

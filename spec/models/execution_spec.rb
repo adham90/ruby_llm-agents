@@ -156,16 +156,6 @@ RSpec.describe RubyLLM::Agents::Execution, type: :model do
       end
     end
 
-    describe ".by_version" do
-      it "filters by agent version" do
-        v1 = create(:execution, agent_version: "1.0")
-        v2 = create(:execution, agent_version: "2.0")
-
-        expect(described_class.by_version("1.0")).to include(v1)
-        expect(described_class.by_version("1.0")).not_to include(v2)
-      end
-    end
-
     describe ".by_model" do
       it "filters by model" do
         gpt4 = create(:execution, model_id: "gpt-4")
@@ -279,12 +269,13 @@ RSpec.describe RubyLLM::Agents::Execution, type: :model do
     end
 
     describe "tool_calls attribute" do
-      it "stores and retrieves as JSON array" do
+      it "stores and retrieves as JSON array via detail" do
         tool_calls_data = [
           { "id" => "call_1", "name" => "search", "arguments" => { "query" => "test" } },
           { "id" => "call_2", "name" => "format", "arguments" => { "type" => "json" } }
         ]
-        execution = create(:execution, tool_calls: tool_calls_data)
+        execution = create(:execution)
+        execution.detail.update!(tool_calls: tool_calls_data)
         execution.reload
 
         expect(execution.tool_calls).to be_an(Array)
@@ -293,7 +284,8 @@ RSpec.describe RubyLLM::Agents::Execution, type: :model do
       end
 
       it "handles empty array" do
-        execution = create(:execution, tool_calls: [])
+        execution = create(:execution)
+        execution.detail.update!(tool_calls: [])
         execution.reload
 
         expect(execution.tool_calls).to eq([])
@@ -320,7 +312,8 @@ RSpec.describe RubyLLM::Agents::Execution, type: :model do
         tool_calls_data = [
           { "id" => "call_complex", "name" => "advanced_search", "arguments" => complex_args }
         ]
-        execution = create(:execution, tool_calls: tool_calls_data)
+        execution = create(:execution)
+        execution.detail.update!(tool_calls: tool_calls_data)
         execution.reload
 
         expect(execution.tool_calls.first["arguments"]).to eq(complex_args)

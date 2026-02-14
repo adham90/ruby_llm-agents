@@ -229,4 +229,118 @@ RSpec.describe RubyLLM::Agents::DSL::Reliability do
       expect(child_class.non_fallback_errors).to eq([custom_error])
     end
   end
+
+  describe "#on_failure (simplified DSL)" do
+    it "configures retries with times: syntax" do
+      test_class.on_failure do
+        retries times: 3, backoff: :exponential
+      end
+
+      expect(test_class.retries_config[:max]).to eq(3)
+      expect(test_class.retries_config[:backoff]).to eq(:exponential)
+    end
+
+    it "configures fallback with to: syntax" do
+      test_class.on_failure do
+        fallback to: "gpt-4o-mini"
+      end
+
+      expect(test_class.fallback_models).to eq(["gpt-4o-mini"])
+    end
+
+    it "accepts array for fallback to:" do
+      test_class.on_failure do
+        fallback to: ["gpt-4o-mini", "gpt-3.5-turbo"]
+      end
+
+      expect(test_class.fallback_models).to eq(["gpt-4o-mini", "gpt-3.5-turbo"])
+    end
+
+    it "configures timeout" do
+      test_class.on_failure do
+        timeout 30
+      end
+
+      expect(test_class.total_timeout).to eq(30)
+    end
+
+    it "handles ActiveSupport::Duration for timeout" do
+      test_class.on_failure do
+        timeout 30.seconds
+      end
+
+      expect(test_class.total_timeout).to eq(30)
+    end
+
+    it "configures circuit_breaker with after: syntax" do
+      test_class.on_failure do
+        circuit_breaker after: 5, cooldown: 300
+      end
+
+      expect(test_class.circuit_breaker_config[:errors]).to eq(5)
+      expect(test_class.circuit_breaker_config[:cooldown]).to eq(300)
+    end
+
+    it "handles ActiveSupport::Duration for cooldown" do
+      test_class.on_failure do
+        circuit_breaker after: 5, cooldown: 5.minutes
+      end
+
+      expect(test_class.circuit_breaker_config[:cooldown]).to eq(300)
+    end
+
+    it "configures all options together" do
+      custom_error = Class.new(StandardError)
+
+      test_class.on_failure do
+        retries times: 2, backoff: :constant, base: 1.0
+        fallback to: ["backup-1", "backup-2"]
+        timeout 60
+        circuit_breaker after: 10, within: 120, cooldown: 600
+        non_fallback_errors custom_error
+      end
+
+      expect(test_class.retries_config[:max]).to eq(2)
+      expect(test_class.retries_config[:backoff]).to eq(:constant)
+      expect(test_class.retries_config[:base]).to eq(1.0)
+      expect(test_class.fallback_models).to eq(["backup-1", "backup-2"])
+      expect(test_class.total_timeout).to eq(60)
+      expect(test_class.circuit_breaker_config[:errors]).to eq(10)
+      expect(test_class.circuit_breaker_config[:within]).to eq(120)
+      expect(test_class.circuit_breaker_config[:cooldown]).to eq(600)
+      expect(test_class.non_fallback_errors).to eq([custom_error])
+    end
+
+    it "supports fallback_models for backward compatibility" do
+      test_class.on_failure do
+        fallback_models "backup-1", "backup-2"
+      end
+
+      expect(test_class.fallback_models).to eq(["backup-1", "backup-2"])
+    end
+
+    it "supports retries with times: syntax" do
+      test_class.on_failure do
+        retries times: 3
+      end
+
+      expect(test_class.retries_config[:max]).to eq(3)
+    end
+
+    it "supports total_timeout alias for timeout" do
+      test_class.on_failure do
+        total_timeout 45
+      end
+
+      expect(test_class.total_timeout).to eq(45)
+    end
+
+    it "supports errors: syntax for circuit_breaker (backward compatibility)" do
+      test_class.on_failure do
+        circuit_breaker errors: 8, within: 60, cooldown: 300
+      end
+
+      expect(test_class.circuit_breaker_config[:errors]).to eq(8)
+    end
+  end
 end

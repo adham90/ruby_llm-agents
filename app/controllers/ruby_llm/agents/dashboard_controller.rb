@@ -32,37 +32,11 @@ module RubyLLM
 
       # Returns chart data as JSON for live updates
       #
-      # @param range [String] Time range: "today", "7d", "30d", "60d", "90d", or custom "YYYY-MM-DD_YYYY-MM-DD"
-      # @param compare [String] If "true", include comparison data from previous period
-      # @return [JSON] Chart data with series (and optional comparison series)
+      # @param range [String] Time range: "today", "7d", or "30d"
+      # @return [JSON] Chart data with series
       def chart_data
         range = params[:range].presence || "today"
-        compare = params[:compare] == "true"
-
-        if custom_range?(range)
-          from_date, to_date = parse_custom_range(range)
-          data = tenant_scoped_executions.activity_chart_json_for_dates(from: from_date, to: to_date)
-        else
-          data = tenant_scoped_executions.activity_chart_json(range: range)
-        end
-
-        if compare
-          offset_days = range_to_days(range)
-          comparison_data = if custom_range?(range)
-            from_date, to_date = parse_custom_range(range)
-            tenant_scoped_executions.activity_chart_json_for_dates(
-              from: from_date - offset_days.days,
-              to: to_date - offset_days.days
-            )
-          else
-            tenant_scoped_executions.activity_chart_json(
-              range: range,
-              offset_days: offset_days
-            )
-          end
-          data[:comparison] = comparison_data
-        end
-
+        data = tenant_scoped_executions.activity_chart_json(range: range)
         render json: data
       end
 
@@ -70,47 +44,15 @@ module RubyLLM
 
       # Converts range parameter to number of days
       #
-      # @param range [String] Range parameter (today, 7d, 30d, 60d, 90d, or custom YYYY-MM-DD_YYYY-MM-DD)
+      # @param range [String] Range parameter (today, 7d, 30d)
       # @return [Integer] Number of days
       def range_to_days(range)
         case range
         when "today" then 1
         when "7d" then 7
         when "30d" then 30
-        when "60d" then 60
-        when "90d" then 90
-        else
-          # Handle custom range format "YYYY-MM-DD_YYYY-MM-DD"
-          if range&.include?("_")
-            from_str, to_str = range.split("_")
-            from_date = Date.parse(from_str) rescue nil
-            to_date = Date.parse(to_str) rescue nil
-            if from_date && to_date
-              (to_date - from_date).to_i + 1
-            else
-              1
-            end
-          else
-            1
-          end
+        else 1
         end
-      end
-
-      # Checks if a range is a custom date range
-      #
-      # @param range [String] Range parameter
-      # @return [Boolean] True if custom date range format
-      def custom_range?(range)
-        range&.match?(/\A\d{4}-\d{2}-\d{2}_\d{4}-\d{2}-\d{2}\z/)
-      end
-
-      # Parses a custom range string into date objects
-      #
-      # @param range [String] Custom range in format "YYYY-MM-DD_YYYY-MM-DD"
-      # @return [Array<Date>] [from_date, to_date]
-      def parse_custom_range(range)
-        from_str, to_str = range.split("_")
-        [Date.parse(from_str), Date.parse(to_str)]
       end
 
       # Builds per-agent comparison statistics for all agent types
@@ -121,8 +63,6 @@ module RubyLLM
       # - @transcriber_stats: Transcribers
       # - @speaker_stats: Speakers
       # - @image_generator_stats: Image generators
-      # - @moderator_stats: Moderators
-      # - @workflow_stats: Workflows
       #
       # @param base_scope [ActiveRecord::Relation] Base scope to filter from
       # @return [Array<Hash>] Array of base agent stats (for backward compatibility)
@@ -138,7 +78,6 @@ module RubyLLM
         all_stats = all_agent_types.map do |agent_type|
           agent_class = AgentRegistry.find(agent_type)
           detected_type = AgentRegistry.send(:detect_agent_type, agent_class)
-          workflow_type = detected_type == "workflow" ? detect_workflow_type(agent_class) : nil
 
           # Get stats from batch or use zeros for never-executed agents
           stats = execution_stats[agent_type] || {
@@ -152,41 +91,19 @@ module RubyLLM
             total_cost: stats[:total_cost],
             avg_cost: stats[:avg_cost],
             avg_duration_ms: stats[:avg_duration_ms],
-            success_rate: stats[:success_rate],
-            is_workflow: detected_type == "workflow",
-            workflow_type: workflow_type
+            success_rate: stats[:success_rate]
           }
         end.sort_by { |a| [-(a[:executions] || 0), -(a[:total_cost] || 0)] }
 
-        # Split stats by agent type for 7-tab display
+        # Split stats by agent type for 5-tab display
         @agent_stats = all_stats.select { |a| a[:detected_type] == "agent" }
         @embedder_stats = all_stats.select { |a| a[:detected_type] == "embedder" }
         @transcriber_stats = all_stats.select { |a| a[:detected_type] == "transcriber" }
         @speaker_stats = all_stats.select { |a| a[:detected_type] == "speaker" }
         @image_generator_stats = all_stats.select { |a| a[:detected_type] == "image_generator" }
-        @moderator_stats = all_stats.select { |a| a[:detected_type] == "moderator" }
-        @workflow_stats = all_stats.select { |a| a[:detected_type] == "workflow" }
 
         # Return base agents for backward compatibility
         @agent_stats
-      end
-
-      # Detects workflow type from class hierarchy
-      #
-      # @param agent_class [Class] The agent class
-      # @return [String, nil] "pipeline", "parallel", "router", or nil
-      def detect_workflow_type(agent_class)
-        return nil unless agent_class
-
-        ancestors = agent_class.ancestors.map { |a| a.name.to_s }
-
-        if ancestors.include?("RubyLLM::Agents::Workflow::Pipeline")
-          "pipeline"
-        elsif ancestors.include?("RubyLLM::Agents::Workflow::Parallel")
-          "parallel"
-        elsif ancestors.include?("RubyLLM::Agents::Workflow::Router")
-          "router"
-        end
       end
 
       # Builds per-model statistics for model comparison and cost breakdown

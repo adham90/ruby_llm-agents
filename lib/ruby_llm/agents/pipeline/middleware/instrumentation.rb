@@ -18,7 +18,6 @@ module RubyLLM
         # Tracking is enabled/disabled per agent type via configuration:
         # - track_executions (conversation agents)
         # - track_embeddings
-        # - track_moderations
         # - track_image_generations
         # - track_audio
         #
@@ -92,7 +91,15 @@ module RubyLLM
             return nil if context.cached? && !track_cache_hits?
 
             data = build_running_execution_data(context)
-            Execution.create!(data)
+            execution = Execution.create!(data)
+
+            # Create detail record with parameters
+            params = sanitize_parameters(context)
+            if params.present? && params != {}
+              execution.create_detail!(parameters: params)
+            end
+
+            execution
           rescue StandardError => e
             error("Failed to create running execution record: #{e.message}")
             nil
@@ -120,14 +127,10 @@ module RubyLLM
             end
 
             update_data = build_completion_data(context, status)
+            execution.update!(update_data)
 
-            if async_logging?
-              # For async updates, use a job (if update support exists)
-              # For now, update synchronously to ensure dashboard shows correct status
-              execution.update!(update_data)
-            else
-              execution.update!(update_data)
-            end
+            # Save detail data (prompts, responses, tool calls, etc.)
+            save_execution_details(execution, context, status)
           rescue StandardError => e
             error("Failed to complete execution record: #{e.message}")
             raise # Re-raise for ensure block to handle via mark_execution_failed!
@@ -150,11 +153,22 @@ module RubyLLM
             update_data = {
               status: "error",
               completed_at: Time.current,
-              error_class: error&.class&.name || "UnknownError",
-              error_message: error_message
+              error_class: error&.class&.name || "UnknownError"
             }
 
             execution.class.where(id: execution.id, status: "running").update_all(update_data)
+
+            # Store error_message in detail table (best-effort)
+            begin
+              detail_attrs = { error_message: error_message }
+              if execution.detail
+                execution.detail.update_columns(detail_attrs)
+              else
+                RubyLLM::Agents::ExecutionDetail.create!(detail_attrs.merge(execution_id: execution.id))
+              end
+            rescue StandardError
+              # Non-critical
+            end
           rescue StandardError => e
             error("CRITICAL: Failed emergency status update for execution #{execution&.id}: #{e.message}")
           end
@@ -174,7 +188,6 @@ module RubyLLM
           def build_running_execution_data(context)
             data = {
               agent_type: context.agent_class&.name,
-              agent_version: config(:version, "1.0"),
               model_id: context.model,
               status: "running",
               started_at: context.started_at,
@@ -188,9 +201,6 @@ module RubyLLM
             if global_config.multi_tenancy_enabled? && context.tenant_id.present?
               data[:tenant_id] = context.tenant_id
             end
-
-            # Add sanitized parameters
-            data[:parameters] = sanitize_parameters(context)
 
             data
           end
@@ -212,38 +222,63 @@ module RubyLLM
               attempts_count: context.attempts_made
             }
 
-            # Add cache key for cache hit executions
+            # Store niche cache key in metadata
+            merged_metadata = context.metadata.dup rescue {}
             if context.cached? && context[:cache_key]
-              data[:response_cache_key] = context[:cache_key]
+              merged_metadata["response_cache_key"] = context[:cache_key]
             end
+            data[:metadata] = merged_metadata if merged_metadata.any?
 
-            # Add error details if present
+            # Error class on execution (error_message goes to detail)
             if context.error
               data[:error_class] = context.error.class.name
-              data[:error_message] = truncate_error_message(context.error.message)
             end
 
-            # Add custom metadata
-            data[:metadata] = context.metadata if context.metadata.any?
-
-            # Add enhanced tool calls if present
+            # Tool calls count on execution
             if context[:tool_calls].present?
-              data[:tool_calls] = context[:tool_calls]
               data[:tool_calls_count] = context[:tool_calls].size
             end
 
-            # Add reliability attempts if present
+            # Attempts count on execution
             if context[:reliability_attempts].present?
-              data[:attempts] = context[:reliability_attempts]
               data[:attempts_count] = context[:reliability_attempts].size
             end
 
-            # Add response if persist_responses is enabled
-            if global_config.persist_responses && context.output.respond_to?(:content)
-              data[:response] = serialize_response(context)
+            data
+          end
+
+          # Saves detail data to the execution_details table after completion
+          def save_execution_details(execution, context, status)
+            return unless execution
+
+            detail_data = {}
+
+            if context.error
+              detail_data[:error_message] = truncate_error_message(context.error.message)
             end
 
-            data
+            if context[:tool_calls].present?
+              detail_data[:tool_calls] = context[:tool_calls]
+            end
+
+            if context[:reliability_attempts].present?
+              detail_data[:attempts] = context[:reliability_attempts]
+            end
+
+            if global_config.persist_responses && context.output.respond_to?(:content)
+              detail_data[:response] = serialize_response(context)
+            end
+
+            has_data = detail_data.values.any? { |v| v.present? && v != {} && v != [] }
+            return unless has_data
+
+            if execution.detail
+              execution.detail.update!(detail_data)
+            else
+              execution.create_detail!(detail_data)
+            end
+          rescue StandardError => e
+            error("Failed to save execution details: #{e.message}")
           end
 
           # Persists execution data to database (legacy fallback)
@@ -272,9 +307,13 @@ module RubyLLM
           # @param status [String] "success" or "error"
           # @return [Hash] Execution data
           def build_execution_data(context, status)
+            merged_metadata = context.metadata.dup rescue {}
+            if context.cached? && context[:cache_key]
+              merged_metadata["response_cache_key"] = context[:cache_key]
+            end
+
             data = {
               agent_type: context.agent_class&.name,
-              agent_version: config(:version, "1.0"),
               model_id: context.model,
               status: determine_status(context, status),
               duration_ms: context.duration_ms,
@@ -284,7 +323,8 @@ module RubyLLM
               input_tokens: context.input_tokens || 0,
               output_tokens: context.output_tokens || 0,
               total_cost: context.total_cost || 0,
-              attempts_count: context.attempts_made
+              attempts_count: context.attempts_made,
+              metadata: merged_metadata
             }
 
             # Add tenant_id only if multi-tenancy is enabled and tenant is set
@@ -292,39 +332,30 @@ module RubyLLM
               data[:tenant_id] = context.tenant_id
             end
 
-            # Add cache key for cache hit executions
-            if context.cached? && context[:cache_key]
-              data[:response_cache_key] = context[:cache_key]
-            end
-
-            # Add error details if present
+            # Error class on execution
             if context.error
               data[:error_class] = context.error.class.name
-              data[:error_message] = truncate_error_message(context.error.message)
             end
 
-            # Add custom metadata
-            data[:metadata] = context.metadata if context.metadata.any?
-
-            # Add sanitized parameters
-            data[:parameters] = sanitize_parameters(context)
-
-            # Add enhanced tool calls if present
+            # Tool calls count on execution
             if context[:tool_calls].present?
-              data[:tool_calls] = context[:tool_calls]
               data[:tool_calls_count] = context[:tool_calls].size
             end
 
-            # Add reliability attempts if present
+            # Attempts count on execution
             if context[:reliability_attempts].present?
-              data[:attempts] = context[:reliability_attempts]
               data[:attempts_count] = context[:reliability_attempts].size
             end
 
-            # Add response if persist_responses is enabled
+            # Store detail data for separate creation
+            detail_data = { parameters: sanitize_parameters(context) }
+            detail_data[:error_message] = truncate_error_message(context.error.message) if context.error
+            detail_data[:tool_calls] = context[:tool_calls] if context[:tool_calls].present?
+            detail_data[:attempts] = context[:reliability_attempts] if context[:reliability_attempts].present?
             if global_config.persist_responses && context.output.respond_to?(:content)
-              data[:response] = serialize_response(context)
+              detail_data[:response] = serialize_response(context)
             end
+            data[:_detail_data] = detail_data
 
             data
           end
@@ -401,8 +432,7 @@ module RubyLLM
             response_data[:input_tokens] = context.input_tokens if context.input_tokens
             response_data[:output_tokens] = context.output_tokens if context.output_tokens
 
-            # Apply redaction for sensitive data
-            Redactor.redact(response_data)
+            response_data
           rescue StandardError => e
             error("Failed to serialize response: #{e.message}")
             nil
@@ -419,7 +449,12 @@ module RubyLLM
           #
           # @param data [Hash] Execution data
           def create_execution_record(data)
-            Execution.create!(data)
+            detail_data = data.delete(:_detail_data)
+            execution = Execution.create!(data)
+            if detail_data && detail_data.values.any? { |v| v.present? && v != {} && v != [] }
+              execution.create_detail!(detail_data)
+            end
+            execution
           end
 
           # Returns whether tracking is enabled for this agent type
@@ -432,8 +467,6 @@ module RubyLLM
             case context.agent_type
             when :embedding
               cfg.track_embeddings
-            when :moderation
-              cfg.track_moderation
             when :image
               cfg.track_image_generation
             when :audio

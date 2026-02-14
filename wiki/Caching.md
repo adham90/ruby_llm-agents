@@ -29,11 +29,25 @@ cache 1.day
 cache 1.week
 ```
 
+## How Cache Invalidation Works
+
+Cache keys are **content-based** - they're automatically generated from a hash of your prompts and parameters. This means:
+
+- **Automatic invalidation**: When you change your system prompt, user prompt, or parameters, the cache key changes automatically
+- **No manual version bumping**: You don't need to remember to update a version number when changing prompts
+- **Reliable**: The cache key reflects the actual content being sent to the LLM
+
+To manually clear caches, use Rails cache clearing:
+```ruby
+Rails.cache.clear  # Clear all caches
+```
+
+Or use a cache namespace in your configuration for more granular control.
+
 ## How Caching Works
 
 1. Cache key is generated from:
    - Agent class name
-   - Agent version
    - All parameters
    - System prompt
    - User prompt
@@ -81,23 +95,6 @@ end
 # These now use the SAME cache (request_id ignored)
 SearchAgent.call(query: "test", limit: 10, request_id: "abc")
 SearchAgent.call(query: "test", limit: 10, request_id: "xyz")
-```
-
-## Version-Based Invalidation
-
-Change the version to invalidate all cached responses:
-
-```ruby
-class MyAgent < ApplicationAgent
-  version "1.0"  # Current cache
-  cache 1.day
-end
-
-# After updating prompts, bump the version
-class MyAgent < ApplicationAgent
-  version "1.1"  # New version = new cache keys
-  cache 1.day
-end
 ```
 
 ## Bypassing Cache
@@ -160,7 +157,6 @@ High TTL for stable, factual responses:
 
 ```ruby
 class FactAgent < ApplicationAgent
-  version "1.0"
   cache 1.week  # Facts don't change often
 
   param :topic, required: true
@@ -325,15 +321,10 @@ Rails.cache.instance_variable_get(:@data).size
 
 ### Stale Responses
 
-1. Bump the version:
-   ```ruby
-   version "2.0"  # Invalidates all caches
-   ```
-
-2. Clear cache manually:
-   ```ruby
-   Rails.cache.clear
-   ```
+Clear cache manually:
+```ruby
+Rails.cache.clear
+```
 
 ## Related Pages
 

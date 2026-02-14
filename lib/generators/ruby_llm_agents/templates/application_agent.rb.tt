@@ -63,7 +63,7 @@ class ApplicationAgent < RubyLLM::Agents::Base
   # end
 
   # Example: Common metadata
-  # def execution_metadata
+  # def metadata
   #   { app_version: Rails.application.config.version }
   # end
 end

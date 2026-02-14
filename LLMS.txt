@@ -95,8 +95,7 @@ ruby_llm-agents brings structure, observability, and control to LLM-based Rails 
 
 - [Multi-Tenancy Guide](wiki/Multi-Tenancy.md): Setting up multi-tenant support
 - [LLM Tenant](lib/ruby_llm/agents/llm_tenant.rb): Tenant concern for models
-- [API Configuration](app/models/ruby_llm/agents/api_configuration.rb): Per-tenant API keys
-- [Tenant Budget](app/models/ruby_llm/agents/tenant_budget.rb): Per-tenant spending limits
+- [Tenant](app/models/ruby_llm/agents/tenant.rb): Per-tenant budgets and tracking
 
 ## Caching
 

@@ -19,13 +19,10 @@ module RubyLLM
         "dashboard/index" => "Dashboard",
         "agents/index" => "Agent-DSL",
         "agents/show" => "Agent-DSL",
-        "workflows/index" => "Workflows",
-        "workflows/show" => "Workflows",
         "executions/index" => "Execution-Tracking",
         "executions/show" => "Execution-Tracking",
         "tenants/index" => "Multi-Tenancy",
-        "system_config/show" => "Configuration",
-        "api_configurations/show" => "Configuration"
+        "system_config/show" => "Configuration"
       }.freeze
 
       # Returns the documentation URL for the current page or a specific page key
@@ -59,27 +56,11 @@ module RubyLLM
 
       # Returns the URL for "All Tenants" (clears tenant filter)
       #
-      # Handles two scenarios:
-      # 1. Query param routes - removes tenant_id from query params
-      # 2. Path-based tenant routes - navigates to equivalent global route
+      # Removes tenant_id from query params to show unfiltered results.
       #
       # @return [String] URL without tenant filtering
       def all_tenants_url
-        # Map tenant-specific path routes to their global equivalents
-        tenant_route_mappings = {
-          "tenant" => ruby_llm_agents.api_configuration_path,
-          "edit_tenant" => ruby_llm_agents.edit_api_configuration_path
-        }
-
-        # Check if current action has a global equivalent
-        if tenant_route_mappings.key?(action_name)
-          base_path = tenant_route_mappings[action_name]
-          query = request.query_parameters.except("tenant_id")
-          query.any? ? "#{base_path}?#{query.to_query}" : base_path
-        else
-          # For query param routes, just remove tenant_id
-          url_for(request.query_parameters.except("tenant_id"))
-        end
+        url_for(request.query_parameters.except("tenant_id"))
       end
 
       # Formats large numbers with human-readable suffixes (K, M, B)
@@ -121,7 +102,7 @@ module RubyLLM
       # @return [ActiveSupport::SafeBuffer] HTML badge element
       def render_enabled_badge(enabled)
         if enabled
-          '<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300">Enabled</span>'.html_safe
+          '<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300">Enabled</span>'.html_safe
         else
           '<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">Disabled</span>'.html_safe
         end
@@ -133,7 +114,7 @@ module RubyLLM
       # @return [ActiveSupport::SafeBuffer] HTML badge element
       def render_configured_badge(configured)
         if configured
-          '<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300">Configured</span>'.html_safe
+          '<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300">Configured</span>'.html_safe
         else
           '<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">Not configured</span>'.html_safe
         end
@@ -254,7 +235,7 @@ module RubyLLM
                         end
 
         if is_improvement
-          content_tag(:span, class: "inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/50 rounded-full") do
+          content_tag(:span, class: "inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-500/20 rounded-full") do
             safe_join([
               content_tag(:svg, class: "w-3 h-3", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24") do
                 content_tag(:path, nil, "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "2", d: "M5 10l7-7m0 0l7 7m-7-7v18")
@@ -263,7 +244,7 @@ module RubyLLM
             ])
           end
         elsif is_regression
-          content_tag(:span, class: "inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/50 rounded-full") do
+          content_tag(:span, class: "inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-500/20 rounded-full") do
             safe_join([
               content_tag(:svg, class: "w-3 h-3", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24") do
                 content_tag(:path, nil, "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "2", d: "M19 14l-7 7m0 0l-7-7m7 7V3")
@@ -306,31 +287,16 @@ module RubyLLM
 
       # Returns human-readable display name for time range
       #
-      # @param range [String] Range parameter (today, 7d, 30d, 60d, 90d, or custom YYYY-MM-DD_YYYY-MM-DD)
+      # @param range [String] Range parameter (today, 7d, 30d)
       # @return [String] Human-readable range name
       # @example
-      #   range_display_name("7d") #=> "Last 7 Days"
-      #   range_display_name("2024-01-01_2024-01-15") #=> "Jan 1 - Jan 15"
+      #   range_display_name("7d") #=> "7 Days"
       def range_display_name(range)
         case range
         when "today" then "Today"
-        when "7d" then "Last 7 Days"
-        when "30d" then "Last 30 Days"
-        when "60d" then "Last 60 Days"
-        when "90d" then "Last 90 Days"
-        else
-          if range&.include?("_")
-            from_str, to_str = range.split("_")
-            from_date = Date.parse(from_str) rescue nil
-            to_date = Date.parse(to_str) rescue nil
-            if from_date && to_date
-              "#{from_date.strftime('%b %-d')} - #{to_date.strftime('%b %-d')}"
-            else
-              "Custom Range"
-            end
-          else
-            "Today"
-          end
+        when "7d" then "7 Days"
+        when "30d" then "30 Days"
+        else "Today"
         end
       end
 
@@ -391,7 +357,7 @@ module RubyLLM
       # @return [ActiveSupport::SafeBuffer] HTML summary banner
       def comparison_summary_badge(improvements_count, regressions_count, v2_label)
         if improvements_count >= 3 && regressions_count == 0
-          content_tag(:span, class: "inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/50 rounded-lg") do
+          content_tag(:span, class: "inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-500/20 rounded-lg") do
             safe_join([
               content_tag(:svg, class: "w-4 h-4", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24") do
                 content_tag(:path, nil, "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "2", d: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z")
@@ -400,7 +366,7 @@ module RubyLLM
             ])
           end
         elsif regressions_count >= 3 && improvements_count == 0
-          content_tag(:span, class: "inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/50 rounded-lg") do
+          content_tag(:span, class: "inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-500/20 rounded-lg") do
             safe_join([
               content_tag(:svg, class: "w-4 h-4", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24") do
                 content_tag(:path, nil, "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "2", d: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z")
@@ -409,7 +375,7 @@ module RubyLLM
             ])
           end
         elsif improvements_count > 0 || regressions_count > 0
-          content_tag(:span, class: "inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 rounded-lg") do
+          content_tag(:span, class: "inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/20 rounded-lg") do
             safe_join([
               content_tag(:svg, class: "w-4 h-4", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24") do
                 content_tag(:path, nil, "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "2", d: "M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4")
@@ -552,14 +518,14 @@ module RubyLLM
 
             escaped_value = ERB::Util.html_escape(token[:value])
             if is_key
-              result << %(<span class="text-purple-600">#{escaped_value}</span>)
+              result << %(<span class="text-purple-600 dark:text-purple-400">#{escaped_value}</span>)
             else
-              result << %(<span class="text-green-600">#{escaped_value}</span>)
+              result << %(<span class="text-green-600 dark:text-green-400">#{escaped_value}</span>)
             end
           when :number
-            result << %(<span class="text-blue-600">#{token[:value]}</span>)
+            result << %(<span class="text-blue-600 dark:text-blue-400">#{token[:value]}</span>)
           when :boolean
-            result << %(<span class="text-amber-600">#{token[:value]}</span>)
+            result << %(<span class="text-amber-600 dark:text-amber-400">#{token[:value]}</span>)
           when :null
             result << %(<span class="text-gray-400">#{token[:value]}</span>)
           else

@@ -34,7 +34,6 @@ RSpec.describe "Agent tenant integration" do
     unless Object.const_defined?(:TenantTestAgent)
       Object.const_set(:TenantTestAgent, Class.new(RubyLLM::Agents::Base) do
         model "gpt-4"
-        version "1.0"
 
         def user_prompt
           "Hello"
@@ -66,7 +65,6 @@ RSpec.describe "Agent tenant integration" do
 
     Object.const_set(:CustomTenantTestAgent, Class.new(RubyLLM::Agents::Base) do
       model "gpt-4"
-      version "1.0"
 
       param :org_id
 

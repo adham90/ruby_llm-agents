@@ -16,10 +16,6 @@ RSpec.shared_examples "a valid agent class" do
     expect(described_class.model).to be_present
   end
 
-  it "has a version configured" do
-    expect(described_class.version).to be_present
-  end
-
   it "returns :conversation for agent_type" do
     expect(described_class.agent_type).to eq(:conversation)
   end
@@ -43,10 +39,6 @@ RSpec.shared_examples "an agent with caching" do |cache_duration:|
 
     it "includes agent class name in cache key" do
       expect(agent.agent_cache_key).to include(described_class.name)
-    end
-
-    it "includes version in cache key" do
-      expect(agent.agent_cache_key).to include(described_class.version)
     end
   end
 end

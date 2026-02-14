@@ -171,9 +171,12 @@ Get notified when reliability features are triggered:
 ```ruby
 # config/initializers/ruby_llm_agents.rb
 RubyLLM::Agents.configure do |config|
-  config.alerts = {
-    on_events: [:breaker_open],
-    slack_webhook_url: ENV['SLACK_WEBHOOK_URL']
+  config.on_alert = ->(event, payload) {
+    if event == :breaker_open
+      Slack::Notifier.new(ENV['SLACK_WEBHOOK']).ping(
+        "Circuit breaker opened for #{payload[:agent_type]}"
+      )
+    end
   }
 end
 ```

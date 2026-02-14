@@ -16,7 +16,6 @@ SimpleCov.start do
   add_group "Core Library", "lib/ruby_llm/agents/core"
   add_group "Pipeline", "lib/ruby_llm/agents/pipeline"
   add_group "Infrastructure", "lib/ruby_llm/agents/infrastructure"
-  add_group "Workflow", "lib/ruby_llm/agents/workflow"
   add_group "Image", "lib/ruby_llm/agents/image"
   add_group "Audio", "lib/ruby_llm/agents/audio"
   add_group "Text", "lib/ruby_llm/agents/text"
@@ -46,16 +45,11 @@ Mime::Type.register "text/vnd.turbo-stream.html", :turbo_stream unless Mime::Typ
 # This is needed because RSpec loads spec files before to_prepare callbacks run
 require "ruby_llm/agents/infrastructure/execution_logger_job"
 require "ruby_llm/agents/core/instrumentation"
-require "ruby_llm/agents/core/resolved_config"
 require "ruby_llm/agents/core/base"
 
 # Force loading of autoloaded constants that specs reference
 # This must happen after Rails.application.initialize! and before specs load
 RubyLLM::Agents::Execution
-
-# Load mailers for specs that test email functionality
-require_relative "../app/mailers/ruby_llm/agents/application_mailer"
-require_relative "../app/mailers/ruby_llm/agents/alert_mailer"
 
 # Load support files
 Dir[File.join(__dir__, "support/**/*.rb")].sort.each { |f| require f }

@@ -355,7 +355,6 @@ module RubyLLM
           "ruby_llm_agents",
           "transcription",
           self.class.name,
-          self.class.version,
           resolved_model,
           resolved_language,
           self.class.output_format,

@@ -1,13 +1,13 @@
-<div class="mb-6">
-  <div class="flex items-center gap-2">
-    <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Agents</h1>
-    <%= render "ruby_llm/agents/shared/doc_link" %>
-  </div>
-  <p class="text-gray-500 dark:text-gray-400 mt-1">All available agents with execution statistics</p>
-</div>
-
 <%
   audio_count = @agents_by_type[:speaker].size + @agents_by_type[:transcriber].size
+  sc = @sort_params[:column]
+  sd = @sort_params[:direction]
+  sort_url = ->(col) {
+    dir = (col == sc && sd == "asc") ? "desc" : "asc"
+    url_for(request.query_parameters.merge(sort: col, direction: dir))
+  }
+  sort_active = ->(col) { col == sc ? "text-gray-600 dark:text-gray-300" : "" }
+  sort_arrow = ->(col) { col == sc ? (sd == "asc" ? " ↑" : " ↓") : "" }
 %>
 <div x-data="{
   activeSubTab: <%= params[:subtab].present? ? "'#{params[:subtab]}'" : 'null' %>,
@@ -15,9 +15,6 @@
     all: <%= @agent_count %>,
     agent: <%= @agents_by_type[:agent].size %>,
     embedder: <%= @agents_by_type[:embedder].size %>,
-    moderator: <%= @agents_by_type[:moderator].size %>,
-    speaker: <%= @agents_by_type[:speaker].size %>,
-    transcriber: <%= @agents_by_type[:transcriber].size %>,
     audio: <%= audio_count %>,
     image_generator: <%= @agents_by_type[:image_generator].size %>,
     deleted: <%= @deleted_count %>
@@ -37,292 +34,126 @@
     history.replaceState({}, '', url);
   }
 }">
-  <!-- Agent Sub-tabs -->
-  <div class="mb-4">
-    <div class="flex flex-wrap gap-2">
+  <!-- ── agents ──────────────────────────── -->
+  <div class="flex items-center gap-3 mb-4">
+    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">agents</span>
+    <div class="font-mono text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1.5">
+      <span x-text="currentCount"></span>
+      <%= render "ruby_llm/agents/shared/doc_link" %>
+    </div>
+    <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+    <div class="flex font-mono text-xs gap-0.5">
       <button type="button" @click="activeSubTab = null; updateUrl()"
-              :class="activeSubTab === null ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
-              class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
-        All (<%= @agent_count %>)
-      </button>
+              :class="activeSubTab === null ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+              class="px-2 py-0.5">all</button>
       <button type="button" @click="activeSubTab = 'agent'; updateUrl()"
-              :class="activeSubTab === 'agent' ? 'bg-blue-600 text-white' : 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800'"
-              class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
-        Agents (<%= @agents_by_type[:agent].size %>)
-      </button>
+              :class="activeSubTab === 'agent' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+              class="px-2 py-0.5">agents</button>
       <button type="button" @click="activeSubTab = 'embedder'; updateUrl()"
-              :class="activeSubTab === 'embedder' ? 'bg-purple-600 text-white' : 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800'"
-              class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
-        Embedders (<%= @agents_by_type[:embedder].size %>)
-      </button>
-      <button type="button" @click="activeSubTab = 'moderator'; updateUrl()"
-              :class="activeSubTab === 'moderator' ? 'bg-orange-600 text-white' : 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-800'"
-              class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
-        Moderators (<%= @agents_by_type[:moderator].size %>)
-      </button>
+              :class="activeSubTab === 'embedder' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+              class="px-2 py-0.5">embedders</button>
       <% if audio_count > 0 %>
         <button type="button" @click="activeSubTab = 'audio'; updateUrl()"
-                :class="activeSubTab === 'audio' ? 'bg-pink-600 text-white' : 'bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-300 hover:bg-pink-200 dark:hover:bg-pink-800'"
-                class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
-          Audio (<%= audio_count %>)
-        </button>
+                :class="activeSubTab === 'audio' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+                class="px-2 py-0.5">audio</button>
       <% end %>
       <% if @agents_by_type[:image_generator].size > 0 %>
         <button type="button" @click="activeSubTab = 'image_generator'; updateUrl()"
-                :class="activeSubTab === 'image_generator' ? 'bg-teal-600 text-white' : 'bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 hover:bg-teal-200 dark:hover:bg-teal-800'"
-                class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
-          Image Generators (<%= @agents_by_type[:image_generator].size %>)
-        </button>
+                :class="activeSubTab === 'image_generator' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+                class="px-2 py-0.5">image</button>
       <% end %>
       <% if @deleted_count > 0 %>
         <button type="button" @click="activeSubTab = 'deleted'; updateUrl()"
-                :class="activeSubTab === 'deleted' ? 'bg-gray-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'"
-                class="px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
-          Deleted (<%= @deleted_count %>)
-        </button>
+                :class="activeSubTab === 'deleted' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+                class="px-2 py-0.5">deleted</button>
       <% end %>
     </div>
   </div>
 
-  <!-- Agents Table -->
   <% if @agents.empty? && @deleted_agents.empty? %>
     <%= render "ruby_llm/agents/agents/empty_state", type: "agents" %>
   <% else %>
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead class="bg-gray-50 dark:bg-gray-900">
-            <tr>
-              <%= render "ruby_llm/agents/agents/sortable_header",
-                  column: "name", label: "Name",
-                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
+    <!-- Column headers -->
+    <div class="flex items-center gap-3 px-2 -mx-2 font-mono text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider mb-1">
+      <%= link_to "name#{sort_arrow.call('name')}".html_safe, sort_url.call("name"),
+          class: "flex-[2] min-w-0 hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('name')}" %>
+      <%= link_to "type#{sort_arrow.call('agent_type')}".html_safe, sort_url.call("agent_type"),
+          class: "flex-1 min-w-0 hidden sm:block hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('agent_type')}" %>
+      <span class="w-1.5 flex-shrink-0"></span>
+      <%= link_to "model#{sort_arrow.call('model')}".html_safe, sort_url.call("model"),
+          class: "flex-[2] min-w-0 hidden lg:block hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('model')}" %>
+      <%= link_to "runs#{sort_arrow.call('execution_count')}".html_safe, sort_url.call("execution_count"),
+          class: "w-14 flex-shrink-0 text-right hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('execution_count')}" %>
+      <%= link_to "cost#{sort_arrow.call('total_cost')}".html_safe, sort_url.call("total_cost"),
+          class: "w-16 flex-shrink-0 text-right hidden md:block hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('total_cost')}" %>
+      <%= link_to "ok%#{sort_arrow.call('success_rate')}".html_safe, sort_url.call("success_rate"),
+          class: "w-12 flex-shrink-0 text-right hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('success_rate')}" %>
+      <%= link_to "last run#{sort_arrow.call('last_executed')}".html_safe, sort_url.call("last_executed"),
+          class: "w-24 flex-shrink-0 text-right hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('last_executed')}" %>
+    </div>
 
-              <%= render "ruby_llm/agents/agents/sortable_header",
-                  column: "agent_type", label: "Type",
-                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
-
-              <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Status
-              </th>
-
-              <%= render "ruby_llm/agents/agents/sortable_header",
-                  column: "model", label: "Model",
-                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction],
-                  th_class: "hidden lg:table-cell" %>
-
-              <%= render "ruby_llm/agents/agents/sortable_header",
-                  column: "execution_count", label: "Executions",
-                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
-
-              <%= render "ruby_llm/agents/agents/sortable_header",
-                  column: "total_cost", label: "Cost",
-                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction],
-                  th_class: "hidden md:table-cell" %>
-
-              <%= render "ruby_llm/agents/agents/sortable_header",
-                  column: "success_rate", label: "Success",
-                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
-
-              <%= render "ruby_llm/agents/agents/sortable_header",
-                  column: "last_executed", label: "Last Run",
-                  current_sort: @sort_params[:column], current_direction: @sort_params[:direction] %>
-            </tr>
-          </thead>
-
-          <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-100/50 dark:divide-gray-700/50">
-            <% @agents.each_with_index do |agent, index| %>
-              <%
-                # Determine if this agent should be shown based on sub-tab (exclude deleted tab)
-                show_condition = if agent[:agent_type] == 'speaker' || agent[:agent_type] == 'transcriber'
-                  "activeSubTab !== 'deleted' && (activeSubTab === null || activeSubTab === 'audio' || activeSubTab === '#{agent[:agent_type]}')"
-                else
-                  "activeSubTab !== 'deleted' && (activeSubTab === null || activeSubTab === '#{agent[:agent_type]}')"
-                end
-                row_bg = index.even? ? '' : 'bg-gray-50/50 dark:bg-gray-900/30'
-                success_rate = agent[:success_rate] || 0
-              %>
-              <tr
-                x-show="<%= show_condition %>"
-                class="<%= row_bg %> hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-colors cursor-pointer"
-                onclick="window.location='<%= ruby_llm_agents.agent_path(ERB::Util.url_encode(agent[:name]), subtab: params[:subtab]) %>'"
-              >
-                <!-- Name -->
-                <td class="px-4 py-3">
-                  <div class="flex items-center gap-2">
-                    <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      <%= agent[:name].split('::').last.gsub(/Agent$/, '') %>
-                    </span>
-                    <span class="hidden lg:inline text-xs text-gray-400 dark:text-gray-500">v<%= agent[:version] %></span>
-                  </div>
-                  <% if agent[:description].present? %>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-64 mt-0.5" title="<%= agent[:description] %>">
-                      <%= agent[:description] %>
-                    </p>
-                  <% end %>
-                </td>
-
-                <!-- Type -->
-                <td class="px-4 py-3 whitespace-nowrap">
-                  <span class="text-sm text-gray-600 dark:text-gray-400">
-                    <%= agent[:agent_type]&.titleize || 'Agent' %>
-                  </span>
-                </td>
-
-                <!-- Status -->
-                <td class="px-4 py-3 whitespace-nowrap">
-                  <% if agent[:active] %>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300">
-                      Active
-                    </span>
-                  <% else %>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
-                      Deleted
-                    </span>
-                  <% end %>
-                </td>
-
-                <!-- Model -->
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 hidden lg:table-cell">
-                  <span title="<%= agent[:model] %>">
-                    <%= agent[:model]&.split("/")&.last || agent[:model] || "-" %>
-                  </span>
-                </td>
-
-                <!-- Executions -->
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-mono">
-                  <%= number_with_delimiter(agent[:execution_count] || 0) %>
-                </td>
-
-                <!-- Cost -->
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-mono hidden md:table-cell">
-                  $<%= number_with_precision(agent[:total_cost] || 0, precision: 4) %>
-                </td>
-
-                <!-- Success Rate -->
-                <td class="px-4 py-3 whitespace-nowrap">
-                  <div class="flex items-center gap-1.5">
-                    <% if success_rate >= 95 %>
-                      <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                      <span class="text-sm text-green-600 dark:text-green-400"><%= success_rate %>%</span>
-                    <% elsif success_rate >= 80 %>
-                      <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
-                      <span class="text-sm text-yellow-600 dark:text-yellow-400"><%= success_rate %>%</span>
-                    <% else %>
-                      <span class="w-2 h-2 rounded-full bg-red-500"></span>
-                      <span class="text-sm text-red-600 dark:text-red-400"><%= success_rate %>%</span>
-                    <% end %>
-                  </div>
-                </td>
-
-                <!-- Last Executed -->
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  <% if agent[:last_executed] %>
-                    <%= time_ago_in_words(agent[:last_executed]) %> ago
-                  <% else %>
-                    <span class="text-gray-400 dark:text-gray-500">Never</span>
-                  <% end %>
-                </td>
-              </tr>
+    <!-- Data rows -->
+    <div class="font-mono text-xs space-y-px">
+      <% @agents.each do |agent| %>
+        <%
+          show_condition = if agent[:agent_type] == 'speaker' || agent[:agent_type] == 'transcriber'
+            "activeSubTab !== 'deleted' && (activeSubTab === null || activeSubTab === 'audio' || activeSubTab === '#{agent[:agent_type]}')"
+          else
+            "activeSubTab !== 'deleted' && (activeSubTab === null || activeSubTab === '#{agent[:agent_type]}')"
+          end
+          success_rate = agent[:success_rate] || 0
+          dot_color = agent[:active] ? (success_rate >= 95 ? 'bg-green-500' : success_rate >= 80 ? 'bg-yellow-500' : 'bg-red-500') : 'bg-gray-400'
+        %>
+        <div x-show="<%= show_condition %>"
+             class="group flex items-center gap-3 py-1.5 px-2 -mx-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer"
+             onclick="window.location='<%= ruby_llm_agents.agent_path(ERB::Util.url_encode(agent[:name]), subtab: params[:subtab]) %>'"
+             title="<%= agent[:description] %>">
+          <span class="flex-[2] min-w-0 truncate text-gray-900 dark:text-gray-200">
+            <%= agent[:name].split('::').last.gsub(/Agent$/, '') %><span class="hidden lg:inline text-gray-400 dark:text-gray-600 ml-1 text-[10px]">v<%= agent[:version] %></span>
+          </span>
+          <span class="flex-1 min-w-0 truncate text-gray-500 dark:text-gray-400 hidden sm:inline"><%= agent[:agent_type]&.to_s || 'agent' %></span>
+          <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= dot_color %>"></span>
+          <span class="flex-[2] min-w-0 truncate text-gray-400 dark:text-gray-600 hidden lg:inline"><%= agent[:model]&.split("/")&.last || "—" %></span>
+          <span class="w-14 flex-shrink-0 text-right text-gray-500 dark:text-gray-400"><%= number_with_delimiter(agent[:execution_count] || 0) %><span class="text-gray-400 dark:text-gray-600">r</span></span>
+          <span class="w-16 flex-shrink-0 text-right text-gray-500 dark:text-gray-400 hidden md:inline">$<%= number_with_precision(agent[:total_cost] || 0, precision: 2) %></span>
+          <span class="w-12 flex-shrink-0 text-right <%= success_rate >= 95 ? 'text-green-500' : success_rate >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= success_rate.round %>%</span>
+          <span class="w-24 flex-shrink-0 text-gray-400 dark:text-gray-600 text-right whitespace-nowrap">
+            <% if agent[:last_executed] %>
+              <%= time_ago_in_words(agent[:last_executed]) %>
+            <% else %>
+              —
             <% end %>
+          </span>
+        </div>
+      <% end %>
 
-            <!-- Deleted Agents -->
-            <% @deleted_agents.each_with_index do |agent, index| %>
-              <%
-                row_bg = index.even? ? '' : 'bg-gray-50/50 dark:bg-gray-900/30'
-                success_rate = agent[:success_rate] || 0
-              %>
-              <tr
-                x-show="activeSubTab === 'deleted'"
-                class="<%= row_bg %> hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-colors cursor-pointer"
-                onclick="window.location='<%= ruby_llm_agents.agent_path(ERB::Util.url_encode(agent[:name]), subtab: params[:subtab]) %>'"
-              >
-                <!-- Name -->
-                <td class="px-4 py-3">
-                  <div class="flex items-center gap-2">
-                    <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      <%= agent[:name].split('::').last.gsub(/Agent$/, '') %>
-                    </span>
-                    <span class="hidden lg:inline text-xs text-gray-400 dark:text-gray-500">v<%= agent[:version] %></span>
-                  </div>
-                  <% if agent[:description].present? %>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-48 mt-0.5" title="<%= agent[:description] %>">
-                      <%= agent[:description] %>
-                    </p>
-                  <% end %>
-                </td>
-
-                <!-- Type -->
-                <td class="px-4 py-3 whitespace-nowrap">
-                  <span class="text-sm text-gray-600 dark:text-gray-400">
-                    <%= agent[:agent_type]&.titleize || 'Agent' %>
-                  </span>
-                </td>
-
-                <!-- Status -->
-                <td class="px-4 py-3 whitespace-nowrap">
-                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
-                    Deleted
-                  </span>
-                </td>
-
-                <!-- Model -->
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 hidden lg:table-cell">
-                  <span title="<%= agent[:model] %>">
-                    <%= agent[:model]&.split("/")&.last || agent[:model] || "-" %>
-                  </span>
-                </td>
-
-                <!-- Executions -->
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-mono">
-                  <%= number_with_delimiter(agent[:execution_count] || 0) %>
-                </td>
-
-                <!-- Cost -->
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-mono hidden md:table-cell">
-                  $<%= number_with_precision(agent[:total_cost] || 0, precision: 4) %>
-                </td>
-
-                <!-- Success Rate -->
-                <td class="px-4 py-3 whitespace-nowrap">
-                  <div class="flex items-center gap-1.5">
-                    <% if success_rate >= 95 %>
-                      <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                      <span class="text-sm text-green-600 dark:text-green-400"><%= success_rate %>%</span>
-                    <% elsif success_rate >= 80 %>
-                      <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
-                      <span class="text-sm text-yellow-600 dark:text-yellow-400"><%= success_rate %>%</span>
-                    <% else %>
-                      <span class="w-2 h-2 rounded-full bg-red-500"></span>
-                      <span class="text-sm text-red-600 dark:text-red-400"><%= success_rate %>%</span>
-                    <% end %>
-                  </div>
-                </td>
-
-                <!-- Last Executed -->
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  <% if agent[:last_executed] %>
-                    <%= time_ago_in_words(agent[:last_executed]) %> ago
-                  <% else %>
-                    <span class="text-gray-400 dark:text-gray-500">Never</span>
-                  <% end %>
-                </td>
-              </tr>
+      <!-- Deleted agents -->
+      <% @deleted_agents.each do |agent| %>
+        <% success_rate = agent[:success_rate] || 0 %>
+        <div x-show="activeSubTab === 'deleted'"
+             class="group flex items-center gap-3 py-1.5 px-2 -mx-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer"
+             onclick="window.location='<%= ruby_llm_agents.agent_path(ERB::Util.url_encode(agent[:name]), subtab: params[:subtab]) %>'"
+             title="<%= agent[:description] %>">
+          <span class="flex-[2] min-w-0 truncate text-gray-500 dark:text-gray-400 line-through"><%= agent[:name].split('::').last.gsub(/Agent$/, '') %></span>
+          <span class="flex-1 min-w-0 truncate text-gray-400 dark:text-gray-600 hidden sm:inline"><%= agent[:agent_type]&.to_s || 'agent' %></span>
+          <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-gray-400 dark:bg-gray-600"></span>
+          <span class="flex-[2] min-w-0 truncate text-gray-400 dark:text-gray-600 hidden lg:inline"><%= agent[:model]&.split("/")&.last || "—" %></span>
+          <span class="w-14 flex-shrink-0 text-right text-gray-400 dark:text-gray-600"><%= number_with_delimiter(agent[:execution_count] || 0) %><span class="text-gray-400 dark:text-gray-600">r</span></span>
+          <span class="w-16 flex-shrink-0 text-right text-gray-400 dark:text-gray-600 hidden md:inline">$<%= number_with_precision(agent[:total_cost] || 0, precision: 2) %></span>
+          <span class="w-12 flex-shrink-0 text-right text-gray-400 dark:text-gray-600"><%= success_rate.round %>%</span>
+          <span class="w-24 flex-shrink-0 text-gray-400 dark:text-gray-600 text-right whitespace-nowrap">
+            <% if agent[:last_executed] %>
+              <%= time_ago_in_words(agent[:last_executed]) %>
+            <% else %>
+              —
             <% end %>
+          </span>
+        </div>
+      <% end %>
 
-            <!-- Empty State -->
-            <tr x-show="currentCount === 0" x-cloak>
-              <td colspan="8" class="px-6 py-12 text-center">
-                <div class="text-gray-400 dark:text-gray-500">
-                  <svg class="mx-auto h-12 w-12 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  <p class="text-lg font-medium text-gray-500 dark:text-gray-400">No agents in this category</p>
-                  <p class="text-sm mt-1">Try selecting a different filter</p>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- Empty filter state -->
+      <div x-show="currentCount === 0" x-cloak class="py-4 px-2 text-gray-400 dark:text-gray-600">
+        no agents in this category
       </div>
     </div>
   <% end %>

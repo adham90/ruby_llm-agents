@@ -167,15 +167,18 @@ module RubyLLM
       #       enforcement: :soft
       #     }
 
-      # @!attribute [rw] alerts
-      #   Alert configuration for notifications.
-      #   @return [Hash, nil] Alert config with :slack_webhook_url, :webhook_url, :on_events, :custom keys
+      # @!attribute [rw] on_alert
+      #   Alert handler proc called when governance events occur.
+      #   Receives event name and payload hash. Filter events in your proc as needed.
+      #   @return [Proc, nil] Alert handler or nil to disable (default: nil)
       #   @example
-      #     config.alerts = {
-      #       slack_webhook_url: ENV["SLACK_WEBHOOK"],
-      #       webhook_url: ENV["AGENTS_WEBHOOK"],
-      #       on_events: [:budget_soft_cap, :budget_hard_cap, :breaker_open],
-      #       custom: ->(event, payload) { Rails.logger.info("Alert: #{event}") }
+      #     config.on_alert = ->(event, payload) {
+      #       case event
+      #       when :budget_hard_cap
+      #         Slack::Notifier.new(ENV["SLACK_WEBHOOK"]).ping("Budget exceeded")
+      #       when :breaker_open
+      #         PagerDuty.trigger(payload)
+      #       end
       #     }
 
       # @!attribute [rw] persist_prompts
@@ -187,17 +190,6 @@ module RubyLLM
       #   Whether to persist LLM responses in execution records.
       #   Set to false to reduce storage or for privacy compliance.
       #   @return [Boolean] Enable response persistence (default: true)
-
-      # @!attribute [rw] redaction
-      #   Redaction configuration for PII and sensitive data.
-      #   @return [Hash, nil] Redaction config with :fields, :patterns, :placeholder, :max_value_length keys
-      #   @example
-      #     config.redaction = {
-      #       fields: %w[password api_key email ssn],
-      #       patterns: [/\b\d{3}-\d{2}-\d{4}\b/],
-      #       placeholder: "[REDACTED]",
-      #       max_value_length: 5000
-      #     }
 
       # @!attribute [rw] multi_tenancy_enabled
       #   Whether multi-tenancy features are enabled.
@@ -274,35 +266,6 @@ module RubyLLM
       #   @example
       #     config.track_embeddings = false
 
-      # @!attribute [rw] default_moderation_model
-      #   The default moderation model identifier for all agents.
-      #   Can be overridden per-agent using the `moderation` DSL method.
-      #   @return [String] Model identifier (default: "omni-moderation-latest")
-      #   @example
-      #     config.default_moderation_model = "text-moderation-007"
-
-      # @!attribute [rw] default_moderation_threshold
-      #   The default threshold for moderation scores.
-      #   Content with scores at or above this threshold will be flagged.
-      #   Set to nil to use the provider's default flagging.
-      #   @return [Float, nil] Threshold (0.0-1.0) or nil for provider default (default: nil)
-      #   @example
-      #     config.default_moderation_threshold = 0.8
-
-      # @!attribute [rw] default_moderation_action
-      #   The default action when content is flagged.
-      #   Can be overridden per-agent using the `moderation` DSL method.
-      #   @return [Symbol] Action (:block, :raise, :warn, :log) (default: :block)
-      #   @example
-      #     config.default_moderation_action = :raise
-
-      # @!attribute [rw] track_moderation
-      #   Whether to track moderation executions in the database.
-      #   When enabled, moderation operations are logged as executions.
-      #   @return [Boolean] Enable moderation tracking (default: true)
-      #   @example
-      #     config.track_moderation = false
-
       # @!attribute [rw] default_transcription_model
       #   The default transcription model identifier for all transcribers.
       #   Can be overridden per-transcriber using the `model` DSL method.
@@ -376,6 +339,18 @@ module RubyLLM
       #   @example
       #     config.tool_result_max_length = 5000
 
+      # @!attribute [rw] redaction
+      #   Configuration for PII and sensitive data redaction.
+      #   When set, sensitive data is redacted before storing in execution records.
+      #   @return [Hash, nil] Redaction config with :fields, :patterns, :placeholder, :max_value_length keys
+      #   @example
+      #     config.redaction = {
+      #       fields: %w[ssn credit_card phone_number email],
+      #       patterns: [/\b\d{3}-\d{2}-\d{4}\b/],
+      #       placeholder: "[REDACTED]",
+      #       max_value_length: 5000
+      #     }
+
       # Attributes without validation (simple accessors)
       attr_accessor :default_model,
                     :async_logging,
@@ -389,10 +364,9 @@ module RubyLLM
                     :default_streaming,
                     :default_tools,
                     :default_thinking,
-                    :alerts,
+                    :on_alert,
                     :persist_prompts,
                     :persist_responses,
-                    :redaction,
                     :multi_tenancy_enabled,
                     :persist_messages_summary,
                     :default_retryable_patterns,
@@ -400,10 +374,6 @@ module RubyLLM
                     :default_embedding_dimensions,
                     :default_embedding_batch_size,
                     :track_embeddings,
-                    :default_moderation_model,
-                    :default_moderation_threshold,
-                    :default_moderation_action,
-                    :track_moderation,
                     :default_transcription_model,
                     :track_transcriptions,
                     :default_tts_provider,
@@ -437,7 +407,8 @@ module RubyLLM
                     :default_background_output_format,
                     :root_directory,
                     :root_namespace,
-                    :tool_result_max_length
+                    :tool_result_max_length,
+                    :redaction
 
       # Attributes with validation (readers only, custom setters below)
       attr_reader :default_temperature,
@@ -634,10 +605,9 @@ module RubyLLM
 
         # Governance defaults
         @budgets = nil
-        @alerts = nil
+        @on_alert = nil
         @persist_prompts = true
         @persist_responses = true
-        @redaction = nil
 
         # Multi-tenancy defaults (disabled for backward compatibility)
         @multi_tenancy_enabled = false
@@ -653,12 +623,6 @@ module RubyLLM
         @default_embedding_dimensions = nil
         @default_embedding_batch_size = 100
         @track_embeddings = true
-
-        # Moderation defaults
-        @default_moderation_model = "omni-moderation-latest"
-        @default_moderation_threshold = nil
-        @default_moderation_action = :block
-        @track_moderation = true
 
         # Transcription defaults
         @default_transcription_model = "whisper-1"
@@ -715,6 +679,9 @@ module RubyLLM
 
         # Tool tracking defaults
         @tool_result_max_length = 10_000
+
+        # Redaction defaults (disabled by default)
+        @redaction = nil
       end
 
       # Returns the configured cache store, falling back to Rails.cache
@@ -745,55 +712,6 @@ module RubyLLM
       # @return [Array<String>] All patterns from all categories
       def all_retryable_patterns
         default_retryable_patterns.values.flatten.uniq
-      end
-
-      # Returns whether alerts are configured
-      #
-      # @return [Boolean] true if any alert destination is configured
-      def alerts_enabled?
-        return false unless alerts.is_a?(Hash)
-
-        alerts[:slack_webhook_url].present? ||
-          alerts[:webhook_url].present? ||
-          alerts[:custom].present? ||
-          alerts[:email_recipients].present?
-      end
-
-      # Returns the list of events to alert on
-      #
-      # @return [Array<Symbol>] Event names to trigger alerts
-      def alert_events
-        alerts&.dig(:on_events) || []
-      end
-
-      # Returns merged redaction fields (default sensitive keys + configured)
-      #
-      # @return [Array<String>] Field names to redact
-      def redaction_fields
-        default_fields = %w[password token api_key secret credential auth key access_token]
-        configured_fields = redaction&.dig(:fields) || []
-        (default_fields + configured_fields).map(&:downcase).uniq
-      end
-
-      # Returns redaction patterns
-      #
-      # @return [Array<Regexp>] Patterns to match and redact
-      def redaction_patterns
-        redaction&.dig(:patterns) || []
-      end
-
-      # Returns the redaction placeholder string
-      #
-      # @return [String] Placeholder to replace redacted values
-      def redaction_placeholder
-        redaction&.dig(:placeholder) || "[REDACTED]"
-      end
-
-      # Returns the maximum value length before truncation
-      #
-      # @return [Integer, nil] Max length, or nil for no limit
-      def redaction_max_value_length
-        redaction&.dig(:max_value_length)
       end
 
       # Returns whether multi-tenancy is enabled
@@ -869,8 +787,6 @@ module RubyLLM
         when :images then "images"
         when :audio then "audio"
         when :embedders then "embedders"
-        when :moderators then "moderators"
-        when :workflows then "workflows"
         when :text then "text"
         when :image then "image"
         end
@@ -895,14 +811,39 @@ module RubyLLM
 
         [
           base,
-          "app/workflows",           # Top-level workflows directory
           "#{base}/images",
           "#{base}/audio",
           "#{base}/embedders",
-          "#{base}/moderators",
-          "#{base}/workflows",
           "#{base}/tools"
         ]
+      end
+
+      # Returns the redaction fields (parameter names to redact)
+      #
+      # @return [Array<String>] Fields to redact
+      def redaction_fields
+        redaction&.dig(:fields) || []
+      end
+
+      # Returns the redaction regex patterns
+      #
+      # @return [Array<Regexp>] Patterns to match and redact
+      def redaction_patterns
+        redaction&.dig(:patterns) || []
+      end
+
+      # Returns the redaction placeholder string
+      #
+      # @return [String] Placeholder for redacted values (default: "[REDACTED]")
+      def redaction_placeholder
+        redaction&.dig(:placeholder) || "[REDACTED]"
+      end
+
+      # Returns the max value length for redaction
+      #
+      # @return [Integer, nil] Max length before truncation, or nil for no limit
+      def redaction_max_value_length
+        redaction&.dig(:max_value_length)
       end
 
       private

@@ -1,72 +1,18 @@
 <%
-  # Status badge with icon and color coding
+  # Status badge pill
   # Usage: render "ruby_llm/agents/shared/status_badge", status: execution.status
-  # Options: size: :sm (default), :md, :lg
 
-  size = local_assigns[:size] || :sm
-
-  config = case status.to_s
-    when "running"
-      {
-        bg: "bg-blue-50 dark:bg-blue-900/50",
-        text: "text-blue-700 dark:text-blue-300",
-        dot: "bg-blue-500",
-        icon: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15",
-        animate: true
-      }
-    when "success"
-      {
-        bg: "bg-green-50 dark:bg-green-900/50",
-        text: "text-green-700 dark:text-green-300",
-        dot: "bg-green-500",
-        icon: "M5 13l4 4L19 7",
-        animate: false
-      }
-    when "error"
-      {
-        bg: "bg-red-50 dark:bg-red-900/50",
-        text: "text-red-700 dark:text-red-300",
-        dot: "bg-red-500",
-        icon: "M6 18L18 6M6 6l12 12",
-        animate: false
-      }
-    when "timeout"
-      {
-        bg: "bg-yellow-50 dark:bg-yellow-900/50",
-        text: "text-yellow-700 dark:text-yellow-300",
-        dot: "bg-yellow-500",
-        icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
-        animate: false
-      }
-    else
-      {
-        bg: "bg-gray-50 dark:bg-gray-700",
-        text: "text-gray-700 dark:text-gray-300",
-        dot: "bg-gray-500",
-        icon: "M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-        animate: false
-      }
-    end
-
-  size_classes = case size
-    when :lg
-      { badge: "px-3 py-1.5", icon: "w-4 h-4", text: "text-sm" }
-    when :md
-      { badge: "px-2.5 py-1", icon: "w-3.5 h-3.5", text: "text-sm" }
-    else # :sm
-      { badge: "px-2 py-0.5", icon: "w-3 h-3", text: "text-xs" }
-    end
+  badge_class = case status.to_s
+    when "running" then "badge-running"
+    when "success" then "badge-success"
+    when "error" then "badge-error"
+    when "timeout" then "badge-timeout"
+    else "badge-timeout"
+  end
 %>
-<span class="inline-flex items-center gap-1.5 <%= size_classes[:badge] %> rounded-full <%= config[:bg] %> <%= config[:text] %> font-medium">
-  <svg class="<%= size_classes[:icon] %> <%= config[:animate] ? 'animate-spin' : '' %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="<%= config[:icon] %>"/>
-  </svg>
-  <span class="<%= size_classes[:text] %>"><%= status.to_s.capitalize %></span>
+<span class="inline-flex items-center gap-1 font-mono">
+  <span class="badge badge-sm <%= badge_class %>"><%= status.to_s %></span>
   <% if local_assigns[:attempts_count] && attempts_count.to_i > 1 %>
-    <span class="opacity-70" title="<%= attempts_count %> attempts (retried)">
-      <svg class="<%= size_classes[:icon] %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-      </svg>
-    </span>
+    <span class="text-xs text-gray-400 dark:text-gray-600" title="<%= attempts_count %> attempts">&times;<%= attempts_count %></span>
   <% end %>
 </span>

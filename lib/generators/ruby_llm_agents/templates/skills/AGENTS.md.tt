@@ -15,7 +15,6 @@ class MyAgent < ApplicationAgent
   # Configuration
   model "gpt-4o"
   temperature 0.0
-  version "1.0"
 
   # Parameters
   param :query, required: true
@@ -60,7 +59,6 @@ app/agents/
 |--------|-------------|---------|
 | `model` | LLM model to use | `model "gpt-4o"` |
 | `temperature` | Response randomness (0.0-2.0) | `temperature 0.7` |
-| `version` | Cache invalidation version | `version "2.0"` |
 | `timeout` | Request timeout in seconds | `timeout 30` |
 | `description` | Human-readable description | `description "Searches documents"` |
 
@@ -183,10 +181,10 @@ def cache_key_data
 end
 ```
 
-### `execution_metadata`
+### `metadata`
 Add custom data to execution logs:
 ```ruby
-def execution_metadata
+def metadata
   { request_id: params[:request_id] }
 end
 ```

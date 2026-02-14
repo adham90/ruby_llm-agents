@@ -119,17 +119,6 @@ RSpec.describe RubyLLM::Agents::Embedder do
       end
     end
 
-    describe ".version" do
-      it "sets and returns version" do
-        base_embedder.version "2.0"
-        expect(base_embedder.version).to eq("2.0")
-      end
-
-      it "returns default when not set" do
-        expect(base_embedder.version).to eq("1.0")
-      end
-    end
-
     describe ".description" do
       it "sets and returns description" do
         base_embedder.description "Embeds documents for search"
@@ -468,7 +457,6 @@ RSpec.describe RubyLLM::Agents::Embedder do
         end
 
         model "text-embedding-3-small"
-        version "1.0"
       end
     end
 
@@ -476,7 +464,7 @@ RSpec.describe RubyLLM::Agents::Embedder do
       embedder = test_embedder.new(text: "Hello world")
       key = embedder.agent_cache_key
 
-      expect(key).to start_with("ruby_llm_agents/embedding/CacheKeyEmbedder/1.0/")
+      expect(key).to start_with("ruby_llm_agents/embedding/CacheKeyEmbedder/")
     end
 
     it "generates different keys for different texts" do

@@ -24,7 +24,6 @@
 #
 class StreamingAgent < ApplicationAgent
   description 'Demonstrates streaming responses for real-time output'
-  version '1.0'
 
   model 'gpt-4o-mini'
   temperature 0.8 # Higher temperature for creative responses
@@ -48,7 +47,7 @@ class StreamingAgent < ApplicationAgent
     query
   end
 
-  def execution_metadata
+  def metadata
     {
       showcase: 'streaming',
       features: %w[streaming time_to_first_token]

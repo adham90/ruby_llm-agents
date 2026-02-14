@@ -97,12 +97,12 @@ RSpec.describe RubyLLM::Agents::Tenant::Resettable, type: :model do
     before do
       # Create executions for today
       RubyLLM::Agents::Execution.create!(
-        agent_type: "TestAgent", agent_version: "1.0", model_id: "gpt-4",
+        agent_type: "TestAgent", model_id: "gpt-4",
         started_at: Time.current, status: "success",
         total_cost: 0.50, total_tokens: 1000, tenant_id: tenant.tenant_id
       )
       RubyLLM::Agents::Execution.create!(
-        agent_type: "TestAgent", agent_version: "1.0", model_id: "gpt-4",
+        agent_type: "TestAgent", model_id: "gpt-4",
         started_at: Time.current, status: "error",
         total_cost: 0.10, total_tokens: 200, tenant_id: tenant.tenant_id
       )

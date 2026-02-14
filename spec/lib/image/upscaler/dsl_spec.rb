@@ -111,14 +111,12 @@ RSpec.describe RubyLLM::Agents::ImageUpscaler::DSL do
   describe "combined configuration" do
     it "allows full configuration" do
       upscaler_class.model "espcn"
-      upscaler_class.version "v2"
       upscaler_class.scale 8
       upscaler_class.face_enhance true
       upscaler_class.denoise_strength 0.7
       upscaler_class.cache_for 3600
 
       expect(upscaler_class.model).to eq("espcn")
-      expect(upscaler_class.version).to eq("v2")
       expect(upscaler_class.scale).to eq(8)
       expect(upscaler_class.face_enhance).to be true
       expect(upscaler_class.denoise_strength).to eq(0.7)

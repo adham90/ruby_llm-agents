@@ -8,7 +8,6 @@ RSpec.describe RubyLLM::Agents::ImageEditor do
       Class.new(described_class) do
         model "gpt-image-1"
         size "1024x1024"
-        content_policy :strict
         description "Test editor"
       end
     end
@@ -21,17 +20,8 @@ RSpec.describe RubyLLM::Agents::ImageEditor do
       expect(test_editor_class.size).to eq("1024x1024")
     end
 
-    it "sets content_policy" do
-      expect(test_editor_class.content_policy).to eq(:strict)
-    end
-
     it "sets description" do
       expect(test_editor_class.description).to eq("Test editor")
-    end
-
-    it "defaults content_policy to :standard" do
-      default_editor = Class.new(described_class)
-      expect(default_editor.content_policy).to eq(:standard)
     end
   end
 
@@ -40,7 +30,6 @@ RSpec.describe RubyLLM::Agents::ImageEditor do
       Class.new(described_class) do
         model "parent-model"
         size "512x512"
-        content_policy :moderate
       end
     end
 
@@ -51,7 +40,6 @@ RSpec.describe RubyLLM::Agents::ImageEditor do
     it "inherits settings from parent" do
       expect(child_class.model).to eq("parent-model")
       expect(child_class.size).to eq("512x512")
-      expect(child_class.content_policy).to eq(:moderate)
     end
   end
 

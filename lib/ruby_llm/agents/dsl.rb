@@ -11,7 +11,7 @@ module RubyLLM
     # The DSL modules provide a clean, declarative way to configure agents
     # at the class level. Each module focuses on a specific concern:
     #
-    # - {DSL::Base} - Core settings (model, version, description, timeout)
+    # - {DSL::Base} - Core settings (model, description, timeout)
     # - {DSL::Reliability} - Retries, fallbacks, circuit breakers
     # - {DSL::Caching} - Response caching configuration
     #
@@ -22,7 +22,6 @@ module RubyLLM
     #     extend DSL::Caching
     #
     #     model "gpt-4o"
-    #     version "2.0"
     #     description "A helpful agent"
     #     timeout 30
     #

@@ -32,7 +32,6 @@
 #
 class ToolsAgent < ApplicationAgent
   description 'Demonstrates tool usage with calculator and weather tools'
-  version '1.0'
 
   model 'gpt-4o' # GPT-4o has good tool calling capabilities
   temperature 0.0 # Deterministic for consistent tool calls
@@ -61,7 +60,7 @@ class ToolsAgent < ApplicationAgent
     query
   end
 
-  def execution_metadata
+  def metadata
     {
       showcase: 'tools',
       features: %w[tools tool_calls tool_loop]

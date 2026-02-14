@@ -9,7 +9,6 @@ require_relative "agents/core/version"
 require_relative "agents/core/configuration"
 require_relative "agents/core/deprecations"
 require_relative "agents/core/errors"
-require_relative "agents/core/resolved_config"
 require_relative "agents/core/llm_tenant"
 
 # Infrastructure - Reliability
@@ -30,7 +29,6 @@ require_relative "agents/dsl"
 require_relative "agents/base_agent"
 
 # Infrastructure - Budget & Utilities
-require_relative "agents/infrastructure/redactor"
 require_relative "agents/infrastructure/circuit_breaker"
 require_relative "agents/infrastructure/budget_tracker"
 require_relative "agents/infrastructure/alert_manager"
@@ -44,7 +42,6 @@ require_relative "agents/infrastructure/budget/spend_recorder"
 # Results
 require_relative "agents/results/base"
 require_relative "agents/results/embedding_result"
-require_relative "agents/results/moderation_result"
 require_relative "agents/results/transcription_result"
 require_relative "agents/results/speech_result"
 require_relative "agents/results/image_generation_result"
@@ -62,7 +59,6 @@ require_relative "agents/image/concerns/image_operation_execution"
 
 # Text agents
 require_relative "agents/text/embedder"
-require_relative "agents/text/moderator"
 
 # Audio agents
 require_relative "agents/audio/transcriber"
@@ -77,11 +73,6 @@ require_relative "agents/image/upscaler"
 require_relative "agents/image/analyzer"
 require_relative "agents/image/background_remover"
 require_relative "agents/image/pipeline"
-
-# Workflow
-require_relative "agents/workflow/async"
-require_relative "agents/workflow/orchestrator"
-require_relative "agents/workflow/async_executor"
 
 # Rails integration
 if defined?(Rails)

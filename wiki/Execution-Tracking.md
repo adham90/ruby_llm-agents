@@ -85,7 +85,7 @@ class MyAgent < ApplicationAgent
   param :query, required: true
   param :user_id, required: true
 
-  def execution_metadata
+  def metadata
     {
       user_id: user_id,
       source: "web",
@@ -180,21 +180,6 @@ RubyLLM::Agents::Execution.trend_analysis(
 # ]
 ```
 
-### Version Comparison
-
-```ruby
-RubyLLM::Agents::Execution.compare_versions(
-  "SearchAgent",
-  "1.0",
-  "2.0",
-  period: :this_week
-)
-# => {
-#   "1.0" => { total: 450, success_rate: 94.2, avg_cost: 0.015 },
-#   "2.0" => { total: 550, success_rate: 96.8, avg_cost: 0.012 }
-# }
-```
-
 ## Available Scopes
 
 ### Time-Based
@@ -224,7 +209,6 @@ RubyLLM::Agents::Execution.compare_versions(
 ```ruby
 .by_agent("AgentName")
 .by_model("gpt-4o")
-.by_version("1.0")
 ```
 
 ### Performance

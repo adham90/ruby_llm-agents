@@ -353,7 +353,6 @@ module RubyLLM
           "ruby_llm_agents",
           "speech",
           self.class.name,
-          self.class.version,
           resolved_provider,
           resolved_model,
           resolved_voice,

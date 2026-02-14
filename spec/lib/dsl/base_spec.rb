@@ -48,24 +48,6 @@ RSpec.describe RubyLLM::Agents::DSL::Base do
     end
   end
 
-  describe "#version" do
-    it "returns default version when not set" do
-      expect(test_class.version).to eq("1.0")
-    end
-
-    it "sets and returns the version" do
-      test_class.version("2.5")
-      expect(test_class.version).to eq("2.5")
-    end
-
-    it "inherits from parent class" do
-      test_class.version("3.0")
-
-      child_class = Class.new(test_class)
-      expect(child_class.version).to eq("3.0")
-    end
-  end
-
   describe "#description" do
     it "returns nil when not set" do
       expect(test_class.description).to be_nil
@@ -253,6 +235,185 @@ RSpec.describe RubyLLM::Agents::DSL::Base do
 
       expect(fresh_class.model).to eq("gpt-4o")
       expect(fresh_class.timeout).to eq(120)
+    end
+  end
+
+  describe "#prompt (simplified DSL)" do
+    let(:agent_class) do
+      Class.new(RubyLLM::Agents::BaseAgent) do
+        def self.name
+          "PromptTestAgent"
+        end
+      end
+    end
+
+    before do
+      allow(config).to receive(:default_temperature).and_return(0.7)
+      allow(config).to receive(:default_streaming).and_return(false)
+    end
+
+    context "with template string" do
+      it "sets the prompt template" do
+        agent_class.prompt "Search for: {query}"
+        expect(agent_class.prompt_config).to eq("Search for: {query}")
+      end
+
+      it "auto-registers parameters from placeholders" do
+        agent_class.prompt "Search for {query} in {category}"
+        expect(agent_class.params.keys).to include(:query, :category)
+      end
+
+      it "registers auto-detected params as required" do
+        agent_class.prompt "Search for {query}"
+        expect(agent_class.params[:query][:required]).to be true
+      end
+
+      it "does not override existing param definitions" do
+        agent_class.param :limit, default: 10
+        agent_class.prompt "Search for {query} (limit: {limit})"
+
+        expect(agent_class.params[:limit][:default]).to eq(10)
+        expect(agent_class.params[:limit][:required]).to be false
+      end
+
+      it "interpolates placeholders at execution time" do
+        agent_class.prompt "Search for: {query}"
+        instance = agent_class.new(query: "ruby gems")
+        expect(instance.user_prompt).to eq("Search for: ruby gems")
+      end
+
+      it "handles multiple placeholders" do
+        agent_class.prompt "Find {item} in {location} (max {limit})"
+        agent_class.param :limit, default: 10
+
+        instance = agent_class.new(item: "coffee", location: "NYC")
+        expect(instance.user_prompt).to eq("Find coffee in NYC (max 10)")
+      end
+    end
+
+    context "with block" do
+      it "sets the prompt block" do
+        agent_class.prompt { "Dynamic prompt" }
+        expect(agent_class.prompt_config).to be_a(Proc)
+      end
+
+      it "evaluates block in instance context" do
+        agent_class.param :query
+        agent_class.prompt { "Search for: #{query}" }
+
+        instance = agent_class.new(query: "test")
+        expect(instance.user_prompt).to eq("Search for: test")
+      end
+
+      it "allows complex logic in blocks" do
+        agent_class.param :query
+        agent_class.param :detailed, default: false
+        agent_class.prompt do
+          base = "Search for: #{query}"
+          detailed ? "#{base} (detailed)" : base
+        end
+
+        simple = agent_class.new(query: "test", detailed: false)
+        detailed = agent_class.new(query: "test", detailed: true)
+
+        expect(simple.user_prompt).to eq("Search for: test")
+        expect(detailed.user_prompt).to eq("Search for: test (detailed)")
+      end
+    end
+
+    context "inheritance" do
+      it "inherits prompt from parent" do
+        agent_class.prompt "Parent prompt: {query}"
+        child_class = Class.new(agent_class)
+
+        instance = child_class.new(query: "test")
+        expect(instance.user_prompt).to eq("Parent prompt: test")
+      end
+
+      it "allows child to override prompt" do
+        agent_class.prompt "Parent: {query}"
+        child_class = Class.new(agent_class) do
+          prompt "Child: {query}"
+        end
+
+        instance = child_class.new(query: "test")
+        expect(instance.user_prompt).to eq("Child: test")
+      end
+    end
+  end
+
+  describe "#system (simplified DSL)" do
+    let(:agent_class) do
+      Class.new(RubyLLM::Agents::BaseAgent) do
+        def self.name
+          "SystemTestAgent"
+        end
+
+        prompt "Test prompt"
+      end
+    end
+
+    before do
+      allow(config).to receive(:default_temperature).and_return(0.7)
+      allow(config).to receive(:default_streaming).and_return(false)
+    end
+
+    context "with string" do
+      it "sets the system prompt" do
+        agent_class.system "You are a helpful assistant."
+        instance = agent_class.new
+        expect(instance.system_prompt).to eq("You are a helpful assistant.")
+      end
+    end
+
+    context "with block" do
+      it "evaluates block in instance context" do
+        agent_class.param :user_name, default: "User"
+        agent_class.system { "You are helping #{user_name}." }
+
+        instance = agent_class.new(user_name: "Alice")
+        expect(instance.system_prompt).to eq("You are helping Alice.")
+      end
+    end
+
+    context "inheritance" do
+      it "inherits system prompt from parent" do
+        agent_class.system "Parent system"
+        child_class = Class.new(agent_class)
+
+        instance = child_class.new
+        expect(instance.system_prompt).to eq("Parent system")
+      end
+
+      it "allows child to override system prompt" do
+        agent_class.system "Parent system"
+        child_class = Class.new(agent_class) do
+          system "Child system"
+        end
+
+        instance = child_class.new
+        expect(instance.system_prompt).to eq("Child system")
+      end
+    end
+  end
+
+  describe "#returns (alias for schema)" do
+    it "creates a schema from a block" do
+      test_class.returns do
+        string :summary, description: "A brief summary"
+        array :tags, of: :string
+      end
+
+      expect(test_class.schema).to be_present
+      expect(test_class.schema.properties.keys).to include(:summary, :tags)
+    end
+
+    it "is equivalent to schema" do
+      test_class.returns do
+        string :name
+      end
+
+      expect(test_class.schema.properties).to include(:name)
     end
   end
 end

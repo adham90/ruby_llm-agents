@@ -129,17 +129,6 @@ RSpec.describe RubyLLM::Agents::Transcriber do
       end
     end
 
-    describe ".version" do
-      it "sets and returns version" do
-        base_transcriber.version "2.0"
-        expect(base_transcriber.version).to eq("2.0")
-      end
-
-      it "returns default when not set" do
-        expect(base_transcriber.version).to eq("1.0")
-      end
-    end
-
     describe ".chunking" do
       it "configures chunking via block" do
         base_transcriber.chunking do
@@ -536,7 +525,6 @@ RSpec.describe RubyLLM::Agents::Transcriber do
         end
 
         model "whisper-1"
-        version "1.0"
       end
     end
 
@@ -552,7 +540,7 @@ RSpec.describe RubyLLM::Agents::Transcriber do
       transcriber = test_transcriber.new(audio: audio_file_path)
       key = transcriber.agent_cache_key
 
-      expect(key).to start_with("ruby_llm_agents/transcription/CacheKeyTranscriber/1.0/")
+      expect(key).to start_with("ruby_llm_agents/transcription/CacheKeyTranscriber/")
     end
 
     it "includes model in cache key" do

@@ -14,7 +14,6 @@ RSpec.describe RubyLLM::Agents::ImageTransformer do
         negative_prompt "blurry, low quality"
         guidance_scale 7.5
         steps 30
-        content_policy :moderate
         description "Test transformer"
       end
     end
@@ -52,10 +51,6 @@ RSpec.describe RubyLLM::Agents::ImageTransformer do
       expect(test_transformer_class.steps).to eq(30)
     end
 
-    it "sets content_policy" do
-      expect(test_transformer_class.content_policy).to eq(:moderate)
-    end
-
     it "sets description" do
       expect(test_transformer_class.description).to eq("Test transformer")
     end
@@ -88,10 +83,6 @@ RSpec.describe RubyLLM::Agents::ImageTransformer do
 
     it "has preserve_composition true by default" do
       expect(default_transformer.preserve_composition).to be true
-    end
-
-    it "defaults content_policy to :standard" do
-      expect(default_transformer.content_policy).to eq(:standard)
     end
   end
 

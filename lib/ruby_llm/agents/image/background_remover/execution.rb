@@ -203,7 +203,6 @@ module RubyLLM
           [
             "background_remover",
             self.class.name,
-            self.class.version,
             resolve_model,
             resolve_output_format.to_s,
             resolve_alpha_matting.to_s,
@@ -226,7 +225,7 @@ module RubyLLM
           end
         end
 
-        def build_execution_metadata(result)
+        def build_metadata(result)
           {
             output_format: result.output_format,
             alpha_matting: result.alpha_matting,

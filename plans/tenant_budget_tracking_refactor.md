@@ -346,14 +346,47 @@ def cost_last_week      = executions.last_n_days(7).sum(:total_cost)
 
 **Keep** the `executions` table aggregation for historical queries (last week, last month, custom ranges, per-agent breakdowns, per-model breakdowns, time series charts, etc.).
 
-### Phase 7: Remove Cache-Based Tracking
+### Phase 7: Remove Tenant Cache-Based Tracking, Add Global Fallback
 
 **Files to modify:**
-- `lib/ruby_llm/agents/infrastructure/budget/spend_recorder.rb` — Remove `increment_spend`, `increment_tokens`, and cache read/write logic
-- `lib/ruby_llm/agents/infrastructure/budget_tracker.rb` — Remove `current_spend`, `current_tokens` cache reads; delegate to tenant model
+- `lib/ruby_llm/agents/infrastructure/budget/spend_recorder.rb` — Remove **tenant** cache increment logic. Keep global cache writes.
+- `lib/ruby_llm/agents/infrastructure/budget_tracker.rb` — Remove tenant `current_spend`/`current_tokens` cache reads; delegate to tenant model. Keep global reads.
 - `lib/ruby_llm/agents/pipeline/middleware/budget.rb` — Already updated in Phase 4
 
-**Keep:** Alert logic (soft cap notifications) moves to `Tenant::Incrementable`.
+**Add executions fallback for global cache misses:**
+
+```ruby
+# In SpendRecorder or BudgetQuery
+def current_global_spend(period)
+  cached = cache_read(global_key(period))
+  return cached if cached.present?
+
+  # Cache miss (restart, eviction) — rebuild from executions
+  total = Execution.where("created_at >= ?", period_start(period))
+                   .where(tenant_id: nil)
+                   .sum(:total_cost)
+  cache_write(global_key(period), total, expires_in: period_ttl(period))
+  total
+end
+
+def current_global_tokens(period)
+  cached = cache_read(global_token_key(period))
+  return cached if cached.present?
+
+  total = Execution.where("created_at >= ?", period_start(period))
+                   .where(tenant_id: nil)
+                   .sum(:total_tokens)
+  cache_write(global_token_key(period), total, expires_in: period_ttl(period))
+  total
+end
+```
+
+**Why cache stays for global but not tenant:**
+- Global budgets are soft enforcement safety nets — minor drift from the read-modify-write race is acceptable
+- A dedicated table for one singleton row adds complexity (shared concerns, two code paths) that isn't justified
+- The executions fallback ensures cache loss (restart/eviction) no longer causes counters to reset to zero
+
+**Keep:** Alert logic (soft cap notifications) for tenants moves to `Tenant::Incrementable`.
 
 ### Phase 8: Alerts (Soft Cap)
 
@@ -466,8 +499,8 @@ Add a "Refresh" action to the tenant budget widget that calls `tenant.refresh_co
 | `tenant/trackable.rb` | Use counter columns for current-period reads, keep executions for historical |
 | `tenant/budgetable.rb` | Check budget against counter columns directly |
 | `pipeline/middleware/budget.rb` | Call `tenant.record_execution!` instead of cache |
-| `infrastructure/budget/spend_recorder.rb` | Remove cache increment logic |
-| `infrastructure/budget_tracker.rb` | Simplify — delegate current-period reads to tenant model |
+| `infrastructure/budget/spend_recorder.rb` | Remove tenant cache logic. Keep global cache writes. Add executions fallback on global cache miss. |
+| `infrastructure/budget_tracker.rb` | Delegate tenant reads to model. Keep global cache reads with fallback. |
 | New: `lib/tasks/ruby_llm_agents.rake` | Rake tasks for refresh |
 | Dashboard controller | Read counters instead of running aggregation queries |
 | Dashboard views | Use new counter-based helpers |
@@ -476,28 +509,30 @@ Add a "Refresh" action to the tenant budget widget that calls `tenant.refresh_co
 ## Migration Path
 
 1. Deploy migration (adds columns, no behavior change)
-2. Deploy code changes (switches from cache to DB counters)
+2. Deploy code changes (tenant: switches from cache to DB counters; global: adds executions fallback on cache miss)
 3. Run `rake ruby_llm_agents:tenants:refresh` to backfill current-period counters from executions
-4. Remove dead cache code
+4. Remove dead tenant cache code (global cache stays with fallback)
 
 ## Trade-offs
 
 **Gains:**
-- Single source of truth (DB)
-- Survives restarts/deploys
-- Atomic increments prevent race conditions
-- Cheap budget checks (single column read vs cache round-trip)
+- Tenant counters: single source of truth (DB), survives restarts/deploys
+- Atomic increments prevent race conditions for tenant tracking
+- Cheap tenant budget checks (single column read vs cache round-trip)
 - Cheap current-period reporting (no `SUM` aggregation)
 - Dashboard queries reduced from 6+ aggregations to column reads
 - Easy reconciliation via `refresh_counters!` when drift occurs
+- Global budgets: no longer lose all tracking on cache restart (executions fallback)
 
 **Costs:**
-- One extra DB write per execution (the `UPDATE` for counter increment)
+- One extra DB write per tenant execution (the `UPDATE` for counter increment)
 - Row-level contention under very high concurrency per tenant (mitigated by atomic SQL)
 - Lazy reset adds a conditional check before reads/writes
+- Global budget tracking still has the read-modify-write race in cache (acceptable for soft enforcement)
 
 **Acceptable because:**
 - The execution already does a DB write (creating the `Execution` record), so one more `UPDATE` is negligible
 - Atomic SQL increments handle typical concurrency well
 - Lazy reset is a single date comparison — effectively free
-- Non-tenant users pay zero runtime cost
+- Global budgets are soft enforcement safety nets — minor drift is acceptable
+- Non-tenant users pay zero runtime cost (global cache fallback only triggers on cache miss)

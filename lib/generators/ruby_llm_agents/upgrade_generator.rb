@@ -119,19 +119,6 @@ module RubyLlmAgents
       )
     end
 
-    def create_add_workflow_migration
-      # Check if columns already exist
-      if column_exists?(:ruby_llm_agents_executions, :workflow_id)
-        say_status :skip, "workflow_id column already exists", :yellow
-        return
-      end
-
-      migration_template(
-        "add_workflow_migration.rb.tt",
-        File.join(db_migrate_path, "add_workflow_to_ruby_llm_agents_executions.rb")
-      )
-    end
-
     def create_add_execution_type_migration
       # Check if columns already exist
       if column_exists?(:ruby_llm_agents_executions, :execution_type)
@@ -142,6 +129,20 @@ module RubyLlmAgents
       migration_template(
         "add_execution_type_migration.rb.tt",
         File.join(db_migrate_path, "add_execution_type_to_ruby_llm_agents_executions.rb")
+      )
+    end
+
+    def create_execution_details_table
+      # Skip if table already exists
+      if table_exists?(:ruby_llm_agents_execution_details)
+        say_status :skip, "ruby_llm_agents_execution_details table already exists", :yellow
+        return
+      end
+
+      say_status :create, "Creating execution_details table", :blue
+      migration_template(
+        "create_execution_details_migration.rb.tt",
+        File.join(db_migrate_path, "create_ruby_llm_agents_execution_details.rb")
       )
     end
 
@@ -162,6 +163,34 @@ module RubyLlmAgents
       migration_template(
         "rename_tenant_budgets_to_tenants_migration.rb.tt",
         File.join(db_migrate_path, "rename_tenant_budgets_to_tenants.rb")
+      )
+    end
+
+    def create_remove_agent_version_migration
+      # Skip if column already removed
+      unless column_exists?(:ruby_llm_agents_executions, :agent_version)
+        say_status :skip, "agent_version column already removed", :yellow
+        return
+      end
+
+      say_status :remove, "Removing deprecated agent_version column", :blue
+      migration_template(
+        "remove_agent_version_migration.rb.tt",
+        File.join(db_migrate_path, "remove_agent_version_from_ruby_llm_agents_executions.rb")
+      )
+    end
+
+    def create_remove_workflow_columns_migration
+      # Skip if columns already removed
+      unless column_exists?(:ruby_llm_agents_executions, :workflow_id)
+        say_status :skip, "workflow columns already removed", :yellow
+        return
+      end
+
+      say_status :remove, "Removing deprecated workflow columns", :blue
+      migration_template(
+        "remove_workflow_columns_migration.rb.tt",
+        File.join(db_migrate_path, "remove_workflow_columns_from_ruby_llm_agents_executions.rb")
       )
     end
 

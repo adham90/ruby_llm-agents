@@ -15,7 +15,6 @@ RSpec.describe RubyLLM::Agents::BackgroundRemover do
         erode_size 2
         return_mask true
         description "Test remover"
-        version "v2"
       end
     end
 
@@ -53,10 +52,6 @@ RSpec.describe RubyLLM::Agents::BackgroundRemover do
 
     it "sets description" do
       expect(test_remover_class.description).to eq("Test remover")
-    end
-
-    it "sets version" do
-      expect(test_remover_class.version).to eq("v2")
     end
 
     it "validates output_format" do

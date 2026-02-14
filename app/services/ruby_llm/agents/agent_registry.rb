@@ -21,12 +21,6 @@ module RubyLLM
     #
     # @api public
     class AgentRegistry
-      # Base workflow classes to exclude from listings
-      # These are abstract parent classes, not concrete workflows
-      BASE_WORKFLOW_CLASSES = [
-        "RubyLLM::Agents::Workflow"
-      ].freeze
-
       class << self
         # Returns all unique agent type names
         #
@@ -66,22 +60,17 @@ module RubyLLM
         #
         # @return [Array<String>] Agent class names
         def file_system_agents
-          # Ensure all agent and workflow classes are loaded
+          # Ensure all agent classes are loaded
           eager_load_agents!
 
           # Find all descendants of all base classes
           agents = RubyLLM::Agents::Base.descendants.map(&:name).compact
-          workflows = RubyLLM::Agents::Workflow.descendants.map(&:name).compact
           embedders = RubyLLM::Agents::Embedder.descendants.map(&:name).compact
-          moderators = RubyLLM::Agents::Moderator.descendants.map(&:name).compact
           speakers = RubyLLM::Agents::Speaker.descendants.map(&:name).compact
           transcribers = RubyLLM::Agents::Transcriber.descendants.map(&:name).compact
           image_generators = RubyLLM::Agents::ImageGenerator.descendants.map(&:name).compact
 
-          all_agents = (agents + workflows + embedders + moderators + speakers + transcribers + image_generators).uniq
-
-          # Filter out base workflow classes
-          all_agents.reject { |name| BASE_WORKFLOW_CLASSES.include?(name) }
+          (agents + embedders + speakers + transcribers + image_generators).uniq
         rescue StandardError => e
           Rails.logger.error("[RubyLLM::Agents] Error loading agents from file system: #{e.message}")
           []
@@ -97,7 +86,7 @@ module RubyLLM
           []
         end
 
-        # Eager loads all agent and workflow files to register descendants
+        # Eager loads all agent files to register descendants
         #
         # Uses the configured autoload paths from RubyLLM::Agents.configuration
         # to ensure agents are discovered in the correct directories.
@@ -116,28 +105,6 @@ module RubyLLM
           end
         end
 
-        # Returns only regular agents (non-workflows)
-        #
-        # @return [Array<Hash>] Agent info hashes for non-workflow agents
-        def agents_only
-          all_with_details.reject { |a| a[:is_workflow] }
-        end
-
-        # Returns only workflows
-        #
-        # @return [Array<Hash>] Agent info hashes for workflows only
-        def workflows_only
-          all_with_details.select { |a| a[:is_workflow] }
-        end
-
-        # Returns workflows filtered by type
-        #
-        # @param type [String, Symbol] The workflow type (pipeline, parallel, router)
-        # @return [Array<Hash>] Filtered workflow info hashes
-        def workflows_by_type(type)
-          workflows_only.select { |w| w[:workflow_type] == type.to_s }
-        end
-
         # Builds detailed info hash for an agent
         #
         # @param agent_type [String] The agent class name
@@ -146,27 +113,17 @@ module RubyLLM
           agent_class = find(agent_type)
           stats = fetch_stats(agent_type)
 
-          # Detect the agent type (agent, workflow, embedder, moderator, speaker, transcriber)
+          # Detect the agent type (agent, embedder, speaker, transcriber, image_generator)
           detected_type = detect_agent_type(agent_class)
-
-          # Check if this is a workflow class vs a regular agent
-          is_workflow = detected_type == "workflow"
-
-          # Determine specific workflow type and children
-          workflow_type = is_workflow ? detect_workflow_type(agent_class) : nil
-          workflow_children = is_workflow ? extract_workflow_children(agent_class) : []
 
           {
             name: agent_type,
             class: agent_class,
             active: agent_class.present?,
             agent_type: detected_type,
-            is_workflow: is_workflow,
-            workflow_type: workflow_type,
-            workflow_children: workflow_children,
             version: safe_call(agent_class, :version) || "N/A",
             description: safe_call(agent_class, :description),
-            model: safe_call(agent_class, :model) || (is_workflow ? "workflow" : "N/A"),
+            model: safe_call(agent_class, :model) || "N/A",
             temperature: safe_call(agent_class, :temperature),
             timeout: safe_call(agent_class, :timeout),
             cache_enabled: safe_call(agent_class, :cache_enabled?) || false,
@@ -216,22 +173,10 @@ module RubyLLM
           nil
         end
 
-        # Detects the specific workflow type from class hierarchy
-        #
-        # @param agent_class [Class, nil] The agent class
-        # @return [String, nil] "workflow" for DSL workflows, or nil
-        def detect_workflow_type(agent_class)
-          return nil unless agent_class
-
-          if agent_class.respond_to?(:step_configs) && agent_class.step_configs.any?
-            "workflow"
-          end
-        end
-
         # Detects the agent type from class hierarchy
         #
         # @param agent_class [Class, nil] The agent class
-        # @return [String] "agent", "workflow", "embedder", "moderator", "speaker", "transcriber", or "image_generator"
+        # @return [String] "agent", "embedder", "speaker", "transcriber", or "image_generator"
         def detect_agent_type(agent_class)
           return "agent" unless agent_class
 
@@ -239,66 +184,15 @@ module RubyLLM
 
           if ancestors.include?("RubyLLM::Agents::Embedder")
             "embedder"
-          elsif ancestors.include?("RubyLLM::Agents::Moderator")
-            "moderator"
           elsif ancestors.include?("RubyLLM::Agents::Speaker")
             "speaker"
           elsif ancestors.include?("RubyLLM::Agents::Transcriber")
             "transcriber"
           elsif ancestors.include?("RubyLLM::Agents::ImageGenerator")
             "image_generator"
-          elsif ancestors.include?("RubyLLM::Agents::Workflow")
-            "workflow"
           else
             "agent"
           end
-        end
-
-        # Extracts child agents from workflow DSL configuration
-        #
-        # @param agent_class [Class, nil] The workflow class
-        # @return [Array<Hash>] Array of child info hashes with :name, :agent, :type, :optional keys
-        def extract_workflow_children(agent_class)
-          return [] unless agent_class
-
-          children = []
-
-          if agent_class.respond_to?(:steps) && agent_class.steps.any?
-            # Pipeline workflow - extract steps
-            agent_class.steps.each do |name, config|
-              children << {
-                name: name,
-                agent: config[:agent]&.name,
-                type: "step",
-                optional: config[:continue_on_error] || false
-              }
-            end
-          elsif agent_class.respond_to?(:branches) && agent_class.branches.any?
-            # Parallel workflow - extract branches
-            agent_class.branches.each do |name, config|
-              children << {
-                name: name,
-                agent: config[:agent]&.name,
-                type: "branch",
-                optional: config[:optional] || false
-              }
-            end
-          elsif agent_class.respond_to?(:routes) && agent_class.routes.any?
-            # Router workflow - extract routes
-            agent_class.routes.each do |name, config|
-              children << {
-                name: name,
-                agent: config[:agent]&.name,
-                type: "route",
-                description: config[:description]
-              }
-            end
-          end
-
-          children
-        rescue StandardError => e
-          Rails.logger.error("[RubyLLM::Agents] Error extracting workflow children: #{e.message}")
-          []
         end
       end
     end

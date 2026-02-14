@@ -186,7 +186,6 @@ module RubyLLM
           [
             "image_upscaler",
             self.class.name,
-            self.class.version,
             resolve_model,
             resolve_scale.to_s,
             resolve_face_enhance.to_s,
@@ -206,7 +205,7 @@ module RubyLLM
           end
         end
 
-        def build_execution_metadata(result)
+        def build_metadata(result)
           {
             scale: result.scale,
             output_size: result.output_size,

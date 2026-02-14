@@ -11,14 +11,12 @@ module RubyLlmAgents
   #   app/{root}/image/generators/
   #   app/{root}/audio/speakers/
   #   app/{root}/text/embedders/
-  #   app/{root}/workflows/
   #
   # To:
   #   app/agents/
   #   app/agents/images/
   #   app/agents/audio/
   #   app/agents/embedders/
-  #   app/workflows/
   #
   # Usage:
   #   rails generate ruby_llm_agents:migrate_structure
@@ -72,9 +70,6 @@ module RubyLlmAgents
       "text/embedders" => "agents/embedders",
       "text/moderators" => "agents/moderators",
 
-      # Workflows
-      "workflows" => "workflows",
-
       # Tools
       "tools" => "tools"
     }.freeze
@@ -93,10 +88,7 @@ module RubyLlmAgents
 
       # Text namespaces -> Embedders/Moderators
       /\A(\w+)::Text::(\w+Embedder)\z/ => 'Embedders::\2',
-      /\A(\w+)::Text::(\w+Moderator)\z/ => 'Moderators::\2',
-
-      # Workflows (remove root namespace)
-      /\A(\w+)::(\w+Workflow)\z/ => '\2'
+      /\A(\w+)::Text::(\w+Moderator)\z/ => 'Moderators::\2'
     }.freeze
 
     def check_prerequisites
@@ -120,7 +112,7 @@ module RubyLlmAgents
       say "=" * 60
       say ""
       say "Source: app/#{@source_root_dir}/"
-      say "Target: app/agents/ and app/workflows/"
+      say "Target: app/agents/"
       say ""
 
       @files_to_migrate = []
@@ -274,7 +266,6 @@ module RubyLlmAgents
         say "  │   ├── audio/"
         say "  │   ├── embedders/"
         say "  │   └── moderators/"
-        say "  └── workflows/"
         say ""
         say "Next steps:"
         say "  1. Update class references in your code:"
@@ -327,7 +318,6 @@ module RubyLlmAgents
         image/generators
         audio/speakers
         text/embedders
-        workflows
       ]
 
       old_indicators.any? do |indicator|

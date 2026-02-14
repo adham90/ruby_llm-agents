@@ -248,12 +248,7 @@ RSpec.describe RubyLLM::Agents::Budget::SpendRecorder do
     before do
       RubyLLM::Agents.configure do |c|
         c.cache_store = cache_store
-        c.alerts = {
-          custom: ->(event, payload) { @alert_called = [event, payload] },
-          on_events: [:budget_soft_cap, :budget_hard_cap, :token_soft_cap, :token_hard_cap]
-        }
       end
-      @alert_called = nil
     end
 
     describe "check_soft_cap_alerts (via record_spend!)" do
@@ -332,32 +327,6 @@ RSpec.describe RubyLLM::Agents::Budget::SpendRecorder do
           :budget_soft_cap,
           hash_including(tenant_id: "tenant_b")
         ).at_least(:once)
-      end
-
-      it "does not trigger alert when alerts are disabled" do
-        RubyLLM::Agents.configure do |c|
-          c.alerts = nil
-        end
-        allow(RubyLLM::Agents::AlertManager).to receive(:notify)
-
-        described_class.record_spend!("TestAgent", 11.0, tenant_id: nil, budget_config: budget_config)
-
-        expect(RubyLLM::Agents::AlertManager).not_to have_received(:notify)
-      end
-
-      it "does not trigger alert when event not in alert_events" do
-        RubyLLM::Agents.configure do |c|
-          c.cache_store = cache_store
-          c.alerts = {
-            custom: ->(event, payload) {},
-            on_events: [:breaker_open] # No budget events
-          }
-        end
-        allow(RubyLLM::Agents::AlertManager).to receive(:notify)
-
-        described_class.record_spend!("TestAgent", 11.0, tenant_id: nil, budget_config: budget_config)
-
-        expect(RubyLLM::Agents::AlertManager).not_to have_received(:notify)
       end
 
       it "skips alert check when budget_config enabled is false" do

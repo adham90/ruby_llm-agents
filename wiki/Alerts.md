@@ -7,340 +7,332 @@ Get notified about budget thresholds, circuit breaker events, and anomalies.
 ```ruby
 # config/initializers/ruby_llm_agents.rb
 RubyLLM::Agents.configure do |config|
-  config.alerts = {
-    on_events: [:budget_soft_cap, :budget_hard_cap, :breaker_open],
-    slack_webhook_url: ENV['SLACK_WEBHOOK_URL']
+  config.on_alert = ->(event, payload) {
+    case event
+    when :budget_hard_cap
+      Slack::Notifier.new(ENV['SLACK_WEBHOOK']).ping("Budget exceeded: $#{payload[:total_cost]}")
+    when :breaker_open
+      PagerDuty.trigger(summary: "Circuit breaker opened for #{payload[:agent_type]}")
+    end
   }
 end
 ```
 
 ## Alert Events
 
-| Event | Trigger |
-|-------|---------|
-| `budget_soft_cap` | Budget reaches soft cap percentage |
-| `budget_hard_cap` | Budget exceeded (with hard enforcement) |
-| `breaker_open` | Circuit breaker opens |
-| `anomaly_cost` | Execution cost exceeds threshold |
-| `anomaly_duration` | Execution duration exceeds threshold |
+| Event | Trigger | Severity |
+|-------|---------|----------|
+| `:budget_soft_cap` | Budget reaches soft limit | Warning |
+| `:budget_hard_cap` | Budget exceeded (hard enforcement) | Critical |
+| `:breaker_open` | Circuit breaker opens | Critical |
+| `:breaker_closed` | Circuit breaker recovers | Info |
+| `:agent_anomaly` | Execution exceeds cost/duration thresholds | Warning |
 
-## Notification Channels
+## Handler Configuration
 
-### Slack
-
-```ruby
-config.alerts = {
-  on_events: [:budget_soft_cap, :budget_hard_cap],
-  slack_webhook_url: ENV['SLACK_WEBHOOK_URL']
-}
-```
-
-Slack message format:
-```
-🚨 RubyLLM::Agents Alert
-
-Event: budget_soft_cap
-Agent: ExpensiveAgent
-Details:
-  Scope: global_daily
-  Limit: $100.00
-  Current: $85.00
-  Percentage: 85%
-
-Time: 2024-01-15 10:30:00 UTC
-```
-
-### Webhook
-
-Send alerts to any HTTP endpoint:
+The `on_alert` handler receives all events. Filter in your handler as needed:
 
 ```ruby
-config.alerts = {
-  on_events: [:budget_hard_cap],
-  webhook_url: "https://your-app.com/webhooks/llm-alerts"
-}
-```
+config.on_alert = ->(event, payload) {
+  # Filter events you care about
+  return unless [:budget_hard_cap, :breaker_open].include?(event)
 
-Webhook payload:
-```json
-{
-  "event": "budget_hard_cap",
-  "agent_type": "ExpensiveAgent",
-  "payload": {
-    "scope": "global_daily",
-    "limit": 100.0,
-    "current": 105.50
-  },
-  "timestamp": "2024-01-15T10:30:00Z"
-}
-```
+  case event
+  when :budget_hard_cap
+    PagerDuty.trigger(
+      severity: "critical",
+      summary: "LLM Budget Exceeded",
+      details: payload
+    )
 
-### Custom Handler
+  when :breaker_open
+    Slack::Notifier.new(ENV['SLACK_WEBHOOK']).ping(
+      "Circuit breaker opened for #{payload[:agent_type]} (#{payload[:model_id]})"
+    )
+  end
 
-```ruby
-config.alerts = {
-  on_events: [:breaker_open, :budget_hard_cap],
-  custom: ->(event, payload) {
-    case event
-    when :budget_hard_cap
-      PagerDuty.trigger(
-        severity: "critical",
-        summary: "LLM Budget Exceeded",
-        details: payload
-      )
-
-    when :breaker_open
-      Slack.notify(
-        channel: "#ops",
-        text: "Circuit breaker opened for #{payload[:model_id]}"
-      )
-    end
-
-    # Log all alerts
-    Rails.logger.warn("Alert: #{event} - #{payload}")
-  }
-}
-```
-
-### Multiple Channels
-
-```ruby
-config.alerts = {
-  on_events: [:budget_soft_cap, :budget_hard_cap, :breaker_open],
-  slack_webhook_url: ENV['SLACK_WEBHOOK_URL'],
-  webhook_url: ENV['WEBHOOK_URL'],
-  custom: ->(event, payload) {
-    MyMetricsService.record(event, payload)
-  }
+  # Log all alerts
+  Rails.logger.warn("[Alert] #{event}: #{payload}")
 }
 ```
 
 ## Event Payloads
 
+All events include these base fields:
+
+```ruby
+{
+  event: Symbol,           # Event type
+  timestamp: Time,         # When the event occurred
+  tenant_id: String|nil,   # Tenant ID if multi-tenancy enabled
+}
+```
+
 ### Budget Events
 
 ```ruby
-# budget_soft_cap
+# :budget_soft_cap / :budget_hard_cap
 {
-  scope: :global_daily,
-  limit: 100.0,
-  current: 85.0,
-  remaining: 15.0,
-  percentage_used: 85.0,
-  agent_type: "MyAgent"  # nil for global
-}
-
-# budget_hard_cap
-{
-  scope: :per_agent_daily,
-  limit: 50.0,
-  current: 52.50,
-  agent_type: "ExpensiveAgent"
+  scope: :global_daily,    # :global_daily, :global_monthly, :per_agent_daily, :per_agent_monthly
+  limit: 100.0,            # Budget limit
+  total_cost: 105.50,      # Current spend
+  agent_type: "MyAgent",   # Agent class (nil for global)
+  tenant_id: "tenant-123"  # If multi-tenancy enabled
 }
 ```
 
 ### Circuit Breaker Events
 
 ```ruby
-# breaker_open
+# :breaker_open
 {
   agent_type: "MyAgent",
   model_id: "gpt-4o",
-  failure_count: 10,
-  window_seconds: 60,
-  cooldown_seconds: 300
+  tenant_id: "tenant-123",
+  errors: 10,              # Error threshold
+  within: 60,              # Window in seconds
+  cooldown: 300            # Cooldown in seconds
+}
+
+# :breaker_closed
+{
+  agent_type: "MyAgent",
+  model_id: "gpt-4o",
+  tenant_id: "tenant-123"
 }
 ```
 
 ### Anomaly Events
 
 ```ruby
-# anomaly_cost
+# :agent_anomaly
 {
   agent_type: "MyAgent",
+  model: "gpt-4o",
   execution_id: 12345,
-  cost: 5.50,
-  threshold: 5.00
-}
-
-# anomaly_duration
-{
-  agent_type: "MyAgent",
-  execution_id: 12345,
+  total_cost: 5.50,
   duration_ms: 15000,
-  threshold_ms: 10000
-}
-```
-
-## Anomaly Detection
-
-### Cost Anomalies
-
-```ruby
-RubyLLM::Agents.configure do |config|
-  config.anomaly_cost_threshold = 5.00  # Alert if > $5 per execution
-
-  config.alerts = {
-    on_events: [:anomaly_cost],
-    slack_webhook_url: ENV['SLACK_WEBHOOK_URL']
-  }
-end
-```
-
-### Duration Anomalies
-
-```ruby
-config.anomaly_duration_threshold = 10_000  # Alert if > 10 seconds
-
-config.alerts = {
-  on_events: [:anomaly_duration],
-  custom: ->(event, payload) {
-    Rails.logger.warn("Slow execution: #{payload[:duration_ms]}ms")
-  }
-}
-```
-
-## Alert Filtering
-
-### By Agent Type
-
-```ruby
-config.alerts = {
-  on_events: [:budget_hard_cap],
-  filter: ->(event, payload) {
-    # Only alert for production-critical agents
-    %w[CriticalAgent ImportantAgent].include?(payload[:agent_type])
-  },
-  slack_webhook_url: ENV['SLACK_WEBHOOK_URL']
-}
-```
-
-### By Severity
-
-```ruby
-config.alerts = {
-  on_events: [:budget_soft_cap, :budget_hard_cap],
-  custom: ->(event, payload) {
-    severity = case event
-               when :budget_hard_cap then "critical"
-               when :budget_soft_cap then "warning"
-               else "info"
-               end
-
-    AlertService.notify(severity: severity, event: event, payload: payload)
-  }
-}
-```
-
-## Alert Rate Limiting
-
-Prevent alert floods:
-
-```ruby
-config.alerts = {
-  on_events: [:breaker_open],
-  rate_limit: {
-    window: 5.minutes,
-    max_alerts: 3
-  },
-  slack_webhook_url: ENV['SLACK_WEBHOOK_URL']
+  threshold_type: :cost,   # :cost or :duration
+  threshold_value: 5.00
 }
 ```
 
 ## ActiveSupport::Notifications
 
-All alerts also emit ActiveSupport::Notifications:
+All alerts are also emitted as ActiveSupport::Notifications, providing an alternative subscription mechanism:
 
 ```ruby
-# Subscribe to alerts
-ActiveSupport::Notifications.subscribe("ruby_llm_agents.alert") do |name, start, finish, id, payload|
-  Rails.logger.info("Alert: #{payload[:event]} - #{payload[:data]}")
+# Subscribe to all alerts
+ActiveSupport::Notifications.subscribe(/^ruby_llm_agents\.alert\./) do |name, start, finish, id, payload|
+  event = name.sub("ruby_llm_agents.alert.", "").to_sym
+  Rails.logger.info("[Alert] #{event}: #{payload}")
+end
+
+# Subscribe to specific events
+ActiveSupport::Notifications.subscribe("ruby_llm_agents.alert.budget_hard_cap") do |*, payload|
+  StatsD.increment("llm.budget.exceeded")
+  AlertService.critical(payload)
+end
+
+ActiveSupport::Notifications.subscribe("ruby_llm_agents.alert.breaker_open") do |*, payload|
+  StatsD.increment("llm.circuit_breaker.opened")
 end
 ```
 
-Use for custom integrations:
+## Integration Examples
+
+### Slack
 
 ```ruby
-# In an initializer
-ActiveSupport::Notifications.subscribe("ruby_llm_agents.alert") do |*, payload|
-  case payload[:event]
+config.on_alert = ->(event, payload) {
+  notifier = Slack::Notifier.new(ENV['SLACK_WEBHOOK'])
+
+  message = case event
+  when :budget_soft_cap
+    ":warning: Budget soft cap reached: $#{payload[:total_cost]&.round(2)} / $#{payload[:limit]&.round(2)}"
   when :budget_hard_cap
-    StatsD.increment("llm.budget.exceeded")
+    ":no_entry: Budget exceeded: $#{payload[:total_cost]&.round(2)} / $#{payload[:limit]&.round(2)}"
   when :breaker_open
-    StatsD.increment("llm.circuit_breaker.opened")
+    ":rotating_light: Circuit breaker opened for #{payload[:agent_type]}"
   end
+
+  notifier.ping(message) if message
+}
+```
+
+### PagerDuty
+
+```ruby
+config.on_alert = ->(event, payload) {
+  return unless [:budget_hard_cap, :breaker_open].include?(event)
+
+  PagerDuty.trigger(
+    routing_key: ENV['PAGERDUTY_ROUTING_KEY'],
+    event_action: 'trigger',
+    payload: {
+      summary: "RubyLLM Alert: #{event}",
+      severity: event == :budget_hard_cap ? 'critical' : 'warning',
+      source: payload[:agent_type] || 'global',
+      custom_details: payload
+    }
+  )
+}
+```
+
+### Webhooks
+
+```ruby
+config.on_alert = ->(event, payload) {
+  HTTP.post(
+    ENV['WEBHOOK_URL'],
+    json: {
+      event: event,
+      payload: payload,
+      environment: Rails.env,
+      timestamp: Time.current.iso8601
+    }
+  )
+}
+```
+
+### Email
+
+```ruby
+config.on_alert = ->(event, payload) {
+  return unless [:budget_hard_cap].include?(event)
+
+  AdminMailer.alert_notification(
+    event: event,
+    payload: payload
+  ).deliver_later
+}
+```
+
+### Multiple Channels
+
+```ruby
+config.on_alert = ->(event, payload) {
+  # Always log
+  Rails.logger.warn("[Alert] #{event}: #{payload}")
+
+  # Track metrics
+  StatsD.increment("llm.alerts", tags: ["event:#{event}"])
+
+  # Route by severity
+  case event
+  when :budget_hard_cap, :breaker_open
+    PagerDuty.trigger(summary: "Critical: #{event}")
+    Slack.notify("#ops-critical", "#{event}: #{payload[:agent_type]}")
+  when :budget_soft_cap
+    Slack.notify("#ops-warnings", "Budget warning: #{payload[:total_cost]}")
+  end
+}
+```
+
+## Anomaly Detection
+
+Configure thresholds to detect unusual executions:
+
+```ruby
+RubyLLM::Agents.configure do |config|
+  # Alert if execution costs > $5
+  config.anomaly_cost_threshold = 5.00
+
+  # Alert if execution takes > 10 seconds
+  config.anomaly_duration_threshold = 10_000
+
+  config.on_alert = ->(event, payload) {
+    if event == :agent_anomaly
+      Rails.logger.warn("Anomaly: #{payload[:threshold_type]} exceeded for #{payload[:agent_type]}")
+    end
+  }
 end
 ```
 
 ## Testing Alerts
 
 ```ruby
-# In tests, verify alerts are triggered
 RSpec.describe "Budget Alerts" do
   it "sends alert when budget exceeded" do
-    allow(RubyLLM::Agents::AlertNotifier).to receive(:notify)
+    allow(RubyLLM::Agents::AlertManager).to receive(:notify)
 
-    # Trigger budget exceeded
+    # Trigger budget exceeded condition
     50.times { ExpensiveAgent.call(query: "test") }
 
-    expect(RubyLLM::Agents::AlertNotifier)
+    expect(RubyLLM::Agents::AlertManager)
       .to have_received(:notify)
       .with(:budget_hard_cap, hash_including(scope: :global_daily))
+  end
+
+  it "calls on_alert handler" do
+    received = nil
+    RubyLLM::Agents.configure do |config|
+      config.on_alert = ->(event, payload) { received = [event, payload] }
+    end
+
+    RubyLLM::Agents::AlertManager.notify(:budget_soft_cap, { limit: 100, total_cost: 85 })
+
+    expect(received[0]).to eq(:budget_soft_cap)
+    expect(received[1][:limit]).to eq(100)
   end
 end
 ```
 
 ## Best Practices
 
-### Alert on What Matters
+### Filter Events in Your Handler
 
 ```ruby
-# Good: Actionable events
-on_events: [:budget_hard_cap, :breaker_open]
-
-# Avoid: Too noisy
-on_events: [:every_execution]  # Don't do this
+# Good: Handle only what you need
+config.on_alert = ->(event, payload) {
+  return unless [:budget_hard_cap, :breaker_open].include?(event)
+  # Handle critical events
+}
 ```
 
-### Use Appropriate Channels
+### Use Appropriate Channels by Severity
 
 ```ruby
-# Critical: PagerDuty/OpsGenie
-custom: ->(event, payload) {
-  if event == :budget_hard_cap
-    PagerDuty.trigger(...)
+config.on_alert = ->(event, payload) {
+  case event
+  when :budget_hard_cap, :breaker_open
+    PagerDuty.trigger(...)  # Wake someone up
+  when :budget_soft_cap, :agent_anomaly
+    Slack.notify(...)       # Informational
   end
 }
-
-# Informational: Slack
-slack_webhook_url: ENV['SLACK_WEBHOOK_URL']
 ```
 
 ### Include Context
 
 ```ruby
-custom: ->(event, payload) {
-  message = {
-    event: event,
-    payload: payload,
+config.on_alert = ->(event, payload) {
+  enriched_payload = payload.merge(
     environment: Rails.env,
     server: Socket.gethostname,
-    timestamp: Time.current.iso8601
-  }
+    git_sha: ENV['GIT_SHA']
+  )
 
-  WebhookService.post(message)
+  AlertService.send(event, enriched_payload)
 }
 ```
 
-### Monitor Alert Health
+### Handle Errors Gracefully
 
 ```ruby
-# Track that alerts are working
-custom: ->(event, payload) {
-  StatsD.increment("llm.alerts.sent", tags: ["event:#{event}"])
-  ActualNotificationService.send(event, payload)
+config.on_alert = ->(event, payload) {
+  begin
+    ExternalService.notify(event, payload)
+  rescue => e
+    Rails.logger.error("Alert delivery failed: #{e.message}")
+    # Alerts shouldn't break your app
+  end
 }
 ```
+
+## Dashboard
+
+Recent alerts are displayed on the dashboard. They're stored in cache for 24 hours.
 
 ## Related Pages
 

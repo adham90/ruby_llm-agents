@@ -32,7 +32,6 @@
 module Embedders
   class DocumentEmbedder < ApplicationEmbedder
     description 'Embeds documents for indexing and search'
-    version '1.0'
 
     # Use small model for cost efficiency
     model 'text-embedding-3-small'

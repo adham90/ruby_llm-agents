@@ -34,7 +34,7 @@ RSpec.describe RubyLLM::Agents::ExecutionsController, "edge cases", type: :contr
       created_at: 2.hours.ago
     )
 
-    @executions << RubyLLM::Agents::Execution.create!(
+    error_execution = RubyLLM::Agents::Execution.create!(
       agent_type: "OtherAgent",
       model_id: "gpt-4o",
       input_tokens: 50,
@@ -42,10 +42,11 @@ RSpec.describe RubyLLM::Agents::ExecutionsController, "edge cases", type: :contr
       total_cost: 0.002,
       duration_ms: 50,
       status: "error",
-      error_message: "API Error",
       started_at: 3.hours.ago,
       created_at: 3.hours.ago
     )
+    error_execution.create_detail!(error_message: "API Error")
+    @executions << error_execution
 
     @executions << RubyLLM::Agents::Execution.create!(
       agent_type: "TestAgent",

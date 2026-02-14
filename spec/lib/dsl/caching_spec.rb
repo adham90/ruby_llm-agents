@@ -135,4 +135,40 @@ RSpec.describe RubyLLM::Agents::DSL::Caching do
       expect(child_class.cache_key_excludes).to eq([:timestamp])
     end
   end
+
+  describe "#cache (simplified DSL)" do
+    it "accepts positional TTL argument for backward compatibility" do
+      test_class.cache(1.hour)
+
+      expect(test_class.cache_enabled?).to be true
+      expect(test_class.cache_ttl).to eq(1.hour)
+    end
+
+    it "accepts for: keyword argument" do
+      test_class.cache(for: 30.minutes)
+
+      expect(test_class.cache_enabled?).to be true
+      expect(test_class.cache_ttl).to eq(30.minutes)
+    end
+
+    it "accepts key: keyword argument" do
+      test_class.cache(for: 1.hour, key: [:query, :user_id])
+
+      expect(test_class.cache_key_includes).to eq([:query, :user_id])
+    end
+
+    it "accepts single key value" do
+      test_class.cache(for: 1.hour, key: :query)
+
+      expect(test_class.cache_key_includes).to eq([:query])
+    end
+
+    it "configures both TTL and key in one call" do
+      test_class.cache(for: 2.hours, key: [:tenant_id, :context])
+
+      expect(test_class.cache_enabled?).to be true
+      expect(test_class.cache_ttl).to eq(2.hours)
+      expect(test_class.cache_key_includes).to eq([:tenant_id, :context])
+    end
+  end
 end

@@ -154,10 +154,6 @@ module RubyLLM
           # @param budget_config [Hash] Budget configuration
           # @return [void]
           def check_soft_cap_alerts(agent_type, tenant_id, budget_config)
-            config = RubyLLM::Agents.configuration
-            return unless config.alerts_enabled?
-            return unless config.alert_events.include?(:budget_soft_cap) || config.alert_events.include?(:budget_hard_cap)
-
             # Check global daily
             check_budget_alert(:global_daily, budget_config[:global_daily],
                               BudgetQuery.current_spend(:global, :daily, tenant_id: tenant_id),
@@ -199,8 +195,6 @@ module RubyLLM
             return if current <= limit
 
             event = budget_config[:enforcement] == :hard ? :budget_hard_cap : :budget_soft_cap
-            config = RubyLLM::Agents.configuration
-            return unless config.alert_events.include?(event)
 
             # Prevent duplicate alerts by using a cache key (include tenant for isolation)
             key = alert_cache_key("budget_alert", scope, tenant_id)
@@ -225,10 +219,6 @@ module RubyLLM
           # @param budget_config [Hash] Budget configuration
           # @return [void]
           def check_soft_token_alerts(agent_type, tenant_id, budget_config)
-            config = RubyLLM::Agents.configuration
-            return unless config.alerts_enabled?
-            return unless config.alert_events.include?(:token_soft_cap) || config.alert_events.include?(:token_hard_cap)
-
             # Check global daily tokens
             check_token_alert(:global_daily_tokens, budget_config[:global_daily_tokens],
                              BudgetQuery.current_tokens(:daily, tenant_id: tenant_id),
@@ -254,8 +244,6 @@ module RubyLLM
             return if current <= limit
 
             event = budget_config[:enforcement] == :hard ? :token_hard_cap : :token_soft_cap
-            config = RubyLLM::Agents.configuration
-            return unless config.alert_events.include?(event)
 
             # Prevent duplicate alerts
             key = alert_cache_key("token_alert", scope, tenant_id)

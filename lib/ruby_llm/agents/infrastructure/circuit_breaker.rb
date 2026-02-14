@@ -174,19 +174,16 @@ module RubyLLM
       def open_breaker!
         cache_write(open_key, Time.current.to_s, expires_in: cooldown_seconds)
 
-        # Fire alert if configured
-        if RubyLLM::Agents.configuration.alerts_enabled? &&
-           RubyLLM::Agents.configuration.alert_events.include?(:breaker_open)
-          AlertManager.notify(:breaker_open, {
-            agent_type: agent_type,
-            model_id: model_id,
-            tenant_id: tenant_id,
-            errors: errors_threshold,
-            within: window_seconds,
-            cooldown: cooldown_seconds,
-            timestamp: Time.current.iso8601
-          })
-        end
+        # Fire alert
+        AlertManager.notify(:breaker_open, {
+          agent_type: agent_type,
+          model_id: model_id,
+          tenant_id: tenant_id,
+          errors: errors_threshold,
+          within: window_seconds,
+          cooldown: cooldown_seconds,
+          timestamp: Time.current.iso8601
+        })
       end
 
       # Returns the cache key for the failure counter

@@ -330,21 +330,6 @@ RSpec.describe "Data Preservation During Upgrades", type: :migration do
       end
     end
 
-    it "preserves api_configuration records" do
-      data = MigrationTestData.seed_v0_4_0_data(count: 1)
-      original_config = data[:api_configurations].first
-
-      current = ActiveRecord::Base.connection.select_all(
-        "SELECT * FROM ruby_llm_agents_api_configurations"
-      ).to_a
-
-      expect(current.length).to eq(1)
-
-      found = current.first
-      expect(found["scope_type"]).to eq(original_config[:scope_type])
-      expect(found["default_model"]).to eq(original_config[:default_model])
-    end
-
     it "preserves execution tenant_id associations" do
       data = MigrationTestData.seed_v0_4_0_data(count: 5)
       original_tenant_ids = data[:executions].map { |e| e[:tenant_id] }
@@ -353,6 +338,118 @@ RSpec.describe "Data Preservation During Upgrades", type: :migration do
       current_tenant_ids = current.map { |r| r["tenant_id"] }
 
       expect(current_tenant_ids).to match_array(original_tenant_ids)
+    end
+  end
+
+  describe "v2.0.0 upgrade data preservation" do
+    describe "tenant data survives rename from tenant_budgets to tenants" do
+      before do
+        build_schema_for_version("0.4.0")
+      end
+
+      it "preserves tenant_id values through rename" do
+        data = MigrationTestData.seed_v0_4_0_data(count: 3)
+        original_tenant_ids = data[:tenant_budgets].map { |t| t[:tenant_id] }
+
+        apply_migrations_from_to("0.4.0", "2.0.0")
+
+        current_tenants = ActiveRecord::Base.connection.select_all(
+          "SELECT * FROM ruby_llm_agents_tenants"
+        ).to_a
+        current_tenant_ids = current_tenants.map { |r| r["tenant_id"] }
+
+        expect(current_tenant_ids).to match_array(original_tenant_ids)
+      end
+
+      it "preserves budget limits through rename" do
+        data = MigrationTestData.seed_v0_4_0_data(count: 3)
+        original_limits = data[:tenant_budgets].map { |t| t[:daily_limit] }
+
+        apply_migrations_from_to("0.4.0", "2.0.0")
+
+        current_tenants = ActiveRecord::Base.connection.select_all(
+          "SELECT * FROM ruby_llm_agents_tenants"
+        ).to_a
+        current_limits = current_tenants.map { |r| r["daily_limit"].to_f }
+
+        expect(current_limits).to match_array(original_limits)
+      end
+
+      it "adds active and metadata columns with defaults" do
+        MigrationTestData.seed_v0_4_0_data(count: 2)
+
+        apply_migrations_from_to("0.4.0", "2.0.0")
+
+        current_tenants = ActiveRecord::Base.connection.select_all(
+          "SELECT * FROM ruby_llm_agents_tenants"
+        ).to_a
+
+        current_tenants.each do |tenant|
+          expect(tenant["active"]).to be_in([true, 1, "1"])
+        end
+      end
+    end
+
+    describe "execution data survives workflow/agent_version column removal" do
+      before do
+        build_schema_for_version("0.4.0")
+      end
+
+      it "preserves agent_type values" do
+        data = MigrationTestData.seed_v0_4_0_data(count: 5)
+        original_agents = data[:executions].map { |e| e[:agent_type] }
+
+        apply_migrations_from_to("0.4.0", "2.0.0")
+
+        current = all_records
+        current_agents = current.map { |r| r["agent_type"] }
+
+        expect(current_agents).to match_array(original_agents)
+      end
+
+      it "preserves token counts" do
+        data = MigrationTestData.seed_v0_4_0_data(count: 3)
+        original_totals = data[:executions].map { |e| e[:total_tokens] }
+
+        apply_migrations_from_to("0.4.0", "2.0.0")
+
+        current = all_records
+        current_totals = current.map { |r| r["total_tokens"] }
+
+        expect(current_totals).to match_array(original_totals)
+      end
+
+      it "preserves cost values" do
+        data = MigrationTestData.seed_v0_4_0_data(count: 3)
+        original_costs = data[:executions].map { |e| e[:total_cost].to_f.round(6) }
+
+        apply_migrations_from_to("0.4.0", "2.0.0")
+
+        current = all_records
+        current_costs = current.map { |r| r["total_cost"].to_f.round(6) }
+
+        expect(current_costs).to match_array(original_costs)
+      end
+
+      it "preserves tenant_id associations" do
+        data = MigrationTestData.seed_v0_4_0_data(count: 5)
+        original_tenant_ids = data[:executions].map { |e| e[:tenant_id] }
+
+        apply_migrations_from_to("0.4.0", "2.0.0")
+
+        current = all_records
+        current_tenant_ids = current.map { |r| r["tenant_id"] }
+
+        expect(current_tenant_ids).to match_array(original_tenant_ids)
+      end
+
+      it "preserves record count" do
+        MigrationTestData.seed_v0_4_0_data(count: 10)
+
+        apply_migrations_from_to("0.4.0", "2.0.0")
+
+        expect(record_count).to eq(10)
+      end
     end
   end
 end

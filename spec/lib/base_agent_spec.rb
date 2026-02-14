@@ -23,7 +23,6 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
         end
 
         model "claude-3-sonnet"
-        version "2.0"
         description "A test agent"
         timeout 30
 
@@ -49,10 +48,6 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
 
     it "uses DSL::Base for model configuration" do
       expect(agent_class.model).to eq("claude-3-sonnet")
-    end
-
-    it "uses DSL::Base for version" do
-      expect(agent_class.version).to eq("2.0")
     end
 
     it "uses DSL::Base for description" do
@@ -172,8 +167,6 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
           "CacheAgent"
         end
 
-        version "1.0"
-
         param :query
 
         def user_prompt
@@ -190,7 +183,7 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
       agent = agent_class.new(query: "test query")
       key = agent.agent_cache_key
 
-      expect(key).to start_with("ruby_llm_agent/CacheAgent/1.0/")
+      expect(key).to start_with("ruby_llm_agent/CacheAgent/")
       expect(key).to match(/[a-f0-9]{64}$/) # SHA256 hex
     end
 
@@ -363,7 +356,6 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
         end
 
         model "gpt-4o"
-        version "1.0"
         temperature 0.5
         cache_for 1.hour
 
@@ -382,7 +374,6 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
         end
 
         model "gpt-4o-mini"
-        version "2.0"
 
         param :child_param, required: true
 

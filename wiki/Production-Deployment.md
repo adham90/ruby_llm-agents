@@ -45,18 +45,12 @@ config.budgets = {
 ### 5. Alerts
 
 ```ruby
-config.alerts = {
-  on_events: [:budget_hard_cap, :breaker_open],
-  slack_webhook_url: ENV['SLACK_WEBHOOK_URL']
-}
-```
-
-### 6. PII Redaction
-
-```ruby
-config.redaction = {
-  fields: %w[ssn credit_card email phone],
-  patterns: [/\b\d{3}-\d{2}-\d{4}\b/]
+config.on_alert = ->(event, payload) {
+  case event
+  when :budget_hard_cap, :breaker_open
+    PagerDuty.trigger(summary: "Alert: #{event}")
+    Slack::Notifier.new(ENV['SLACK_WEBHOOK']).ping("#{event}: #{payload[:agent_type]}")
+  end
 }
 ```
 
@@ -79,13 +73,6 @@ RubyLLM::Agents.configure do |config|
   config.persist_prompts = true
   config.persist_responses = true
 
-  # Security
-  config.redaction = {
-    fields: %w[password token api_key ssn credit_card],
-    patterns: [/\b\d{3}-\d{2}-\d{4}\b/],
-    placeholder: "[REDACTED]"
-  }
-
   # Cost Control
   config.budgets = {
     global_daily: 500.0,
@@ -102,15 +89,13 @@ RubyLLM::Agents.configure do |config|
   config.anomaly_duration_threshold = 30_000
 
   # Alerts
-  config.alerts = {
-    on_events: [
-      :budget_soft_cap,
-      :budget_hard_cap,
-      :breaker_open,
-      :anomaly_cost
-    ],
-    slack_webhook_url: ENV['SLACK_WEBHOOK_URL'],
-    webhook_url: ENV['ALERT_WEBHOOK_URL']
+  config.on_alert = ->(event, payload) {
+    case event
+    when :budget_hard_cap, :breaker_open
+      PagerDuty.trigger(summary: "Critical: #{event}", details: payload)
+    when :budget_soft_cap, :agent_anomaly
+      Slack::Notifier.new(ENV['SLACK_WEBHOOK']).ping("Warning: #{event}")
+    end
   }
 
   # Dashboard
@@ -345,7 +330,6 @@ end
 
 - [ ] Dashboard requires authentication
 - [ ] API keys in environment variables (not code)
-- [ ] PII redaction configured
 - [ ] HTTPS enforced
 - [ ] Rate limiting in place
 - [ ] Budget limits set

@@ -37,26 +37,26 @@
         credits: { enabled: false },
         chart: {
           backgroundColor: 'transparent',
-          style: { fontFamily: 'inherit' }
+          style: { fontFamily: 'ui-monospace, monospace' }
         },
         title: { text: null },
         xAxis: {
-          labels: { style: { color: '#9CA3AF' } },
-          lineColor: 'rgba(156, 163, 175, 0.2)',
-          tickColor: 'rgba(156, 163, 175, 0.2)'
+          labels: { style: { color: '#6B7280' } },
+          lineColor: 'rgba(107, 114, 128, 0.1)',
+          tickColor: 'rgba(107, 114, 128, 0.1)'
         },
         yAxis: {
-          labels: { style: { color: '#9CA3AF' } },
-          gridLineColor: 'rgba(156, 163, 175, 0.2)'
+          labels: { style: { color: '#6B7280' } },
+          gridLineColor: 'rgba(107, 114, 128, 0.1)'
         },
         legend: {
-          itemStyle: { color: '#9CA3AF' },
-          itemHoverStyle: { color: '#D1D5DB' }
+          itemStyle: { color: '#6B7280' },
+          itemHoverStyle: { color: '#9CA3AF' }
         },
         tooltip: {
-          backgroundColor: 'rgba(17, 24, 39, 0.9)',
-          borderColor: 'rgba(75, 85, 99, 0.5)',
-          style: { color: '#F3F4F6' }
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          borderColor: 'transparent',
+          style: { color: '#E5E7EB', fontFamily: 'ui-monospace, monospace' }
         }
       });
     </script>
@@ -71,12 +71,9 @@
 
     <!-- Clickable rows -->
     <script type="module">
-      // Initialize on page load
       document.addEventListener('DOMContentLoaded', function() {
-        // Handle data-href clickable rows (semantic alternative to onclick)
         document.querySelectorAll('[data-href]').forEach(function(element) {
           element.addEventListener('click', function(e) {
-            // Don't navigate if clicking on a link or button inside the row
             if (e.target.closest('a, button')) return;
             window.location = element.dataset.href;
           });
@@ -109,291 +106,129 @@
       }
     </script>
 
-    <style>
-    /* Custom styles for the dashboard */
-
-    /* Standard card components */
-    .card {
-      @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6;
-    }
-    .card-compact {
-      @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mb-4;
-    }
-
-    .stat-card {
-      @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 transition-shadow;
-    }
-    .stat-card:hover {
-      @apply shadow-md;
-    }
-    .stat-value {
-      @apply text-2xl font-bold text-gray-900 dark:text-gray-100 mt-2;
-    }
-    @media (min-width: 1024px) {
-      .stat-value {
-        font-size: 1.5rem;
-      }
-    }
-    .stat-label {
-      @apply text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-medium;
-    }
-    .chart-card {
-      @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6;
-    }
-    .nav-link {
-      @apply px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors;
-    }
-    .nav-link.active {
-      @apply bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300;
-    }
+    <style type="text/tailwindcss">
     .badge {
       @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
     }
     .badge-running {
-      @apply bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200;
+      @apply bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300;
     }
     .badge-success {
-      @apply bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200;
+      @apply bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300;
     }
     .badge-error {
-      @apply bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200;
+      @apply bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300;
     }
     .badge-timeout {
-      @apply bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200;
+      @apply bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300;
     }
     .badge-cyan {
-      @apply bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300;
+      @apply bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300;
     }
     .badge-purple {
-      @apply bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300;
+      @apply bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300;
     }
     .badge-orange {
-      @apply bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300;
+      @apply bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300;
     }
-
-    /* Workflow type badges */
-    .badge-pipeline {
-      @apply bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300;
+    .badge-sm {
+      @apply inline-flex items-center px-1.5 py-px rounded-full text-[10px] font-medium;
     }
-    .badge-parallel {
-      @apply bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300;
-    }
-    .badge-router {
-      @apply bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300;
-    }
-
-    /* Alpine.js utilities */
-    [x-cloak] {
-      display: none !important;
-    }
-
-  </style>
+    </style>
   </head>
 
-  <body class="bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col">
+  <body class="bg-gray-50 dark:bg-gray-950 min-h-screen flex flex-col font-sans">
     <!-- Header -->
-    <header
-      class="
-        bg-white dark:bg-gray-800 border-b border-gray-200
-        dark:border-gray-700
-      "
-      x-data="{ mobileMenuOpen: false }"
-    >
-      <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center">
-        <div class="flex justify-between items-center w-full">
-          <div class="flex items-center space-x-8">
-            <%= link_to ruby_llm_agents.root_path, class: "flex items-center space-x-2" do %>
-              <span class="text-lg">🤖</span>
+    <header class="border-b border-gray-200 dark:border-gray-800" x-data="{ mobileMenuOpen: false }">
+      <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 h-12 flex items-center">
+        <!-- Brand -->
+        <%= link_to ruby_llm_agents.root_path, class: "font-mono text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-gray-600 dark:hover:text-gray-400 transition-colors" do %>
+          ruby_llm<span class="text-gray-400 dark:text-gray-600">::</span>agents
+        <% end %>
 
-              <span class="font-semibold text-gray-900 dark:text-gray-100">
-                RubyLLM Agents
-              </span>
-            <% end %>
+        <!-- Desktop Navigation -->
+        <nav class="hidden md:flex items-center ml-8 gap-0.5 font-mono text-xs">
+          <% [
+            [ruby_llm_agents.root_path, "dashboard"],
+            [ruby_llm_agents.agents_path, "agents"],
+            [ruby_llm_agents.executions_path, "executions"],
+            [ruby_llm_agents.tenants_path, "tenants"]
+          ].each do |path, label| %>
+            <% active = current_page?(path) %>
+            <%= link_to label, path, class: "px-2.5 py-1 rounded transition-colors #{active ? 'text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}" %>
+          <% end %>
+        </nav>
 
-            <!-- Desktop Navigation -->
-            <%
-              nav_items = [
-                { path: ruby_llm_agents.root_path, label: "Dashboard", icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />' },
-                { path: ruby_llm_agents.agents_path, label: "Agents", icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>' },
-                { path: ruby_llm_agents.workflows_path, label: "Workflows", icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm0 8a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zm12 0a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>' },
-                { path: ruby_llm_agents.executions_path, label: "Executions", icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />' },
-                { path: ruby_llm_agents.tenants_path, label: "Tenants", icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />' }
-              ]
-            %>
-            <nav class="hidden md:flex items-center space-x-1">
-              <% nav_items.each do |item| %>
-                <%= render "ruby_llm/agents/shared/nav_link", path: item[:path], label: item[:label], icon: item[:icon], mobile: false %>
-              <% end %>
-            </nav>
-          </div>
+        <!-- Right Side -->
+        <div class="ml-auto flex items-center gap-1">
+          <%= link_to ruby_llm_agents.system_config_path, class: "hidden md:flex p-1.5 text-gray-400 dark:text-gray-600 hover:text-gray-700 dark:hover:text-gray-300 rounded transition-colors", title: "Config" do %>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          <% end %>
 
-          <div
-            class="
-              flex items-center space-x-2 text-xs text-gray-500
-              dark:text-gray-400
-            "
+          <!-- Mobile menu button -->
+          <button
+            type="button"
+            @click="mobileMenuOpen = !mobileMenuOpen"
+            :aria-expanded="mobileMenuOpen"
+            class="md:hidden p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded transition-colors"
           >
-            <%# Settings Dropdown %>
-            <div x-data="{ settingsOpen: false }" class="relative hidden md:block">
-              <button
-                @click="settingsOpen = !settingsOpen"
-                @click.outside="settingsOpen = false"
-                type="button"
-                class="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
-                aria-label="Settings"
-              >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                </svg>
-              </button>
-
-              <div
-                x-show="settingsOpen"
-                x-cloak
-                x-transition:enter="transition ease-out duration-100"
-                x-transition:enter-start="opacity-0 scale-95"
-                x-transition:enter-end="opacity-100 scale-100"
-                x-transition:leave="transition ease-in duration-75"
-                x-transition:leave-start="opacity-100 scale-100"
-                x-transition:leave-end="opacity-0 scale-95"
-                class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-1"
-              >
-                <a href="<%= ruby_llm_agents.system_config_path %>"
-                   class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 <%= 'bg-gray-100 dark:bg-gray-700' if request.path == ruby_llm_agents.system_config_path %>">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
-                  </svg>
-                  System Config
-                </a>
-                <a href="<%= ruby_llm_agents.api_configuration_path %>"
-                   class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 <%= 'bg-gray-100 dark:bg-gray-700' if request.path == ruby_llm_agents.api_configuration_path %>">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
-                  </svg>
-                  API Keys
-                </a>
-                <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
-                <a href="#" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                  </svg>
-                  Logout
-                </a>
-              </div>
-            </div>
-
-            <!-- Mobile menu button -->
-            <button
-              type="button"
-              @click="mobileMenuOpen = !mobileMenuOpen"
-              :aria-expanded="mobileMenuOpen"
-              aria-controls="mobile-menu"
-              class="
-                md:hidden inline-flex items-center justify-center p-2
-                rounded-md text-gray-500 dark:text-gray-400
-                hover:text-gray-900 dark:hover:text-gray-100
-                hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none
-                focus:ring-2 focus:ring-inset focus:ring-blue-500
-              "
-            >
-              <span class="sr-only">Open main menu</span>
-
-              <svg
-                class="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-            </button>
-          </div>
+            <span class="sr-only">Open main menu</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </button>
         </div>
       </div>
 
-      <!-- Mobile Navigation Menu -->
+      <!-- Mobile Navigation -->
       <div
-        id="mobile-menu"
         x-show="mobileMenuOpen"
         x-cloak
-        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter="transition ease-out duration-150"
         x-transition:enter-start="opacity-0 -translate-y-1"
         x-transition:enter-end="opacity-100 translate-y-0"
-        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave="transition ease-in duration-100"
         x-transition:leave-start="opacity-100 translate-y-0"
         x-transition:leave-end="opacity-0 -translate-y-1"
         @click.outside="mobileMenuOpen = false"
-        class="
-          md:hidden border-t border-gray-200 dark:border-gray-700 bg-white
-          dark:bg-gray-800
-        "
+        class="md:hidden border-t border-gray-200 dark:border-gray-800"
       >
-        <nav class="max-w-7xl mx-auto px-4 py-3 space-y-1">
-          <% nav_items.each do |item| %>
-            <%= render "ruby_llm/agents/shared/nav_link", path: item[:path], label: item[:label], icon: item[:icon], mobile: true %>
+        <nav class="max-w-7xl mx-auto px-4 py-2 font-mono text-xs space-y-0.5">
+          <% [
+            [ruby_llm_agents.root_path, "dashboard"],
+            [ruby_llm_agents.agents_path, "agents"],
+            [ruby_llm_agents.executions_path, "executions"],
+            [ruby_llm_agents.tenants_path, "tenants"]
+          ].each do |path, label| %>
+            <% active = current_page?(path) %>
+            <%= link_to label, path, class: "block px-3 py-2 rounded transition-colors #{active ? 'text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}" %>
           <% end %>
-
-          <%# Settings section divider %>
-          <div class="border-t border-gray-200 dark:border-gray-700 my-2 pt-2">
-            <span class="px-3 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Settings</span>
-          </div>
-
-          <%= render "ruby_llm/agents/shared/nav_link",
-                     path: ruby_llm_agents.system_config_path,
-                     label: "System Config",
-                     icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>',
-                     mobile: true %>
-
-          <%= render "ruby_llm/agents/shared/nav_link",
-                     path: ruby_llm_agents.api_configuration_path,
-                     label: "API Keys",
-                     icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>',
-                     mobile: true %>
-
-          <a href="#" class="flex items-center px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
-            <svg class="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-            </svg>
-            Logout
-          </a>
+          <div class="border-t border-gray-200 dark:border-gray-800 my-1.5"></div>
+          <%= link_to "config", ruby_llm_agents.system_config_path, class: "block px-3 py-2 rounded text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors" %>
         </nav>
       </div>
     </header>
 
     <!-- Main content -->
-    <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 h-full">
+    <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1">
       <%= yield %>
     </main>
 
     <!-- Footer -->
-    <footer
-      class="border-t bg-white dark:bg-gray-800 dark:border-gray-700 mt-auto"
-      x-data="themeManager()"
-    >
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div class="flex flex-col sm:flex-row items-center sm:justify-between gap-3 sm:gap-0">
-          <div class="flex items-center space-x-2">
-            <label for="theme-select" class="text-sm text-gray-500 dark:text-gray-400">Theme:</label>
-            <select
-              id="theme-select"
-              x-model="preference"
-              @change="setTheme($event.target.value)"
-              class="text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1 px-2"
-            >
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-              <option value="auto">Auto</option>
-            </select>
+    <footer class="border-t border-gray-200 dark:border-gray-800 mt-auto" x-data="themeManager()">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+        <div class="flex items-center justify-between font-mono text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-widest">
+          <div class="flex items-center gap-1">
+            <button @click="setTheme('light')" :class="preference === 'light' && 'text-gray-700 dark:text-gray-300'" class="px-1.5 py-0.5 rounded hover:text-gray-600 dark:hover:text-gray-400 transition-colors">light</button>
+            <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+            <button @click="setTheme('dark')" :class="preference === 'dark' && 'text-gray-700 dark:text-gray-300'" class="px-1.5 py-0.5 rounded hover:text-gray-600 dark:hover:text-gray-400 transition-colors">dark</button>
+            <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+            <button @click="setTheme('auto')" :class="preference === 'auto' && 'text-gray-700 dark:text-gray-300'" class="px-1.5 py-0.5 rounded hover:text-gray-600 dark:hover:text-gray-400 transition-colors">auto</button>
           </div>
-          <p class="text-sm text-gray-500 dark:text-gray-400 text-center">
-            Powered by <a href="https://github.com/adham90/ruby_llm-agents" class="text-blue-600 dark:text-blue-400 hover:underline">ruby_llm-agents</a>
-          </p>
+          <a href="https://github.com/adham90/ruby_llm-agents" class="hover:text-gray-600 dark:hover:text-gray-400 transition-colors normal-case tracking-normal">ruby_llm-agents</a>
         </div>
       </div>
     </footer>

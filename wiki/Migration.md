@@ -81,7 +81,6 @@ See [CHANGELOG](../CHANGELOG.md) for full details.
 v1.0.0 introduces significant new features while maintaining the same directory structure:
 
 - **Extended Thinking** - Support for chain-of-thought reasoning with Claude models
-- **Content Moderation** - Built-in content safety filtering
 - **Audio Agents** - New Transcriber and Speaker agents for speech-to-text and text-to-speech
 - **Image Operations** - Comprehensive image generation, analysis, editing, and pipelines
 - **Embedder Improvements** - Enhanced embedding support
@@ -283,19 +282,6 @@ end
 result = ReasoningAgent.call(query: "Complex problem")
 result.thinking  # Access reasoning trace
 result.content   # Final answer
-```
-
-### Content Moderation
-
-Add content safety filtering:
-
-```ruby
-class SafeAgent < ApplicationAgent
-  moderation do
-    enabled true
-    on_violation :block  # :warn, :log, :raise
-  end
-end
 ```
 
 ### Enhanced Reliability

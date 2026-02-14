@@ -38,7 +38,6 @@
 #
 class ConversationAgent < ApplicationAgent
   description 'Demonstrates multi-turn conversation with message history'
-  version '1.0'
 
   model 'gpt-4o-mini'
   temperature 0.7
@@ -71,7 +70,7 @@ class ConversationAgent < ApplicationAgent
     message
   end
 
-  def execution_metadata
+  def metadata
     {
       showcase: 'conversation',
       features: %w[messages conversation_history multi_turn],

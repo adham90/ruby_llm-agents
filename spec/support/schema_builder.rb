@@ -18,7 +18,6 @@ module SchemaBuilder
       connection.create_table :ruby_llm_agents_executions, force: false, if_not_exists: true do |t|
         # Agent identification
         t.string :agent_type, null: false
-        t.string :agent_version, default: "1.0"
 
         # Model configuration
         t.string :model_id, null: false
@@ -61,7 +60,6 @@ module SchemaBuilder
       connection.add_index :ruby_llm_agents_executions, :created_at, if_not_exists: true
       connection.add_index :ruby_llm_agents_executions, [:agent_type, :created_at], if_not_exists: true
       connection.add_index :ruby_llm_agents_executions, [:agent_type, :status], if_not_exists: true
-      connection.add_index :ruby_llm_agents_executions, [:agent_type, :agent_version], if_not_exists: true
       connection.add_index :ruby_llm_agents_executions, :duration_ms, if_not_exists: true
       connection.add_index :ruby_llm_agents_executions, :total_cost, if_not_exists: true
     end
@@ -317,76 +315,124 @@ module SchemaBuilder
       end
     end
 
-    # Version 0.4.0 - Create api_configurations table
-    def v0_4_0_api_configurations
+    # Version 2.0.0 - Create execution_details table
+    def v2_0_0_execution_details
       connection = ActiveRecord::Base.connection
 
-      connection.create_table :ruby_llm_agents_api_configurations, force: false, if_not_exists: true do |t|
-        # Scope
-        t.string :scope_type, null: false, default: "global"
-        t.string :scope_id
+      connection.create_table :ruby_llm_agents_execution_details, force: false, if_not_exists: true do |t|
+        t.references :execution, null: false,
+                     foreign_key: { to_table: :ruby_llm_agents_executions, on_delete: :cascade },
+                     index: { unique: true }
 
-        # Encrypted API Keys
-        t.text :openai_api_key
-        t.text :anthropic_api_key
-        t.text :gemini_api_key
-        t.text :deepseek_api_key
-        t.text :mistral_api_key
-        t.text :perplexity_api_key
-        t.text :openrouter_api_key
-        t.text :gpustack_api_key
-        t.text :xai_api_key
-        t.text :ollama_api_key
-
-        # AWS Bedrock
-        t.text :bedrock_api_key
-        t.text :bedrock_secret_key
-        t.text :bedrock_session_token
-        t.string :bedrock_region
-
-        # Google Vertex AI
-        t.text :vertexai_credentials
-        t.string :vertexai_project_id
-        t.string :vertexai_location
-
-        # Custom Endpoints
-        t.string :openai_api_base
-        t.string :gemini_api_base
-        t.string :ollama_api_base
-        t.string :gpustack_api_base
-        t.string :xai_api_base
-
-        # OpenAI Options
-        t.string :openai_organization_id
-        t.string :openai_project_id
-
-        # Default Models
-        t.string :default_model
-        t.string :default_embedding_model
-        t.string :default_image_model
-        t.string :default_moderation_model
-
-        # Connection Settings
-        t.integer :request_timeout
-        t.integer :max_retries
-        t.decimal :retry_interval, precision: 10, scale: 2
-        t.decimal :retry_backoff_factor, precision: 10, scale: 2
-        t.decimal :retry_interval_randomness, precision: 10, scale: 2
-        t.string :http_proxy
-
-        # Inheritance
-        t.boolean :inherit_global_defaults, default: true
+        t.text     :error_message
+        t.text     :system_prompt
+        t.text     :user_prompt
+        t.json     :response,             default: {}
+        t.json     :messages_summary,     default: {}, null: false
+        t.json     :tool_calls,           default: [], null: false
+        t.json     :attempts,             default: [], null: false
+        t.json     :fallback_chain
+        t.json     :parameters,           default: {}, null: false
+        t.string   :routed_to
+        t.json     :classification_result
+        t.datetime :cached_at
+        t.integer  :cache_creation_tokens, default: 0
 
         t.timestamps
       end
-
-      add_composite_index_if_missing(connection, :ruby_llm_agents_api_configurations, [:scope_type, :scope_id], unique: true)
     end
 
-    # Rollback for v0_4_0 api_configurations
-    def v0_4_0_api_configurations_down
+    # Rollback for v2_0_0 execution_details
+    def v2_0_0_execution_details_down
       connection = ActiveRecord::Base.connection
-      connection.drop_table :ruby_llm_agents_api_configurations, if_exists: true
+      connection.drop_table :ruby_llm_agents_execution_details, if_exists: true
+    end
+
+    # Version 2.0.0 - Rename tenant_budgets to tenants
+    def v2_0_0_rename_tenants
+      connection = ActiveRecord::Base.connection
+
+      return unless connection.table_exists?(:ruby_llm_agents_tenant_budgets)
+      return if connection.table_exists?(:ruby_llm_agents_tenants)
+
+      connection.rename_table :ruby_llm_agents_tenant_budgets, :ruby_llm_agents_tenants
+
+      add_column_if_missing(connection, :ruby_llm_agents_tenants, :active, :boolean, default: true)
+      add_column_if_missing(connection, :ruby_llm_agents_tenants, :metadata, :json, null: false, default: {})
+
+      connection.add_index :ruby_llm_agents_tenants, :active, if_not_exists: true
+    end
+
+    # Rollback for v2_0_0 rename_tenants
+    def v2_0_0_rename_tenants_down
+      connection = ActiveRecord::Base.connection
+
+      return unless connection.table_exists?(:ruby_llm_agents_tenants)
+
+      remove_column_if_exists(connection, :ruby_llm_agents_tenants, :active)
+      remove_column_if_exists(connection, :ruby_llm_agents_tenants, :metadata)
+
+      connection.rename_table :ruby_llm_agents_tenants, :ruby_llm_agents_tenant_budgets
+    end
+
+    # Version 2.0.0 - Remove agent_version column
+    def v2_0_0_remove_agent_version
+      connection = ActiveRecord::Base.connection
+      table_name = :ruby_llm_agents_executions
+
+      return unless connection.column_exists?(table_name, :agent_version)
+
+      if connection.index_exists?(table_name, [:agent_type, :agent_version])
+        connection.remove_index table_name, [:agent_type, :agent_version]
+      end
+
+      connection.remove_column table_name, :agent_version
+    end
+
+    # Rollback for v2_0_0 remove_agent_version
+    def v2_0_0_remove_agent_version_down
+      connection = ActiveRecord::Base.connection
+      table_name = :ruby_llm_agents_executions
+
+      add_column_if_missing(connection, table_name, :agent_version, :string, default: "1.0")
+    end
+
+    # Version 2.0.0 - Remove workflow columns
+    def v2_0_0_remove_workflow_columns
+      connection = ActiveRecord::Base.connection
+      table_name = :ruby_llm_agents_executions
+
+      return unless connection.column_exists?(table_name, :workflow_id)
+
+      # Remove indexes first
+      if connection.index_exists?(table_name, [:workflow_id, :workflow_step])
+        connection.remove_index table_name, [:workflow_id, :workflow_step]
+      end
+      if connection.index_exists?(table_name, :workflow_id)
+        connection.remove_index table_name, :workflow_id
+      end
+      if connection.index_exists?(table_name, :workflow_type)
+        connection.remove_index table_name, :workflow_type
+      end
+
+      # Remove the columns
+      %i[workflow_id workflow_type workflow_step].each do |column|
+        remove_column_if_exists(connection, table_name, column)
+      end
+    end
+
+    # Rollback for v2_0_0 remove_workflow_columns
+    def v2_0_0_remove_workflow_columns_down
+      connection = ActiveRecord::Base.connection
+      table_name = :ruby_llm_agents_executions
+
+      add_column_if_missing(connection, table_name, :workflow_id, :string)
+      add_column_if_missing(connection, table_name, :workflow_type, :string)
+      add_column_if_missing(connection, table_name, :workflow_step, :string)
+
+      connection.add_index table_name, :workflow_id, if_not_exists: true
+      connection.add_index table_name, :workflow_type, if_not_exists: true
+      add_composite_index_if_missing(connection, table_name, [:workflow_id, :workflow_step])
     end
 
     private

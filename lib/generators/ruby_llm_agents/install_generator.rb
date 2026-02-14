@@ -14,7 +14,6 @@ module RubyLlmAgents
   #   - Create the initializer at config/initializers/ruby_llm_agents.rb
   #   - Create app/agents/application_agent.rb base class
   #   - Create app/agents/concerns/ directory
-  #   - Create app/workflows/application_workflow.rb base class
   #   - Optionally mount the dashboard engine in routes
   #
   class InstallGenerator < ::Rails::Generators::Base
@@ -38,6 +37,15 @@ module RubyLlmAgents
       )
     end
 
+    def create_execution_details_migration
+      return if options[:skip_migration]
+
+      migration_template(
+        "create_execution_details_migration.rb.tt",
+        File.join(db_migrate_path, "create_ruby_llm_agents_execution_details.rb")
+      )
+    end
+
     def create_initializer
       return if options[:skip_initializer]
 
@@ -51,9 +59,6 @@ module RubyLlmAgents
       empty_directory "app/agents"
       empty_directory "app/agents/concerns"
 
-      # Create workflows directory
-      empty_directory "app/workflows"
-
       # Create tools directory
       empty_directory "app/tools"
     end
@@ -62,18 +67,11 @@ module RubyLlmAgents
       template "application_agent.rb.tt", "app/agents/application_agent.rb"
     end
 
-    def create_application_workflow
-      template "application_workflow.rb.tt", "app/workflows/application_workflow.rb"
-    end
-
     def create_skill_files
       say_status :create, "skill documentation files", :green
 
       # Create agents skill file
       template "skills/AGENTS.md.tt", "app/agents/AGENTS.md"
-
-      # Create workflows skill file
-      template "skills/WORKFLOWS.md.tt", "app/workflows/WORKFLOWS.md"
 
       # Create tools skill file
       template "skills/TOOLS.md.tt", "app/tools/TOOLS.md"
@@ -104,9 +102,6 @@ module RubyLlmAgents
       say "  │   ├── application_agent.rb"
       say "  │   ├── concerns/"
       say "  │   └── AGENTS.md"
-      say "  ├── workflows/"
-      say "  │   ├── application_workflow.rb"
-      say "  │   └── WORKFLOWS.md"
       say "  └── tools/"
       say "      └── TOOLS.md"
       say ""

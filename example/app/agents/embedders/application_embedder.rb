@@ -14,7 +14,6 @@
 #   model "text-embedding-3-small"  # Embedding model identifier
 #   dimensions 512                   # Vector dimensions (some models support reduction)
 #   batch_size 50                    # Max texts per API call
-#   version "1.0"                    # Embedder version (affects cache keys)
 #   description "..."                # Human-readable embedder description
 #
 # CACHING:

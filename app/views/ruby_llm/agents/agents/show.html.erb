@@ -1,421 +1,291 @@
-<%= render "ruby_llm/agents/shared/breadcrumbs", items: [
-  { label: "Dashboard", path: ruby_llm_agents.root_path },
-  { label: "Agents", path: ruby_llm_agents.agents_path(tab: params[:tab], subtab: params[:subtab]) },
-  { label: @agent_type.gsub(/Agent$/, '') }
-] %>
+<!-- Back link -->
+<nav class="font-mono text-xs mb-6">
+  <%= link_to "← agents", ruby_llm_agents.agents_path(subtab: params[:subtab]), class: "text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" %>
+</nav>
 
-<!-- Header -->
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-  <div class="flex items-start justify-between">
-    <div>
-      <div class="flex items-center space-x-3">
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          <%= @agent_type.gsub(/Agent$/, '') %>
-        </h1>
-        <%= render "ruby_llm/agents/shared/doc_link" %>
-
-        <% if @agent_active %>
-          <span
-            class="
-              inline-flex items-center px-2.5 py-0.5 rounded-full text-xs
-              font-medium bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300
-            "
-          >
-            Active
-          </span>
-        <% else %>
-          <span
-            class="
-              inline-flex items-center px-2.5 py-0.5 rounded-full text-xs
-              font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400
-            "
-          >
-            Deleted
-          </span>
-        <% end %>
-
+<!-- ── agent header ──────────────── -->
+<div class="flex items-start justify-between gap-8 mb-2">
+  <!-- Left: identity -->
+  <div class="min-w-0">
+    <div class="flex items-center gap-3 mb-1.5">
+      <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono"><%= @agent_type.gsub(/Agent$/, '') %></span>
+      <div class="font-mono text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1.5">
+        <span class="badge badge-sm <%= @agent_active ? 'badge-success' : 'badge-error' %>"><%= @agent_active ? 'active' : 'inactive' %></span>
         <% if @config %>
-          <span class="text-sm text-gray-500 dark:text-gray-400">
-            v<%= @config[:version] %>
-          </span>
-        <% end %>
-      </div>
-
-      <% if @config %>
-        <p class="text-gray-500 dark:text-gray-400 mt-1">
-          <%= @config[:model] %>
+          <span class="text-gray-800 dark:text-gray-200"><%= @config[:model] %></span>
           <% if @config[:temperature] %>
-            &middot; temp <%= @config[:temperature] %>
+            <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+            <span>temp <%= @config[:temperature] %></span>
           <% end %>
           <% if @config[:timeout] %>
-            &middot; timeout <%= @config[:timeout] %>s
+            <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+            <span><%= @config[:timeout] %>s</span>
+          <% end %>
+          <% if @config[:cache_enabled] %>
+            <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+            <%
+              ttl = @config[:cache_ttl]
+              cache_label = if ttl.is_a?(ActiveSupport::Duration)
+                secs = ttl.to_i
+                if secs >= 3600 then "#{secs / 3600}h"
+                elsif secs >= 60 then "#{secs / 60}m"
+                else "#{secs}s"
+                end
+              else
+                ttl.to_s
+              end
+            %>
+            <span>cache <%= cache_label %></span>
           <% end %>
           <% if @config[:dimensions] %>
-            &middot; <%= @config[:dimensions] %> dims
+            <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+            <span><%= @config[:dimensions] %> dims</span>
           <% end %>
           <% if @config[:voice] %>
-            &middot; voice: <%= @config[:voice] %>
+            <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+            <span>voice: <%= @config[:voice] %></span>
           <% end %>
-        </p>
-        <% if @config[:description].present? %>
-          <p class="text-gray-600 dark:text-gray-300 mt-2">
-            <%= @config[:description] %>
-          </p>
-        <% end %>
-      <% end %>
-    </div>
-
-    <div class="text-right">
-      <p class="text-sm text-gray-500 dark:text-gray-400">
-        <%= number_with_delimiter(@stats[:count]) %> total executions
-      </p>
-
-      <div class="flex items-center justify-end gap-3 mt-1">
-        <% status_colors = {
-            "success" => "bg-green-500",
-            "error" => "bg-red-500",
-            "timeout" => "bg-yellow-500",
-            "running" => "bg-blue-500"
-          } %>
-
-        <% @status_distribution.each do |status, count| %>
-          <div class="flex items-center gap-1">
-            <span class="w-2 h-2 rounded-full <%= status_colors[status] || 'bg-gray-400' %> <%= status == 'running' ? 'animate-pulse' : '' %>"></span>
-
-            <span class="text-xs text-gray-600 dark:text-gray-400">
-              <%= number_with_delimiter(count) %>
-            </span>
-          </div>
+          <% if @streaming_rate && @streaming_rate > 0 %>
+            <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+            <span>streaming</span>
+          <% end %>
         <% end %>
       </div>
+      <%= render "ruby_llm/agents/shared/doc_link" %>
     </div>
-  </div>
-</div>
-
-<!-- Circuit Breaker Status (only for base agents with reliability enabled) -->
-<% if @config && @agent_type_kind == "agent" && @circuit_breaker_status.present? %>
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
-    <div class="flex items-center justify-between mb-3">
-      <h3
-        class="
-          text-sm font-medium text-gray-700 dark:text-gray-300 uppercase
-          tracking-wider
-        "
-      >
-        Circuit Breaker Status
-      </h3>
-
-      <span class="text-xs text-gray-400 dark:text-gray-500">
-        Auto-refreshes every 30s
-      </span>
-    </div>
-
-    <div class="flex flex-wrap gap-3">
-      <% @circuit_breaker_status.each do |model_id, status| %>
-        <div class="flex items-center gap-2 px-3 py-2 rounded-lg border <%= status[:open] ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' %>">
-          <% if status[:open] %>
-            <!-- Open/Tripped indicator -->
-            <span class="relative flex h-3 w-3">
-              <span
-                class="
-                  animate-ping absolute inline-flex h-full w-full
-                  rounded-full bg-red-400 opacity-75
-                "
-              ></span>
-
-              <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-            </span>
-            <span class="text-sm font-medium text-red-700 dark:text-red-300">
-              <%= model_id %>
-            </span>
-            <span class="text-xs text-red-500 dark:text-red-400 ml-1">
-              OPEN
-            </span>
-            <% if status[:cooldown_remaining] %>
-              <span class="text-xs text-red-400 dark:text-red-500 ml-1">
-                (resets in <%= status[:cooldown_remaining] %>s)
-              </span>
-            <% end %>
-          <% else %>
-            <!-- Closed/Healthy indicator -->
-            <span class="inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-            <span class="text-sm font-medium text-green-700 dark:text-green-300">
-              <%= model_id %>
-            </span>
-            <span class="text-xs text-green-500 dark:text-green-400 ml-1">
-              OK
-            </span>
-            <% if status[:failure_count] && status[:failure_count] > 0 %>
-              <span class="text-xs text-yellow-500 dark:text-yellow-400 ml-1">
-                (<%= status[:failure_count] %>/<%= status[:threshold] %>
-                failures)
-              </span>
-            <% end %>
-          <% end %>
-        </div>
-      <% end %>
-    </div>
-
-    <% if @circuit_breaker_status.values.any? { |s| s[:open] } %>
-      <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-        Open circuit breakers will skip the model and try fallbacks (if
-        configured). They automatically reset after the cooldown period.
-      </p>
+    <% if @config && @config[:description].present? %>
+      <p class="font-mono text-xs text-gray-500 dark:text-gray-400"><%= @config[:description] %></p>
     <% end %>
   </div>
-<% end %>
 
-<!-- Stats Grid -->
-<% success_rate = @stats[:success_rate] || 0 %>
-<% success_rate_color = success_rate >= 95 ? 'text-green-600' : success_rate >= 80 ? 'text-yellow-600' : 'text-red-600' %>
-
-<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-  <%= render "ruby_llm/agents/shared/stat_card",
-      title: "Executions",
-      value: number_with_delimiter(@stats[:count]),
-      subtitle: "Today: #{@stats_today[:count]}",
-      icon: "M13 10V3L4 14h7v7l9-11h-7z",
-      icon_color: "text-blue-500" %>
-
-  <%= render "ruby_llm/agents/shared/stat_card",
-      title: "Success Rate",
-      value: "#{success_rate}%",
-      subtitle: "Error rate: #{@stats[:error_rate] || 0}%",
-      icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",
-      icon_color: "text-green-500",
-      value_color: success_rate_color %>
-
-  <%= render "ruby_llm/agents/shared/stat_card",
-      title: "Total Cost",
-      value: "$#{number_with_precision(@stats[:total_cost] || 0, precision: 4)}",
-      subtitle: "Avg: $#{number_with_precision(@stats[:avg_cost] || 0, precision: 6)}",
-      icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-      icon_color: "text-amber-500" %>
-
-  <%= render "ruby_llm/agents/shared/stat_card",
-      title: "Total Tokens",
-      value: number_with_delimiter(@stats[:total_tokens] || 0),
-      subtitle: "Avg: #{number_with_delimiter(@stats[:avg_tokens] || 0)}",
-      icon: "M7 20l4-16m2 16l4-16M6 9h14M4 15h14",
-      icon_color: "text-indigo-500" %>
-
-  <%= render "ruby_llm/agents/shared/stat_card",
-      title: "Avg Duration",
-      value: "#{number_with_delimiter(@stats[:avg_duration_ms] || 0)} ms",
-      icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
-      icon_color: "text-purple-500" %>
-
-  <%= render "ruby_llm/agents/shared/stat_card",
-      title: "Cache Hit Rate",
-      value: "#{@cache_hit_rate}%",
-      icon: "M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4",
-      icon_color: "text-purple-500" %>
-</div>
-
-<!-- Charts Section -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-  <!-- Executions Over Time -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 overflow-hidden">
-    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-      Executions (30 days)
-    </h3>
-    <div id="executions-chart" style="height: 220px;"></div>
-  </div>
-
-  <!-- Cost Over Time -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 overflow-hidden">
-    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-      Cost (30 days)
-    </h3>
-    <div id="cost-chart" style="height: 220px;"></div>
+  <!-- Right: stats -->
+  <div class="flex-shrink-0 text-right font-mono text-xs text-gray-400 dark:text-gray-500 space-y-1">
+    <% success_rate = @stats[:success_rate] || 0 %>
+    <div class="flex items-center justify-end gap-x-4">
+      <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats[:count]) %></span> runs</span>
+      <span class="<%= success_rate >= 95 ? 'text-green-500' : success_rate >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= success_rate %>% ok</span>
+      <span><span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(@stats[:total_cost] || 0, precision: 4) %></span> cost</span>
+    </div>
+    <div class="flex items-center justify-end gap-x-4 text-gray-500 dark:text-gray-600">
+      <span><span class="text-gray-600 dark:text-gray-400"><%= number_with_delimiter(@stats[:total_tokens] || 0) %></span> tokens</span>
+      <span><span class="text-gray-600 dark:text-gray-400"><%= number_with_delimiter(@stats[:avg_duration_ms] || 0) %></span>ms avg</span>
+      <% if (@config && @config[:cache_enabled]) || @cache_hit_rate > 0 %>
+        <span><span class="text-gray-600 dark:text-gray-400"><%= @cache_hit_rate %>%</span> cache</span>
+      <% end %>
+    </div>
+    <% if @stats_today[:count] > 0 %>
+      <% today_success_rate = @stats_today[:success_rate] || 0 %>
+      <div class="flex items-center justify-end gap-x-4 pt-1 border-t border-gray-200 dark:border-gray-800">
+        <span class="text-gray-300 dark:text-gray-700">today</span>
+        <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats_today[:count]) %></span> runs</span>
+        <span class="<%= today_success_rate >= 95 ? 'text-green-500' : today_success_rate >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= today_success_rate %>% ok</span>
+        <span><span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(@stats_today[:total_cost] || 0, precision: 4) %></span> cost</span>
+        <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@stats_today[:avg_duration_ms] || 0) %></span>ms</span>
+      </div>
+    <% end %>
   </div>
 </div>
+<div class="border-t border-gray-200 dark:border-gray-800 mb-2"></div>
 
+<!-- 30d trend chart -->
+<div class="flex items-center gap-3 mt-6 mb-2">
+  <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">last 30 days</span>
+  <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+</div>
+<div id="agent-trend-chart" style="width: 100%; height: 160px;"></div>
 <script>
 (function() {
-  const trendData = <%= raw @trend_data.to_json %>;
-  const categories = trendData.map(d => d.date.split('-').slice(1).join('/'));
+  const trendData = <%= raw @trend_data.map { |d|
+    { date: d[:date] || d["date"], count: d[:count] || d["count"] || 0,
+      cost: (d[:total_cost] || d["total_cost"] || 0).to_f.round(6),
+      errors: d[:error_count] || d["error_count"] || 0 }
+  }.to_json %>;
 
-  // Executions chart
-  Highcharts.chart('executions-chart', {
-    chart: { type: 'areaspline', backgroundColor: 'transparent' },
-    xAxis: { categories: categories, labels: { style: { color: '#9CA3AF' } } },
-    yAxis: { min: 0, title: { text: null }, labels: { style: { color: '#9CA3AF' } } },
+  const successData = trendData.map(d => [new Date(d.date).getTime(), d.count - d.errors]);
+  const errorData = trendData.map(d => [new Date(d.date).getTime(), d.errors]);
+
+  Highcharts.chart('agent-trend-chart', {
+    chart: { type: 'areaspline', backgroundColor: 'transparent', spacing: [5, 0, 0, 0] },
+    title: { text: null },
+    xAxis: {
+      type: 'datetime',
+      labels: { style: { color: '#6B7280', fontSize: '9px', fontFamily: 'ui-monospace, monospace' }, format: '{value:%b %d}' },
+      lineColor: 'transparent',
+      tickLength: 0,
+      gridLineWidth: 0
+    },
+    yAxis: {
+      title: { text: null },
+      min: 0,
+      allowDecimals: false,
+      labels: { style: { color: '#6B7280', fontSize: '9px', fontFamily: 'ui-monospace, monospace' } },
+      gridLineColor: 'rgba(107, 114, 128, 0.08)'
+    },
     legend: { enabled: false },
-    plotOptions: { areaspline: { fillOpacity: 0.2, marker: { enabled: false } } },
+    credits: { enabled: false },
+    tooltip: {
+      backgroundColor: 'rgba(0, 0, 0, 0.85)',
+      borderColor: 'transparent',
+      borderRadius: 3,
+      style: { color: '#E5E7EB', fontSize: '10px', fontFamily: 'ui-monospace, monospace' },
+      shared: true,
+      formatter: function() {
+        let html = '<span style="color:#9CA3AF">' + Highcharts.dateFormat('%b %d', this.x) + '</span>';
+        let cost = trendData.find(d => new Date(d.date).getTime() === this.x);
+        this.points.forEach(p => html += '<br/>' + p.series.name + ': <b>' + p.y + '</b>');
+        if (cost) html += '<br/>cost: <b>$' + cost.cost.toFixed(4) + '</b>';
+        return html;
+      }
+    },
+    plotOptions: {
+      areaspline: {
+        stacking: 'normal',
+        lineWidth: 1.5,
+        marker: { enabled: false, states: { hover: { enabled: true, radius: 2 } } }
+      }
+    },
     series: [
-      { name: 'Success', color: '#10B981', data: trendData.map(d => d.count - (d.error_count || 0)) },
-      { name: 'Failed', color: '#EF4444', data: trendData.map(d => d.error_count || 0) }
+      {
+        name: 'errors',
+        data: errorData,
+        color: '#EF4444',
+        fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, 'rgba(239, 68, 68, 0.08)'], [1, 'rgba(239, 68, 68, 0)']] }
+      },
+      {
+        name: 'success',
+        data: successData,
+        color: '#10B981',
+        fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, 'rgba(16, 185, 129, 0.08)'], [1, 'rgba(16, 185, 129, 0)']] }
+      }
     ]
-  });
-
-  // Cost chart
-  Highcharts.chart('cost-chart', {
-    chart: { type: 'spline', backgroundColor: 'transparent' },
-    xAxis: { categories: categories, labels: { style: { color: '#9CA3AF' } } },
-    yAxis: { min: 0, title: { text: null }, labels: { style: { color: '#9CA3AF' }, format: '${value}' } },
-    legend: { enabled: false },
-    plotOptions: { spline: { marker: { enabled: false } } },
-    tooltip: { valuePrefix: '$' },
-    series: [{ name: 'Cost', color: '#10B981', data: trendData.map(d => parseFloat(d.total_cost) || 0) }]
   });
 })();
 </script>
 
-<!-- Finish Reason Distribution -->
-<% if @finish_reason_distribution.present? && @finish_reason_distribution.any? %>
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
-    <div class="flex items-center justify-between">
-      <p class="text-sm text-gray-500 dark:text-gray-400 uppercase">
-        Finish Reasons
-      </p>
-
-      <div class="flex flex-wrap gap-4">
-        <% finish_colors = {
-            'stop' => '#10B981',
-            'length' => '#F59E0B',
-            'content_filter' => '#EF4444',
-            'tool_calls' => '#3B82F6',
-            nil => '#6B7280'
-          } %>
-
-        <% @finish_reason_distribution.each do |reason, count| %>
-          <div class="flex items-center">
-            <span
-              class="w-2 h-2 rounded-full mr-1.5"
-              style="background-color: <%= finish_colors[reason] || '#6B7280' %>"
-            ></span>
-
-            <span class="text-sm text-gray-700 dark:text-gray-300">
-              <%= reason || 'unknown' %>
-            </span>
-
-            <span class="text-sm font-medium text-gray-900 dark:text-gray-100 ml-1">
-              (<%= number_with_delimiter(count) %>)
-            </span>
-          </div>
-        <% end %>
-      </div>
+<!-- ── tools ──────────────────────── -->
+<% if @config && @agent_type_kind == "agent" %>
+  <%
+    class_tools = @agent_class.respond_to?(:tools) ? (@agent_class.tools || []) : []
+    has_dynamic_tools = @agent_class.instance_methods(false).include?(:tools)
+  %>
+  <% if class_tools.any? || has_dynamic_tools %>
+    <div class="flex items-center gap-3 mt-6 mb-3">
+      <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">tools (<%= class_tools.size %>)</span>
+      <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
     </div>
-  </div>
+    <div class="flex flex-wrap gap-1.5 font-mono text-xs">
+      <% class_tools.each do |tool_class| %>
+        <span class="badge badge-cyan"><%= tool_class.respond_to?(:tool_name) ? tool_class.tool_name : tool_class.name.demodulize %></span>
+      <% end %>
+      <% if has_dynamic_tools %>
+        <span class="badge badge-purple">dynamic</span>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if @config[:params].present? && @config[:params].any? %>
+    <div class="mt-3">
+      <span class="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider font-mono">parameters</span>
+    </div>
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-0.5 font-mono text-xs mt-1.5">
+      <% @config[:params].each do |name, opts| %>
+        <div class="flex items-center gap-2 py-0.5">
+          <span class="text-gray-900 dark:text-gray-200"><%= name %></span>
+          <% if opts[:required] %>
+            <span class="text-red-500">required</span>
+          <% elsif opts[:default].present? %>
+            <span class="text-gray-400 dark:text-gray-600">= <%= opts[:default].inspect %></span>
+          <% else %>
+            <span class="text-gray-400 dark:text-gray-600">optional</span>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
 <% end %>
 
-<!-- Version Comparison -->
-<%= render partial: "ruby_llm/agents/agents/version_comparison",
-    locals: { versions: @versions, version_comparison: @version_comparison } %>
+<!-- ── model health ──────────────── -->
+<%
+  if @config && @agent_type_kind == "agent"
+    retries_config = @config[:retries] || {}
+    fallback_models = Array(@config[:fallback_models]).compact
+    has_retries = (retries_config[:max] || 0) > 0
+    has_fallbacks = fallback_models.any?
+    has_circuit_breaker = @config[:circuit_breaker].present?
+    has_any_reliability = has_retries || has_fallbacks || has_circuit_breaker
+    show_model_health = has_any_reliability || @circuit_breaker_status.present?
+  end
+%>
+<% if show_model_health %>
+  <div class="flex items-center gap-3 mt-6 mb-3">
+    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">model health</span>
+    <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+  </div>
+  <% if has_any_reliability %>
+    <div class="font-mono text-xs text-gray-400 dark:text-gray-500 mb-2 flex flex-wrap gap-x-1.5 gap-y-0.5">
+      <% if has_retries %>
+        <span>retries: <%= retries_config[:max] %> max</span>
+      <% end %>
+      <% if has_retries && (has_fallbacks || has_circuit_breaker) %>
+        <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+      <% end %>
+      <% if has_fallbacks %>
+        <span>fallbacks: <%= fallback_models.join(" → ") %></span>
+      <% end %>
+      <% if has_fallbacks && has_circuit_breaker %>
+        <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+      <% end %>
+      <% if has_circuit_breaker %>
+        <% cb = @config[:circuit_breaker] %>
+        <span>pauses after <%= cb[:errors] %> errors in <%= cb[:within] %>s</span>
+      <% end %>
+    </div>
+  <% end %>
+  <% if @circuit_breaker_status.present? %>
+    <div class="font-mono text-xs">
+      <% @circuit_breaker_status.each do |model_id, status| %>
+        <div class="flex items-center gap-3 py-1 px-2 -mx-2">
+          <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= status[:open] ? 'bg-red-500 animate-pulse' : 'bg-green-500' %>"></span>
+          <span class="text-gray-900 dark:text-gray-200"><%= model_id %></span>
+          <% if status[:open] %>
+            <span class="text-red-500">paused</span>
+            <% if status[:cooldown_remaining] %>
+              <span class="text-gray-400 dark:text-gray-600">retrying in <%= status[:cooldown_remaining] %>s</span>
+            <% end %>
+          <% else %>
+            <span class="text-green-500">healthy</span>
+            <% if status[:failure_count] && status[:failure_count] > 0 %>
+              <span class="text-yellow-500"><%= status[:failure_count] %>/<%= status[:threshold] %> failures before pause</span>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>
 
-<% if @config && @agent_type_kind %>
+<!-- ── config (non-agent types only) ── -->
+<% if @config && @agent_type_kind && @agent_type_kind != "agent" %>
+  <div class="flex items-center gap-3 mt-6 mb-3">
+    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">config</span>
+    <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+  </div>
   <%= render "ruby_llm/agents/agents/config_#{@agent_type_kind}", config: @config %>
 <% end %>
 
-<!-- Executions -->
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-  <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-    Executions
-  </h3>
-
-  <div id="executions_table">
-    <%
-      has_filters = params[:statuses].present? || params[:versions].present? || params[:models].present? || params[:temperatures].present? || params[:days].present?
-      selected_statuses = params[:statuses].present? ? (params[:statuses].is_a?(Array) ? params[:statuses] : params[:statuses].split(",")) : []
-      selected_versions = params[:versions].present? ? (params[:versions].is_a?(Array) ? params[:versions] : params[:versions].split(",")) : []
-      selected_models = params[:models].present? ? (params[:models].is_a?(Array) ? params[:models] : params[:models].split(",")) : []
-      selected_temperatures = params[:temperatures].present? ? (params[:temperatures].is_a?(Array) ? params[:temperatures] : params[:temperatures].split(",")).map(&:to_s) : []
-
-      status_options = [
-        { value: "success", label: "Success", color: "bg-green-500" },
-        { value: "error", label: "Error", color: "bg-red-500" },
-        { value: "running", label: "Running", color: "bg-blue-500" },
-        { value: "timeout", label: "Timeout", color: "bg-yellow-500" }
-      ]
-      version_options = @versions.map { |v| { value: v.to_s, label: "v#{v}" } }
-      model_options = @models.map { |m| { value: m, label: m } }
-      temperature_options = @temperatures.map { |t| { value: t.to_s, label: t.to_s } }
-      days_options = [
-        { value: "", label: "All Time" },
-        { value: "1", label: "Today" },
-        { value: "7", label: "Last 7 Days" },
-        { value: "30", label: "Last 30 Days" }
-      ]
-    %>
-
-    <%= form_with url: ruby_llm_agents.agent_path(@agent_type), method: :get, local: true do |f| %>
-      <div class="flex flex-wrap items-center gap-3 mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
-        <%# Status Filter (Multi-select) %>
-        <%= render "ruby_llm/agents/shared/filter_dropdown",
-            name: "statuses[]",
-            filter_id: "statuses",
-            label: "Status",
-            all_label: "All Statuses",
-            options: status_options,
-            selected: selected_statuses %>
-
-        <%# Version Filter (Multi-select) %>
-        <% if @versions.any? %>
-          <%= render "ruby_llm/agents/shared/filter_dropdown",
-              name: "versions[]",
-              filter_id: "versions",
-              label: "Version",
-              all_label: "All Versions",
-              options: version_options,
-              selected: selected_versions,
-              icon: "M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" %>
-        <% end %>
-
-        <%# Model Filter (Multi-select) %>
-        <% if @models.length > 1 %>
-          <%= render "ruby_llm/agents/shared/filter_dropdown",
-              name: "models[]",
-              filter_id: "models",
-              label: "Model",
-              all_label: "All Models",
-              options: model_options,
-              selected: selected_models,
-              icon: "M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" %>
-        <% end %>
-
-        <%# Temperature Filter (Multi-select) %>
-        <% if @temperatures.length > 1 %>
-          <%= render "ruby_llm/agents/shared/filter_dropdown",
-              name: "temperatures[]",
-              filter_id: "temperatures",
-              label: "Temp",
-              all_label: "All Temps",
-              options: temperature_options,
-              selected: selected_temperatures,
-              icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" %>
-        <% end %>
-
-        <%# Time Range Filter (Single-select) %>
-        <%= render "ruby_llm/agents/shared/select_dropdown",
-            name: "days",
-            filter_id: "days",
-            options: days_options,
-            selected: params[:days].to_s,
-            icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" %>
-
-        <%# Clear Filters %>
-        <% if has_filters %>
-          <%= link_to ruby_llm_agents.agent_path(@agent_type),
-              class: "flex items-center gap-1 px-3 py-2 text-sm text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors" do %>
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-            Clear
-          <% end %>
-        <% end %>
-
-        <%# Stats Summary (right aligned) %>
-        <div class="ml-auto flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-          <span><%= number_with_delimiter(@filter_stats[:total_count]) %> executions</span>
-          <span class="text-gray-300 dark:text-gray-600">|</span>
-          <span>$<%= number_with_precision(@filter_stats[:total_cost] || 0, precision: 4) %></span>
-          <span class="text-gray-300 dark:text-gray-600">|</span>
-          <span><%= number_with_delimiter(@filter_stats[:total_tokens] || 0) %> tokens</span>
-        </div>
-      </div>
-    <% end %>
-
-    <%= render "ruby_llm/agents/shared/executions_table", executions: @executions, pagination: @pagination %>
-  </div>
+<!-- ── executions ──────────────────── -->
+<div class="flex items-center gap-3 mt-6 mb-3">
+  <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">recent executions</span>
+  <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
 </div>
+
+<%= render "ruby_llm/agents/shared/executions_table", executions: @executions, pagination: @pagination, hide_agent_column: true %>
+
+<% if @stats[:count] > 0 %>
+  <div class="mt-3 font-mono text-xs">
+    <%= link_to ruby_llm_agents.executions_path("agent_types[]": @agent_type),
+        class: "text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" do %>
+      show all <%= number_with_delimiter(@stats[:count]) %> executions →
+    <% end %>
+  </div>
+<% end %>

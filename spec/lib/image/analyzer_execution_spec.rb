@@ -10,7 +10,6 @@ RSpec.describe RubyLLM::Agents::ImageAnalyzer::Execution do
         "TestImageAnalyzer"
       end
 
-      version "1.0.0"
       model "gpt-4o"
       cache_for 1.hour
       analysis_type :detailed
@@ -106,10 +105,6 @@ RSpec.describe RubyLLM::Agents::ImageAnalyzer::Execution do
 
         def self.name
           "ExecutionTestAnalyzer"
-        end
-
-        def self.version
-          "1.0.0"
         end
 
         def self.model

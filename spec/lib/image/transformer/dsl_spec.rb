@@ -75,17 +75,6 @@ RSpec.describe RubyLLM::Agents::ImageTransformer::DSL do
     end
   end
 
-  describe "#content_policy" do
-    it "sets and gets the content policy" do
-      transformer_class.content_policy :strict
-      expect(transformer_class.content_policy).to eq(:strict)
-    end
-
-    it "defaults to :standard" do
-      expect(transformer_class.content_policy).to eq(:standard)
-    end
-  end
-
   describe "#template" do
     it "sets and gets the template" do
       transformer_class.template "anime style, {prompt}"
@@ -154,7 +143,6 @@ RSpec.describe RubyLLM::Agents::ImageTransformer::DSL do
       transformer_class.size "2048x2048"
       transformer_class.strength 0.6
       transformer_class.preserve_composition false
-      transformer_class.content_policy :moderate
       transformer_class.template "cinematic, {prompt}"
       transformer_class.negative_prompt "cartoon, anime"
       transformer_class.guidance_scale 8.0
@@ -164,7 +152,6 @@ RSpec.describe RubyLLM::Agents::ImageTransformer::DSL do
       expect(transformer_class.size).to eq("2048x2048")
       expect(transformer_class.strength).to eq(0.6)
       expect(transformer_class.preserve_composition).to be false
-      expect(transformer_class.content_policy).to eq(:moderate)
       expect(transformer_class.template).to eq("cinematic, {prompt}")
       expect(transformer_class.negative_prompt).to eq("cartoon, anime")
       expect(transformer_class.guidance_scale).to eq(8.0)

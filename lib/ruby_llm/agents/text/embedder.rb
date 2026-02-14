@@ -257,7 +257,6 @@ module RubyLLM
           "ruby_llm_agents",
           "embedding",
           self.class.name,
-          self.class.version,
           resolved_model,
           resolved_dimensions,
           Digest::SHA256.hexdigest(input_texts.map { |t| preprocess(t) }.join("\n"))

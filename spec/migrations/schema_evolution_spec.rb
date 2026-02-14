@@ -277,28 +277,11 @@ RSpec.describe "Schema Evolution Compatibility", type: :migration do
       }.to raise_error(ActiveRecord::RecordNotUnique)
     end
 
-    it "schema supports ApiConfiguration model operations" do
-      connection = ActiveRecord::Base.connection
-
-      # Insert global config
-      connection.execute(
-        ActiveRecord::Base.sanitize_sql_array([
-          "INSERT INTO ruby_llm_agents_api_configurations
-           (scope_type, scope_id, default_model, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?)",
-          "global", nil, "gpt-4", Time.current, Time.current
-        ])
-      )
-
-      # Select
-      result = connection.select_all("SELECT * FROM ruby_llm_agents_api_configurations")
-      expect(result.to_a.length).to eq(1)
-    end
   end
 
   describe "table existence across versions" do
     it "executions table exists in all versions" do
-      %w[0.1.0 0.2.3 0.3.3 0.4.0].each do |version|
+      %w[0.1.0 0.2.3 0.3.3 0.4.0 2.0.0].each do |version|
         reset_database!
         build_schema_for_version(version)
         expect(table_exists?(:ruby_llm_agents_executions)).to be(true),
@@ -319,22 +302,27 @@ RSpec.describe "Schema Evolution Compatibility", type: :migration do
       expect(table_exists?(:ruby_llm_agents_tenant_budgets)).to be true
     end
 
-    it "api_configurations table only exists in 0.4.0" do
-      %w[0.1.0 0.2.3 0.3.3].each do |version|
-        reset_database!
-        build_schema_for_version(version)
-        expect(table_exists?(:ruby_llm_agents_api_configurations)).to be(false),
-          "Expected api_configurations table NOT to exist in version #{version}"
-      end
+    it "execution_details table exists in 2.0.0" do
+      build_schema_for_version("2.0.0")
+      expect(table_exists?(:ruby_llm_agents_execution_details)).to be true
+    end
 
-      reset_database!
-      build_schema_for_version("0.4.0")
-      expect(table_exists?(:ruby_llm_agents_api_configurations)).to be true
+    it "tenants table replaces tenant_budgets in 2.0.0" do
+      build_schema_for_version("2.0.0")
+      expect(table_exists?(:ruby_llm_agents_tenants)).to be true
+      expect(table_exists?(:ruby_llm_agents_tenant_budgets)).to be false
+    end
+
+    it "workflow columns removed in 2.0.0" do
+      build_schema_for_version("2.0.0")
+      expect(column_exists?(:workflow_id)).to be false
+      expect(column_exists?(:workflow_type)).to be false
+      expect(column_exists?(:workflow_step)).to be false
     end
   end
 
   describe "column count evolution" do
-    it "column count increases with each version" do
+    it "column count increases up to 0.4.0" do
       column_counts = {}
 
       %w[0.1.0 0.2.3 0.3.3 0.4.0].each do |version|
@@ -346,6 +334,19 @@ RSpec.describe "Schema Evolution Compatibility", type: :migration do
       expect(column_counts["0.2.3"]).to be > column_counts["0.1.0"]
       expect(column_counts["0.3.3"]).to be > column_counts["0.2.3"]
       expect(column_counts["0.4.0"]).to be > column_counts["0.3.3"]
+    end
+
+    it "column count decreases from 0.4.0 to 2.0.0 due to removals" do
+      reset_database!
+      build_schema_for_version("0.4.0")
+      count_0_4_0 = column_names.length
+
+      reset_database!
+      build_schema_for_version("2.0.0")
+      count_2_0_0 = column_names.length
+
+      # v2.0.0 removes workflow_id, workflow_type, workflow_step (3 columns)
+      expect(count_2_0_0).to be < count_0_4_0
     end
   end
 end

@@ -156,7 +156,6 @@ module RubyLLM
           [
             "image_variator",
             self.class.name,
-            self.class.version,
             resolve_model,
             resolve_size,
             resolve_variation_strength.to_s,
@@ -176,7 +175,7 @@ module RubyLLM
           end
         end
 
-        def build_execution_metadata(result)
+        def build_metadata(result)
           {
             count: result.count,
             size: result.size,

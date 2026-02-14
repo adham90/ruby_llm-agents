@@ -1,235 +1,88 @@
-<%# Configuration partial for Base Agent types %>
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-  <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-    Configuration
-  </h3>
+<%# Configuration partial for Base Agent types - grid layout %>
+<%
+  retries_config = config[:retries] || {}
+  fallback_models = Array(config[:fallback_models]).compact
+  has_retries = (retries_config[:max] || 0) > 0
+  has_fallbacks = fallback_models.any?
+  has_total_timeout = config[:total_timeout].present?
+  has_circuit_breaker = config[:circuit_breaker].present?
+  has_any_reliability = has_retries || has_fallbacks || has_total_timeout || has_circuit_breaker
+%>
 
-  <!-- Basic Configuration -->
-  <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-    Basic
-  </p>
-
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Model</p>
-      <p class="font-medium text-gray-900 dark:text-gray-100">
-        <%= config[:model] %>
-      </p>
-    </div>
-
-    <div>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Temperature</p>
-      <p class="font-medium text-gray-900 dark:text-gray-100">
-        <%= config[:temperature] %>
-      </p>
-    </div>
-
-    <div>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Timeout</p>
-      <p class="font-medium text-gray-900 dark:text-gray-100">
-        <%= config[:timeout] %> seconds
-      </p>
-    </div>
-
-    <div>
-      <p class="text-sm text-gray-500 dark:text-gray-400">Cache</p>
-      <p class="font-medium text-gray-900 dark:text-gray-100">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 font-mono text-xs">
+  <!-- Basic -->
+  <div>
+    <span class="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider">basic</span>
+    <div class="mt-1.5 space-y-0.5">
+      <div class="flex items-center gap-3 py-1">
+        <span class="w-20 text-gray-400 dark:text-gray-600">model</span>
+        <span class="text-gray-900 dark:text-gray-200"><%= config[:model] %></span>
+      </div>
+      <div class="flex items-center gap-3 py-1">
+        <span class="w-20 text-gray-400 dark:text-gray-600">temperature</span>
+        <span class="text-gray-900 dark:text-gray-200"><%= config[:temperature] %></span>
+      </div>
+      <div class="flex items-center gap-3 py-1">
+        <span class="w-20 text-gray-400 dark:text-gray-600">timeout</span>
+        <span class="text-gray-900 dark:text-gray-200"><%= config[:timeout] %>s</span>
+      </div>
+      <div class="flex items-center gap-3 py-1">
+        <span class="w-20 text-gray-400 dark:text-gray-600">cache</span>
         <% if config[:cache_enabled] %>
-          Enabled (<%= config[:cache_ttl].inspect %>)
+          <span class="text-green-500">enabled</span>
+          <span class="text-gray-400 dark:text-gray-600">(<%= config[:cache_ttl].inspect %>)</span>
         <% else %>
-          <span class="text-gray-400 dark:text-gray-500">Disabled</span>
+          <span class="text-gray-400 dark:text-gray-600">disabled</span>
         <% end %>
-      </p>
+      </div>
     </div>
   </div>
 
-  <!-- Reliability Configuration -->
-  <% retries_config = config[:retries] || {}
-    fallback_models = Array(config[:fallback_models]).compact
-    has_retries = (retries_config[:max] || 0) > 0
-    has_fallbacks = fallback_models.any?
-    has_total_timeout = config[:total_timeout].present?
-    has_circuit_breaker = config[:circuit_breaker].present?
-    has_any_reliability = has_retries || has_fallbacks || has_total_timeout || has_circuit_breaker %>
-
-  <div class="border-t border-gray-100 dark:border-gray-700 pt-4 mb-6">
-    <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-      Reliability
-    </p>
-
+  <!-- Reliability -->
+  <div>
+    <span class="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider">reliability</span>
     <% if has_any_reliability %>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Retries -->
-        <div class="flex items-start gap-3 p-3 rounded-lg <%= has_retries ? 'bg-green-50 dark:bg-green-900/20' : 'bg-gray-50 dark:bg-gray-700/50' %>">
-          <div class="flex-shrink-0 mt-0.5">
-            <% if has_retries %>
-              <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-              </svg>
-            <% else %>
-              <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-              </svg>
-            <% end %>
-          </div>
-          <div>
-            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Retries</p>
-            <% if has_retries %>
-              <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                Max: <%= retries_config[:max] %> &middot; Backoff: <%= retries_config[:backoff] %> &middot; Base: <%= retries_config[:base] %>s &middot; Max delay: <%= retries_config[:max_delay] %>s
-              </p>
-            <% else %>
-              <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Not configured</p>
-            <% end %>
-          </div>
+      <div class="mt-1.5 space-y-0.5">
+        <div class="flex items-center gap-2 py-1">
+          <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= has_retries ? 'bg-green-500' : 'bg-gray-400' %>"></span>
+          <span class="w-16 text-gray-400 dark:text-gray-600">retries</span>
+          <% if has_retries %>
+            <span class="text-gray-900 dark:text-gray-200"><%= retries_config[:max] %> max</span>
+          <% else %>
+            <span class="text-gray-400 dark:text-gray-600">&mdash;</span>
+          <% end %>
         </div>
-
-        <!-- Fallback Models -->
-        <div class="flex items-start gap-3 p-3 rounded-lg <%= has_fallbacks ? 'bg-green-50 dark:bg-green-900/20' : 'bg-gray-50 dark:bg-gray-700/50' %>">
-          <div class="flex-shrink-0 mt-0.5">
-            <% if has_fallbacks %>
-              <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-              </svg>
-            <% else %>
-              <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-              </svg>
-            <% end %>
-          </div>
-          <div>
-            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Fallback Models</p>
-            <% if has_fallbacks %>
-              <p class="text-xs text-gray-600 dark:text-gray-400 mt-1"><%= fallback_models.join(" → ") %></p>
-            <% else %>
-              <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Not configured</p>
-            <% end %>
-          </div>
+        <div class="flex items-center gap-2 py-1">
+          <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= has_fallbacks ? 'bg-green-500' : 'bg-gray-400' %>"></span>
+          <span class="w-16 text-gray-400 dark:text-gray-600">fallbacks</span>
+          <% if has_fallbacks %>
+            <span class="text-gray-900 dark:text-gray-200 truncate"><%= fallback_models.join(" → ") %></span>
+          <% else %>
+            <span class="text-gray-400 dark:text-gray-600">&mdash;</span>
+          <% end %>
         </div>
-
-        <!-- Total Timeout -->
-        <div class="flex items-start gap-3 p-3 rounded-lg <%= has_total_timeout ? 'bg-green-50 dark:bg-green-900/20' : 'bg-gray-50 dark:bg-gray-700/50' %>">
-          <div class="flex-shrink-0 mt-0.5">
-            <% if has_total_timeout %>
-              <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-              </svg>
-            <% else %>
-              <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-              </svg>
-            <% end %>
-          </div>
-          <div>
-            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Total Timeout</p>
-            <% if has_total_timeout %>
-              <p class="text-xs text-gray-600 dark:text-gray-400 mt-1"><%= config[:total_timeout] %> seconds across all attempts</p>
-            <% else %>
-              <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Not configured</p>
-            <% end %>
-          </div>
+        <div class="flex items-center gap-2 py-1">
+          <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= has_total_timeout ? 'bg-green-500' : 'bg-gray-400' %>"></span>
+          <span class="w-16 text-gray-400 dark:text-gray-600">timeout</span>
+          <% if has_total_timeout %>
+            <span class="text-gray-900 dark:text-gray-200"><%= config[:total_timeout] %>s total</span>
+          <% else %>
+            <span class="text-gray-400 dark:text-gray-600">&mdash;</span>
+          <% end %>
         </div>
-
-        <!-- Circuit Breaker -->
-        <div class="flex items-start gap-3 p-3 rounded-lg <%= has_circuit_breaker ? 'bg-green-50 dark:bg-green-900/20' : 'bg-gray-50 dark:bg-gray-700/50' %>">
-          <div class="flex-shrink-0 mt-0.5">
-            <% if has_circuit_breaker %>
-              <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-              </svg>
-            <% else %>
-              <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-              </svg>
-            <% end %>
-          </div>
-          <div>
-            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Circuit Breaker</p>
-            <% if has_circuit_breaker %>
-              <% cb = config[:circuit_breaker] %>
-              <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                Opens after <%= cb[:errors] %> errors within <%= cb[:within] %>s &middot; Cooldown: <%= cb[:cooldown] %>s
-              </p>
-            <% else %>
-              <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Not configured</p>
-            <% end %>
-          </div>
+        <div class="flex items-center gap-2 py-1">
+          <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= has_circuit_breaker ? 'bg-green-500' : 'bg-gray-400' %>"></span>
+          <span class="w-16 text-gray-400 dark:text-gray-600">breaker</span>
+          <% if has_circuit_breaker %>
+            <% cb = config[:circuit_breaker] %>
+            <span class="text-gray-900 dark:text-gray-200"><%= cb[:errors] %>/<%= cb[:within] %>s</span>
+          <% else %>
+            <span class="text-gray-400 dark:text-gray-600">&mdash;</span>
+          <% end %>
         </div>
       </div>
     <% else %>
-      <p class="text-sm text-gray-400 dark:text-gray-500">No reliability features configured</p>
-    <% end %>
-  </div>
-
-  <!-- Parameters -->
-  <% if config[:params].present? && config[:params].any? %>
-    <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
-      <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-        Parameters
-      </p>
-      <div class="space-y-2">
-        <% config[:params].each do |name, opts| %>
-          <div class="flex items-center text-sm">
-            <code class="bg-gray-100 dark:bg-gray-700 dark:text-gray-200 px-2 py-0.5 rounded font-mono">
-              <%= name %>
-            </code>
-            <% if opts[:required] %>
-              <span class="ml-2 text-xs text-red-500 dark:text-red-400 font-medium">required</span>
-            <% elsif opts[:default].present? %>
-              <span class="ml-2 text-xs text-gray-400 dark:text-gray-500">default: <%= opts[:default].inspect %></span>
-            <% else %>
-              <span class="ml-2 text-xs text-gray-400 dark:text-gray-500">optional</span>
-            <% end %>
-          </div>
-        <% end %>
-      </div>
-    </div>
-  <% end %>
-
-  <!-- Available Tools -->
-  <%
-    class_tools = @agent_class.respond_to?(:tools) ? (@agent_class.tools || []) : []
-    has_dynamic_tools = @agent_class.instance_methods(false).include?(:tools)
-  %>
-  <div class="border-t border-gray-100 dark:border-gray-700 pt-4">
-    <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-      Available Tools
-      <% if class_tools.any? %>
-        <span class="inline-flex items-center ml-2 px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300">
-          <%= class_tools.size %>
-        </span>
-      <% elsif has_dynamic_tools %>
-        <span class="inline-flex items-center ml-2 px-1.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300">
-          Dynamic
-        </span>
-      <% else %>
-        <span class="inline-flex items-center ml-2 px-1.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
-          0
-        </span>
-      <% end %>
-    </p>
-
-    <% if class_tools.any? %>
-      <div class="space-y-2">
-        <% class_tools.each do |tool_class| %>
-          <div class="flex items-center text-sm">
-            <code class="bg-gray-100 dark:bg-gray-700 dark:text-gray-200 px-2 py-0.5 rounded font-mono">
-              <%= tool_class.respond_to?(:tool_name) ? tool_class.tool_name : tool_class.name.demodulize %>
-            </code>
-          </div>
-        <% end %>
-      </div>
-    <% elsif has_dynamic_tools %>
-      <p class="text-sm text-purple-600 dark:text-purple-400">
-        This agent configures tools dynamically at runtime based on context.
-      </p>
-      <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
-        Tools vary per execution based on feature flags and configuration.
-      </p>
-    <% else %>
-      <p class="text-sm text-gray-400 dark:text-gray-500 italic">
-        No tools configured for this agent.
-      </p>
+      <div class="mt-1 py-1 text-gray-400 dark:text-gray-600">none configured</div>
     <% end %>
   </div>
 </div>

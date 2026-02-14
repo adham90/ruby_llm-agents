@@ -15,7 +15,6 @@ module RubyLLM
     # @example Creating an agent
     #   class SearchAgent < RubyLLM::Agents::BaseAgent
     #     model "gpt-4o"
-    #     version "1.0"
     #     description "Searches for relevant documents"
     #     timeout 30
     #
@@ -246,16 +245,27 @@ module RubyLLM
 
       # User prompt to send to the LLM
       #
-      # @abstract Subclasses must implement this method
+      # If a class-level `prompt` DSL is defined (string template or block),
+      # it will be used. Otherwise, subclasses must implement this method.
+      #
       # @return [String] The user prompt
       def user_prompt
-        raise NotImplementedError, "#{self.class} must implement #user_prompt"
+        prompt_config = self.class.prompt_config
+        return resolve_prompt_from_config(prompt_config) if prompt_config
+
+        raise NotImplementedError, "#{self.class} must implement #user_prompt or use the prompt DSL"
       end
 
       # System prompt for LLM instructions
       #
+      # If a class-level `system` DSL is defined, it will be used.
+      # Otherwise returns nil.
+      #
       # @return [String, nil] System instructions, or nil for none
       def system_prompt
+        system_config = self.class.system_config
+        return resolve_prompt_from_config(system_config) if system_config
+
         nil
       end
 
@@ -291,9 +301,12 @@ module RubyLLM
 
       # Generates the cache key for this agent invocation
       #
-      # @return [String] Cache key in format "ruby_llm_agent/ClassName/version/hash"
+      # Cache keys are content-based, using a hash of the prompts and parameters.
+      # This automatically invalidates caches when prompts change.
+      #
+      # @return [String] Cache key in format "ruby_llm_agent/ClassName/hash"
       def agent_cache_key
-        ["ruby_llm_agent", self.class.name, self.class.version, cache_key_hash].join("/")
+        ["ruby_llm_agent", self.class.name, cache_key_hash].join("/")
       end
 
       # Generates a hash of the cache key data
@@ -462,6 +475,36 @@ module RubyLLM
             raise ArgumentError,
                   "#{self.class} expected #{config[:type]} for :#{name}, got #{value.class}"
           end
+        end
+      end
+
+      # Resolves a prompt from DSL configuration (template string or block)
+      #
+      # For string templates, interpolates {placeholder} with parameter values.
+      # For blocks, evaluates in the instance context.
+      #
+      # @param config [String, Proc] The prompt configuration
+      # @return [String] The resolved prompt
+      def resolve_prompt_from_config(config)
+        case config
+        when String
+          interpolate_template(config)
+        when Proc
+          instance_eval(&config)
+        else
+          config.to_s
+        end
+      end
+
+      # Interpolates {placeholder} patterns in a template string
+      #
+      # @param template [String] Template with {placeholder} syntax
+      # @return [String] Interpolated string
+      def interpolate_template(template)
+        template.gsub(/\{(\w+)\}/) do
+          param_name = ::Regexp.last_match(1).to_sym
+          value = send(param_name) if respond_to?(param_name)
+          value.to_s
         end
       end
 

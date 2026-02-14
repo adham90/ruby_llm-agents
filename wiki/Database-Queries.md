@@ -15,7 +15,6 @@ RubyLLM::Agents::Execution
 | Column | Type | Description |
 |--------|------|-------------|
 | `agent_type` | string | Agent class name (e.g., "SearchAgent") |
-| `agent_version` | string | Version for cache invalidation |
 | `model_id` | string | Configured LLM model |
 | `chosen_model_id` | string | Actual model used (for fallbacks) |
 | `model_provider` | string | Provider name |
@@ -85,7 +84,6 @@ Execution.completed          # Not running
 
 ```ruby
 Execution.by_agent("SearchAgent")
-Execution.by_version("2.0")
 Execution.by_model("gpt-4o")
 ```
 
@@ -245,17 +243,6 @@ RubyLLM::Agents::Execution.stats_for("SearchAgent", period: :today)
 #   avg_duration_ms: 800,
 #   success_rate: 98.0,
 #   error_rate: 2.0
-# }
-```
-
-### Version Comparison
-
-```ruby
-RubyLLM::Agents::Execution.compare_versions("SearchAgent", "1.0", "2.0", period: :this_week)
-# => {
-#   version1: { version: "1.0", count: 50, avg_cost: 0.06, ... },
-#   version2: { version: "2.0", count: 75, avg_cost: 0.04, ... },
-#   improvements: { cost_change_pct: -33.3, speed_change_pct: -20.0 }
 # }
 ```
 

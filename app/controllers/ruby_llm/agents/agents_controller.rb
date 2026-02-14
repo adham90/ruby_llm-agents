@@ -48,7 +48,6 @@ module RubyLLM
         @agents_by_type = {
           agent: @agents.select { |a| a[:agent_type] == "agent" },
           embedder: @agents.select { |a| a[:agent_type] == "embedder" },
-          moderator: @agents.select { |a| a[:agent_type] == "moderator" },
           speaker: @agents.select { |a| a[:agent_type] == "speaker" },
           transcriber: @agents.select { |a| a[:agent_type] == "transcriber" },
           image_generator: @agents.select { |a| a[:agent_type] == "image_generator" }
@@ -60,7 +59,7 @@ module RubyLLM
         Rails.logger.error("[RubyLLM::Agents] Error loading agents: #{e.message}")
         @agents = []
         @deleted_agents = []
-        @agents_by_type = { agent: [], embedder: [], moderator: [], speaker: [], transcriber: [], image_generator: [] }
+        @agents_by_type = { agent: [], embedder: [], speaker: [], transcriber: [], image_generator: [] }
         @agent_count = 0
         @deleted_count = 0
         @sort_params = { column: DEFAULT_AGENT_SORT_COLUMN, direction: DEFAULT_AGENT_SORT_DIRECTION }
@@ -119,13 +118,11 @@ module RubyLLM
       def load_filter_options
         # Single query to get all filter options (fixes N+1)
         filter_data = Execution.by_agent(@agent_type)
-                               .where.not(agent_version: nil)
-                               .or(Execution.by_agent(@agent_type).where.not(model_id: nil))
+                               .where.not(model_id: nil)
                                .or(Execution.by_agent(@agent_type).where.not(temperature: nil))
-                               .pluck(:agent_version, :model_id, :temperature)
+                               .pluck(:model_id, :temperature)
 
-        @versions = filter_data.map(&:first).compact.uniq.sort.reverse
-        @models = filter_data.map { |d| d[1] }.compact.uniq.sort
+        @models = filter_data.map(&:first).compact.uniq.sort
         @temperatures = filter_data.map(&:last).compact.uniq.sort
       end
 
@@ -149,7 +146,7 @@ module RubyLLM
 
       # Builds a filtered scope for the current agent's executions
       #
-      # Applies filters in order: status, version, model, temperature, time.
+      # Applies filters in order: status, model, temperature, time.
       # Each filter is optional and only applied if values are provided.
       #
       # @return [ActiveRecord::Relation] Filtered execution scope
@@ -159,10 +156,6 @@ module RubyLLM
         # Apply status filter with validation
         statuses = parse_array_param(:statuses)
         scope = apply_status_filter(scope, statuses) if statuses.any?
-
-        # Apply version filter
-        versions = parse_array_param(:versions)
-        scope = scope.where(agent_version: versions) if versions.any?
 
         # Apply model filter
         models = parse_array_param(:models)
@@ -188,37 +181,6 @@ module RubyLLM
         @trend_data = Execution.trend_analysis(agent_type: @agent_type, days: 30)
         @status_distribution = Execution.by_agent(@agent_type).group(:status).count
         @finish_reason_distribution = Execution.by_agent(@agent_type).finish_reason_distribution
-        load_version_comparison
-      end
-
-      # Loads version comparison data if multiple versions exist
-      #
-      # Includes trend data for sparkline charts.
-      #
-      # @return [void]
-      def load_version_comparison
-        return unless @versions.size >= 2
-
-        # Default to comparing two most recent versions
-        v1 = params[:compare_v1] || @versions[0]
-        v2 = params[:compare_v2] || @versions[1]
-
-        comparison_data = Execution.compare_versions(@agent_type, v1, v2, period: :this_month)
-
-        # Fetch trend data for sparklines
-        v1_trend = Execution.version_trend_data(@agent_type, v1, days: 14)
-        v2_trend = Execution.version_trend_data(@agent_type, v2, days: 14)
-
-        @version_comparison = {
-          v1: v1,
-          v2: v2,
-          data: comparison_data,
-          v1_trend: v1_trend,
-          v2_trend: v2_trend
-        }
-      rescue StandardError => e
-        Rails.logger.debug("[RubyLLM::Agents] Version comparison error: #{e.message}")
-        @version_comparison = nil
       end
 
       # Loads the current agent class configuration
@@ -234,7 +196,6 @@ module RubyLLM
         # Common config for all types
         @config = {
           model: safe_config_call(:model),
-          version: safe_config_call(:version) || "N/A",
           description: safe_config_call(:description)
         }
 
@@ -242,8 +203,6 @@ module RubyLLM
         case @agent_type_kind
         when "embedder"
           load_embedder_config
-        when "moderator"
-          load_moderator_config
         when "speaker"
           load_speaker_config
         when "transcriber"
@@ -281,16 +240,6 @@ module RubyLLM
           batch_size: safe_config_call(:batch_size),
           cache_enabled: safe_config_call(:cache_enabled?) || false,
           cache_ttl: safe_config_call(:cache_ttl)
-        )
-      end
-
-      # Loads configuration specific to Moderators
-      #
-      # @return [void]
-      def load_moderator_config
-        @config.merge!(
-          threshold: safe_config_call(:threshold),
-          categories: safe_config_call(:categories)
         )
       end
 

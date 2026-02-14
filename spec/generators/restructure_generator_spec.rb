@@ -76,13 +76,6 @@ RSpec.describe RubyLlmAgents::RestructureGenerator, type: :generator do
       end
     RUBY
 
-    # Workflows
-    FileUtils.mkdir_p(file("app/workflows"))
-    File.write(file("app/workflows/application_workflow.rb"), <<~RUBY)
-      class ApplicationWorkflow < RubyLLM::Agents::Workflow
-      end
-    RUBY
-
     # Tools
     FileUtils.mkdir_p(file("app/tools"))
     File.write(file("app/tools/weather_tool.rb"), <<~RUBY)
@@ -124,10 +117,6 @@ RSpec.describe RubyLlmAgents::RestructureGenerator, type: :generator do
       expect(directory_exists?("app/llm/text")).to be true
       expect(directory_exists?("app/llm/text/embedders")).to be true
       expect(directory_exists?("app/llm/text/moderators")).to be true
-    end
-
-    it "creates app/llm/workflows directory" do
-      expect(directory_exists?("app/llm/workflows")).to be true
     end
 
     it "creates app/llm/tools directory" do
@@ -182,11 +171,6 @@ RSpec.describe RubyLlmAgents::RestructureGenerator, type: :generator do
       expect(directory_exists?("app/moderators")).to be false
     end
 
-    it "moves workflows to app/llm/workflows" do
-      expect(file_exists?("app/llm/workflows/application_workflow.rb")).to be true
-      expect(directory_exists?("app/workflows")).to be false
-    end
-
     it "moves tools to app/llm/tools" do
       expect(file_exists?("app/llm/tools/weather_tool.rb")).to be true
       expect(directory_exists?("app/tools")).to be false
@@ -204,7 +188,7 @@ RSpec.describe RubyLlmAgents::RestructureGenerator, type: :generator do
       run_generator ["--root=llm"]
     end
 
-    context "top-level llm namespace (agents, workflows, tools)" do
+    context "top-level llm namespace (agents, tools)" do
       it "adds LLM module to agent classes" do
         content = file_content("app/llm/agents/support_agent.rb")
         expect(content).to include("module LLM")
@@ -217,12 +201,6 @@ RSpec.describe RubyLlmAgents::RestructureGenerator, type: :generator do
         content = file_content("app/llm/agents/application_agent.rb")
         expect(content).to include("module LLM")
         expect(content).to include("class ApplicationAgent")
-      end
-
-      it "adds LLM module to workflow classes" do
-        content = file_content("app/llm/workflows/application_workflow.rb")
-        expect(content).to include("module LLM")
-        expect(content).to include("class ApplicationWorkflow")
       end
 
       it "adds LLM module to tool classes" do
@@ -346,7 +324,6 @@ RSpec.describe RubyLlmAgents::RestructureGenerator, type: :generator do
         expect(directory_exists?("app/ai/audio/transcribers")).to be true
         expect(directory_exists?("app/ai/image/generators")).to be true
         expect(directory_exists?("app/ai/text/embedders")).to be true
-        expect(directory_exists?("app/ai/workflows")).to be true
         expect(directory_exists?("app/ai/tools")).to be true
       end
 

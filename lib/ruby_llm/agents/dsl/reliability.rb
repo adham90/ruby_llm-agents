@@ -57,6 +57,35 @@ module RubyLLM
           @non_fallback_errors = builder.non_fallback_errors_list if builder.non_fallback_errors_list
         end
 
+        # Alias for reliability with clearer intent-revealing name
+        #
+        # Configures what happens when an LLM call fails.
+        # This is the preferred method in the simplified DSL.
+        #
+        # @yield Block containing failure handling configuration
+        # @return [void]
+        #
+        # @example
+        #   on_failure do
+        #     retry times: 3, backoff: :exponential
+        #     fallback to: ["gpt-4o-mini", "gpt-3.5-turbo"]
+        #     circuit_breaker after: 5, cooldown: 5.minutes
+        #     timeout 30.seconds
+        #   end
+        #
+        def on_failure(&block)
+          builder = OnFailureBuilder.new
+          builder.instance_eval(&block)
+
+          @retries_config = builder.retries_config if builder.retries_config
+          @fallback_models = builder.fallback_models_list if builder.fallback_models_list.any?
+          @fallback_providers = builder.fallback_providers_list if builder.fallback_providers_list.any?
+          @total_timeout = builder.total_timeout_value if builder.total_timeout_value
+          @circuit_breaker_config = builder.circuit_breaker_config if builder.circuit_breaker_config
+          @retryable_patterns = builder.retryable_patterns_list if builder.retryable_patterns_list
+          @non_fallback_errors = builder.non_fallback_errors_list if builder.non_fallback_errors_list
+        end
+
         # Returns the complete reliability configuration hash
         #
         # Used by the Reliability middleware to get all settings.
@@ -322,6 +351,125 @@ module RubyLLM
             @retryable_patterns_list = patterns.flatten
           end
 
+          def non_fallback_errors(*error_classes)
+            @non_fallback_errors_list = error_classes.flatten
+          end
+        end
+
+        # Builder class for on_failure block with simplified syntax
+        #
+        # Uses more intuitive method names:
+        # - `retry times:` instead of `retries max:`
+        # - `fallback to:` instead of `fallback_models`
+        # - `circuit_breaker after:` instead of `circuit_breaker errors:`
+        # - `timeout` instead of `total_timeout`
+        #
+        class OnFailureBuilder
+          attr_reader :retries_config, :fallback_models_list, :total_timeout_value,
+                      :circuit_breaker_config, :retryable_patterns_list, :fallback_providers_list,
+                      :non_fallback_errors_list
+
+          def initialize
+            @retries_config = nil
+            @fallback_models_list = []
+            @total_timeout_value = nil
+            @circuit_breaker_config = nil
+            @retryable_patterns_list = nil
+            @fallback_providers_list = []
+            @non_fallback_errors_list = nil
+          end
+
+          # Configure retry behavior
+          #
+          # @param times [Integer] Number of retry attempts
+          # @param backoff [Symbol] Backoff strategy (:constant or :exponential)
+          # @param base [Float] Base delay in seconds
+          # @param max_delay [Float] Maximum delay between retries
+          # @param on [Array<Class>] Error classes to retry on
+          #
+          # @example
+          #   retries times: 3, backoff: :exponential
+          #
+          def retries(times: 0, backoff: :exponential, base: 0.4, max_delay: 3.0, on: [])
+            @retries_config = {
+              max: times,
+              backoff: backoff,
+              base: base,
+              max_delay: max_delay,
+              on: on
+            }
+          end
+
+          # Configure fallback models
+          #
+          # @param to [String, Array<String>] Model(s) to fall back to
+          #
+          # @example
+          #   fallback to: "gpt-4o-mini"
+          #   fallback to: ["gpt-4o-mini", "gpt-3.5-turbo"]
+          #
+          def fallback(to:)
+            @fallback_models_list = Array(to)
+          end
+
+          # Also support fallback_models for compatibility
+          def fallback_models(*models)
+            @fallback_models_list = models.flatten
+          end
+
+          # Configure a fallback provider (for audio agents)
+          #
+          # @param provider [Symbol] The provider to fall back to
+          # @param options [Hash] Provider-specific options
+          #
+          def fallback_provider(provider, **options)
+            @fallback_providers_list << { provider: provider, **options }
+          end
+
+          # Configure timeout for all retry/fallback attempts
+          #
+          # @param duration [Integer, ActiveSupport::Duration] Timeout duration
+          #
+          # @example
+          #   timeout 30
+          #   timeout 30.seconds
+          #
+          def timeout(duration)
+            # Handle ActiveSupport::Duration
+            @total_timeout_value = duration.respond_to?(:to_i) ? duration.to_i : duration
+          end
+
+          # Also support total_timeout for compatibility
+          alias total_timeout timeout
+
+          # Configure circuit breaker
+          #
+          # @param after [Integer] Number of errors to trigger open state
+          # @param errors [Integer] Alias for after (compatibility)
+          # @param within [Integer] Rolling window in seconds
+          # @param cooldown [Integer, ActiveSupport::Duration] Cooldown period
+          #
+          # @example
+          #   circuit_breaker after: 5, cooldown: 5.minutes
+          #   circuit_breaker errors: 10, within: 60, cooldown: 300
+          #
+          def circuit_breaker(after: nil, errors: nil, within: 60, cooldown: 300)
+            error_threshold = after || errors || 10
+            cooldown_seconds = cooldown.respond_to?(:to_i) ? cooldown.to_i : cooldown
+
+            @circuit_breaker_config = {
+              errors: error_threshold,
+              within: within,
+              cooldown: cooldown_seconds
+            }
+          end
+
+          # Configure additional retryable patterns
+          def retryable_patterns(*patterns)
+            @retryable_patterns_list = patterns.flatten
+          end
+
+          # Configure errors that should never trigger fallback
           def non_fallback_errors(*error_classes)
             @non_fallback_errors_list = error_classes.flatten
           end

@@ -249,7 +249,6 @@ module RubyLLM
             "ruby_llm_agents",
             "image_pipeline",
             self.class.name,
-            self.class.version,
             Digest::SHA256.hexdigest(cache_key_input)
           ]
           components.join(":")

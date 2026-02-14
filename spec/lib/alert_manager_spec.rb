@@ -8,276 +8,237 @@ RSpec.describe RubyLLM::Agents::AlertManager do
   end
 
   describe ".notify" do
-    context "when alerts disabled" do
-      before do
-        allow(RubyLLM::Agents.configuration).to receive(:alerts_enabled?).and_return(false)
+    let(:event) { :budget_soft_cap }
+    let(:payload) { { amount: 100, limit: 50 } }
+
+    context "when on_alert is not configured" do
+      it "does not raise an error" do
+        expect { described_class.notify(event, payload) }.not_to raise_error
       end
 
-      it "does nothing" do
-        expect(Net::HTTP).not_to receive(:new)
-        described_class.notify(:budget_soft_cap, { amount: 100 })
+      it "still emits ActiveSupport::Notification" do
+        received_events = []
+        ActiveSupport::Notifications.subscribe("ruby_llm_agents.alert.#{event}") do |_name, _start, _finish, _id, payload|
+          received_events << payload
+        end
+
+        described_class.notify(event, payload)
+
+        expect(received_events.length).to eq(1)
+        expect(received_events[0][:amount]).to eq(100)
+      ensure
+        ActiveSupport::Notifications.unsubscribe("ruby_llm_agents.alert.#{event}")
       end
     end
 
-    context "when event not in configured events" do
-      before do
-        RubyLLM::Agents.configure do |config|
-          config.alerts = {
-            on_events: [:budget_soft_cap],
-            webhook_url: "https://example.com/webhook"
-          }
-        end
-      end
-
-      it "does nothing for unconfigured events" do
-        expect(Net::HTTP).not_to receive(:new)
-        described_class.notify(:breaker_open, { model: "gpt-4o" })
-      end
-    end
-
-    context "with Slack webhook configured" do
-      let(:http_double) { instance_double(Net::HTTP) }
-      let(:response_double) { instance_double(Net::HTTPSuccess, code: "200", body: "ok") }
-
-      before do
-        RubyLLM::Agents.configure do |config|
-          config.alerts = {
-            on_events: [:budget_soft_cap, :breaker_open],
-            slack_webhook_url: "https://hooks.slack.com/services/test"
-          }
-        end
-
-        allow(Net::HTTP).to receive(:new).with("hooks.slack.com", 443).and_return(http_double)
-        allow(http_double).to receive(:use_ssl=)
-        allow(http_double).to receive(:open_timeout=)
-        allow(http_double).to receive(:read_timeout=)
-        allow(http_double).to receive(:request).and_return(response_double)
-        allow(response_double).to receive(:is_a?).with(Net::HTTPSuccess).and_return(true)
-      end
-
-      it "sends to Slack webhook" do
-        expect(http_double).to receive(:request) do |request|
-          expect(request).to be_a(Net::HTTP::Post)
-          expect(request["Content-Type"]).to eq("application/json")
-          response_double
-        end
-
-        described_class.notify(:budget_soft_cap, { amount: 100, limit: 50 })
-      end
-
-      it "formats payload for Slack with attachments" do
-        captured_body = nil
-        allow(http_double).to receive(:request) do |request|
-          captured_body = JSON.parse(request.body)
-          response_double
-        end
-
-        described_class.notify(:budget_soft_cap, { amount: 100 })
-
-        expect(captured_body).to have_key("attachments")
-        expect(captured_body["attachments"]).to be_an(Array)
-      end
-    end
-
-    context "with generic webhook configured" do
-      let(:http_double) { instance_double(Net::HTTP) }
-      let(:response_double) { instance_double(Net::HTTPSuccess, code: "200", body: "ok") }
-
-      before do
-        RubyLLM::Agents.configure do |config|
-          config.alerts = {
-            on_events: [:budget_soft_cap],
-            webhook_url: "https://example.com/webhook"
-          }
-        end
-
-        allow(Net::HTTP).to receive(:new).with("example.com", 443).and_return(http_double)
-        allow(http_double).to receive(:use_ssl=)
-        allow(http_double).to receive(:open_timeout=)
-        allow(http_double).to receive(:read_timeout=)
-        allow(http_double).to receive(:request).and_return(response_double)
-        allow(response_double).to receive(:is_a?).with(Net::HTTPSuccess).and_return(true)
-      end
-
-      it "sends JSON payload with event" do
-        captured_body = nil
-        allow(http_double).to receive(:request) do |request|
-          captured_body = JSON.parse(request.body)
-          response_double
-        end
-
-        described_class.notify(:budget_soft_cap, { amount: 100 })
-
-        expect(captured_body["event"]).to eq("budget_soft_cap")
-        expect(captured_body["amount"]).to eq(100)
-      end
-    end
-
-    context "with custom proc configured" do
+    context "when on_alert is configured" do
       let(:received_events) { [] }
 
       before do
         events_array = received_events
         RubyLLM::Agents.configure do |config|
-          config.alerts = {
-            on_events: [:budget_soft_cap],
-            custom: ->(event, payload) { events_array << [event, payload] }
-          }
+          config.on_alert = ->(event, payload) { events_array << [event, payload] }
         end
       end
 
-      it "calls custom proc with event and payload" do
-        described_class.notify(:budget_soft_cap, { amount: 100 })
+      it "calls on_alert with event and payload" do
+        described_class.notify(event, payload)
 
         expect(received_events.length).to eq(1)
         expect(received_events[0][0]).to eq(:budget_soft_cap)
         expect(received_events[0][1][:amount]).to eq(100)
       end
+
+      it "includes event in payload" do
+        described_class.notify(event, payload)
+
+        expect(received_events[0][1][:event]).to eq(:budget_soft_cap)
+      end
+
+      it "includes timestamp in payload" do
+        freeze_time = Time.current
+        allow(Time).to receive(:current).and_return(freeze_time)
+
+        described_class.notify(event, payload)
+
+        expect(received_events[0][1][:timestamp]).to eq(freeze_time)
+      end
+
+      it "includes tenant_id in payload when multi-tenancy enabled" do
+        RubyLLM::Agents.configure do |config|
+          config.multi_tenancy_enabled = true
+          config.tenant_resolver = -> { "tenant-123" }
+          config.on_alert = ->(event, payload) { received_events << [event, payload] }
+        end
+
+        described_class.notify(event, payload)
+
+        expect(received_events[0][1][:tenant_id]).to eq("tenant-123")
+      end
+    end
+
+    context "ActiveSupport::Notifications" do
+      it "emits notification with correct event name" do
+        received_names = []
+        ActiveSupport::Notifications.subscribe(/^ruby_llm_agents\.alert\./) do |name, _start, _finish, _id, _payload|
+          received_names << name
+        end
+
+        described_class.notify(:breaker_open, { model: "gpt-4o" })
+
+        expect(received_names).to include("ruby_llm_agents.alert.breaker_open")
+      ensure
+        ActiveSupport::Notifications.unsubscribe(/^ruby_llm_agents\.alert\./)
+      end
+
+      it "includes full payload in notification" do
+        received_payloads = []
+        ActiveSupport::Notifications.subscribe("ruby_llm_agents.alert.#{event}") do |_name, _start, _finish, _id, payload|
+          received_payloads << payload
+        end
+
+        described_class.notify(event, payload)
+
+        expect(received_payloads[0][:amount]).to eq(100)
+        expect(received_payloads[0][:limit]).to eq(50)
+        expect(received_payloads[0][:event]).to eq(:budget_soft_cap)
+      ensure
+        ActiveSupport::Notifications.unsubscribe("ruby_llm_agents.alert.#{event}")
+      end
+    end
+
+    context "dashboard cache" do
+      let(:cache) { ActiveSupport::Cache::MemoryStore.new }
+
+      before do
+        RubyLLM::Agents.configure do |config|
+          config.cache_store = cache
+        end
+      end
+
+      it "stores alert in cache for dashboard display" do
+        described_class.notify(event, payload)
+
+        cached_alerts = cache.read("ruby_llm_agents:alerts:recent")
+        expect(cached_alerts).to be_an(Array)
+        expect(cached_alerts.length).to eq(1)
+        expect(cached_alerts[0][:type]).to eq(:budget_soft_cap)
+      end
+
+      it "includes formatted message in cached alert" do
+        described_class.notify(:budget_soft_cap, { total_cost: 75.5, limit: 50.0 })
+
+        cached_alerts = cache.read("ruby_llm_agents:alerts:recent")
+        expect(cached_alerts[0][:message]).to include("$75.5")
+        expect(cached_alerts[0][:message]).to include("$50.0")
+      end
+
+      it "prepends new alerts to the list" do
+        described_class.notify(:budget_soft_cap, { amount: 1 })
+        described_class.notify(:breaker_open, { agent_type: "TestAgent" })
+
+        cached_alerts = cache.read("ruby_llm_agents:alerts:recent")
+        expect(cached_alerts[0][:type]).to eq(:breaker_open)
+        expect(cached_alerts[1][:type]).to eq(:budget_soft_cap)
+      end
+
+      it "limits cached alerts to 50" do
+        55.times { |i| described_class.notify(:budget_soft_cap, { amount: i }) }
+
+        cached_alerts = cache.read("ruby_llm_agents:alerts:recent")
+        expect(cached_alerts.length).to eq(50)
+      end
     end
 
     context "error handling" do
-      before do
+      it "logs errors from on_alert handler but does not raise" do
         RubyLLM::Agents.configure do |config|
-          config.alerts = {
-            on_events: [:budget_soft_cap],
-            custom: ->(_event, _payload) { raise StandardError, "Custom handler error" }
-          }
+          config.on_alert = ->(_event, _payload) { raise StandardError, "Handler error" }
         end
+
+        expect(Rails.logger).to receive(:warn).with(/Handler failed/)
+        expect { described_class.notify(event, payload) }.not_to raise_error
       end
 
-      it "logs errors from custom handlers but does not raise" do
-        expect(Rails.logger).to receive(:warn).with(/Custom alert failed/)
-        expect { described_class.notify(:budget_soft_cap, {}) }.not_to raise_error
+      it "continues processing after handler error" do
+        received_events = []
+        ActiveSupport::Notifications.subscribe("ruby_llm_agents.alert.#{event}") do |_name, _start, _finish, _id, payload|
+          received_events << payload
+        end
+
+        RubyLLM::Agents.configure do |config|
+          config.on_alert = ->(_event, _payload) { raise StandardError, "Handler error" }
+        end
+
+        allow(Rails.logger).to receive(:warn)
+        described_class.notify(event, payload)
+
+        # AS::N should still be emitted even if handler fails
+        expect(received_events.length).to eq(1)
+      ensure
+        ActiveSupport::Notifications.unsubscribe("ruby_llm_agents.alert.#{event}")
       end
     end
 
-    context "with email recipients configured" do
-      let(:mailer_double) { double("mailer", deliver_later: true) }
+    context "message formatting" do
+      it "formats budget_soft_cap message" do
+        cache = ActiveSupport::Cache::MemoryStore.new
+        RubyLLM::Agents.configure { |c| c.cache_store = cache }
 
-      before do
-        RubyLLM::Agents.configure do |config|
-          config.alerts = {
-            on_events: [:budget_soft_cap, :budget_hard_cap],
-            email_recipients: ["admin@example.com", "ops@example.com"]
-          }
-        end
+        described_class.notify(:budget_soft_cap, { total_cost: 75.0, limit: 50.0 })
+
+        cached = cache.read("ruby_llm_agents:alerts:recent")
+        expect(cached[0][:message]).to eq("Budget soft cap reached: $75.0 / $50.0")
       end
 
-      it "sends email to all recipients" do
-        expect(RubyLLM::Agents::AlertMailer).to receive(:alert_notification).with(
-          event: :budget_soft_cap,
-          payload: hash_including(amount: 100),
-          recipient: "admin@example.com"
-        ).and_return(mailer_double)
+      it "formats budget_hard_cap message" do
+        cache = ActiveSupport::Cache::MemoryStore.new
+        RubyLLM::Agents.configure { |c| c.cache_store = cache }
 
-        expect(RubyLLM::Agents::AlertMailer).to receive(:alert_notification).with(
-          event: :budget_soft_cap,
-          payload: hash_including(amount: 100),
-          recipient: "ops@example.com"
-        ).and_return(mailer_double)
+        described_class.notify(:budget_hard_cap, { total_cost: 110.0, limit: 100.0 })
 
-        described_class.notify(:budget_soft_cap, { amount: 100 })
+        cached = cache.read("ruby_llm_agents:alerts:recent")
+        expect(cached[0][:message]).to eq("Budget hard cap exceeded: $110.0 / $100.0")
       end
 
-      it "calls deliver_later on each email" do
-        allow(RubyLLM::Agents::AlertMailer).to receive(:alert_notification).and_return(mailer_double)
-        expect(mailer_double).to receive(:deliver_later).twice
+      it "formats breaker_open message" do
+        cache = ActiveSupport::Cache::MemoryStore.new
+        RubyLLM::Agents.configure { |c| c.cache_store = cache }
 
-        described_class.notify(:budget_soft_cap, { amount: 100 })
-      end
-    end
+        described_class.notify(:breaker_open, { agent_type: "ContentAgent" })
 
-    context "with email_events filter configured" do
-      let(:mailer_double) { double("mailer", deliver_later: true) }
-
-      before do
-        RubyLLM::Agents.configure do |config|
-          config.alerts = {
-            on_events: [:budget_soft_cap, :budget_hard_cap, :breaker_open],
-            email_recipients: ["admin@example.com"],
-            email_events: [:budget_hard_cap, :breaker_open]
-          }
-        end
+        cached = cache.read("ruby_llm_agents:alerts:recent")
+        expect(cached[0][:message]).to eq("Circuit breaker opened for ContentAgent")
       end
 
-      it "sends email for events in email_events" do
-        allow(RubyLLM::Agents::AlertMailer).to receive(:alert_notification).and_return(mailer_double)
-        expect(mailer_double).to receive(:deliver_later)
+      it "formats breaker_closed message" do
+        cache = ActiveSupport::Cache::MemoryStore.new
+        RubyLLM::Agents.configure { |c| c.cache_store = cache }
 
-        described_class.notify(:budget_hard_cap, { amount: 100 })
+        described_class.notify(:breaker_closed, { agent_type: "ContentAgent" })
+
+        cached = cache.read("ruby_llm_agents:alerts:recent")
+        expect(cached[0][:message]).to eq("Circuit breaker closed for ContentAgent")
       end
 
-      it "does not send email for events not in email_events" do
-        expect(RubyLLM::Agents::AlertMailer).not_to receive(:alert_notification)
+      it "formats agent_anomaly message" do
+        cache = ActiveSupport::Cache::MemoryStore.new
+        RubyLLM::Agents.configure { |c| c.cache_store = cache }
 
-        described_class.notify(:budget_soft_cap, { amount: 50 })
-      end
-    end
+        described_class.notify(:agent_anomaly, { threshold_type: :cost })
 
-    context "with single email recipient as string" do
-      let(:mailer_double) { double("mailer", deliver_later: true) }
-
-      before do
-        RubyLLM::Agents.configure do |config|
-          config.alerts = {
-            on_events: [:budget_soft_cap],
-            email_recipients: "admin@example.com"
-          }
-        end
+        cached = cache.read("ruby_llm_agents:alerts:recent")
+        expect(cached[0][:message]).to eq("Anomaly detected: cost threshold exceeded")
       end
 
-      it "handles single recipient string" do
-        expect(RubyLLM::Agents::AlertMailer).to receive(:alert_notification).with(
-          event: :budget_soft_cap,
-          payload: hash_including(amount: 100),
-          recipient: "admin@example.com"
-        ).and_return(mailer_double)
-        expect(mailer_double).to receive(:deliver_later)
+      it "humanizes unknown event types" do
+        cache = ActiveSupport::Cache::MemoryStore.new
+        RubyLLM::Agents.configure { |c| c.cache_store = cache }
 
-        described_class.notify(:budget_soft_cap, { amount: 100 })
-      end
-    end
+        described_class.notify(:custom_event, {})
 
-    context "email alert error handling" do
-      before do
-        RubyLLM::Agents.configure do |config|
-          config.alerts = {
-            on_events: [:budget_soft_cap],
-            email_recipients: ["admin@example.com"]
-          }
-        end
-        allow(RubyLLM::Agents::AlertMailer).to receive(:alert_notification).and_raise(StandardError, "SMTP error")
-      end
-
-      it "logs warning but does not raise" do
-        expect(Rails.logger).to receive(:warn).with(/Email alert failed/)
-        expect { described_class.notify(:budget_soft_cap, { amount: 100 }) }.not_to raise_error
-      end
-    end
-
-    context "with non-success HTTP response" do
-      let(:http_double) { instance_double(Net::HTTP) }
-      let(:response_double) { instance_double(Net::HTTPBadRequest, code: "400", body: "Bad Request") }
-
-      before do
-        RubyLLM::Agents.configure do |config|
-          config.alerts = {
-            on_events: [:budget_soft_cap],
-            webhook_url: "https://example.com/webhook"
-          }
-        end
-
-        allow(Net::HTTP).to receive(:new).with("example.com", 443).and_return(http_double)
-        allow(http_double).to receive(:use_ssl=)
-        allow(http_double).to receive(:open_timeout=)
-        allow(http_double).to receive(:read_timeout=)
-        allow(http_double).to receive(:request).and_return(response_double)
-        allow(response_double).to receive(:is_a?).with(Net::HTTPSuccess).and_return(false)
-      end
-
-      it "logs warning for non-success responses" do
-        expect(Rails.logger).to receive(:warn).with(/Webhook returned 400/)
-        described_class.notify(:budget_soft_cap, { amount: 100 })
+        cached = cache.read("ruby_llm_agents:alerts:recent")
+        expect(cached[0][:message]).to eq("Custom event")
       end
     end
   end

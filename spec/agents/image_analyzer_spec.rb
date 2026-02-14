@@ -13,7 +13,6 @@ RSpec.describe RubyLLM::Agents::ImageAnalyzer do
         extract_text true
         max_tags 15
         description "Test analyzer"
-        version "v2"
       end
     end
 
@@ -43,10 +42,6 @@ RSpec.describe RubyLLM::Agents::ImageAnalyzer do
 
     it "sets description" do
       expect(test_analyzer_class.description).to eq("Test analyzer")
-    end
-
-    it "sets version" do
-      expect(test_analyzer_class.version).to eq("v2")
     end
 
     it "validates analysis_type" do

@@ -10,11 +10,26 @@ module RubyLLM
     # @see TenantBudget For budget configuration model
     # @api private
     class TenantsController < ApplicationController
-      # Lists all tenant budgets
+      TENANT_SORTABLE_COLUMNS = %w[name enforcement daily_limit monthly_limit].freeze
+      DEFAULT_TENANT_SORT_COLUMN = "name"
+      DEFAULT_TENANT_SORT_DIRECTION = "asc"
+
+      # Lists all tenant budgets with optional search and sorting
       #
       # @return [void]
       def index
-        @tenants = TenantBudget.order(:name, :tenant_id)
+        @sort_params = parse_tenant_sort_params
+        scope = TenantBudget.all
+
+        if params[:q].present?
+          @search_query = params[:q].to_s.strip
+          scope = scope.where(
+            "tenant_id LIKE :q OR name LIKE :q",
+            q: "%#{TenantBudget.sanitize_sql_like(@search_query)}%"
+          )
+        end
+
+        @tenants = scope.order(@sort_params[:column] => @sort_params[:direction].to_sym)
       end
 
       # Shows a single tenant's budget details
@@ -92,6 +107,19 @@ module RubyLLM
           total_executions: scope.count,
           total_cost: scope.sum(:total_cost) || 0,
           total_tokens: scope.sum(:total_tokens) || 0
+        }
+      end
+
+      # Parses and validates sort parameters for tenants list
+      #
+      # @return [Hash] Contains :column and :direction keys
+      def parse_tenant_sort_params
+        column = params[:sort].to_s
+        direction = params[:direction].to_s.downcase
+
+        {
+          column: TENANT_SORTABLE_COLUMNS.include?(column) ? column : DEFAULT_TENANT_SORT_COLUMN,
+          direction: %w[asc desc].include?(direction) ? direction : DEFAULT_TENANT_SORT_DIRECTION
         }
       end
 

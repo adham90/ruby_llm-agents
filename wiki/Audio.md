@@ -64,8 +64,7 @@ class MyTranscriber < ApplicationTranscriber
   # Timestamp granularity
   include_timestamps :segment     # :none, :segment, :word
 
-  # Versioning and caching
-  version "1.0"                   # Cache invalidation
+  # Caching
   cache_for 30.days               # Enable caching
 
   # Optional: Provide context for better accuracy
@@ -237,8 +236,7 @@ class MyNarrator < ApplicationSpeaker
   # Streaming
   streaming true                # Enable streaming mode
 
-  # Versioning and caching
-  version "1.0"                 # Cache invalidation
+  # Caching
   cache_for 7.days              # Enable caching
 
   # Custom pronunciation lexicon

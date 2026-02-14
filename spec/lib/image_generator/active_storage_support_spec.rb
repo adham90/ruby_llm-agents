@@ -9,7 +9,6 @@ RSpec.describe RubyLLM::Agents::ImageGenerator::ActiveStorageSupport do
       include RubyLLM::Agents::ImageGenerator::ActiveStorageSupport
 
       model "gpt-image-1"
-      version "1.0"
       size "1024x1024"
     end
   end

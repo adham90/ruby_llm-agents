@@ -1,19 +1,9 @@
-<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-8 text-center">
-  <!-- Agent Icon - Blue -->
-  <svg class="mx-auto h-16 w-16 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
-  </svg>
-
-  <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-gray-100">
-    No agents yet
-  </h3>
-
-  <p class="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-    Create an agent by inheriting from <code class="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded font-mono text-xs">ApplicationAgent</code>
+<div class="py-8">
+  <p class="font-mono text-xs text-gray-400 dark:text-gray-600 mb-4">
+    no agents yet — create one by inheriting from <code class="bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded font-mono text-xs">ApplicationAgent</code>
   </p>
 
-  <!-- Code Example -->
-  <div class="mt-6 max-w-sm mx-auto">
+  <div class="max-w-sm">
     <pre class="bg-gray-900 dark:bg-gray-950 rounded-lg p-4 text-left text-sm overflow-x-auto"><code class="text-gray-300"><span class="text-pink-400">class</span> <span class="text-yellow-300">MyAgent</span> <span class="text-pink-400">&lt;</span> <span class="text-yellow-300">ApplicationAgent</span>
   <span class="text-purple-400">model</span> <span class="text-green-400">"gpt-4o-mini"</span>
   <span class="text-purple-400">param</span> <span class="text-blue-400">:query</span>, <span class="text-blue-400">required:</span> <span class="text-orange-400">true</span>

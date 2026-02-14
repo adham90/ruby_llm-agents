@@ -1,182 +1,66 @@
 <%# Show tenant column when multi-tenancy is enabled and no specific tenant is selected %>
 <% show_tenant_column = tenant_filter_enabled? && current_tenant_id.blank? %>
+<% show_agent_column = !local_assigns.fetch(:hide_agent_column, false) %>
 
 <% if executions.empty? %>
-  <p class="text-gray-500 dark:text-gray-400 text-center py-8">No executions found.</p>
+  <div class="font-mono text-xs text-gray-400 dark:text-gray-600 py-4 px-2">no executions found</div>
 <% else %>
-  <div class="overflow-x-auto">
-    <table class="min-w-full text-sm">
-      <thead class="bg-gray-50 dark:bg-gray-900/50">
-        <tr>
-          <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-          <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Agent</th>
-          <% if show_tenant_column %>
-            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tenant</th>
-          <% end %>
-          <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Model</th>
-          <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Duration</th>
-          <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tokens</th>
-          <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cost</th>
-          <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Time</th>
-        </tr>
-      </thead>
-      <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
-        <% executions.each do |execution| %>
-          <%
-            is_workflow = execution.workflow_type.present?
-            children = execution.child_executions.sort_by(&:created_at)
-            has_children = children.any?
-          %>
+  <!-- Column headers -->
+  <div class="flex items-center gap-3 px-2 -mx-2 font-mono text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider mb-1">
+    <span class="w-20 flex-shrink-0">status</span>
+    <% if show_agent_column %>
+      <span class="flex-1 min-w-0">agent</span>
+    <% end %>
+    <% if show_tenant_column %>
+      <span class="flex-1 min-w-0 hidden sm:block">tenant</span>
+    <% end %>
+    <span class="flex-1 min-w-0 hidden lg:block">model</span>
+    <span class="w-16 flex-shrink-0 text-right">duration</span>
+    <span class="w-16 flex-shrink-0 text-right hidden md:block">tokens</span>
+    <span class="w-16 flex-shrink-0 text-right hidden md:block">cost</span>
+    <span class="w-24 flex-shrink-0 text-right">time</span>
+  </div>
 
-          <%# Parent/Main Row %>
-          <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-            <%# Status %>
-            <td class="px-4 py-3 whitespace-nowrap">
-              <%= render "ruby_llm/agents/shared/status_badge", status: execution.status, size: :sm %>
-            </td>
-
-            <%# Agent Name with Workflow Badge %>
-            <td class="px-4 py-3 whitespace-nowrap">
-              <div class="flex items-center gap-2">
-                <%= link_to ruby_llm_agents.execution_path(execution), class: "font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400" do %>
-                  <%= execution.agent_type.gsub(/Agent$/, "") %>
-                <% end %>
-                <% if is_workflow %>
-                  <span class="text-xs text-emerald-600 dark:text-emerald-400">◈</span>
-                <% end %>
-              </div>
-            </td>
-
-            <%# Tenant (only when viewing all tenants) %>
-            <% if show_tenant_column %>
-              <td class="px-4 py-3 whitespace-nowrap">
-                <% if execution.tenant_id.present? %>
-                  <a href="<%= url_for(request.query_parameters.merge(tenant_id: execution.tenant_id)) %>"
-                     class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50">
-                    <%= truncate(execution.tenant_id, length: 15) %>
-                  </a>
-                <% else %>
-                  <span class="text-gray-400 dark:text-gray-500 text-xs">—</span>
-                <% end %>
-              </td>
-            <% end %>
-
-            <%# Model %>
-            <td class="px-4 py-3 whitespace-nowrap text-gray-500 dark:text-gray-400 font-mono text-xs">
-              <%= execution.model_id %>
-            </td>
-
-            <%# Duration %>
-            <td class="px-4 py-3 whitespace-nowrap text-right text-gray-900 dark:text-gray-100 tabular-nums">
-              <%= execution.duration_ms ? "#{number_with_delimiter(execution.duration_ms)}ms" : "-" %>
-            </td>
-
-            <%# Tokens %>
-            <td class="px-4 py-3 whitespace-nowrap text-right text-gray-900 dark:text-gray-100 tabular-nums">
-              <%= number_with_delimiter(execution.total_tokens || 0) %>
-            </td>
-
-            <%# Cost %>
-            <td class="px-4 py-3 whitespace-nowrap text-right text-gray-900 dark:text-gray-100 tabular-nums">
-              $<%= number_with_precision(execution.total_cost || 0, precision: 4) %>
-            </td>
-
-            <%# Time %>
-            <td class="px-4 py-3 whitespace-nowrap text-right text-gray-500 dark:text-gray-400">
-              <%= time_ago_in_words(execution.created_at) %> ago
-            </td>
-          </tr>
-
-          <%# Error Row (if applicable) %>
-          <% if execution.status_error? && execution.error_message.present? %>
-            <tr class="bg-red-50/50 dark:bg-red-900/20">
-              <td></td>
-              <td colspan="<%= show_tenant_column ? 7 : 6 %>" class="px-4 py-2">
-                <p class="text-xs text-red-600 dark:text-red-400">
-                  <span class="font-medium"><%= execution.error_class %>:</span>
-                  <%= truncate(execution.error_message, length: 120) %>
-                </p>
-              </td>
-            </tr>
-          <% end %>
-
-          <%# Child Rows (for workflows) %>
-          <% if has_children %>
-            <% children.each_with_index do |child, index| %>
-              <% is_last = index == children.size - 1 %>
-              <tr class="bg-gray-50/50 dark:bg-gray-900/30 hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors">
-                <%# Status with tree line %>
-                <td class="px-4 py-2 whitespace-nowrap">
-                  <div class="flex items-center">
-                    <span class="text-gray-300 dark:text-gray-600 mr-2 font-mono text-xs"><%= is_last ? "└─" : "├─" %></span>
-                    <% case child.status
-                       when "success" %>
-                      <span class="text-green-600 dark:text-green-400">✓</span>
-                    <% when "error" %>
-                      <span class="text-red-600 dark:text-red-400">✗</span>
-                    <% when "timeout" %>
-                      <span class="text-orange-600 dark:text-orange-400">⏱</span>
-                    <% when "running" %>
-                      <span class="text-blue-600 dark:text-blue-400 animate-pulse">●</span>
-                    <% else %>
-                      <span class="text-gray-400">○</span>
-                    <% end %>
-                  </div>
-                </td>
-
-                <%# Step Name %>
-                <td class="px-4 py-2 whitespace-nowrap">
-                  <%= link_to ruby_llm_agents.execution_path(child), class: "text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400" do %>
-                    <span class="text-gray-400 dark:text-gray-500 text-xs"><%= index + 1 %>.</span>
-                    <%= child.workflow_step || child.agent_type.gsub(/Agent$/, "") %>
-                  <% end %>
-                </td>
-
-                <%# Tenant - empty for child rows %>
-                <% if show_tenant_column %>
-                  <td class="px-4 py-2"></td>
-                <% end %>
-
-                <%# Model %>
-                <td class="px-4 py-2 whitespace-nowrap text-gray-400 dark:text-gray-500 font-mono text-xs">
-                  <%= child.model_id %>
-                </td>
-
-                <%# Duration %>
-                <td class="px-4 py-2 whitespace-nowrap text-right text-gray-600 dark:text-gray-300 tabular-nums text-xs">
-                  <%= child.duration_ms ? "#{number_with_delimiter(child.duration_ms)}ms" : "-" %>
-                </td>
-
-                <%# Tokens %>
-                <td class="px-4 py-2 whitespace-nowrap text-right text-gray-600 dark:text-gray-300 tabular-nums text-xs">
-                  <%= number_with_delimiter(child.total_tokens || 0) %>
-                </td>
-
-                <%# Cost %>
-                <td class="px-4 py-2 whitespace-nowrap text-right text-gray-600 dark:text-gray-300 tabular-nums text-xs">
-                  $<%= number_with_precision(child.total_cost || 0, precision: 4) %>
-                </td>
-
-                <%# Time - empty for children %>
-                <td class="px-4 py-2"></td>
-              </tr>
-
-              <%# Child Error Row %>
-              <% if child.status_error? && child.error_message.present? %>
-                <tr class="bg-red-50/30 dark:bg-red-900/10">
-                  <td></td>
-                  <td colspan="<%= show_tenant_column ? 7 : 6 %>" class="px-4 py-1.5 pl-8">
-                    <p class="text-xs text-red-500 dark:text-red-400">
-                      <%= truncate(child.error_message, length: 100) %>
-                    </p>
-                  </td>
-                </tr>
-              <% end %>
-            <% end %>
-          <% end %>
+  <!-- Rows -->
+  <div class="font-mono text-xs space-y-px">
+    <% executions.each do |execution| %>
+      <%
+        status_badge_class = case execution.status.to_s
+          when "running" then "badge-running"
+          when "success" then "badge-success"
+          when "error" then "badge-error"
+          when "timeout" then "badge-timeout"
+          else "badge-timeout"
+        end
+      %>
+      <div class="group flex items-center gap-3 py-1.5 px-2 -mx-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer"
+           onclick="window.location='<%= ruby_llm_agents.execution_path(execution) %>'">
+        <span class="w-20 flex-shrink-0"><span class="badge badge-sm <%= status_badge_class %>"><%= execution.status %></span></span>
+        <% if show_agent_column %>
+          <span class="flex-1 min-w-0 truncate text-gray-900 dark:text-gray-200"><%= execution.agent_type.gsub(/Agent$/, "") %></span>
         <% end %>
-      </tbody>
-    </table>
+        <% if show_tenant_column %>
+          <span class="flex-1 min-w-0 truncate text-gray-400 dark:text-gray-600 hidden sm:inline"><%= execution.tenant_id.present? ? truncate(execution.tenant_id, length: 30) : "—" %></span>
+        <% end %>
+        <span class="flex-1 min-w-0 truncate text-gray-400 dark:text-gray-600 hidden lg:inline"><%= execution.model_id %></span>
+        <span class="w-16 flex-shrink-0 text-right text-gray-500 dark:text-gray-400">
+          <% if execution.status_running? %>
+            <span class="text-blue-500 animate-pulse">...</span>
+          <% else %>
+            <%= execution.duration_ms ? format_duration_ms(execution.duration_ms) : "—" %>
+          <% end %>
+        </span>
+        <span class="w-16 flex-shrink-0 text-right text-gray-500 dark:text-gray-400 hidden md:inline"><%= number_with_delimiter(execution.total_tokens || 0) %></span>
+        <span class="w-16 flex-shrink-0 text-right text-gray-500 dark:text-gray-400 hidden md:inline">$<%= number_with_precision(execution.total_cost || 0, precision: 4) %></span>
+        <span class="w-24 flex-shrink-0 text-gray-400 dark:text-gray-600 text-right whitespace-nowrap"><%= time_ago_in_words(execution.created_at) %></span>
+      </div>
+      <% if execution.status_error? && execution.error_message.present? %>
+        <div class="flex items-center gap-1 pl-5 py-0.5 text-red-400 dark:text-red-500/70 text-xs font-mono">
+          <span class="text-gray-300 dark:text-gray-700">└</span>
+          <span class="truncate"><%= execution.error_class %>: <%= truncate(execution.error_message, length: 100) %></span>
+        </div>
+      <% end %>
+    <% end %>
   </div>
 
   <%# Pagination %>
@@ -186,31 +70,24 @@
       total_pages = pagination[:total_pages]
       total_count = pagination[:total_count]
       per_page = pagination[:per_page]
-
       from_record = ((current_page - 1) * per_page) + 1
       to_record = [current_page * per_page, total_count].min
     %>
-    <div class="mt-4 flex items-center justify-between border-t border-gray-100 dark:border-gray-700 pt-4">
-      <p class="text-sm text-gray-500 dark:text-gray-400">
-        Showing <%= from_record %>-<%= to_record %> of <%= number_with_delimiter(total_count) %> executions
-      </p>
-      <nav class="flex items-center space-x-1">
+    <div class="flex items-center justify-between font-mono text-xs mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+      <span class="text-gray-400 dark:text-gray-600"><%= from_record %>-<%= to_record %> of <%= number_with_delimiter(total_count) %></span>
+      <nav class="flex items-center gap-1">
         <% if current_page > 1 %>
-          <%= link_to "Previous", url_for(request.query_parameters.merge(page: current_page - 1)), class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
+          <%= link_to "prev", url_for(request.query_parameters.merge(page: current_page - 1)),
+              class: "px-2 py-0.5 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" %>
         <% else %>
-          <span class="px-3 py-1.5 text-sm font-medium text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md cursor-not-allowed">Previous</span>
+          <span class="px-2 py-0.5 text-gray-300 dark:text-gray-700">prev</span>
         <% end %>
 
         <%
           window = 2
-          left_edge = 1
-          right_edge = 1
-
           pages_to_show = []
           (1..total_pages).each do |page|
-            if page <= left_edge ||
-               page > total_pages - right_edge ||
-               (page >= current_page - window && page <= current_page + window)
+            if page <= 1 || page >= total_pages || (page >= current_page - window && page <= current_page + window)
               pages_to_show << page
             elsif pages_to_show.last != :gap
               pages_to_show << :gap
@@ -220,18 +97,20 @@
 
         <% pages_to_show.each do |page| %>
           <% if page == :gap %>
-            <span class="px-2 py-1.5 text-sm text-gray-500 dark:text-gray-400">...</span>
+            <span class="px-1 text-gray-400 dark:text-gray-600">...</span>
           <% elsif page == current_page %>
-            <span class="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 border border-blue-600 rounded-md"><%= page %></span>
+            <span class="px-2 py-0.5 text-gray-900 dark:text-gray-100"><%= page %></span>
           <% else %>
-            <%= link_to page, url_for(request.query_parameters.merge(page: page)), class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
+            <%= link_to page, url_for(request.query_parameters.merge(page: page)),
+                class: "px-2 py-0.5 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" %>
           <% end %>
         <% end %>
 
         <% if current_page < total_pages %>
-          <%= link_to "Next", url_for(request.query_parameters.merge(page: current_page + 1)), class: "px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700" %>
+          <%= link_to "next", url_for(request.query_parameters.merge(page: current_page + 1)),
+              class: "px-2 py-0.5 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" %>
         <% else %>
-          <span class="px-3 py-1.5 text-sm font-medium text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md cursor-not-allowed">Next</span>
+          <span class="px-2 py-0.5 text-gray-300 dark:text-gray-700">next</span>
         <% end %>
       </nav>
     </div>

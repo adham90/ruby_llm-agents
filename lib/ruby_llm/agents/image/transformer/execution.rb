@@ -23,7 +23,6 @@ module RubyLLM
           resolve_tenant_context!
           check_budget! if budget_tracking_enabled?
           validate_inputs!
-          validate_content_policy!
 
           # Check cache
           cached = check_cache(ImageTransformResult) if cache_enabled?
@@ -73,13 +72,6 @@ module RubyLLM
           if prompt.length > max_length
             raise ArgumentError, "Prompt exceeds maximum length of #{max_length} characters"
           end
-        end
-
-        def validate_content_policy!
-          policy = self.class.content_policy
-          return if policy == :none || policy == :standard
-
-          ImageGenerator::ContentPolicy.validate!(prompt, policy)
         end
 
         def transform_images
@@ -188,7 +180,6 @@ module RubyLLM
           [
             "image_transformer",
             self.class.name,
-            self.class.version,
             resolve_model,
             resolve_size,
             resolve_strength.to_s,
@@ -209,7 +200,7 @@ module RubyLLM
           end
         end
 
-        def build_execution_metadata(result)
+        def build_metadata(result)
           {
             count: result.count,
             size: result.size,

@@ -82,7 +82,6 @@ This creates `app/agents/summarizer_agent.rb`:
 class SummarizerAgent < ApplicationAgent
   model "gemini-2.0-flash"
   temperature 0.0
-  version "1.0"
 
   param :text, required: true
   param :max_length, default: 500

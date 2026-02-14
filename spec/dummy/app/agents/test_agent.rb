@@ -4,7 +4,6 @@
 class TestAgent < RubyLLM::Agents::Base
   model "gpt-4"
   temperature 0.5
-  version "1.0"
 
   param :query, required: true
   param :limit, default: 10
@@ -19,7 +18,7 @@ class TestAgent < RubyLLM::Agents::Base
     query
   end
 
-  def execution_metadata
+  def metadata
     { query: query, limit: limit }
   end
 end

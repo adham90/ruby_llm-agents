@@ -29,7 +29,6 @@ Welcome to the official documentation for **RubyLLM::Agents**, a production-read
 
 ### Specialized Capabilities
 - **[Embeddings](Embeddings)** - Text-to-vector embeddings
-- **[Moderation](Moderation)** - Content safety filtering
 - **[Audio](Audio)** - Transcription (speech-to-text) and TTS (text-to-speech)
 - **[Image Operations](Image-Generation)** - Generation, analysis, editing, pipelines
 
@@ -54,7 +53,6 @@ Welcome to the official documentation for **RubyLLM::Agents**, a production-read
 - **[Budget Controls](Budget-Controls)** - Spending limits
 - **[Multi-Tenancy](Multi-Tenancy)** - Per-tenant isolation and budgets
 - **[Alerts](Alerts)** - Notifications and webhooks
-- **[PII Redaction](PII-Redaction)** - Data protection
 
 #### Development
 - **[Testing Agents](Testing-Agents)** - RSpec patterns and mocking

@@ -11,7 +11,6 @@ RSpec.describe RubyLLM::Agents::ImageUpscaler do
         face_enhance true
         denoise_strength 0.3
         description "Test upscaler"
-        version "v2"
       end
     end
 
@@ -33,10 +32,6 @@ RSpec.describe RubyLLM::Agents::ImageUpscaler do
 
     it "sets description" do
       expect(test_upscaler_class.description).to eq("Test upscaler")
-    end
-
-    it "sets version" do
-      expect(test_upscaler_class.version).to eq("v2")
     end
 
     it "validates scale is 2, 4, or 8" do

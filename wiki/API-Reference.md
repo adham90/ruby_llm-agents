@@ -24,14 +24,6 @@ Set response randomness (0.0-2.0).
 temperature 0.7
 ```
 
-#### `.version(string)`
-
-Set version for cache invalidation.
-
-```ruby
-version "1.0"
-```
-
 #### `.timeout(seconds)`
 
 Set request timeout.
@@ -175,12 +167,12 @@ def process_response(response)
 end
 ```
 
-#### `#execution_metadata` (private)
+#### `#metadata` (private)
 
 Override to add custom metadata.
 
 ```ruby
-def execution_metadata
+def metadata
   { user_id: user_id }
 end
 ```
@@ -301,7 +293,6 @@ ActiveRecord model for execution records.
 # Agent/Model
 .by_agent("AgentName")
 .by_model("gpt-4o")
-.by_version("1.0")
 
 # Performance
 .expensive(threshold)
@@ -349,7 +340,6 @@ Execution.daily_report
 Execution.cost_by_agent(period: :today)
 Execution.cost_by_model(period: :this_week)
 Execution.stats_for("AgentName", period: :today)
-Execution.compare_versions("Agent", "1.0", "2.0")
 Execution.trend_analysis(agent_type: "Agent", days: 7)
 
 # Analytics
@@ -485,16 +475,8 @@ RubyLLM::Agents.configure do |config|
   }
 
   # Alerts
-  config.alerts = {
-    on_events: [:budget_hard_cap],
-    slack_webhook_url: "..."
-  }
-
-  # Redaction
-  config.redaction = {
-    fields: %w[password],
-    patterns: [/.../],
-    placeholder: "[REDACTED]"
+  config.on_alert = ->(event, payload) {
+    # Handle alerts (Slack, PagerDuty, etc.)
   }
 end
 ```

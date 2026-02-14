@@ -585,7 +585,7 @@ Include tenant information in execution metadata:
 class TenantAwareAgent < ApplicationAgent
   model "gpt-4o"
 
-  def execution_metadata
+  def metadata
     {
       tenant_id: Current.tenant_id,
       tenant_name: Current.tenant&.name,
@@ -689,9 +689,7 @@ When an agent executes, API keys are resolved in this order:
 
 1. **Tenant object `api_keys:`** → DSL-defined methods/columns (highest priority)
 2. **Runtime hash `api_keys:`** → Passed via `tenant: { id: ..., api_keys: {...} }`
-3. **ApiConfiguration.for_tenant** → Database per-tenant config
-4. **ApiConfiguration.global** → Database global config
-5. **RubyLLM.configure** → Config file/environment (lowest priority)
+3. **RubyLLM.configure** → Config file/environment (lowest priority)
 
 ### Usage
 
@@ -975,82 +973,6 @@ class ModelRestrictedAgent < ApplicationAgent
   end
 end
 ```
-
-## Per-Tenant API Configuration
-
-The `Configurable` concern allows storing tenant-specific API keys and settings in the database through the `ApiConfiguration` model.
-
-### Setting Up API Keys
-
-```ruby
-tenant = RubyLLM::Agents::Tenant.for("tenant_123")
-
-# Configure API keys using block syntax
-tenant.configure_api do |config|
-  config.openai_api_key = "sk-tenant-specific-key"
-  config.anthropic_api_key = "sk-ant-tenant-key"
-  config.default_model = "gpt-4o"
-end
-
-# Or access configuration directly
-config = tenant.api_configuration!
-config.update!(
-  gemini_api_key: "gemini-key",
-  default_embedding_model: "text-embedding-3-small"
-)
-```
-
-### Querying API Keys
-
-```ruby
-tenant = RubyLLM::Agents::Tenant.for("tenant_123")
-
-# Check if tenant has custom keys
-tenant.has_custom_api_keys?           # => true
-
-# Get specific provider key
-tenant.api_key_for(:openai)           # => "sk-tenant-specific-key"
-tenant.api_key_for(:anthropic)        # => "sk-ant-tenant-key"
-
-# Check provider configuration
-tenant.provider_configured?(:openai)  # => true
-tenant.provider_configured?(:gemini)  # => false
-
-# List all configured providers
-tenant.configured_providers           # => [:openai, :anthropic]
-
-# Get default models
-tenant.default_model                  # => "gpt-4o"
-tenant.default_embedding_model        # => "text-embedding-3-small"
-```
-
-### Effective Configuration Resolution
-
-The `effective_api_configuration` method returns a resolved configuration that merges tenant settings with global defaults:
-
-```ruby
-# Get resolved configuration (tenant → global DB → RubyLLM config)
-config = tenant.effective_api_configuration
-
-# All settings are resolved with proper fallbacks
-config.openai_api_key        # Tenant's key or global fallback
-config.default_model         # Tenant's default or global
-config.request_timeout       # Tenant's setting or global default
-
-# Apply to RubyLLM for the next request
-config.apply_to_ruby_llm!
-```
-
-### Configuration vs DSL API Keys
-
-There are two ways to configure per-tenant API keys:
-
-| Approach | Storage | Best For |
-|----------|---------|----------|
-| `api_keys:` DSL | Model columns | Keys managed in your application |
-| `Configurable` concern | ApiConfiguration table | Separate key management |
-
-Both can be used together - DSL-configured keys take precedence.
 
 ## Related Pages
 
