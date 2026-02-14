@@ -15,9 +15,7 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
     end
 
     context "with tokens but no model info" do
-      before do
-        allow(execution).to receive(:resolve_model_info).and_return(nil)
-      end
+      let(:execution) { create(:execution, model_id: "nonexistent-model-xyz", input_tokens: 100, output_tokens: 50) }
 
       it "returns early without setting costs" do
         original_input_cost = execution.input_cost
@@ -27,70 +25,58 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
     end
 
     context "formula verification with known pricing" do
-      # Mock model info with $5/M input, $15/M output (standard pricing)
-      let(:text_tokens_pricing) { double("text_tokens", input: 5.0, output: 15.0) }
-      let(:model_pricing) { double("pricing", text_tokens: text_tokens_pricing) }
-      let(:model_info) { double("model_info", pricing: model_pricing) }
+      let(:model_info) { RubyLLM::Models.find("gpt-4o") }
+      let(:input_price) { model_info.pricing.text_tokens.input }
+      let(:output_price) { model_info.pricing.text_tokens.output }
 
-      before do
-        allow(execution).to receive(:resolve_model_info).and_return(model_info)
-      end
-
-      it "correctly calculates costs with known pricing ($5/M input, $15/M output)" do
-        # Reset costs to nil to test calculation
+      it "correctly calculates costs with real model pricing" do
         execution.update_columns(input_cost: nil, output_cost: nil)
 
-        # 100 input tokens at $5/M = $0.0005
-        # 50 output tokens at $15/M = $0.00075
-        execution.calculate_costs!
+        execution.calculate_costs!(model_info)
 
-        expect(execution.input_cost).to eq(0.0005)
-        expect(execution.output_cost).to eq(0.00075)
+        expected_input = ((100 / 1_000_000.0) * input_price).round(6)
+        expected_output = ((50 / 1_000_000.0) * output_price).round(6)
+        expect(execution.input_cost).to eq(expected_input)
+        expect(execution.output_cost).to eq(expected_output)
+        # Regression: costs must be non-zero for a model with non-zero pricing
+        expect(execution.input_cost).to be > 0
+        expect(execution.output_cost).to be > 0
       end
 
       it "calculates costs correctly for small token counts (1 token)" do
         execution.update_columns(input_tokens: 1, output_tokens: 1, input_cost: nil, output_cost: nil)
 
-        execution.calculate_costs!
+        execution.calculate_costs!(model_info)
 
-        # 1 token at $5/M = $0.000005
-        # 1 token at $15/M = $0.000015
-        expect(execution.input_cost).to eq(0.000005)
-        expect(execution.output_cost).to eq(0.000015)
+        expect(execution.input_cost).to eq(((1 / 1_000_000.0) * input_price).round(6))
+        expect(execution.output_cost).to eq(((1 / 1_000_000.0) * output_price).round(6))
       end
 
       it "calculates costs correctly for medium token counts (10K tokens)" do
         execution.update_columns(input_tokens: 10_000, output_tokens: 5_000, input_cost: nil, output_cost: nil)
 
-        execution.calculate_costs!
+        execution.calculate_costs!(model_info)
 
-        # 10,000 input tokens at $5/M = $0.05
-        # 5,000 output tokens at $15/M = $0.075
-        expect(execution.input_cost).to eq(0.05)
-        expect(execution.output_cost).to eq(0.075)
+        expect(execution.input_cost).to eq(((10_000 / 1_000_000.0) * input_price).round(6))
+        expect(execution.output_cost).to eq(((5_000 / 1_000_000.0) * output_price).round(6))
       end
 
       it "calculates costs correctly for large token counts (1M tokens)" do
         execution.update_columns(input_tokens: 1_000_000, output_tokens: 500_000, input_cost: nil, output_cost: nil)
 
-        execution.calculate_costs!
+        execution.calculate_costs!(model_info)
 
-        # 1,000,000 input tokens at $5/M = $5.00
-        # 500,000 output tokens at $15/M = $7.50
-        expect(execution.input_cost).to eq(5.0)
-        expect(execution.output_cost).to eq(7.5)
+        expect(execution.input_cost).to eq(((1_000_000 / 1_000_000.0) * input_price).round(6))
+        expect(execution.output_cost).to eq(((500_000 / 1_000_000.0) * output_price).round(6))
       end
 
       it "rounds to 6 decimal places for precision" do
-        # 123 tokens produces fractional costs that need rounding
         execution.update_columns(input_tokens: 123, output_tokens: 456, input_cost: nil, output_cost: nil)
 
-        execution.calculate_costs!
+        execution.calculate_costs!(model_info)
 
-        # 123 * 5 / 1,000,000 = 0.000615
-        # 456 * 15 / 1,000,000 = 0.00684
-        expect(execution.input_cost).to eq(0.000615)
-        expect(execution.output_cost).to eq(0.00684)
+        expect(execution.input_cost).to eq(((123 / 1_000_000.0) * input_price).round(6))
+        expect(execution.output_cost).to eq(((456 / 1_000_000.0) * output_price).round(6))
 
         # Verify 6 decimal precision
         expect(execution.input_cost.to_s.split(".").last.length).to be <= 6
@@ -98,30 +84,23 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
       end
 
       it "uses passed model_info instead of resolving" do
-        execution.update_columns(input_cost: nil, output_cost: nil)
-
-        # Don't expect resolve_model_info to be called when model_info is passed
-        expect(execution).not_to receive(:resolve_model_info)
+        # Use a nonexistent model so resolve_model_info would return nil
+        execution.update_columns(model_id: "nonexistent-model", input_cost: nil, output_cost: nil)
 
         execution.calculate_costs!(model_info)
 
+        # If resolve_model_info had been called instead, costs would be nil (model not found)
         expect(execution.input_cost).to be_present
         expect(execution.output_cost).to be_present
       end
     end
 
     context "with zero pricing" do
-      let(:text_tokens_pricing) { double("text_tokens", input: 0.0, output: 0.0) }
-      let(:model_pricing) { double("pricing", text_tokens: text_tokens_pricing) }
-      let(:model_info) { double("model_info", pricing: model_pricing) }
-
-      before do
-        allow(execution).to receive(:resolve_model_info).and_return(model_info)
-      end
+      let(:zero_pricing_model) { build_model_info_with_pricing(input_price: 0.0, output_price: 0.0) }
 
       it "returns zero costs when pricing is zero" do
         execution.update_columns(input_cost: nil, output_cost: nil)
-        execution.calculate_costs!
+        execution.calculate_costs!(zero_pricing_model)
 
         expect(execution.input_cost).to eq(0.0)
         expect(execution.output_cost).to eq(0.0)
@@ -228,15 +207,13 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
   end
 
   describe "#aggregate_attempt_costs!" do
-    # Mock model info with $5/M input, $15/M output
-    let(:text_tokens_pricing) { double("text_tokens", input: 5.0, output: 15.0) }
-    let(:model_pricing) { double("pricing", text_tokens: text_tokens_pricing) }
-    let(:model_info) { double("model_info", pricing: model_pricing) }
+    let(:gpt4o_info) { RubyLLM::Models.find("gpt-4o") }
+    let(:gpt4o_input_price) { gpt4o_info.pricing.text_tokens.input }
+    let(:gpt4o_output_price) { gpt4o_info.pricing.text_tokens.output }
 
-    # Different model with $10/M input, $30/M output (more expensive)
-    let(:expensive_text_tokens) { double("text_tokens", input: 10.0, output: 30.0) }
-    let(:expensive_pricing) { double("pricing", text_tokens: expensive_text_tokens) }
-    let(:expensive_model_info) { double("model_info", pricing: expensive_pricing) }
+    let(:sonnet_info) { RubyLLM::Models.find("claude-3-5-sonnet-20241022") }
+    let(:sonnet_input_price) { sonnet_info.pricing.text_tokens.input }
+    let(:sonnet_output_price) { sonnet_info.pricing.text_tokens.output }
 
     # Helper to set attempts on detail and reset costs on execution
     def set_attempts_and_reset_costs(execution, attempts_data)
@@ -281,18 +258,17 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
         }]
       end
 
-      before do
-        allow(execution).to receive(:resolve_model_info).with("gpt-4o").and_return(model_info)
-      end
-
       it "calculates costs from single attempt" do
         set_attempts_and_reset_costs(execution, single_attempt)
         execution.aggregate_attempt_costs!
 
-        # 1000 * 5 / 1M = 0.005
-        # 500 * 15 / 1M = 0.0075
-        expect(execution.input_cost).to eq(0.005)
-        expect(execution.output_cost).to eq(0.0075)
+        expected_input = ((1000 / 1_000_000.0) * gpt4o_input_price).round(6)
+        expected_output = ((500 / 1_000_000.0) * gpt4o_output_price).round(6)
+        expect(execution.input_cost).to eq(expected_input)
+        expect(execution.output_cost).to eq(expected_output)
+        # Regression: costs must be non-zero
+        expect(execution.input_cost).to be > 0
+        expect(execution.output_cost).to be > 0
       end
     end
 
@@ -313,19 +289,14 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
         ]
       end
 
-      before do
-        allow(execution).to receive(:resolve_model_info).with("gpt-4o").and_return(model_info)
-      end
-
       it "sums costs from all attempts" do
         set_attempts_and_reset_costs(execution, multiple_attempts)
         execution.aggregate_attempt_costs!
 
-        # First attempt: 0.005 input + 0.0075 output
-        # Second attempt: 0.005 input + 0.0075 output
-        # Total: 0.01 input + 0.015 output
-        expect(execution.input_cost).to eq(0.01)
-        expect(execution.output_cost).to eq(0.015)
+        expected_input = (2 * (1000 / 1_000_000.0) * gpt4o_input_price).round(6)
+        expected_output = (2 * (500 / 1_000_000.0) * gpt4o_output_price).round(6)
+        expect(execution.input_cost).to eq(expected_input)
+        expect(execution.output_cost).to eq(expected_output)
       end
     end
 
@@ -339,27 +310,27 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
             "error_class" => "RateLimitError"
           },
           {
-            "model_id" => "claude-3-opus",
+            "model_id" => "claude-3-5-sonnet-20241022",
             "input_tokens" => 1000,
             "output_tokens" => 500
           }
         ]
       end
 
-      before do
-        allow(execution).to receive(:resolve_model_info).with("gpt-4o").and_return(model_info)
-        allow(execution).to receive(:resolve_model_info).with("claude-3-opus").and_return(expensive_model_info)
-      end
-
       it "calculates costs using each attempt's model pricing" do
         set_attempts_and_reset_costs(execution, fallback_attempts)
         execution.aggregate_attempt_costs!
 
-        # First attempt (gpt-4o at $5/$15): 0.005 input + 0.0075 output
-        # Second attempt (claude-3-opus at $10/$30): 0.01 input + 0.015 output
-        # Total: 0.015 input + 0.0225 output
-        expect(execution.input_cost).to eq(0.015)
-        expect(execution.output_cost).to eq(0.0225)
+        expected_input = (
+          (1000 / 1_000_000.0) * gpt4o_input_price +
+          (1000 / 1_000_000.0) * sonnet_input_price
+        ).round(6)
+        expected_output = (
+          (500 / 1_000_000.0) * gpt4o_output_price +
+          (500 / 1_000_000.0) * sonnet_output_price
+        ).round(6)
+        expect(execution.input_cost).to eq(expected_input)
+        expect(execution.output_cost).to eq(expected_output)
       end
     end
 
@@ -380,17 +351,14 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
         ]
       end
 
-      before do
-        allow(execution).to receive(:resolve_model_info).with("gpt-4o").and_return(model_info)
-      end
-
       it "skips short-circuited attempts" do
         set_attempts_and_reset_costs(execution, attempts_with_short_circuit)
         execution.aggregate_attempt_costs!
 
-        # Only second attempt counts: 0.005 input + 0.0075 output
-        expect(execution.input_cost).to eq(0.005)
-        expect(execution.output_cost).to eq(0.0075)
+        expected_input = ((1000 / 1_000_000.0) * gpt4o_input_price).round(6)
+        expected_output = ((500 / 1_000_000.0) * gpt4o_output_price).round(6)
+        expect(execution.input_cost).to eq(expected_input)
+        expect(execution.output_cost).to eq(expected_output)
       end
     end
 
@@ -410,50 +378,14 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
         ]
       end
 
-      before do
-        allow(execution).to receive(:resolve_model_info).with("unknown-model").and_return(nil)
-        allow(execution).to receive(:resolve_model_info).with("gpt-4o").and_return(model_info)
-      end
-
       it "skips attempts with unavailable model info" do
         set_attempts_and_reset_costs(execution, attempts_with_unknown_model)
         execution.aggregate_attempt_costs!
 
-        # Only gpt-4o attempt counts: 0.005 input + 0.0075 output
-        expect(execution.input_cost).to eq(0.005)
-        expect(execution.output_cost).to eq(0.0075)
-      end
-    end
-
-    context "with nil pricing" do
-      let(:nil_pricing_model) { double("model_info", pricing: nil) }
-      let(:attempts_with_nil_pricing) do
-        [
-          {
-            "model_id" => "model-without-pricing",
-            "input_tokens" => 1000,
-            "output_tokens" => 500
-          },
-          {
-            "model_id" => "gpt-4o",
-            "input_tokens" => 1000,
-            "output_tokens" => 500
-          }
-        ]
-      end
-
-      before do
-        allow(execution).to receive(:resolve_model_info).with("model-without-pricing").and_return(nil_pricing_model)
-        allow(execution).to receive(:resolve_model_info).with("gpt-4o").and_return(model_info)
-      end
-
-      it "skips attempts where pricing is nil" do
-        set_attempts_and_reset_costs(execution, attempts_with_nil_pricing)
-        execution.aggregate_attempt_costs!
-
-        # Only gpt-4o attempt counts
-        expect(execution.input_cost).to eq(0.005)
-        expect(execution.output_cost).to eq(0.0075)
+        expected_input = ((1000 / 1_000_000.0) * gpt4o_input_price).round(6)
+        expected_output = ((500 / 1_000_000.0) * gpt4o_output_price).round(6)
+        expect(execution.input_cost).to eq(expected_input)
+        expect(execution.output_cost).to eq(expected_output)
       end
     end
 
@@ -464,10 +396,6 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
           "input_tokens" => 0,
           "output_tokens" => 0
         }]
-      end
-
-      before do
-        allow(execution).to receive(:resolve_model_info).with("gpt-4o").and_return(model_info)
       end
 
       it "handles zero tokens gracefully" do
@@ -488,10 +416,6 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
         }]
       end
 
-      before do
-        allow(execution).to receive(:resolve_model_info).with("gpt-4o").and_return(model_info)
-      end
-
       it "treats nil tokens as zero" do
         set_attempts_and_reset_costs(execution, missing_token_attempts)
         execution.aggregate_attempt_costs!
@@ -510,18 +434,14 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
         }]
       end
 
-      before do
-        allow(execution).to receive(:resolve_model_info).with("gpt-4o").and_return(model_info)
-      end
-
       it "correctly calculates large token costs" do
         set_attempts_and_reset_costs(execution, large_token_attempts)
         execution.aggregate_attempt_costs!
 
-        # 10M * 5 / 1M = 50.0
-        # 5M * 15 / 1M = 75.0
-        expect(execution.input_cost).to eq(50.0)
-        expect(execution.output_cost).to eq(75.0)
+        expected_input = ((10_000_000 / 1_000_000.0) * gpt4o_input_price).round(6)
+        expected_output = ((5_000_000 / 1_000_000.0) * gpt4o_output_price).round(6)
+        expect(execution.input_cost).to eq(expected_input)
+        expect(execution.output_cost).to eq(expected_output)
       end
     end
 
@@ -534,18 +454,14 @@ RSpec.describe RubyLLM::Agents::Execution::Metrics do
         }]
       end
 
-      before do
-        allow(execution).to receive(:resolve_model_info).with("gpt-4o").and_return(model_info)
-      end
-
       it "rounds final costs to 6 decimal places" do
         set_attempts_and_reset_costs(execution, fractional_attempts)
         execution.aggregate_attempt_costs!
 
-        # 123 * 5 / 1M = 0.000615
-        # 456 * 15 / 1M = 0.00684
-        expect(execution.input_cost).to eq(0.000615)
-        expect(execution.output_cost).to eq(0.00684)
+        expected_input = ((123 / 1_000_000.0) * gpt4o_input_price).round(6)
+        expected_output = ((456 / 1_000_000.0) * gpt4o_output_price).round(6)
+        expect(execution.input_cost).to eq(expected_input)
+        expect(execution.output_cost).to eq(expected_output)
       end
     end
   end

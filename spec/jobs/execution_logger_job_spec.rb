@@ -39,9 +39,12 @@ RSpec.describe RubyLLM::Agents::ExecutionLoggerJob, type: :job do
 
     context "with token data" do
       it "calculates costs" do
-        expect_any_instance_of(RubyLLM::Agents::Execution).to receive(:calculate_costs!)
-
         described_class.new.perform(execution_data)
+        execution = RubyLLM::Agents::Execution.last
+
+        expect(execution.input_cost).to be_present
+        expect(execution.output_cost).to be_present
+        expect(execution.total_cost).to be > 0
       end
     end
 
@@ -51,17 +54,33 @@ RSpec.describe RubyLLM::Agents::ExecutionLoggerJob, type: :job do
       end
 
       it "does not calculate costs" do
-        expect_any_instance_of(RubyLLM::Agents::Execution).not_to receive(:calculate_costs!)
-
         described_class.new.perform(execution_data_no_tokens)
+        execution = RubyLLM::Agents::Execution.last
+
+        expect(execution.input_cost).to be_nil
+        expect(execution.output_cost).to be_nil
       end
     end
   end
 
   describe "anomaly detection" do
+    # Captures Rails log output during a block without mocking the logger
+    def capture_log_output
+      original_logger = Rails.logger
+      log_output = StringIO.new
+      Rails.logger = ActiveSupport::Logger.new(log_output)
+      yield
+      log_output.string
+    ensure
+      Rails.logger = original_logger
+    end
+
     context "with high cost execution" do
       let(:expensive_data) do
-        execution_data.merge(total_cost: 10.0)
+        # Use high token counts so real cost calculation exceeds the $5 threshold
+        # gpt-4 pricing: $30/M input, $60/M output
+        # 100K input × $30/M = $3, 50K output × $60/M = $3, total = $6
+        execution_data.merge(input_tokens: 100_000, output_tokens: 50_000, total_tokens: 150_000)
       end
 
       before do
@@ -69,8 +88,10 @@ RSpec.describe RubyLLM::Agents::ExecutionLoggerJob, type: :job do
       end
 
       it "logs anomaly warning" do
-        expect(Rails.logger).to receive(:warn).with(/Execution anomaly detected/)
-        described_class.new.perform(expensive_data)
+        output = capture_log_output do
+          described_class.new.perform(expensive_data)
+        end
+        expect(output).to include("Execution anomaly detected")
       end
     end
 
@@ -84,8 +105,10 @@ RSpec.describe RubyLLM::Agents::ExecutionLoggerJob, type: :job do
       end
 
       it "logs anomaly warning" do
-        expect(Rails.logger).to receive(:warn).with(/Execution anomaly detected/)
-        described_class.new.perform(slow_data)
+        output = capture_log_output do
+          described_class.new.perform(slow_data)
+        end
+        expect(output).to include("Execution anomaly detected")
       end
     end
 
@@ -95,8 +118,10 @@ RSpec.describe RubyLLM::Agents::ExecutionLoggerJob, type: :job do
       end
 
       it "logs anomaly warning" do
-        expect(Rails.logger).to receive(:warn).with(/Execution anomaly detected/)
-        described_class.new.perform(failed_data)
+        output = capture_log_output do
+          described_class.new.perform(failed_data)
+        end
+        expect(output).to include("Execution anomaly detected")
       end
     end
   end

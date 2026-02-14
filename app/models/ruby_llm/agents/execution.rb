@@ -359,14 +359,18 @@ module RubyLLM
 
       # Resolves model info for cost calculation
       #
+      # Uses Models.find (local registry lookup) rather than Models.resolve
+      # because cost calculation only needs pricing data, not a provider instance.
+      # Models.resolve requires API keys to instantiate the provider, which may
+      # not be available in background jobs or instrumentation contexts.
+      #
       # @param lookup_model_id [String, nil] The model identifier (defaults to self.model_id)
       # @return [Object, nil] Model info or nil
       def resolve_model_info(lookup_model_id = nil)
         lookup_model_id ||= model_id
         return nil unless lookup_model_id
 
-        model, _provider = RubyLLM::Models.resolve(lookup_model_id)
-        model
+        RubyLLM::Models.find(lookup_model_id)
       rescue StandardError
         nil
       end
