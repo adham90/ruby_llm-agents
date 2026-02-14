@@ -52,6 +52,17 @@ module RubyLlmAgents
       template "initializer.rb.tt", "config/initializers/ruby_llm_agents.rb"
     end
 
+    def create_ruby_llm_initializer
+      return if options[:skip_initializer]
+
+      initializer_path = "config/initializers/ruby_llm.rb"
+      if File.exist?(File.join(destination_root, initializer_path))
+        say_status :skip, initializer_path, :yellow
+      else
+        template "ruby_llm_initializer.rb.tt", initializer_path
+      end
+    end
+
     def create_directory_structure
       say_status :create, "agents/ directory structure", :green
 
@@ -108,9 +119,11 @@ module RubyLlmAgents
       say "Skill files (*.md) help AI coding assistants understand how to use this gem."
       say ""
       say "Next steps:"
-      say "  1. Run migrations: rails db:migrate"
-      say "  2. Generate an agent: rails generate ruby_llm_agents:agent MyAgent query:required"
-      say "  3. Access the dashboard at: /agents"
+      say "  1. Set your API keys in ENV (OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY)"
+      say "     or edit config/initializers/ruby_llm.rb"
+      say "  2. Run migrations: rails db:migrate"
+      say "  3. Generate an agent: rails generate ruby_llm_agents:agent MyAgent query:required"
+      say "  4. Access the dashboard at: /agents"
       say ""
       say "Generator commands:"
       say "  rails generate ruby_llm_agents:agent CustomerSupport query:required"

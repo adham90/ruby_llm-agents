@@ -25,9 +25,17 @@ module RubyLLM
       # @param execution_data [Hash] Execution attributes from instrumentation
       # @return [void]
       def perform(execution_data)
+        # Extract detail data before filtering (stored in separate table)
+        detail_data = execution_data.delete(:_detail_data) || execution_data.delete("_detail_data")
+
         # Filter to only known attributes to prevent schema mismatches
         filtered_data = filter_known_attributes(execution_data)
         execution = Execution.create!(filtered_data)
+
+        # Create detail record if present
+        if detail_data && detail_data.values.any? { |v| v.present? && v != {} && v != [] }
+          execution.create_detail!(detail_data)
+        end
 
         # Calculate costs if token data is available
         if execution.input_tokens && execution.output_tokens
