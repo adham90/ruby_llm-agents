@@ -5,94 +5,69 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.0.0] - 2026-02-14
 
 ### Added
 
-- **`before_call` and `after_call` callbacks for conversation agents** - Agent-level hooks that run before and after LLM calls. Use method names or blocks. Callbacks can mutate context, raise to block execution, or inspect responses. Follows the same pattern as image pipeline's `before_pipeline`/`after_pipeline` hooks.
+- **`before_call` and `after_call` callbacks** - Agent-level hooks that run before and after LLM calls. Use method names or blocks. Callbacks can mutate context, raise to block execution, or inspect responses.
+- **Simplified DSL with prompt-centric syntax** - New inline prompt syntax for more concise agent definitions.
+- **Execution details table** - Large payloads (prompts, responses, tool calls, error messages) split into a separate `ruby_llm_agents_execution_details` table for better query performance. The executions table stays lean for analytics.
+- **Tenants table** - New `ruby_llm_agents_tenants` table with DB counter columns for efficient budget tracking (daily/monthly cost, tokens, executions, errors).
+- **Database-agnostic metadata JSON queries** - Helper methods (`metadata_present`, `metadata_true`, `metadata_value`) for querying JSON metadata fields across SQLite and PostgreSQL.
+- **Class-level schema DSL** - Define response schemas directly in agent classes.
+- **Upgrade generator** - Run `rails generate ruby_llm_agents:upgrade` to automatically migrate from v1.x to v2.0 schema.
+- **Single `on_alert` handler** - Simplified alert system replacing the built-in notifiers.
+
+### Changed
+
+- **BREAKING: Schema split** - Execution detail columns (`system_prompt`, `user_prompt`, `response`, `error_message`, `tool_calls`, `attempts`, `fallback_chain`, `parameters`, `routed_to`, `classification_result`, `cached_at`, `cache_creation_tokens`, `messages_summary`) moved from `executions` to `execution_details`. Existing code using these fields on Execution instances still works via delegation.
+- **BREAKING: Niche fields moved to metadata JSON** - `time_to_first_token_ms`, `rate_limited`, `retryable`, `fallback_reason`, `span_id`, `response_cache_key` are now stored in the `metadata` JSON column with getter/setter methods.
+- **BREAKING: Renamed `execution_metadata` to `metadata`** throughout the codebase and database.
+- **Tenant budget tracking** uses DB counter columns instead of querying executions, significantly improving performance.
+- **LLMTenant concern** now uses `foreign_key: :tenant_id` instead of polymorphic `as: :tenant_record` for the executions association.
+- **Dashboard redesigned** with compact layout, sortable columns on agents/tenants, and improved styling.
+- Normalized code style with frozen string literals throughout the codebase.
 
 ### Removed
 
-- **BREAKING: Removed `version` DSL method** - The `version` DSL method has been removed from all agent types. This method was originally intended for cache invalidation but added complexity without significant benefit. Cache keys are now content-based, automatically generated from a hash of your prompts and parameters. This means caches invalidate automatically when you change your prompts—no manual version bumping required. If you need traceability, use `execution_metadata` instead (see migration guide below). The `agent_version` column is no longer written to; existing data will remain. The `by_version` scope and version filtering in the dashboard have also been removed.
+- **BREAKING: Removed workflow orchestration** - The workflow subsystem (`Workflow`, `WorkflowStep`, `WorkflowDiagram`, etc.) has been removed entirely. Use dedicated workflow gems (e.g., Temporal, Sidekiq) for orchestration.
+- **BREAKING: Removed `version` DSL method** - Cache keys are now content-based and auto-invalidate when prompts change. Use `metadata` for traceability.
+- **BREAKING: Removed `ApiConfiguration` table** - API keys should be configured via environment variables. Per-tenant keys available via `llm_tenant` DSL.
+- **BREAKING: Removed built-in moderation system** - Use `before_call` hook for custom moderation.
+- **BREAKING: Removed built-in PII redaction** - Use `before_call` hook for custom redaction.
+- **BREAKING: Removed image content policy** - Implement content filtering in your application layer.
+- Removed `agent_version` column from executions.
+- Removed workflow columns from executions.
 
-- **BREAKING: Removed ApiConfiguration table and model** - The `ruby_llm_agents_api_configurations` table has been removed entirely. API keys should now be configured via environment variables and the `ruby_llm` gem configuration, following 12-factor app principles. Per-tenant API keys can still be provided via the `llm_tenant` DSL's `api_keys:` option on your model.
+### Fixed
 
-- **BREAKING: Removed built-in moderation system** - The `moderation` DSL, `Moderator` class, `ModerationResult`, and `ModerationError` have been removed. Use the new `before_call` hook to implement custom moderation logic with your preferred moderation service.
-
-- **BREAKING: Removed built-in PII redaction** - The `Redactor` utility and redaction configuration options have been removed. Use the new `before_call` hook to implement custom redaction logic.
-
-- **BREAKING: Removed image content policy** - The `content_policy` DSL for image generators, editors, and transformers has been removed. Implement custom content filtering in your application layer if needed.
+- Agent show pages crashing due to analytics querying removed columns as SQL columns.
+- `with_parameter` scope now correctly queries the `execution_details` table.
+- Migration and upgrade path for both fresh installs and version upgrades.
+- LLMTenant executions association using correct `tenant_id` foreign key.
 
 ### Migration Guide
 
-**If you were using the `version` DSL:**
+**Upgrading from v1.x:**
 
-1. Remove `version "X.Y"` calls from your agent classes—they'll now raise an error
-2. Cache invalidation is now automatic (content-based). When you change prompts, the cache key changes automatically
-3. If you need traceability (e.g., to track which "version" of an agent produced a result), use `execution_metadata`:
-   ```ruby
-   class ApplicationAgent < RubyLLM::Agents::BaseAgent
-     def execution_metadata
-       {
-         git_sha: ENV['GIT_SHA'] || `git rev-parse --short HEAD 2>/dev/null`.strip.presence,
-         deploy_version: ENV['DEPLOY_VERSION']
-       }.compact
-     end
-   end
-   ```
-4. The `agent_version` column can optionally be removed (safe to leave in place):
-   ```ruby
-   class RemoveAgentVersionFromExecutions < ActiveRecord::Migration[7.1]
-     def change
-       safety_assured do
-         remove_index :ruby_llm_agents_executions, [:agent_type, :agent_version], if_exists: true
-         remove_column :ruby_llm_agents_executions, :agent_version, :string
-       end
-     end
-   end
-   ```
-
-**If you were using the `ApiConfiguration` model:**
-
-1. Export any API keys stored in the database
-2. Set them as environment variables instead:
+1. Run the upgrade generator:
    ```bash
-   export OPENAI_API_KEY="sk-..."
-   export ANTHROPIC_API_KEY="sk-ant-..."
-   ```
-3. Configure in your initializer:
-   ```ruby
-   # config/initializers/ruby_llm.rb
-   RubyLLM.configure do |config|
-     config.openai_api_key = ENV["OPENAI_API_KEY"]
-     config.anthropic_api_key = ENV["ANTHROPIC_API_KEY"]
-   end
-   ```
-4. Run the migration to drop the table:
-   ```ruby
-   class RemoveApiConfigurations < ActiveRecord::Migration[7.1]
-     def up
-       drop_table :ruby_llm_agents_api_configurations, if_exists: true
-     end
-   end
+   rails generate ruby_llm_agents:upgrade
+   rails db:migrate
    ```
 
-For per-tenant API keys, use the `llm_tenant` DSL:
-```ruby
-class Organization < ApplicationRecord
-  include RubyLLM::Agents::LLMTenant
+2. The generator will:
+   - Create the `execution_details` table and migrate data from `executions`
+   - Create the `tenants` table (if not already present)
+   - Remove old columns from `executions`
 
-  encrypts :openai_api_key, :anthropic_api_key
+3. **If you were using `version` DSL:** Remove all `version "X.Y"` calls. Use `metadata` for traceability.
 
-  llm_tenant(
-    id: :slug,
-    api_keys: {
-      openai: :openai_api_key,
-      anthropic: :anthropic_api_key
-    }
-  )
-end
-```
+4. **If you were using `ApiConfiguration`:** Move API keys to environment variables.
+
+5. **If you were using moderation/redaction:** Replace with `before_call`/`after_call` hooks.
+
+6. **If you were using workflows:** Migrate to a dedicated workflow library.
 
 ## [1.3.4] - 2026-01-29
 
@@ -557,6 +532,7 @@ end
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[2.0.0]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.4...v2.0.0
 [1.3.4]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.3...v1.3.4
 [1.3.3]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.2...v1.3.3
 [1.3.2]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.1...v1.3.2
