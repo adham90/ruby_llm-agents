@@ -57,6 +57,18 @@ RSpec.describe RubyLlmAgents::InstallGenerator, type: :generator do
       expect(content).to include("Dashboard Authentication")
       expect(content).to include("config.basic_auth_username")
     end
+
+    it "contains API keys section" do
+      content = file_content("config/initializers/ruby_llm_agents.rb")
+      expect(content).to include("LLM Provider API Keys")
+      expect(content).to include("config.openai_api_key")
+      expect(content).to include("config.anthropic_api_key")
+      expect(content).to include("config.gemini_api_key")
+    end
+
+    it "does not create a separate ruby_llm.rb initializer" do
+      expect(file_exists?("config/initializers/ruby_llm.rb")).to be false
+    end
   end
 
   describe "application_agent.rb content" do

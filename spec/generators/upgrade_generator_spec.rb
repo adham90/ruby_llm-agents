@@ -299,4 +299,44 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
       expect(migration_files).to be_empty
     end
   end
+
+  describe "config consolidation hint" do
+    # Helper to capture stdout
+    def capture_stdout
+      original_stdout = $stdout
+      $stdout = StringIO.new
+      yield
+      $stdout.string
+    ensure
+      $stdout = original_stdout
+    end
+
+    before do
+      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
+        .with(:ruby_llm_agents_executions)
+        .and_return(true)
+      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
+        .with(:ruby_llm_agents_execution_details)
+        .and_return(true)
+      allow(ActiveRecord::Base.connection).to receive(:column_exists?)
+        .and_return(false)
+    end
+
+    it "shows hint when both ruby_llm.rb and ruby_llm_agents.rb exist" do
+      FileUtils.mkdir_p(file("config/initializers"))
+      File.write(file("config/initializers/ruby_llm.rb"), "RubyLLM.configure {}")
+      File.write(file("config/initializers/ruby_llm_agents.rb"), "RubyLLM::Agents.configure {}")
+
+      output = capture_stdout { run_generator }
+      expect(output).to include("consolidate your API key configuration")
+    end
+
+    it "skips hint when only ruby_llm_agents.rb exists" do
+      FileUtils.mkdir_p(file("config/initializers"))
+      File.write(file("config/initializers/ruby_llm_agents.rb"), "RubyLLM::Agents.configure {}")
+
+      output = capture_stdout { run_generator }
+      expect(output).not_to include("consolidate")
+    end
+  end
 end
