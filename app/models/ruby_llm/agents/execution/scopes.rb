@@ -136,15 +136,25 @@ module RubyLLM
           # @!group Parameter Scopes
 
           # @!method with_parameter(key, value = nil)
-          #   Filters by JSONB parameter key/value
+          #   Filters by parameter key/value in the execution_details table
           #   @param key [String, Symbol] Parameter key to check
           #   @param value [Object, nil] Optional value to match
           #   @return [ActiveRecord::Relation]
           scope :with_parameter, ->(key, value = nil) do
-            if value
-              where("parameters @> ?", { key => value }.to_json)
+            detail_table = RubyLLM::Agents::ExecutionDetail.table_name
+            joined = joins(:detail)
+            if connection.adapter_name.downcase.include?("sqlite")
+              if value
+                joined.where("json_extract(#{detail_table}.parameters, ?) = ?", "$.#{key}", value.to_s)
+              else
+                joined.where("json_extract(#{detail_table}.parameters, ?) IS NOT NULL", "$.#{key}")
+              end
             else
-              where("parameters ? :key", key: key.to_s)
+              if value
+                joined.where("#{detail_table}.parameters @> ?", { key => value }.to_json)
+              else
+                joined.where("#{detail_table}.parameters ? :key", key: key.to_s)
+              end
             end
           end
 
