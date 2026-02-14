@@ -613,27 +613,12 @@ module RubyLLM
         input_tokens = context.input_tokens || 0
         output_tokens = context.output_tokens || 0
 
-        input_price = extract_model_price(model_info, :input_price)
-        output_price = extract_model_price(model_info, :output_price)
+        input_price = model_info.pricing&.text_tokens&.input || 0
+        output_price = model_info.pricing&.text_tokens&.output || 0
 
         context.input_cost = (input_tokens / 1_000_000.0) * input_price
         context.output_cost = (output_tokens / 1_000_000.0) * output_price
         context.total_cost = (context.input_cost + context.output_cost).round(6)
-      end
-
-      # Extracts price from model info (supports both hash and object access)
-      #
-      # @param model_info [Hash, Object] Model info
-      # @param key [Symbol] The price key
-      # @return [Float] The price, or 0 if not found
-      def extract_model_price(model_info, key)
-        if model_info.respond_to?(key)
-          model_info.send(key) || 0
-        elsif model_info.respond_to?(:[])
-          model_info[key] || 0
-        else
-          0
-        end
       end
 
       # Finds model pricing info

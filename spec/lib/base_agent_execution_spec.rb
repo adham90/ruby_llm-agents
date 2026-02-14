@@ -439,9 +439,9 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
 
     context "when model info is available" do
       before do
-        model_info = double("ModelInfo")
-        allow(model_info).to receive(:input_price).and_return(0.01) # $0.01 per 1M tokens
-        allow(model_info).to receive(:output_price).and_return(0.03) # $0.03 per 1M tokens
+        text_tokens = double("text_tokens", input: 0.01, output: 0.03)
+        pricing = double("pricing", text_tokens: text_tokens)
+        model_info = double("ModelInfo", pricing: pricing)
         allow(RubyLLM::Models).to receive(:find).with("gpt-4o").and_return(model_info)
       end
 
@@ -463,6 +463,92 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
         agent.send(:calculate_costs, mock_response, context)
 
         expect(context.total_cost).to be_within(0.000001).of(0.000025)
+      end
+    end
+
+    context "with realistic pricing (Claude Haiku-like)" do
+      before do
+        text_tokens = double("text_tokens", input: 1.0, output: 5.0)
+        pricing = double("pricing", text_tokens: text_tokens)
+        model_info = double("ModelInfo", pricing: pricing)
+        allow(RubyLLM::Models).to receive(:find).with("gpt-4o").and_return(model_info)
+      end
+
+      it "calculates non-trivial costs correctly" do
+        agent.send(:calculate_costs, mock_response, context)
+
+        # 1000 tokens * $1.00/1M = $0.001
+        expect(context.input_cost).to be_within(0.0000001).of(0.001)
+        # 500 tokens * $5.00/1M = $0.0025
+        expect(context.output_cost).to be_within(0.0000001).of(0.0025)
+        expect(context.total_cost).to be_within(0.0000001).of(0.0035)
+      end
+    end
+
+    context "when tokens are zero" do
+      before do
+        text_tokens = double("text_tokens", input: 1.0, output: 5.0)
+        pricing = double("pricing", text_tokens: text_tokens)
+        model_info = double("ModelInfo", pricing: pricing)
+        allow(RubyLLM::Models).to receive(:find).with("gpt-4o").and_return(model_info)
+        context.input_tokens = 0
+        context.output_tokens = 0
+      end
+
+      it "returns zero costs" do
+        agent.send(:calculate_costs, mock_response, context)
+
+        expect(context.input_cost).to eq(0.0)
+        expect(context.output_cost).to eq(0.0)
+        expect(context.total_cost).to eq(0.0)
+      end
+    end
+
+    context "when pricing object is nil" do
+      before do
+        model_info = double("ModelInfo", pricing: nil)
+        allow(RubyLLM::Models).to receive(:find).with("gpt-4o").and_return(model_info)
+      end
+
+      it "defaults costs to zero" do
+        agent.send(:calculate_costs, mock_response, context)
+
+        expect(context.input_cost).to eq(0.0)
+        expect(context.output_cost).to eq(0.0)
+        expect(context.total_cost).to eq(0.0)
+      end
+    end
+
+    context "when text_tokens is nil" do
+      before do
+        pricing = double("pricing", text_tokens: nil)
+        model_info = double("ModelInfo", pricing: pricing)
+        allow(RubyLLM::Models).to receive(:find).with("gpt-4o").and_return(model_info)
+      end
+
+      it "defaults costs to zero" do
+        agent.send(:calculate_costs, mock_response, context)
+
+        expect(context.input_cost).to eq(0.0)
+        expect(context.output_cost).to eq(0.0)
+        expect(context.total_cost).to eq(0.0)
+      end
+    end
+
+    context "with partial pricing (output is nil)" do
+      before do
+        text_tokens = double("text_tokens", input: 1.0, output: nil)
+        pricing = double("pricing", text_tokens: text_tokens)
+        model_info = double("ModelInfo", pricing: pricing)
+        allow(RubyLLM::Models).to receive(:find).with("gpt-4o").and_return(model_info)
+      end
+
+      it "calculates input cost and defaults output to zero" do
+        agent.send(:calculate_costs, mock_response, context)
+
+        expect(context.input_cost).to be_within(0.0000001).of(0.001)
+        expect(context.output_cost).to eq(0.0)
+        expect(context.total_cost).to be_within(0.0000001).of(0.001)
       end
     end
 
@@ -555,37 +641,6 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
     end
   end
 
-  describe "#extract_model_price" do
-    it "extracts price from object with method" do
-      model_info = double("ModelInfo")
-      allow(model_info).to receive(:input_price).and_return(0.01)
-
-      result = agent.send(:extract_model_price, model_info, :input_price)
-      expect(result).to eq(0.01)
-    end
-
-    it "extracts price from hash" do
-      model_info = { input_price: 0.01 }
-
-      result = agent.send(:extract_model_price, model_info, :input_price)
-      expect(result).to eq(0.01)
-    end
-
-    it "returns 0 when price is nil" do
-      model_info = double("ModelInfo")
-      allow(model_info).to receive(:input_price).and_return(nil)
-
-      result = agent.send(:extract_model_price, model_info, :input_price)
-      expect(result).to eq(0)
-    end
-
-    it "returns 0 when method not available" do
-      model_info = Object.new
-
-      result = agent.send(:extract_model_price, model_info, :input_price)
-      expect(result).to eq(0)
-    end
-  end
 
   describe "#result_thinking_data" do
     it "returns empty hash when no thinking" do
