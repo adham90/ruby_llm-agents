@@ -190,10 +190,12 @@ module RubyLLM
           # @!method rate_limited
           #   Returns executions that were rate limited
           #   @return [ActiveRecord::Relation]
-          scope :with_fallback, -> { where.not(fallback_reason: nil) }
-          scope :retryable_errors, -> { where(retryable: true) }
-          scope :rate_limited, -> { where(rate_limited: true) }
-          scope :by_fallback_reason, ->(reason) { where(fallback_reason: reason) }
+          #
+          # Note: fallback_reason, retryable, and rate_limited are stored in metadata JSON
+          scope :with_fallback, -> { metadata_present("fallback_reason") }
+          scope :retryable_errors, -> { metadata_true("retryable") }
+          scope :rate_limited, -> { metadata_true("rate_limited") }
+          scope :by_fallback_reason, ->(reason) { metadata_value("fallback_reason", reason) }
 
           # @!endgroup
 
@@ -263,6 +265,47 @@ module RubyLLM
         # They can be called on scoped relations.
 
         class_methods do
+          # Database-agnostic JSON metadata queries
+          # These fields (fallback_reason, retryable, rate_limited, etc.) are stored
+          # in the metadata JSON column rather than as direct columns.
+
+          # Queries for metadata key presence (IS NOT NULL)
+          #
+          # @param key [String] The metadata key
+          # @return [ActiveRecord::Relation]
+          def metadata_present(key)
+            if connection.adapter_name.downcase.include?("sqlite")
+              where("json_extract(metadata, ?) IS NOT NULL", "$.#{key}")
+            else
+              where("metadata->>? IS NOT NULL", key.to_s)
+            end
+          end
+
+          # Queries for metadata boolean value being true
+          #
+          # @param key [String] The metadata key
+          # @return [ActiveRecord::Relation]
+          def metadata_true(key)
+            if connection.adapter_name.downcase.include?("sqlite")
+              where("json_extract(metadata, ?) = 1", "$.#{key}")
+            else
+              where("metadata @> ?", { key.to_s => true }.to_json)
+            end
+          end
+
+          # Queries for metadata key matching a specific value
+          #
+          # @param key [String] The metadata key
+          # @param value [Object] The value to match
+          # @return [ActiveRecord::Relation]
+          def metadata_value(key, value)
+            if connection.adapter_name.downcase.include?("sqlite")
+              where("json_extract(metadata, ?) = ?", "$.#{key}", value.to_s)
+            else
+              where("metadata->>? = ?", key.to_s, value.to_s)
+            end
+          end
+
           # Returns sum of total_cost for the current scope
           #
           # @return [Float, nil] Total cost in USD

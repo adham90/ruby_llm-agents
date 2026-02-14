@@ -474,9 +474,18 @@ module RubyLLM
 
           # Average time to first token for streaming executions
           #
+          # time_to_first_token_ms is stored in metadata JSON, so we use
+          # Ruby-level calculation instead of SQL aggregation.
+          #
           # @return [Integer, nil] Average TTFT in milliseconds, or nil if no data
           def avg_time_to_first_token
-            streaming.where.not(time_to_first_token_ms: nil).average(:time_to_first_token_ms)&.round(0)
+            ttft_values = streaming
+              .where("metadata IS NOT NULL")
+              .pluck(:metadata)
+              .filter_map { |m| m&.dig("time_to_first_token_ms") }
+            return nil if ttft_values.empty?
+
+            (ttft_values.sum.to_f / ttft_values.size).round(0)
           end
 
           # Finish reason distribution
@@ -488,9 +497,11 @@ module RubyLLM
 
           # Rate limited execution count
           #
+          # rate_limited is stored in metadata JSON
+          #
           # @return [Integer] Number of executions that were rate limited
           def rate_limited_count
-            where(rate_limited: true).count
+            metadata_true("rate_limited").count
           end
 
           # Rate limited rate percentage
