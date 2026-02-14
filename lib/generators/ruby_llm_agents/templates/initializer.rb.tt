@@ -6,6 +6,30 @@
 
 RubyLLM::Agents.configure do |config|
   # ============================================
+  # LLM Provider API Keys
+  # ============================================
+  # Configure at least one provider. Set these in your environment
+  # or replace ENV[] calls with your keys directly.
+
+  # config.openai_api_key = ENV["OPENAI_API_KEY"]
+  # config.anthropic_api_key = ENV["ANTHROPIC_API_KEY"]
+  # config.gemini_api_key = ENV["GOOGLE_API_KEY"]
+
+  # Additional providers:
+  # config.deepseek_api_key = ENV["DEEPSEEK_API_KEY"]
+  # config.openrouter_api_key = ENV["OPENROUTER_API_KEY"]
+  # config.mistral_api_key = ENV["MISTRAL_API_KEY"]
+  # config.xai_api_key = ENV["XAI_API_KEY"]
+
+  # Custom endpoints (e.g., Azure OpenAI, local Ollama):
+  # config.openai_api_base = "https://your-resource.openai.azure.com"
+  # config.ollama_api_base = "http://localhost:11434"
+
+  # Connection settings:
+  # config.request_timeout = 120
+  # config.max_retries = 3
+
+  # ============================================
   # Model Defaults
   # ============================================
 

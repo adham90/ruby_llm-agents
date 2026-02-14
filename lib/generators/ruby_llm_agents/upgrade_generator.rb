@@ -60,6 +60,28 @@ module RubyLlmAgents
       )
     end
 
+    def suggest_config_consolidation
+      ruby_llm_initializer = File.join(destination_root, "config/initializers/ruby_llm.rb")
+      agents_initializer = File.join(destination_root, "config/initializers/ruby_llm_agents.rb")
+
+      return unless File.exist?(ruby_llm_initializer) && File.exist?(agents_initializer)
+
+      say ""
+      say "Optional: You can now consolidate your API key configuration.", :yellow
+      say ""
+      say "Move your API keys from config/initializers/ruby_llm.rb"
+      say "into config/initializers/ruby_llm_agents.rb:"
+      say ""
+      say "  RubyLLM::Agents.configure do |config|"
+      say "    config.openai_api_key = ENV['OPENAI_API_KEY']"
+      say "    config.anthropic_api_key = ENV['ANTHROPIC_API_KEY']"
+      say "    # ... rest of your agent config"
+      say "  end"
+      say ""
+      say "Then delete config/initializers/ruby_llm.rb if it only contained API keys."
+      say ""
+    end
+
     def show_post_upgrade_message
       say ""
       say "RubyLLM::Agents upgrade complete!", :green

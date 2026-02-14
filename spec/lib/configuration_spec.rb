@@ -802,4 +802,62 @@ RSpec.describe RubyLLM::Agents::Configuration do
       expect(config.path_for(:image, "generators")).to eq("app/llm/image/generators")
     end
   end
+
+  describe "API key forwarding" do
+    before do
+      # Save original values to restore after each test
+      @original_openai = RubyLLM.config.openai_api_key
+      @original_anthropic = RubyLLM.config.anthropic_api_key
+    end
+
+    after do
+      RubyLLM.config.openai_api_key = @original_openai
+      RubyLLM.config.anthropic_api_key = @original_anthropic
+    end
+
+    it "forwards openai_api_key to RubyLLM" do
+      config.openai_api_key = "sk-test-123"
+      expect(RubyLLM.config.openai_api_key).to eq("sk-test-123")
+    end
+
+    it "forwards anthropic_api_key to RubyLLM" do
+      config.anthropic_api_key = "sk-ant-test"
+      expect(RubyLLM.config.anthropic_api_key).to eq("sk-ant-test")
+    end
+
+    it "reads back from RubyLLM" do
+      RubyLLM.config.openai_api_key = "sk-direct"
+      expect(config.openai_api_key).to eq("sk-direct")
+    end
+
+    it "does not overwrite existing keys when not set" do
+      RubyLLM.config.openai_api_key = "sk-existing"
+      # Setting an unrelated config attribute should not touch API keys
+      config.default_model = "gpt-4o"
+      expect(RubyLLM.config.openai_api_key).to eq("sk-existing")
+    end
+
+    it "forwards request_timeout to RubyLLM" do
+      original = RubyLLM.config.request_timeout
+      config.request_timeout = 180
+      expect(RubyLLM.config.request_timeout).to eq(180)
+      RubyLLM.config.request_timeout = original
+    end
+
+    it "forwards openai_api_base to RubyLLM" do
+      original = RubyLLM.config.openai_api_base
+      config.openai_api_base = "https://custom.openai.com"
+      expect(RubyLLM.config.openai_api_base).to eq("https://custom.openai.com")
+      RubyLLM.config.openai_api_base = original
+    end
+
+    it "lists all forwarded attributes in FORWARDED_RUBY_LLM_ATTRIBUTES" do
+      attrs = described_class::FORWARDED_RUBY_LLM_ATTRIBUTES
+      expect(attrs).to include(:openai_api_key)
+      expect(attrs).to include(:anthropic_api_key)
+      expect(attrs).to include(:gemini_api_key)
+      expect(attrs).to include(:request_timeout)
+      expect(attrs).to include(:ollama_api_base)
+    end
+  end
 end

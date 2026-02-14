@@ -351,6 +351,45 @@ module RubyLLM
       #       max_value_length: 5000
       #     }
 
+      # API key and provider attributes forwarded to RubyLLM.
+      # These let users configure everything in one place through
+      # RubyLLM::Agents.configure instead of a separate RubyLLM.configure block.
+      FORWARDED_RUBY_LLM_ATTRIBUTES = %i[
+        openai_api_key
+        anthropic_api_key
+        gemini_api_key
+        deepseek_api_key
+        openrouter_api_key
+        bedrock_api_key
+        bedrock_secret_key
+        bedrock_session_token
+        bedrock_region
+        mistral_api_key
+        perplexity_api_key
+        xai_api_key
+        gpustack_api_key
+        openai_api_base
+        openai_organization_id
+        openai_project_id
+        gemini_api_base
+        gpustack_api_base
+        ollama_api_base
+        vertexai_project_id
+        vertexai_location
+        request_timeout
+        max_retries
+      ].freeze
+
+      FORWARDED_RUBY_LLM_ATTRIBUTES.each do |attr|
+        define_method(:"#{attr}=") do |value|
+          RubyLLM.config.public_send(:"#{attr}=", value)
+        end
+
+        define_method(attr) do
+          RubyLLM.config.public_send(attr)
+        end
+      end
+
       # Attributes without validation (simple accessors)
       attr_accessor :default_model,
                     :async_logging,
