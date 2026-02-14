@@ -71,6 +71,53 @@ module ChatMockHelpers
     mock
   end
 
+  # Build a real RubyLLM::Message response (no mocking)
+  # Uses the actual RubyLLM::Message constructor — no network calls needed
+  #
+  # @param content [String] The response content
+  # @param input_tokens [Integer] Number of input tokens
+  # @param output_tokens [Integer] Number of output tokens
+  # @param model_id [String] The model that generated the response
+  # @param tool_calls [Array, nil] Tool calls in the response
+  # @param thinking [RubyLLM::Thinking, Hash, nil] Thinking content
+  # @return [RubyLLM::Message] A real message object
+  def build_real_response(
+    content: "Test response",
+    input_tokens: 100,
+    output_tokens: 50,
+    model_id: "gpt-4o",
+    tool_calls: nil,
+    thinking: nil
+  )
+    RubyLLM::Message.new(
+      role: :assistant,
+      content: content,
+      model_id: model_id,
+      input_tokens: input_tokens,
+      output_tokens: output_tokens,
+      tool_calls: tool_calls,
+      thinking: thinking
+    )
+  end
+
+  # Build a Struct-based model info with custom pricing (for edge case tests)
+  def build_model_info_with_pricing(input_price:, output_price:)
+    text_tokens = Struct.new(:input, :output).new(input_price, output_price)
+    pricing = Struct.new(:text_tokens).new(text_tokens)
+    Struct.new(:pricing).new(pricing)
+  end
+
+  # Build a Struct-based model info with nil pricing
+  def build_model_info_nil_pricing
+    Struct.new(:pricing).new(nil)
+  end
+
+  # Build a Struct-based model info with nil text_tokens
+  def build_model_info_nil_text_tokens
+    pricing = Struct.new(:text_tokens).new(nil)
+    Struct.new(:pricing).new(pricing)
+  end
+
   # Build a mock chat client that returns chunks for streaming
   #
   # @param chunks [Array<Hash>] Array of chunk data to stream

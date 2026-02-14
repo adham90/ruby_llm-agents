@@ -33,8 +33,8 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
   end
 
   describe "#execute" do
-    let(:mock_response) { build_mock_response(content: "test response", input_tokens: 100, output_tokens: 50) }
-    let(:mock_chat) { build_mock_chat_client(response: mock_response) }
+    let(:real_response) { build_real_response(content: "test response", input_tokens: 100, output_tokens: 50) }
+    let(:mock_chat) { build_mock_chat_client(response: real_response) }
 
     before do
       stub_ruby_llm_chat(mock_chat)
@@ -69,11 +69,8 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
     end
 
     it "processes response content" do
-      hash_response = build_mock_response(
-        content: { "key" => "value", "number" => 42 },
-        input_tokens: 100,
-        output_tokens: 50
-      )
+      hash_response = build_real_response(input_tokens: 100, output_tokens: 50)
+      hash_response.content = { "key" => "value", "number" => 42 }
       mock_chat_with_hash = build_mock_chat_client(response: hash_response)
       stub_ruby_llm_chat(mock_chat_with_hash)
 
@@ -135,7 +132,7 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
       end
 
       it "allows instance method to override class-level schema" do
-        instance_schema = double("InstanceSchema")
+        instance_schema = Struct.new(:type).new("custom_override")
         override_class = Class.new(schema_agent_class) do
           define_singleton_method(:name) { "OverrideSchemaAgent" }
           define_method(:schema) { instance_schema }
@@ -191,7 +188,7 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
     end
 
     context "with tools" do
-      let(:mock_tool) { double("Tool", name: "search") }
+      let(:mock_tool) { Struct.new(:name).new("search") }
 
       let(:tools_agent_class) do
         tool = mock_tool
@@ -267,8 +264,8 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
   end
 
   describe "#execute_llm_call" do
-    let(:mock_response) { build_mock_response }
-    let(:mock_chat) { build_mock_chat_client(response: mock_response) }
+    let(:real_response) { build_real_response }
+    let(:mock_chat) { build_mock_chat_client(response: real_response) }
     let(:context) do
       RubyLLM::Agents::Pipeline::Context.new(
         input: "test query",
@@ -295,7 +292,7 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
 
     it "respects timeout setting" do
       slow_chat = build_mock_chat_client
-      allow(slow_chat).to receive(:ask) { sleep 0.1; mock_response }
+      allow(slow_chat).to receive(:ask) { sleep 0.1; real_response }
 
       short_timeout_class = Class.new(test_agent_class) do
         def self.name
@@ -327,7 +324,7 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
         chunks = []
         streaming_chat = build_mock_streaming_chat(
           chunks: [{ content: "Hello" }, { content: " World" }],
-          final_response: mock_response
+          final_response: real_response
         )
         stub_ruby_llm_chat(streaming_chat)
 
@@ -349,7 +346,7 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
       it "records time to first token" do
         streaming_chat = build_mock_streaming_chat(
           chunks: [{ content: "Hello" }],
-          final_response: mock_response
+          final_response: real_response
         )
         stub_ruby_llm_chat(streaming_chat)
 
@@ -373,13 +370,12 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
   end
 
   describe "#capture_response" do
-    let(:mock_response) do
-      build_mock_response(
+    let(:response) do
+      build_real_response(
         content: "test",
         input_tokens: 100,
         output_tokens: 50,
-        model_id: "gpt-4o",
-        finish_reason: "stop"
+        model_id: "gpt-4o"
       )
     end
     let(:context) do
@@ -392,39 +388,37 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
     end
 
     it "captures token counts" do
-      agent.send(:capture_response, mock_response, context)
+      agent.send(:capture_response, response, context)
 
       expect(context.input_tokens).to eq(100)
       expect(context.output_tokens).to eq(50)
     end
 
     it "captures model used" do
-      agent.send(:capture_response, mock_response, context)
+      agent.send(:capture_response, response, context)
 
       expect(context.model_used).to eq("gpt-4o")
     end
 
-    it "captures finish reason when available" do
-      agent.send(:capture_response, mock_response, context)
+    it "sets finish_reason to nil for real Message (which lacks finish_reason)" do
+      agent.send(:capture_response, response, context)
 
-      expect(context.finish_reason).to eq("stop")
+      # Real RubyLLM::Message does not have finish_reason — the respond_to? guard returns nil
+      expect(context.finish_reason).to be_nil
     end
 
-    it "handles responses without finish_reason method" do
-      simple_response = double("SimpleResponse")
-      allow(simple_response).to receive(:input_tokens).and_return(100)
-      allow(simple_response).to receive(:output_tokens).and_return(50)
-      allow(simple_response).to receive(:model_id).and_return("gpt-4o")
-      allow(simple_response).to receive(:respond_to?).with(:finish_reason).and_return(false)
+    it "captures finish_reason when the response object supports it" do
+      response_with_finish = Struct.new(:input_tokens, :output_tokens, :model_id, :finish_reason)
+        .new(100, 50, "gpt-4o", "stop")
 
-      agent.send(:capture_response, simple_response, context)
+      agent.send(:capture_response, response_with_finish, context)
 
-      expect(context.finish_reason).to be_nil
+      expect(context.finish_reason).to eq("stop")
     end
   end
 
   describe "#calculate_costs" do
-    let(:mock_response) { build_mock_response(model_id: "gpt-4o") }
+    let(:response) { build_real_response(model_id: "gpt-4o") }
     let(:context) do
       ctx = RubyLLM::Agents::Pipeline::Context.new(
         input: "test query",
@@ -437,66 +431,49 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
       ctx
     end
 
-    context "when model info is available" do
-      before do
-        text_tokens = double("text_tokens", input: 0.01, output: 0.03)
-        pricing = double("pricing", text_tokens: text_tokens)
-        model_info = double("ModelInfo", pricing: pricing)
-        allow(RubyLLM::Models).to receive(:find).with("gpt-4o").and_return(model_info)
+    context "with real model pricing (no stubs)" do
+      let(:model_info) { RubyLLM::Models.find("gpt-4o") }
+
+      it "calculates input cost from real pricing" do
+        agent.send(:calculate_costs, response, context)
+
+        expected_input = (1000 / 1_000_000.0) * model_info.pricing.text_tokens.input
+        expect(context.input_cost).to be_within(0.0000001).of(expected_input)
       end
 
-      it "calculates input cost" do
-        agent.send(:calculate_costs, mock_response, context)
+      it "calculates output cost from real pricing" do
+        agent.send(:calculate_costs, response, context)
 
-        # 1000 tokens * $0.01/1M = $0.00001
-        expect(context.input_cost).to be_within(0.000001).of(0.00001)
+        expected_output = (500 / 1_000_000.0) * model_info.pricing.text_tokens.output
+        expect(context.output_cost).to be_within(0.0000001).of(expected_output)
       end
 
-      it "calculates output cost" do
-        agent.send(:calculate_costs, mock_response, context)
+      it "calculates total cost from real pricing" do
+        agent.send(:calculate_costs, response, context)
 
-        # 500 tokens * $0.03/1M = $0.000015
-        expect(context.output_cost).to be_within(0.000001).of(0.000015)
+        expected_input = (1000 / 1_000_000.0) * model_info.pricing.text_tokens.input
+        expected_output = (500 / 1_000_000.0) * model_info.pricing.text_tokens.output
+        expected_total = (expected_input + expected_output).round(6)
+        expect(context.total_cost).to be_within(0.0000001).of(expected_total)
       end
 
-      it "calculates total cost" do
-        agent.send(:calculate_costs, mock_response, context)
+      it "produces non-zero costs (regression: mocks previously hid zero-cost bug)" do
+        agent.send(:calculate_costs, response, context)
 
-        expect(context.total_cost).to be_within(0.000001).of(0.000025)
-      end
-    end
-
-    context "with realistic pricing (Claude Haiku-like)" do
-      before do
-        text_tokens = double("text_tokens", input: 1.0, output: 5.0)
-        pricing = double("pricing", text_tokens: text_tokens)
-        model_info = double("ModelInfo", pricing: pricing)
-        allow(RubyLLM::Models).to receive(:find).with("gpt-4o").and_return(model_info)
-      end
-
-      it "calculates non-trivial costs correctly" do
-        agent.send(:calculate_costs, mock_response, context)
-
-        # 1000 tokens * $1.00/1M = $0.001
-        expect(context.input_cost).to be_within(0.0000001).of(0.001)
-        # 500 tokens * $5.00/1M = $0.0025
-        expect(context.output_cost).to be_within(0.0000001).of(0.0025)
-        expect(context.total_cost).to be_within(0.0000001).of(0.0035)
+        expect(context.input_cost).to be > 0
+        expect(context.output_cost).to be > 0
+        expect(context.total_cost).to be > 0
       end
     end
 
     context "when tokens are zero" do
       before do
-        text_tokens = double("text_tokens", input: 1.0, output: 5.0)
-        pricing = double("pricing", text_tokens: text_tokens)
-        model_info = double("ModelInfo", pricing: pricing)
-        allow(RubyLLM::Models).to receive(:find).with("gpt-4o").and_return(model_info)
         context.input_tokens = 0
         context.output_tokens = 0
       end
 
       it "returns zero costs" do
-        agent.send(:calculate_costs, mock_response, context)
+        agent.send(:calculate_costs, response, context)
 
         expect(context.input_cost).to eq(0.0)
         expect(context.output_cost).to eq(0.0)
@@ -506,12 +483,11 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
 
     context "when pricing object is nil" do
       before do
-        model_info = double("ModelInfo", pricing: nil)
-        allow(RubyLLM::Models).to receive(:find).with("gpt-4o").and_return(model_info)
+        allow(RubyLLM::Models).to receive(:find).with("gpt-4o").and_return(build_model_info_nil_pricing)
       end
 
       it "defaults costs to zero" do
-        agent.send(:calculate_costs, mock_response, context)
+        agent.send(:calculate_costs, response, context)
 
         expect(context.input_cost).to eq(0.0)
         expect(context.output_cost).to eq(0.0)
@@ -521,13 +497,11 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
 
     context "when text_tokens is nil" do
       before do
-        pricing = double("pricing", text_tokens: nil)
-        model_info = double("ModelInfo", pricing: pricing)
-        allow(RubyLLM::Models).to receive(:find).with("gpt-4o").and_return(model_info)
+        allow(RubyLLM::Models).to receive(:find).with("gpt-4o").and_return(build_model_info_nil_text_tokens)
       end
 
       it "defaults costs to zero" do
-        agent.send(:calculate_costs, mock_response, context)
+        agent.send(:calculate_costs, response, context)
 
         expect(context.input_cost).to eq(0.0)
         expect(context.output_cost).to eq(0.0)
@@ -537,14 +511,12 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
 
     context "with partial pricing (output is nil)" do
       before do
-        text_tokens = double("text_tokens", input: 1.0, output: nil)
-        pricing = double("pricing", text_tokens: text_tokens)
-        model_info = double("ModelInfo", pricing: pricing)
-        allow(RubyLLM::Models).to receive(:find).with("gpt-4o").and_return(model_info)
+        allow(RubyLLM::Models).to receive(:find).with("gpt-4o")
+          .and_return(build_model_info_with_pricing(input_price: 1.0, output_price: nil))
       end
 
       it "calculates input cost and defaults output to zero" do
-        agent.send(:calculate_costs, mock_response, context)
+        agent.send(:calculate_costs, response, context)
 
         expect(context.input_cost).to be_within(0.0000001).of(0.001)
         expect(context.output_cost).to eq(0.0)
@@ -553,32 +525,29 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
     end
 
     context "when model info is not available" do
-      before do
-        allow(RubyLLM::Models).to receive(:find).and_return(nil)
-      end
+      let(:response) { build_real_response(model_id: "nonexistent-model-xyz") }
 
       it "does not calculate costs" do
-        # The method returns early when model_info is nil
-        agent.send(:calculate_costs, mock_response, context)
+        agent.send(:calculate_costs, response, context)
 
-        # Costs remain at their initial state (nil or 0 depending on context initialization)
-        # The key is that the calculate_costs method does nothing when model_info is nil
-        expect(RubyLLM::Models).to have_received(:find).with("gpt-4o")
+        # find_model_info rescues the error and returns nil — costs stay at default 0.0
+        expect(context.input_cost).to eq(0.0)
+        expect(context.output_cost).to eq(0.0)
+        expect(context.total_cost).to eq(0.0)
       end
     end
 
     context "when RubyLLM::Models is not defined" do
       it "handles gracefully" do
-        # Simulate RubyLLM::Models not being defined
         allow(agent).to receive(:find_model_info).and_return(nil)
 
-        expect { agent.send(:calculate_costs, mock_response, context) }.not_to raise_error
+        expect { agent.send(:calculate_costs, response, context) }.not_to raise_error
       end
     end
   end
 
   describe "#build_result" do
-    let(:mock_response) { build_mock_response }
+    let(:real_response) { build_real_response }
     let(:context) do
       ctx = RubyLLM::Agents::Pipeline::Context.new(
         input: "test query",
@@ -600,7 +569,7 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
     end
 
     it "builds a Result object with all metadata" do
-      result = agent.send(:build_result, "test content", mock_response, context)
+      result = agent.send(:build_result, "test content", real_response, context)
 
       expect(result).to be_a(RubyLLM::Agents::Result)
       expect(result.content).to eq("test content")
@@ -616,7 +585,7 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
     end
 
     it "includes timing data" do
-      result = agent.send(:build_result, "test content", mock_response, context)
+      result = agent.send(:build_result, "test content", real_response, context)
 
       expect(result.started_at).to be_present
       expect(result.completed_at).to be_present
@@ -624,15 +593,15 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
   end
 
   describe "#process_response" do
-    let(:mock_response) { build_mock_response(content: "plain text") }
-
     it "returns string content as-is" do
-      result = agent.send(:process_response, mock_response)
+      response = build_real_response(content: "plain text")
+      result = agent.send(:process_response, response)
       expect(result).to eq("plain text")
     end
 
     it "symbolizes hash keys" do
-      hash_response = build_mock_response(content: { "key" => "value", "nested" => { "inner" => "data" } })
+      hash_response = build_real_response(content: "placeholder")
+      hash_response.content = { "key" => "value", "nested" => { "inner" => "data" } }
 
       result = agent.send(:process_response, hash_response)
 
@@ -641,37 +610,29 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
     end
   end
 
-
   describe "#result_thinking_data" do
     it "returns empty hash when no thinking" do
-      response = build_mock_response(thinking: nil)
+      response = build_real_response(thinking: nil)
 
       result = agent.send(:result_thinking_data, response)
 
       expect(result).to eq({})
     end
 
-    it "extracts thinking data from response" do
-      thinking = double("Thinking")
-      allow(thinking).to receive(:text).and_return("thinking text")
-      allow(thinking).to receive(:signature).and_return("sig123")
-      allow(thinking).to receive(:tokens).and_return(500)
-
-      response = double("Response")
-      allow(response).to receive(:thinking).and_return(thinking)
+    it "extracts thinking data from real Thinking object" do
+      thinking = RubyLLM::Thinking.new(text: "thinking text", signature: "sig123")
+      response = build_real_response(thinking: thinking)
 
       result = agent.send(:result_thinking_data, response)
 
       expect(result[:thinking_text]).to eq("thinking text")
       expect(result[:thinking_signature]).to eq("sig123")
-      expect(result[:thinking_tokens]).to eq(500)
+      # Real Thinking has no tokens method — thinking_tokens is nil (correctly omitted by .compact)
+      expect(result).not_to have_key(:thinking_tokens)
     end
 
     it "handles hash-based thinking" do
-      thinking = { text: "thinking text", signature: "sig123", tokens: 500 }
-
-      response = double("Response")
-      allow(response).to receive(:thinking).and_return(thinking)
+      response = build_real_response(thinking: { text: "thinking text", signature: "sig123", tokens: 500 })
 
       result = agent.send(:result_thinking_data, response)
 
@@ -683,10 +644,11 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
 
   describe "#safe_extract_thinking_data" do
     it "returns empty hash on errors" do
-      response = double("Response")
-      allow(response).to receive(:thinking).and_raise(StandardError.new("error"))
+      error_response = Class.new {
+        def thinking = raise(StandardError, "error")
+      }.new
 
-      result = agent.send(:safe_extract_thinking_data, response)
+      result = agent.send(:safe_extract_thinking_data, error_response)
 
       expect(result).to eq({})
     end
