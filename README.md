@@ -174,7 +174,16 @@ This creates `app/agents/search_intent_agent.rb` with the agent class ready to c
 mount RubyLLM::Agents::Engine => "/agents"
 ```
 
-![RubyLLM Agents Dashboard](screenshot.png)
+<table>
+  <tr>
+    <td><img src="screenshots/dashboard.png" alt="Dashboard Overview" width="400"></td>
+    <td><img src="screenshots/agents.png" alt="Agent Registry" width="400"></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/executions.png" alt="Execution Log" width="400"></td>
+    <td><img src="screenshots/tenants.png" alt="Multi-Tenancy" width="400"></td>
+  </tr>
+</table>
 
 ## Documentation
 
