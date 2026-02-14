@@ -148,12 +148,13 @@
 
         <!-- Desktop Navigation -->
         <nav class="hidden md:flex items-center ml-8 gap-0.5 font-mono text-xs">
-          <% [
+          <% nav_items = [
             [ruby_llm_agents.root_path, "dashboard"],
             [ruby_llm_agents.agents_path, "agents"],
-            [ruby_llm_agents.executions_path, "executions"],
-            [ruby_llm_agents.tenants_path, "tenants"]
-          ].each do |path, label| %>
+            [ruby_llm_agents.executions_path, "executions"]
+          ]
+          nav_items << [ruby_llm_agents.tenants_path, "tenants"] if tenant_filter_enabled?
+          nav_items.each do |path, label| %>
             <% active = current_page?(path) %>
             <%= link_to label, path, class: "px-2.5 py-1 rounded transition-colors #{active ? 'text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}" %>
           <% end %>
@@ -197,12 +198,13 @@
         class="md:hidden border-t border-gray-200 dark:border-gray-800"
       >
         <nav class="max-w-7xl mx-auto px-4 py-2 font-mono text-xs space-y-0.5">
-          <% [
+          <% mobile_nav_items = [
             [ruby_llm_agents.root_path, "dashboard"],
             [ruby_llm_agents.agents_path, "agents"],
-            [ruby_llm_agents.executions_path, "executions"],
-            [ruby_llm_agents.tenants_path, "tenants"]
-          ].each do |path, label| %>
+            [ruby_llm_agents.executions_path, "executions"]
+          ]
+          mobile_nav_items << [ruby_llm_agents.tenants_path, "tenants"] if tenant_filter_enabled?
+          mobile_nav_items.each do |path, label| %>
             <% active = current_page?(path) %>
             <%= link_to label, path, class: "block px-3 py-2 rounded transition-colors #{active ? 'text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}" %>
           <% end %>
