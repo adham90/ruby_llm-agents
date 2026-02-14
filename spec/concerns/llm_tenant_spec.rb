@@ -43,11 +43,7 @@ RSpec.describe RubyLLM::Agents::LLMTenant do
   end
 
   describe ".llm_tenant" do
-    it "adds llm_executions association" do
-      expect(test_model_class.reflect_on_association(:llm_executions)).to be_present
-    end
-
-    it "adds llm_tenant_record association" do
+    it "adds llm_tenant_record association on include" do
       expect(test_model_class.reflect_on_association(:llm_tenant_record)).to be_present
     end
 
@@ -82,6 +78,10 @@ RSpec.describe RubyLLM::Agents::LLMTenant do
       end
 
       let(:custom_model_class) { CustomOptionsOrg }
+
+      it "adds llm_executions association" do
+        expect(custom_model_class.reflect_on_association(:llm_executions)).to be_present
+      end
 
       it "stores custom options" do
         expect(custom_model_class.llm_tenant_options[:id]).to eq(:slug)

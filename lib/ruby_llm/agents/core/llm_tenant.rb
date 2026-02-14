@@ -68,13 +68,7 @@ module RubyLLM
       extend ActiveSupport::Concern
 
       included do
-        # Executions tracked for this tenant
-        has_many :llm_executions,
-                 class_name: "RubyLLM::Agents::Execution",
-                 as: :tenant_record,
-                 dependent: :nullify
-
-        # Link to gem's Tenant model (new name)
+        # Link to gem's Tenant model via polymorphic association
         has_one :llm_tenant_record,
                 class_name: "RubyLLM::Agents::Tenant",
                 as: :tenant_record,
@@ -109,6 +103,13 @@ module RubyLLM
             inherit_global: inherit_global,
             api_keys: api_keys
           }
+
+          # Executions tracked for this tenant via tenant_id string column
+          has_many :llm_executions,
+                   class_name: "RubyLLM::Agents::Execution",
+                   foreign_key: :tenant_id,
+                   primary_key: id,
+                   dependent: :nullify
 
           # Auto-create tenant record callback
           after_create :create_default_llm_tenant if llm_tenant_options[:budget]

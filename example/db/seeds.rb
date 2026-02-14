@@ -15,6 +15,31 @@
 
 puts 'Seeding test data for ruby_llm-agents...'
 
+# Columns that belong on execution_details, not executions
+DETAIL_COLUMNS = %i[
+  error_message system_prompt user_prompt response messages_summary
+  tool_calls attempts fallback_chain parameters routed_to
+  classification_result cached_at cache_creation_tokens
+].freeze
+
+# Split detail attributes from execution attributes and create both records
+def create_execution_with_detail!(merged)
+  detail_attrs = {}
+  exec_attrs = {}
+
+  merged.each do |key, value|
+    if DETAIL_COLUMNS.include?(key.to_sym)
+      detail_attrs[key.to_sym] = value
+    else
+      exec_attrs[key] = value
+    end
+  end
+
+  execution = RubyLLM::Agents::Execution.create!(exec_attrs)
+  execution.create_detail!(detail_attrs) if detail_attrs.any?
+  execution
+end
+
 # Helper to generate realistic execution data
 def create_execution(attrs = {})
   defaults = {
@@ -49,13 +74,13 @@ def create_execution(attrs = {})
   merged[:output_cost] = ((merged[:output_tokens] || 0) / 1_000_000.0 * output_price).round(6)
   merged[:total_cost] = merged[:input_cost] + merged[:output_cost]
 
-  RubyLLM::Agents::Execution.create!(merged)
+  create_execution_with_detail!(merged)
 end
 
 # Clear existing data
 puts 'Clearing existing data...'
 RubyLLM::Agents::Execution.destroy_all
-RubyLLM::Agents::TenantBudget.destroy_all if RubyLLM::Agents::TenantBudget.table_exists?
+RubyLLM::Agents::Tenant.destroy_all if defined?(RubyLLM::Agents::Tenant) && RubyLLM::Agents::Tenant.table_exists?
 Organization.destroy_all if defined?(Organization) && Organization.table_exists?
 
 # =============================================================================
@@ -1010,7 +1035,7 @@ def create_embedder_execution(attrs = {})
   merged[:output_cost] = 0
   merged[:total_cost] = merged[:input_cost]
 
-  RubyLLM::Agents::Execution.create!(merged)
+  create_execution_with_detail!(merged)
 end
 
 # Helper for speaker executions (TTS)
@@ -1040,7 +1065,7 @@ def create_speaker_execution(attrs = {})
   merged[:output_cost] = 0
   merged[:total_cost] = merged[:input_cost]
 
-  RubyLLM::Agents::Execution.create!(merged)
+  create_execution_with_detail!(merged)
 end
 
 # Helper for transcriber executions (STT)
@@ -1071,7 +1096,7 @@ def create_transcriber_execution(attrs = {})
   merged[:output_cost] = 0
   merged[:total_cost] = merged[:input_cost]
 
-  RubyLLM::Agents::Execution.create!(merged)
+  create_execution_with_detail!(merged)
 end
 
 # Helper for image generator executions
@@ -1110,7 +1135,7 @@ def create_image_generator_execution(attrs = {})
   merged[:output_cost] = 0
   merged[:total_cost] = merged[:input_cost]
 
-  RubyLLM::Agents::Execution.create!(merged)
+  create_execution_with_detail!(merged)
 end
 
 # DocumentEmbedder - Single document embedding
@@ -1275,7 +1300,7 @@ def create_moderator_execution(attrs = {})
   merged[:output_cost] = 0
   merged[:total_cost] = merged[:input_cost]
 
-  RubyLLM::Agents::Execution.create!(merged)
+  create_execution_with_detail!(merged)
 end
 
 # ContentModerator - General content moderation (mostly passing)
@@ -2038,10 +2063,14 @@ puts "\nImage Generator Executions:"
   count = RubyLLM::Agents::Execution.where(agent_type: generator).count
   next unless count.positive?
 
-  klass = "Images::#{generator}".safe_constantize
-  if klass
-    puts "  #{generator}: #{count} executions (size=#{klass.size}, quality=#{klass.quality})"
-  else
+  begin
+    klass = "Images::#{generator}".safe_constantize
+    if klass
+      puts "  #{generator}: #{count} executions (size=#{klass.size}, quality=#{klass.quality})"
+    else
+      puts "  #{generator}: #{count} executions"
+    end
+  rescue NoMethodError, NameError
     puts "  #{generator}: #{count} executions"
   end
 end
@@ -2075,8 +2104,12 @@ end
 puts "\nImage Generators Available:"
 %w[ApplicationImageGenerator ProductImageGenerator LogoGenerator ThumbnailGenerator AvatarGenerator
    IllustrationGenerator].each do |generator|
-  klass = "Images::#{generator}".safe_constantize
-  puts "  #{generator}: model=#{klass.model}, size=#{klass.size}, quality=#{klass.quality}" if klass
+  begin
+    klass = "Images::#{generator}".safe_constantize
+    puts "  #{generator}: model=#{klass.model}, size=#{klass.size}, quality=#{klass.quality}" if klass
+  rescue NoMethodError, NameError
+    puts "  #{generator}: (class definition error - skipping)"
+  end
 end
 
 puts "\nTotal: #{Organization.count} organizations, #{RubyLLM::Agents::Execution.count} executions"
