@@ -89,6 +89,7 @@ ActiveRecord::Schema.define do
     t.text     :error_message
     t.text     :system_prompt
     t.text     :user_prompt
+    t.text     :assistant_prompt
     t.json     :response,             default: {}
     t.json     :messages_summary,     default: {}, null: false
     t.json     :tool_calls,           default: [], null: false

@@ -127,6 +127,11 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
       allow(ActiveRecord::Base.connection).to receive(:column_exists?)
         .and_return(false)
 
+      # assistant_prompt column exists on execution_details (fully upgraded)
+      allow(ActiveRecord::Base.connection).to receive(:column_exists?)
+        .with(:ruby_llm_agents_execution_details, :assistant_prompt)
+        .and_return(true)
+
       run_generator
     end
 
@@ -260,6 +265,11 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
         .and_return(true)
       allow(ActiveRecord::Base.connection).to receive(:column_exists?)
         .and_return(false)
+
+      # assistant_prompt column exists on execution_details (fully upgraded)
+      allow(ActiveRecord::Base.connection).to receive(:column_exists?)
+        .with(:ruby_llm_agents_execution_details, :assistant_prompt)
+        .and_return(true)
     end
 
     it "runs without error when app/agents exists" do

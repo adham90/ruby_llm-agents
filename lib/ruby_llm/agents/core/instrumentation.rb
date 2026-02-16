@@ -275,6 +275,9 @@ module RubyLLM
           system_prompt: config.persist_prompts ? stored_system_prompt : nil,
           user_prompt: config.persist_prompts ? stored_user_prompt : nil
         }
+        if config.persist_prompts && assistant_prompt_column_exists?
+          detail_data[:assistant_prompt] = stored_assistant_prompt
+        end
         detail_data.merge!(@_pending_detail_data) if @_pending_detail_data
         @_pending_detail_data = nil
 
@@ -528,7 +531,9 @@ module RubyLLM
           user_prompt: safe_user_prompt,
           messages_summary: config.persist_messages_summary ? messages_summary : {},
           error_message: error&.message
-        }.merge(detail_fields || {})
+        }
+        detail_data[:assistant_prompt] = safe_assistant_prompt if assistant_prompt_column_exists?
+        detail_data.merge!(detail_fields || {})
 
         execution_data[:_detail_data] = detail_data
 
@@ -632,6 +637,23 @@ module RubyLLM
       rescue StandardError => e
         Rails.logger.warn("[RubyLLM::Agents] Could not capture user_prompt: #{e.message}")
         nil
+      end
+
+      # Safely captures assistant prompt, handling errors gracefully
+      #
+      # @return [String, nil] The assistant prompt or nil if unavailable
+      def safe_assistant_prompt
+        respond_to?(:assistant_prompt) ? assistant_prompt&.to_s : nil
+      rescue StandardError => e
+        Rails.logger.warn("[RubyLLM::Agents] Could not capture assistant_prompt: #{e.message}")
+        nil
+      end
+
+      # Returns the assistant prompt for storage
+      #
+      # @return [String, nil] The assistant prompt
+      def stored_assistant_prompt
+        safe_assistant_prompt
       end
 
       # Safely extracts a value from response object
@@ -920,6 +942,22 @@ module RubyLLM
           )
         rescue StandardError => e
           Rails.logger.warn("[RubyLLM::Agents] Failed to record token usage: #{e.message}")
+        end
+      end
+
+      # Checks if the assistant_prompt column exists on execution_details
+      #
+      # Memoized to avoid repeated schema queries. Returns false for older installs
+      # that haven't run the migration yet.
+      #
+      # @return [Boolean] true if the column exists
+      def assistant_prompt_column_exists?
+        return @_assistant_prompt_column_exists if defined?(@_assistant_prompt_column_exists)
+
+        @_assistant_prompt_column_exists = begin
+          RubyLLM::Agents::ExecutionDetail.column_names.include?("assistant_prompt")
+        rescue StandardError
+          false
         end
       end
 

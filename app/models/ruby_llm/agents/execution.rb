@@ -74,7 +74,7 @@ module RubyLLM
               foreign_key: :execution_id, dependent: :destroy
 
       # Delegations so existing code keeps working transparently
-      delegate :system_prompt, :user_prompt, :response, :error_message,
+      delegate :system_prompt, :user_prompt, :assistant_prompt, :response, :error_message,
                :messages_summary, :tool_calls, :attempts, :fallback_chain,
                :parameters, :routed_to, :classification_result,
                :cached_at, :cache_creation_tokens,

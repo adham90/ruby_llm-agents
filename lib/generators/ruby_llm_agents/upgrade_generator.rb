@@ -60,6 +60,25 @@ module RubyLlmAgents
       )
     end
 
+    # Add assistant_prompt column to execution_details (v3.0 -> v3.1 upgrade)
+    def create_add_assistant_prompt_migration
+      if column_exists?(:ruby_llm_agents_execution_details, :assistant_prompt)
+        say_status :skip, "assistant_prompt column already exists on execution_details", :yellow
+        return
+      end
+
+      unless table_exists?(:ruby_llm_agents_execution_details)
+        say_status :skip, "execution_details table does not exist yet", :yellow
+        return
+      end
+
+      say_status :upgrade, "Adding assistant_prompt to execution_details", :blue
+      migration_template(
+        "add_assistant_prompt_migration.rb.tt",
+        File.join(db_migrate_path, "add_assistant_prompt_to_execution_details.rb")
+      )
+    end
+
     def suggest_config_consolidation
       ruby_llm_initializer = File.join(destination_root, "config/initializers/ruby_llm.rb")
       agents_initializer = File.join(destination_root, "config/initializers/ruby_llm_agents.rb")
@@ -116,7 +135,7 @@ module RubyLlmAgents
 
     # Detail columns that should only exist on execution_details, not executions
     DETAIL_COLUMNS = %i[
-      error_message system_prompt user_prompt response messages_summary
+      error_message system_prompt user_prompt assistant_prompt response messages_summary
       tool_calls attempts fallback_chain parameters routed_to
       classification_result cached_at cache_creation_tokens
     ].freeze

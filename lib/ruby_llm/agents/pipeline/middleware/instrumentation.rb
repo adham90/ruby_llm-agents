@@ -253,6 +253,13 @@ module RubyLLM
 
             detail_data = {}
 
+            if global_config.persist_prompts
+              exec_opts = context.options[:options] || {}
+              detail_data[:system_prompt] = exec_opts[:system_prompt]
+              detail_data[:user_prompt] = context.input.to_s.presence
+              detail_data[:assistant_prompt] = exec_opts[:assistant_prefill] if assistant_prompt_column_exists?
+            end
+
             if context.error
               detail_data[:error_message] = truncate_error_message(context.error.message)
             end
@@ -349,6 +356,12 @@ module RubyLLM
 
             # Store detail data for separate creation
             detail_data = { parameters: sanitize_parameters(context) }
+            if global_config.persist_prompts
+              exec_opts = context.options[:options] || {}
+              detail_data[:system_prompt] = exec_opts[:system_prompt]
+              detail_data[:user_prompt] = context.input.to_s.presence
+              detail_data[:assistant_prompt] = exec_opts[:assistant_prefill] if assistant_prompt_column_exists?
+            end
             detail_data[:error_message] = truncate_error_message(context.error.message) if context.error
             detail_data[:tool_calls] = context[:tool_calls] if context[:tool_calls].present?
             detail_data[:attempts] = context[:reliability_attempts] if context[:reliability_attempts].present?
@@ -494,6 +507,22 @@ module RubyLLM
             global_config.async_logging && defined?(Infrastructure::ExecutionLoggerJob)
           rescue StandardError
             false
+          end
+
+          # Checks if the assistant_prompt column exists on execution_details
+          #
+          # Memoized to avoid repeated schema queries.
+          #
+          # @return [Boolean]
+          def assistant_prompt_column_exists?
+            return @_assistant_prompt_column_exists if defined?(@_assistant_prompt_column_exists)
+
+            @_assistant_prompt_column_exists = begin
+              defined?(RubyLLM::Agents::ExecutionDetail) &&
+                RubyLLM::Agents::ExecutionDetail.column_names.include?("assistant_prompt")
+            rescue StandardError
+              false
+            end
           end
 
           # Returns whether the Execution model is available

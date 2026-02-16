@@ -39,6 +39,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     allow(config).to receive(:track_image_generation).and_return(true)
     allow(config).to receive(:track_audio).and_return(true)
     allow(config).to receive(:async_logging).and_return(false)
+    allow(config).to receive(:persist_prompts).and_return(true)
     allow(config).to receive(:persist_responses).and_return(false)
   end
 
@@ -105,8 +106,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       before do
         allow(config).to receive(:track_embeddings).and_return(true)
         allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
-        # Mock the Execution model
-        # Using real Execution model for proper method verification
+        # Allow detail creation for prompt persistence
+        allow(mock_execution).to receive(:create_detail!)
       end
 
       describe "running execution pattern" do
@@ -347,7 +348,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         allow(config).to receive(:respond_to?).with(:track_cache_hits).and_return(true)
         allow(config).to receive(:track_cache_hits).and_return(false)
         allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
-        # Using real Execution model for proper method verification
+        allow(mock_execution).to receive(:create_detail!)
       end
 
       it "does not record cache hits when track_cache_hits is false" do
@@ -393,7 +394,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       before do
         allow(config).to receive(:track_embeddings).and_return(true)
         allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
-        # Using real Execution model for proper method verification
+        allow(mock_execution).to receive(:create_detail!)
       end
 
       it "creates running record synchronously even when async_logging is enabled" do
@@ -581,7 +582,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
     before do
       allow(config).to receive(:track_embeddings).and_return(true)
-      # Using real Execution model for proper method verification
+      allow(mock_execution).to receive(:create_detail!)
     end
 
     it "includes tenant_id when multi-tenancy is enabled" do
@@ -633,7 +634,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       allow(config).to receive(:respond_to?).with(:track_cache_hits).and_return(true)
       allow(config).to receive(:track_cache_hits).and_return(true)
       allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
-      # Using real Execution model for proper method verification
+      allow(mock_execution).to receive(:create_detail!)
     end
 
     it "includes cache key for cached results" do
@@ -664,7 +665,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     before do
       allow(config).to receive(:track_embeddings).and_return(true)
       allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
-      # Using real Execution model for proper method verification
+      allow(mock_execution).to receive(:create_detail!)
     end
 
     it "includes custom metadata in execution record when metadata is present" do
@@ -730,7 +731,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     before do
       allow(config).to receive(:track_embeddings).and_return(true)
       allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
-      # Using real Execution model for proper method verification
+      allow(mock_execution).to receive(:create_detail!)
     end
 
     it "redacts sensitive parameters" do
@@ -791,6 +792,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     before do
       allow(config).to receive(:track_embeddings).and_return(true)
       allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
+      allow(mock_execution).to receive(:create_detail!)
     end
 
     context "when persist_responses is enabled" do
@@ -949,6 +951,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
       before do
         allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
+        allow(mock_execution).to receive(:create_detail!)
       end
 
       it "persists reliability_attempts in the execution record" do

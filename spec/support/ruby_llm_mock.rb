@@ -92,7 +92,11 @@ module RubyLLM
       self
     end
 
-    def ask(_prompt)
+    def ask(_prompt, **_opts)
+      MockResponse.new("Mock response")
+    end
+
+    def complete
       MockResponse.new("Mock response")
     end
   end

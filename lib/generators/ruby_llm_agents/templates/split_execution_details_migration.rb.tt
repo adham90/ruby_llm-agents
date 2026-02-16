@@ -9,7 +9,7 @@
 class SplitExecutionDetailsFromExecutions < ActiveRecord::Migration<%= migration_version %>
   # Columns that belong on execution_details, not executions
   DETAIL_COLUMNS = %i[
-    error_message system_prompt user_prompt response messages_summary
+    error_message system_prompt user_prompt assistant_prompt response messages_summary
     tool_calls attempts fallback_chain parameters routed_to
     classification_result cached_at cache_creation_tokens
   ].freeze
@@ -50,6 +50,7 @@ class SplitExecutionDetailsFromExecutions < ActiveRecord::Migration<%= migration
       t.text     :error_message
       t.text     :system_prompt
       t.text     :user_prompt
+      t.text     :assistant_prompt
       t.json     :response,             default: {}
       t.json     :messages_summary,     default: {}, null: false
       t.json     :tool_calls,           default: [], null: false

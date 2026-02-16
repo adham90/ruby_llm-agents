@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_01_000004) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_16_182104) do
   create_table "organizations", force: :cascade do |t|
     t.boolean "active", default: true
     t.string "anthropic_api_key"
@@ -29,6 +29,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_01_000004) do
   end
 
   create_table "ruby_llm_agents_execution_details", force: :cascade do |t|
+    t.text "assistant_prompt"
     t.json "attempts", default: [], null: false
     t.integer "cache_creation_tokens", default: 0
     t.datetime "cached_at"

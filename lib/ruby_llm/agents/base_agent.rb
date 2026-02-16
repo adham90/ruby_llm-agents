@@ -380,7 +380,8 @@ module RubyLLM
         base_data.merge(
           model: model,
           system_prompt: system_prompt,
-          user_prompt: user_prompt
+          user_prompt: user_prompt,
+          assistant_prompt: assistant_prompt
         )
       end
 
