@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-02-16
+
+### Added
+
+- **Assistant prompt persistence** — The `assistant_prompt` value from the `assistant` DSL is now stored in `execution_details` alongside `system_prompt` and `user_prompt`, and displayed on the execution detail page in the dashboard
+- **Pipeline prompt persistence** — Pipeline middleware instrumentation now persists all three prompts (system, user, assistant) when `persist_prompts` is enabled; previously only core instrumentation saved prompts
+- **Gruvbox dark theme** — Dashboard dark mode now uses a warm Gruvbox-inspired color palette via CSS custom properties
+- **Auto-create Tenant record** — When a pre-existing host model (e.g., `Organization`) is passed to an agent via multi-tenancy, the corresponding `Tenant` record is automatically created if it doesn't exist
+
+### Fixed
+
+- **Cache key collision** — `assistant_prompt` is now included in `cache_key_data`, preventing two calls that differ only by assistant prefill from incorrectly sharing a cached response
+- **Upgrade generator for assistant_prompt** — New idempotent migration template (`add_assistant_prompt_migration.rb.tt`) ensures existing installs get the column on upgrade
+
 ## [3.0.0] - 2026-02-16
 
 ### Breaking Changes
@@ -590,6 +604,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[3.1.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/adham90/ruby_llm-agents/compare/v2.2.0...v3.0.0
 [2.2.0]: https://github.com/adham90/ruby_llm-agents/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/adham90/ruby_llm-agents/compare/v2.0.0...v2.1.0
