@@ -60,7 +60,7 @@
               type: 'datetime',
               min: now - getTimeRangeMs(range),
               max: now,
-              labels: { style: { color: '#6B7280', fontSize: '9px', fontFamily: 'ui-monospace, monospace' }, format: '{value:' + fmt + '}' },
+              labels: { style: { color: chartColor('#6B7280', '#928374'), fontSize: '9px', fontFamily: 'ui-monospace, monospace' }, format: '{value:' + fmt + '}' },
               lineColor: 'transparent',
               tickLength: 0,
               gridLineWidth: 0
@@ -69,19 +69,19 @@
               title: { text: null },
               min: 0,
               allowDecimals: false,
-              labels: { style: { color: '#6B7280', fontSize: '9px', fontFamily: 'ui-monospace, monospace' } },
-              gridLineColor: 'rgba(107, 114, 128, 0.08)'
+              labels: { style: { color: chartColor('#6B7280', '#928374'), fontSize: '9px', fontFamily: 'ui-monospace, monospace' } },
+              gridLineColor: chartColorAlpha('rgba(107, 114, 128, 0.08)', 146, 131, 116, 0.08)
             },
             legend: { enabled: false },
             credits: { enabled: false },
             tooltip: {
-              backgroundColor: 'rgba(0, 0, 0, 0.85)',
+              backgroundColor: chartColorAlpha('rgba(0, 0, 0, 0.85)', 40, 40, 40, 0.95),
               borderColor: 'transparent',
               borderRadius: 3,
-              style: { color: '#E5E7EB', fontSize: '10px', fontFamily: 'ui-monospace, monospace' },
+              style: { color: chartColor('#E5E7EB', '#ebdbb2'), fontSize: '10px', fontFamily: 'ui-monospace, monospace' },
               shared: true,
               formatter: function() {
-                let html = '<span style="color:#9CA3AF">' + Highcharts.dateFormat(fmt, this.x) + '</span>';
+                let html = '<span style="color:' + chartColor('#9CA3AF', '#bdae93') + '">' + Highcharts.dateFormat(fmt, this.x) + '</span>';
                 this.points.forEach(p => html += '<br/>' + p.series.name + ': <b>' + p.y + '</b>');
                 return html;
               }
@@ -97,14 +97,14 @@
               {
                 name: 'errors',
                 data: toDatetimePoints(data.series[1].data, range),
-                color: '#EF4444',
-                fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, 'rgba(239, 68, 68, 0.08)'], [1, 'rgba(239, 68, 68, 0)']] }
+                color: chartColor('#EF4444', '#fb4934'),
+                fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, chartColorAlpha('rgba(239, 68, 68, 0.08)', 251, 73, 52, 0.08)], [1, chartColorAlpha('rgba(239, 68, 68, 0)', 251, 73, 52, 0)]] }
               },
               {
                 name: 'success',
                 data: toDatetimePoints(data.series[0].data, range),
-                color: '#10B981',
-                fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, 'rgba(16, 185, 129, 0.08)'], [1, 'rgba(16, 185, 129, 0)']] }
+                color: chartColor('#10B981', '#b8bb26'),
+                fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, chartColorAlpha('rgba(16, 185, 129, 0.08)', 184, 187, 38, 0.08)], [1, chartColorAlpha('rgba(16, 185, 129, 0)', 184, 187, 38, 0)]] }
               }
             ]
           });

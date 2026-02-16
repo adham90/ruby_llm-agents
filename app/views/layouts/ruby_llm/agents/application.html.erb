@@ -19,20 +19,151 @@
       })();
     </script>
 
+    <!-- Gruvbox-aware color palette: CSS custom properties swapped in .dark -->
+    <style>
+      :root {
+        /* Gray (Tailwind defaults) */
+        --c-gray-50: 249 250 251; --c-gray-100: 243 244 246; --c-gray-200: 229 231 235;
+        --c-gray-300: 209 213 219; --c-gray-400: 156 163 175; --c-gray-500: 107 114 128;
+        --c-gray-600: 75 85 99; --c-gray-700: 55 65 81; --c-gray-800: 31 41 55;
+        --c-gray-900: 17 24 39; --c-gray-950: 3 7 18;
+        /* Blue */
+        --c-blue-50: 239 246 255; --c-blue-100: 219 234 254; --c-blue-200: 191 219 254;
+        --c-blue-300: 147 197 253; --c-blue-400: 96 165 250; --c-blue-500: 59 130 246;
+        --c-blue-600: 37 99 235; --c-blue-700: 29 78 216; --c-blue-800: 30 64 175;
+        --c-blue-900: 30 58 138; --c-blue-950: 23 37 84;
+        /* Red */
+        --c-red-50: 254 242 242; --c-red-100: 254 226 226; --c-red-200: 254 202 202;
+        --c-red-300: 252 165 165; --c-red-400: 248 113 113; --c-red-500: 239 68 68;
+        --c-red-600: 220 38 38; --c-red-700: 185 28 28; --c-red-800: 153 27 27;
+        --c-red-900: 127 29 29; --c-red-950: 69 10 10;
+        /* Green */
+        --c-green-50: 240 253 244; --c-green-100: 220 252 231; --c-green-200: 187 247 208;
+        --c-green-300: 134 239 172; --c-green-400: 74 222 128; --c-green-500: 34 197 94;
+        --c-green-600: 22 163 74; --c-green-700: 21 128 61; --c-green-800: 22 101 52;
+        --c-green-900: 20 83 45; --c-green-950: 5 46 22;
+        /* Yellow */
+        --c-yellow-50: 254 252 232; --c-yellow-100: 254 249 195; --c-yellow-200: 254 240 138;
+        --c-yellow-300: 253 224 71; --c-yellow-400: 250 204 21; --c-yellow-500: 234 179 8;
+        --c-yellow-600: 202 138 4; --c-yellow-700: 161 98 7; --c-yellow-800: 133 77 14;
+        --c-yellow-900: 113 63 18; --c-yellow-950: 66 32 6;
+        /* Orange */
+        --c-orange-50: 255 247 237; --c-orange-100: 255 237 213; --c-orange-200: 254 215 170;
+        --c-orange-300: 253 186 116; --c-orange-400: 251 146 60; --c-orange-500: 249 115 22;
+        --c-orange-600: 234 88 12; --c-orange-700: 194 65 12; --c-orange-800: 154 52 18;
+        --c-orange-900: 124 45 18; --c-orange-950: 67 20 7;
+        /* Purple */
+        --c-purple-50: 250 245 255; --c-purple-100: 243 232 255; --c-purple-200: 233 213 255;
+        --c-purple-300: 216 180 254; --c-purple-400: 192 132 252; --c-purple-500: 168 85 247;
+        --c-purple-600: 147 51 234; --c-purple-700: 126 34 206; --c-purple-800: 107 33 168;
+        --c-purple-900: 88 28 135; --c-purple-950: 59 7 100;
+        /* Cyan */
+        --c-cyan-50: 236 254 255; --c-cyan-100: 207 250 254; --c-cyan-200: 165 243 252;
+        --c-cyan-300: 103 232 249; --c-cyan-400: 34 211 238; --c-cyan-500: 6 182 212;
+        --c-cyan-600: 8 145 178; --c-cyan-700: 14 116 144; --c-cyan-800: 21 94 117;
+        --c-cyan-900: 22 78 99; --c-cyan-950: 8 51 68;
+        /* Pink */
+        --c-pink-50: 253 242 248; --c-pink-100: 252 231 243; --c-pink-200: 251 207 232;
+        --c-pink-300: 249 168 212; --c-pink-400: 244 114 182; --c-pink-500: 236 72 153;
+        --c-pink-600: 219 39 119; --c-pink-700: 190 24 93; --c-pink-800: 157 23 77;
+        --c-pink-900: 131 24 67; --c-pink-950: 80 7 36;
+        /* Amber */
+        --c-amber-50: 255 251 235; --c-amber-100: 254 243 199; --c-amber-200: 253 230 138;
+        --c-amber-300: 252 211 77; --c-amber-400: 251 191 36; --c-amber-500: 245 158 11;
+        --c-amber-600: 217 119 6; --c-amber-700: 180 83 9; --c-amber-800: 146 64 14;
+        --c-amber-900: 120 53 15; --c-amber-950: 69 26 3;
+      }
+      .dark {
+        /* Gray → Gruvbox bg/fg */
+        --c-gray-50: 251 241 199; --c-gray-100: 235 219 178; --c-gray-200: 213 196 161;
+        --c-gray-300: 189 174 147; --c-gray-400: 168 153 132; --c-gray-500: 146 131 116;
+        --c-gray-600: 124 111 100; --c-gray-700: 102 92 84; --c-gray-800: 80 73 69;
+        --c-gray-900: 60 56 54; --c-gray-950: 40 40 40;
+        /* Blue → Gruvbox aqua (#83a598 / #458588) */
+        --c-blue-50: 195 215 205; --c-blue-100: 174 199 188; --c-blue-200: 153 182 170;
+        --c-blue-300: 131 165 152; --c-blue-400: 100 149 144; --c-blue-500: 69 133 136;
+        --c-blue-600: 58 112 115; --c-blue-700: 48 93 95; --c-blue-800: 38 73 75;
+        --c-blue-900: 28 55 57; --c-blue-950: 20 40 42;
+        /* Red → Gruvbox red (#fb4934 / #cc241d) */
+        --c-red-50: 253 165 155; --c-red-100: 253 135 122; --c-red-200: 252 104 87;
+        --c-red-300: 251 73 52; --c-red-400: 228 55 41; --c-red-500: 204 36 29;
+        --c-red-600: 170 30 24; --c-red-700: 136 24 19; --c-red-800: 102 18 14;
+        --c-red-900: 72 12 10; --c-red-950: 50 8 7;
+        /* Green → Gruvbox green (#b8bb26 / #98971a) */
+        --c-green-50: 225 227 145; --c-green-100: 213 215 112; --c-green-200: 199 201 75;
+        --c-green-300: 184 187 38; --c-green-400: 168 169 32; --c-green-500: 152 151 26;
+        --c-green-600: 126 125 22; --c-green-700: 101 100 17; --c-green-800: 77 77 13;
+        --c-green-900: 55 55 9; --c-green-950: 38 38 6;
+        /* Yellow → Gruvbox yellow (#fabd2f / #d79921) */
+        --c-yellow-50: 253 225 155; --c-yellow-100: 252 215 121; --c-yellow-200: 251 202 84;
+        --c-yellow-300: 250 189 47; --c-yellow-400: 233 171 40; --c-yellow-500: 215 153 33;
+        --c-yellow-600: 179 127 27; --c-yellow-700: 143 102 22; --c-yellow-800: 109 78 17;
+        --c-yellow-900: 77 55 12; --c-yellow-950: 53 38 8;
+        /* Orange → Gruvbox orange (#fe8019 / #d65d0e) */
+        --c-orange-50: 255 197 140; --c-orange-100: 255 172 102; --c-orange-200: 254 150 64;
+        --c-orange-300: 254 128 25; --c-orange-400: 234 111 20; --c-orange-500: 214 93 14;
+        --c-orange-600: 178 77 12; --c-orange-700: 142 62 9; --c-orange-800: 108 47 7;
+        --c-orange-900: 76 33 5; --c-orange-950: 52 23 3;
+        /* Purple → Gruvbox purple (#d3869b / #b16286) */
+        --c-purple-50: 235 186 200; --c-purple-100: 227 168 184; --c-purple-200: 219 151 170;
+        --c-purple-300: 211 134 155; --c-purple-400: 194 116 145; --c-purple-500: 177 98 134;
+        --c-purple-600: 147 81 111; --c-purple-700: 118 65 89; --c-purple-800: 90 50 68;
+        --c-purple-900: 63 35 48; --c-purple-950: 43 24 33;
+        /* Cyan → Gruvbox green-cyan (#8ec07c / #689d6a) */
+        --c-cyan-50: 194 228 184; --c-cyan-100: 177 216 164; --c-cyan-200: 160 204 144;
+        --c-cyan-300: 142 192 124; --c-cyan-400: 123 175 115; --c-cyan-500: 104 157 106;
+        --c-cyan-600: 86 131 88; --c-cyan-700: 69 105 70; --c-cyan-800: 53 80 54;
+        --c-cyan-900: 37 57 38; --c-cyan-950: 26 40 27;
+        /* Pink → Gruvbox purple (no pink in Gruvbox) */
+        --c-pink-50: 235 186 200; --c-pink-100: 227 168 184; --c-pink-200: 219 151 170;
+        --c-pink-300: 211 134 155; --c-pink-400: 194 116 145; --c-pink-500: 177 98 134;
+        --c-pink-600: 147 81 111; --c-pink-700: 118 65 89; --c-pink-800: 90 50 68;
+        --c-pink-900: 63 35 48; --c-pink-950: 43 24 33;
+        /* Amber → Gruvbox yellow-orange */
+        --c-amber-50: 254 224 155; --c-amber-100: 253 213 121; --c-amber-200: 252 198 84;
+        --c-amber-300: 251 184 47; --c-amber-400: 235 162 37; --c-amber-500: 215 140 26;
+        --c-amber-600: 179 116 22; --c-amber-700: 143 93 17; --c-amber-800: 109 71 13;
+        --c-amber-900: 77 50 9; --c-amber-950: 53 35 6;
+      }
+    </style>
+
     <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
 
     <script>
       tailwind.config = {
-        darkMode: 'class'
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: (function() {
+              var families = ['gray','blue','red','green','yellow','orange','purple','cyan','pink','amber'];
+              var shades = [50,100,200,300,400,500,600,700,800,900,950];
+              var c = {};
+              families.forEach(function(f) {
+                c[f] = {};
+                shades.forEach(function(s) {
+                  c[f][s] = 'rgb(var(--c-' + f + '-' + s + ') / <alpha-value>)';
+                });
+              });
+              return c;
+            })()
+          }
+        }
       }
     </script>
 
     <!-- Highcharts for charts -->
     <script src="https://code.highcharts.com/highcharts.js"></script>
 
-    <!-- Configure Highcharts defaults -->
+    <!-- Chart color helpers + Highcharts defaults -->
     <script>
+      function chartColor(lightHex, darkHex) {
+        return document.documentElement.classList.contains('dark') ? darkHex : lightHex;
+      }
+      function chartColorAlpha(lightRgba, darkR, darkG, darkB, alpha) {
+        return document.documentElement.classList.contains('dark')
+          ? 'rgba(' + darkR + ',' + darkG + ',' + darkB + ',' + alpha + ')' : lightRgba;
+      }
       Highcharts.setOptions({
         credits: { enabled: false },
         chart: {
@@ -41,22 +172,22 @@
         },
         title: { text: null },
         xAxis: {
-          labels: { style: { color: '#6B7280' } },
-          lineColor: 'rgba(107, 114, 128, 0.1)',
-          tickColor: 'rgba(107, 114, 128, 0.1)'
+          labels: { style: { color: chartColor('#6B7280', '#928374') } },
+          lineColor: chartColorAlpha('rgba(107, 114, 128, 0.1)', 146, 131, 116, 0.1),
+          tickColor: chartColorAlpha('rgba(107, 114, 128, 0.1)', 146, 131, 116, 0.1)
         },
         yAxis: {
-          labels: { style: { color: '#6B7280' } },
-          gridLineColor: 'rgba(107, 114, 128, 0.1)'
+          labels: { style: { color: chartColor('#6B7280', '#928374') } },
+          gridLineColor: chartColorAlpha('rgba(107, 114, 128, 0.1)', 146, 131, 116, 0.1)
         },
         legend: {
-          itemStyle: { color: '#6B7280' },
-          itemHoverStyle: { color: '#9CA3AF' }
+          itemStyle: { color: chartColor('#6B7280', '#928374') },
+          itemHoverStyle: { color: chartColor('#9CA3AF', '#bdae93') }
         },
         tooltip: {
-          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          backgroundColor: chartColorAlpha('rgba(0, 0, 0, 0.85)', 40, 40, 40, 0.95),
           borderColor: 'transparent',
-          style: { color: '#E5E7EB', fontFamily: 'ui-monospace, monospace' }
+          style: { color: chartColor('#E5E7EB', '#ebdbb2'), fontFamily: 'ui-monospace, monospace' }
         }
       });
     </script>
