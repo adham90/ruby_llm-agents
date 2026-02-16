@@ -75,18 +75,25 @@ Faraday::UnauthorizedError: Invalid API key
 
 **Solutions:**
 
-1. Verify key is set:
+1. Use unified configuration (v2.1+):
+   ```ruby
+   RubyLLM::Agents.configure do |config|
+     config.openai_api_key = ENV["OPENAI_API_KEY"]
+   end
+   ```
+
+2. Verify key is set:
    ```ruby
    puts ENV['OPENAI_API_KEY'].present?
    ```
 
-2. Check key format:
+3. Check key format:
    ```ruby
    # OpenAI keys start with sk-
    # Anthropic keys start with sk-ant-
    ```
 
-3. Test key directly:
+4. Test key directly:
    ```ruby
    RubyLLM.chat(model: "gpt-4o-mini").ask("test")
    ```

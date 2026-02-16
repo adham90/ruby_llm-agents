@@ -161,14 +161,6 @@ result.attempts.any? { |a| a[:status] == "error" }  # => true
 result.attempts.last[:model]                         # => "gpt-4o-mini"
 ```
 
-### Fallback Information
-
-```ruby
-result.fallback_chain   # => ["gpt-4o", "gpt-4o-mini"] - Models tried in order
-result.fallback_reason  # => "rate_limited" - Why fallback was triggered
-result.cache_hit?       # => false - Whether response came from cache
-```
-
 ## Full Metadata Hash
 
 Get everything as a hash:
@@ -181,6 +173,7 @@ result.to_h
 #   output_tokens: 50,
 #   total_tokens: 200,
 #   cached_tokens: 0,
+#   cache_creation_tokens: 0,
 #   input_cost: 0.000150,
 #   output_cost: 0.000100,
 #   total_cost: 0.000250,
@@ -190,12 +183,18 @@ result.to_h
 #   duration_ms: 1234,
 #   started_at: 2024-01-15 10:30:00 UTC,
 #   completed_at: 2024-01-15 10:30:01 UTC,
+#   time_to_first_token_ms: nil,
 #   finish_reason: "stop",
 #   streaming: false,
+#   error_class: nil,
+#   error_message: nil,
+#   attempts_count: 1,
+#   attempts: [],
 #   tool_calls: [],
 #   tool_calls_count: 0,
-#   attempts_count: 1,
-#   used_fallback: false
+#   thinking_text: nil,
+#   thinking_signature: nil,
+#   thinking_tokens: nil
 # }
 ```
 
@@ -225,12 +224,13 @@ result = MyAgent.call(query: "test")
 if result.success?
   process(result.content)
 else
-  handle_error(result.error)
+  handle_error(result.error_message)
 end
 
 # Error information
-result.error         # => "Rate limit exceeded"
-result.error_class   # => "RateLimitError"
+result.error?         # => true
+result.error_class    # => "Faraday::TooManyRequestsError"
+result.error_message  # => "Rate limit exceeded"
 ```
 
 ## Working with Results in Controllers
@@ -250,7 +250,7 @@ class SearchController < ApplicationController
         }
       }
     else
-      render json: { error: result.error }, status: :service_unavailable
+      render json: { error: result.error_message }, status: :service_unavailable
     end
   end
 end

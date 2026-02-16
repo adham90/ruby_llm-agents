@@ -9,6 +9,7 @@
 > **Production-ready Rails engine for building, managing, and monitoring LLM-powered AI agents**
 
 [![Gem Version](https://badge.fury.io/rb/ruby_llm-agents.svg)](https://rubygems.org/gems/ruby_llm-agents)
+[![CI](https://github.com/adham90/ruby_llm-agents/actions/workflows/ci.yml/badge.svg)](https://github.com/adham90/ruby_llm-agents/actions/workflows/ci.yml)
 [![Ruby](https://img.shields.io/badge/ruby-%3E%3D%203.1-ruby.svg)](https://www.ruby-lang.org)
 [![Rails](https://img.shields.io/badge/rails-%3E%3D%207.0-red.svg)](https://rubyonrails.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -152,6 +153,19 @@ rails db:migrate
 
 ### Configure API Keys
 
+Configure all provider API keys in one place (v2.1+):
+
+```ruby
+# config/initializers/ruby_llm_agents.rb
+RubyLLM::Agents.configure do |config|
+  config.openai_api_key = ENV["OPENAI_API_KEY"]
+  config.anthropic_api_key = ENV["ANTHROPIC_API_KEY"]
+  config.gemini_api_key = ENV["GOOGLE_API_KEY"]
+end
+```
+
+Or use environment variables directly (auto-detected by RubyLLM):
+
 ```bash
 # .env
 OPENAI_API_KEY=sk-...
@@ -212,7 +226,7 @@ mount RubyLLM::Agents::Engine => "/agents"
 
 - **Ruby** >= 3.1.0
 - **Rails** >= 7.0
-- **RubyLLM** >= 1.11.0
+- **RubyLLM** >= 1.12.0
 
 ## Contributing
 

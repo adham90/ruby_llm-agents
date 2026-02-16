@@ -44,7 +44,24 @@ This creates:
 
 ### Step 4: Configure API Keys
 
-Set up your API keys in environment variables:
+**Option A: Unified configuration (recommended, v2.1+)**
+
+Configure everything in one place:
+
+```ruby
+# config/initializers/ruby_llm_agents.rb
+RubyLLM::Agents.configure do |config|
+  config.openai_api_key = ENV["OPENAI_API_KEY"]
+  config.anthropic_api_key = ENV["ANTHROPIC_API_KEY"]
+  config.gemini_api_key = ENV["GOOGLE_API_KEY"]
+
+  config.default_model = "gpt-4o"
+end
+```
+
+**Option B: Environment variables**
+
+API keys are auto-detected from environment variables:
 
 ```bash
 # .env (using dotenv-rails)
@@ -53,7 +70,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 GOOGLE_API_KEY=...
 ```
 
-Or using Rails credentials:
+**Option C: Rails credentials**
 
 ```bash
 rails credentials:edit

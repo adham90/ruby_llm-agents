@@ -16,7 +16,7 @@ RubyLLM::Agents automatically installs:
 
 ```ruby
 gem "rails", ">= 7.0"
-gem "ruby_llm", ">= 1.0"          # LLM client library
+gem "ruby_llm", ">= 1.12.0"       # LLM client library
 gem "turbo-rails", ">= 1.0"       # Hotwire Turbo for real-time UI
 gem "stimulus-rails", ">= 1.0"    # Hotwire Stimulus for JavaScript
 gem "chartkick", ">= 5.0"         # Beautiful charts for analytics
@@ -86,16 +86,24 @@ google:
   api_key: ...
 ```
 
-#### Direct Configuration
+#### Unified Configuration (Recommended, v2.1+)
+
+Configure API keys directly in `RubyLLM::Agents.configure` — no separate initializer needed:
 
 ```ruby
 # config/initializers/ruby_llm_agents.rb
-RubyLLM.configure do |config|
+RubyLLM::Agents.configure do |config|
+  # API keys (forwarded to RubyLLM automatically)
   config.openai_api_key = ENV['OPENAI_API_KEY']
   config.anthropic_api_key = ENV['ANTHROPIC_API_KEY']
-  config.google_api_key = ENV['GOOGLE_API_KEY']
+  config.gemini_api_key = ENV['GOOGLE_API_KEY']
+
+  # Agent settings
+  config.default_model = "gpt-4o"
 end
 ```
+
+See [Configuration](Configuration#unified-api-key-configuration-v21) for all supported provider attributes.
 
 ## Verify Installation
 

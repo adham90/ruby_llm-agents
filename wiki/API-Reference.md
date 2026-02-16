@@ -4,9 +4,9 @@ Complete class and method documentation for RubyLLM::Agents.
 
 ## RubyLLM::Agents::Base
 
-The base class for all agents.
+The base class for all agents. Supports two DSL styles: Simplified (recommended) and Traditional.
 
-### Class Methods
+### Class Methods — Core Settings
 
 #### `.model(name)`
 
@@ -32,12 +32,12 @@ Set request timeout.
 timeout 60
 ```
 
-#### `.cache(duration)`
+#### `.description(text)`
 
-Enable response caching.
+Document agent purpose (displayed in dashboard).
 
 ```ruby
-cache 1.hour
+description "Extracts search intent from user queries"
 ```
 
 #### `.streaming(boolean)`
@@ -48,6 +48,87 @@ Enable/disable streaming.
 streaming true
 ```
 
+#### `.thinking(effort:, budget:)`
+
+Enable extended thinking for supported models.
+
+```ruby
+thinking effort: :high, budget: 10000
+```
+
+### Class Methods — Simplified DSL (v2.0+)
+
+#### `.prompt(template)` / `.prompt(&block)`
+
+Define user prompt with `{placeholder}` syntax. Parameters are auto-registered as required.
+
+```ruby
+prompt "Search for {query} in {category}"
+prompt { "Dynamic: #{some_method}" }
+```
+
+#### `.system(text)` / `.system(&block)`
+
+Define system instructions.
+
+```ruby
+system "You are a helpful assistant."
+```
+
+#### `.returns(&block)`
+
+Define structured output schema (alias for `schema`).
+
+```ruby
+returns do
+  string :title, description: "Article title"
+  array :tags, of: :string
+  number :confidence
+  boolean :needs_review
+end
+```
+
+#### `.on_failure(&block)`
+
+Group all error handling (alias for `reliability`).
+
+```ruby
+on_failure do
+  retries times: 3, backoff: :exponential
+  fallback to: ["gpt-4o-mini", "claude-3-haiku"]
+  timeout 30
+  circuit_breaker after: 5, cooldown: 5.minutes
+end
+```
+
+#### `.cache(for:, key:)`
+
+Enable caching with keyword syntax.
+
+```ruby
+cache for: 1.hour
+cache for: 30.minutes, key: [:query]
+```
+
+#### `.before(&block)` / `.after(&block)`
+
+Simplified callbacks (block-only).
+
+```ruby
+before { |ctx| ctx.params[:timestamp] = Time.current }
+after { |ctx, result| Analytics.track(result) }
+```
+
+### Class Methods — Traditional DSL
+
+#### `.cache_for(duration)`
+
+Enable response caching.
+
+```ruby
+cache_for 1.hour
+```
+
 #### `.param(name, options = {})`
 
 Define a parameter.
@@ -55,11 +136,21 @@ Define a parameter.
 ```ruby
 param :query, required: true
 param :limit, default: 10
+param :count, type: :integer
 ```
 
 Options:
 - `required: true` - Parameter must be provided
 - `default: value` - Default value if not provided
+- `type:` - Type validation (`:string`, `:integer`, `:float`, `:boolean`, `:array`, `:hash`)
+
+#### `.tools(array)`
+
+Register tools for the agent.
+
+```ruby
+tools [SearchTool, CalculatorTool]
+```
 
 #### `.retries(options)`
 
@@ -105,6 +196,28 @@ Set maximum time for all attempts.
 total_timeout 30
 ```
 
+#### `.reliability(&block)`
+
+Block DSL for reliability configuration.
+
+```ruby
+reliability do
+  retries max: 3, backoff: :exponential
+  fallback_models "gpt-4o-mini"
+  total_timeout 30
+  circuit_breaker errors: 10, within: 60, cooldown: 300
+end
+```
+
+#### `.before_call` / `.after_call`
+
+Full callback API with method names or blocks.
+
+```ruby
+before_call :validate_input
+after_call { |context, response| log(response) }
+```
+
 #### `.call(**params, &block)`
 
 Execute the agent.
@@ -114,7 +227,14 @@ result = MyAgent.call(query: "test")
 result = MyAgent.call(query: "test", dry_run: true)
 result = MyAgent.call(query: "test", skip_cache: true)
 result = MyAgent.call(query: "test", with: "image.jpg")
-result = MyAgent.call(query: "test") { |chunk| print chunk }
+```
+
+#### `.stream(**params, &block)`
+
+Execute with streaming.
+
+```ruby
+MyAgent.stream(query: "test") { |chunk| print chunk.content }
 ```
 
 ### Instance Methods
@@ -196,9 +316,10 @@ Returned by agent calls.
 ### Content Access
 
 ```ruby
-result.content        # Parsed response
-result[:key]          # Hash-style access
-result.dig(:nested, :key)
+result.content            # Parsed response
+result.content[:key]      # Hash-style access (recommended)
+result.content.dig(:a, :b)
+result[:key]              # Deprecated, use content[:key]
 ```
 
 ### Token Information
@@ -257,6 +378,24 @@ result.used_fallback? # Was fallback used?
 result.tool_calls     # Array of tool calls
 result.tool_calls_count
 result.has_tool_calls?
+```
+
+### Thinking Information
+
+```ruby
+result.thinking_text      # Reasoning content
+result.thinking_tokens    # Tokens used for thinking
+result.thinking_signature # Multi-turn signature (Claude)
+result.has_thinking?      # Whether thinking was used
+```
+
+### Error Information
+
+```ruby
+result.success?       # true if no error
+result.error?         # true if errored
+result.error_class    # Exception class name
+result.error_message  # Exception message
 ```
 
 ### Full Data
@@ -387,10 +526,15 @@ CircuitBreaker.reset_all!
 
 ## RubyLLM::Agents.configure
 
-Global configuration.
+Global configuration. As of v2.1.0, this is the single entry point for all settings, including LLM provider API keys.
 
 ```ruby
 RubyLLM::Agents.configure do |config|
+  # API Keys (v2.1+ — forwarded to RubyLLM automatically)
+  config.openai_api_key = ENV["OPENAI_API_KEY"]
+  config.anthropic_api_key = ENV["ANTHROPIC_API_KEY"]
+  config.gemini_api_key = ENV["GOOGLE_API_KEY"]
+
   # Defaults
   config.default_model = "gpt-4o"
   config.default_temperature = 0.0
@@ -413,7 +557,7 @@ RubyLLM::Agents.configure do |config|
   # Dashboard
   config.dashboard_auth = ->(c) { c.current_user&.admin? }
   config.dashboard_parent_controller = "ApplicationController"
-  config.dashboard_per_page = 25
+  config.per_page = 25
 
   # Budgets
   config.budgets = {
@@ -427,6 +571,8 @@ RubyLLM::Agents.configure do |config|
   }
 end
 ```
+
+See [Configuration](Configuration) for the full list of options including all 22 forwarded provider attributes.
 
 ---
 

@@ -1,8 +1,8 @@
 # ruby_llm-agents
 
-> A production-ready Rails engine for building, managing, and monitoring LLM-powered AI agents. Provides a declarative DSL for creating intelligent agents with built-in execution tracking, cost analytics, budget controls, multi-tenancy, reliability patterns, and a real-time dashboard. Built on RubyLLM for provider abstraction. Requires Ruby >= 3.1.0 and Rails >= 7.0. MIT License.
+> A production-ready Rails engine for building, managing, and monitoring LLM-powered AI agents. Provides a declarative DSL for creating intelligent agents with built-in execution tracking, cost analytics, budget controls, multi-tenancy, reliability patterns, and a real-time dashboard. Built on RubyLLM for provider abstraction. Requires Ruby >= 3.1.0, Rails >= 7.0, and RubyLLM >= 1.12.0. MIT License. Current version: 2.1.0.
 
-ruby_llm-agents brings structure, observability, and control to LLM-based Rails applications. Define agents using a class-based DSL with model selection, temperature, parameters, prompts, and response schemas. Every execution is automatically tracked with token usage, costs, and duration. Set daily and monthly budget limits per tenant with alerts. Handle failures gracefully with automatic retries, model fallbacks, and circuit breakers. Compose complex workflows using pipelines, parallel execution, or routers. Process images with generation, analysis, editing, upscaling, and background removal. Handle audio with transcription and text-to-speech. Protect user data with PII redaction and content moderation.
+ruby_llm-agents brings structure, observability, and control to LLM-based Rails applications. Define agents using a class-based DSL with model selection, temperature, parameters, prompts, and response schemas. Supports two DSL styles: a simplified prompt-centric syntax (recommended) and a traditional method-override approach. Every execution is automatically tracked with token usage, costs, and duration in a split schema (executions + execution_details tables). Set daily and monthly budget limits per tenant with alerts. Handle failures gracefully with automatic retries, model fallbacks, and circuit breakers. Configure all LLM provider API keys in a single unified configuration block (v2.1+). Process images with generation, analysis, editing, upscaling, and background removal. Handle audio with transcription and text-to-speech.
 
 ## Documentation
 
@@ -25,12 +25,13 @@ ruby_llm-agents brings structure, observability, and control to LLM-based Rails 
 
 ## Core Components
 
-- [Base Agent](lib/ruby_llm/agents/base.rb): Base class for all agents with DSL and execution
-- [DSL](lib/ruby_llm/agents/base/dsl.rb): Class-level DSL for model, temperature, params, prompts
-- [Execution](lib/ruby_llm/agents/base/execution.rb): Agent execution logic and LLM interaction
-- [Response Building](lib/ruby_llm/agents/base/response_building.rb): Response parsing and schema validation
+- [Base Agent](lib/ruby_llm/agents/base_agent.rb): Base class for all agents with DSL and pipeline execution
+- [DSL Base](lib/ruby_llm/agents/dsl/base.rb): Core DSL - model, prompt, system, returns, description
+- [DSL Reliability](lib/ruby_llm/agents/dsl/reliability.rb): Reliability DSL - retries, fallbacks, circuit breakers, on_failure
+- [DSL Caching](lib/ruby_llm/agents/dsl/caching.rb): Caching DSL - cache_for, cache(for:, key:)
 - [Result](lib/ruby_llm/agents/result.rb): Unified result object with content, cost, tokens, duration
-- [Configuration](lib/ruby_llm/agents/configuration.rb): Global configuration with 50+ options
+- [Configuration](lib/ruby_llm/agents/core/configuration.rb): Global configuration with 50+ options plus forwarded RubyLLM attributes (v2.1+)
+- [Execution Detail](app/models/ruby_llm/agents/execution_detail.rb): Large payload storage (prompts, responses, tool_calls)
 - [Engine](lib/ruby_llm/agents/engine.rb): Rails engine setup and initialization
 - [Errors](lib/ruby_llm/agents/errors.rb): Custom error classes for agents
 
@@ -76,21 +77,6 @@ ruby_llm-agents brings structure, observability, and control to LLM-based Rails 
 - [Alerts](wiki/Alerts.md): Setting up budget breach notifications
 - [Alert Manager](lib/ruby_llm/agents/alert_manager.rb): Slack and webhook alerts
 
-## Workflows
-
-- [Workflows Guide](wiki/Workflows.md): Overview of workflow orchestration
-- [Workflow Module](lib/ruby_llm/agents/workflow.rb): Main workflow entry point
-- [Pipeline Workflows](wiki/Pipeline-Workflows.md): Sequential execution guide
-- [Pipeline](lib/ruby_llm/agents/workflow/pipeline.rb): Sequential execution with data flow
-- [Parallel Workflows](wiki/Parallel-Workflows.md): Concurrent execution guide
-- [Parallel](lib/ruby_llm/agents/workflow/parallel.rb): Concurrent agent execution
-- [Router Workflows](wiki/Router-Workflows.md): Conditional routing guide
-- [Router](lib/ruby_llm/agents/workflow/router.rb): Conditional dispatch based on classification
-- [Workflow Result](lib/ruby_llm/agents/workflow/result.rb): Combined workflow results
-- [Workflow Instrumentation](lib/ruby_llm/agents/workflow/instrumentation.rb): Workflow-level tracking
-- [Thread Pool](lib/ruby_llm/agents/workflow/thread_pool.rb): Thread pool for parallel execution
-- [Async Executor](lib/ruby_llm/agents/workflow/async_executor.rb): Fiber-based async execution
-
 ## Multi-Tenancy
 
 - [Multi-Tenancy Guide](wiki/Multi-Tenancy.md): Setting up multi-tenant support
@@ -115,13 +101,6 @@ ruby_llm-agents brings structure, observability, and control to LLM-based Rails 
 - [Embedder DSL](lib/ruby_llm/agents/embedder/dsl.rb): Embedder configuration DSL
 - [Embedder Execution](lib/ruby_llm/agents/embedder/execution.rb): Embedding generation logic
 - [Embedding Result](lib/ruby_llm/agents/embedding_result.rb): Embedding result with vectors
-- [Moderation Guide](wiki/Moderation.md): Content safety checks
-- [Moderator](lib/ruby_llm/agents/moderator.rb): Content moderation using OpenAI
-- [Moderation DSL](lib/ruby_llm/agents/base/moderation_dsl.rb): Moderation configuration
-- [Moderation Execution](lib/ruby_llm/agents/base/moderation_execution.rb): Moderation checking logic
-- [Moderation Result](lib/ruby_llm/agents/moderation_result.rb): Moderation result with flags
-- [PII Redaction Guide](wiki/PII-Redaction.md): Sensitive data protection
-- [Redactor](lib/ruby_llm/agents/redactor.rb): PII detection and redaction
 
 ## Audio Operations
 

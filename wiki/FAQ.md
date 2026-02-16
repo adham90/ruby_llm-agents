@@ -42,15 +42,28 @@ Through RubyLLM, we support:
 
 ### How do I set API keys?
 
+**Unified configuration (recommended, v2.1+):**
+
 ```ruby
-# Environment variables (recommended)
+# config/initializers/ruby_llm_agents.rb
+RubyLLM::Agents.configure do |config|
+  config.openai_api_key = ENV["OPENAI_API_KEY"]
+  config.anthropic_api_key = ENV["ANTHROPIC_API_KEY"]
+  config.gemini_api_key = ENV["GOOGLE_API_KEY"]
+end
+```
+
+Or use environment variables (auto-detected by RubyLLM):
+
+```bash
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
 GOOGLE_API_KEY=...
-
-# Or Rails credentials
-rails credentials:edit
 ```
+
+### Do I still need a separate ruby_llm.rb initializer?
+
+No. As of v2.1.0, all RubyLLM provider settings (API keys, custom endpoints, Bedrock credentials, etc.) can be configured directly in `RubyLLM::Agents.configure`. They are automatically forwarded to `RubyLLM.config`. See [Configuration](Configuration#unified-api-key-configuration-v21) for the full list of forwarded attributes.
 
 ### How do I change the default model?
 

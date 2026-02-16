@@ -6,6 +6,48 @@ For full upgrade instructions, see [UPGRADE.md](../UPGRADE.md).
 
 ---
 
+## Upgrading to v2.1.0
+
+### From v2.0.0
+
+v2.1.0 is a minor release with no breaking changes. Key additions:
+
+**Unified API Key Configuration**
+
+You can now configure all LLM provider API keys directly in `RubyLLM::Agents.configure`. No separate `ruby_llm.rb` initializer needed:
+
+```ruby
+# config/initializers/ruby_llm_agents.rb
+RubyLLM::Agents.configure do |config|
+  # API keys (forwarded to RubyLLM automatically)
+  config.openai_api_key = ENV["OPENAI_API_KEY"]
+  config.anthropic_api_key = ENV["ANTHROPIC_API_KEY"]
+  config.gemini_api_key = ENV["GOOGLE_API_KEY"]
+
+  # All other settings
+  config.default_model = "gpt-4o"
+end
+```
+
+**Migration steps:**
+
+```bash
+bundle update ruby_llm-agents
+rails generate ruby_llm_agents:upgrade
+rails db:migrate
+```
+
+The upgrade generator will suggest consolidating if it detects a separate `config/initializers/ruby_llm.rb` file.
+
+**Optional:** Remove your `config/initializers/ruby_llm.rb` and move its settings into `ruby_llm_agents.rb`. See [Configuration](Configuration#unified-api-key-configuration-v21) for the full list of forwarded attributes.
+
+**Other changes:**
+- Fixed cost calculation (now uses `Models.find` for correct pricing)
+- Minimum `ruby_llm` dependency bumped to `>= 1.12.0`
+- Dashboard: Tenants nav link hidden when multi-tenancy is disabled
+
+---
+
 ## Upgrading to v2.0.0
 
 ### From v1.x

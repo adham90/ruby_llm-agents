@@ -31,6 +31,88 @@ RubyLLM::Agents.configure do |config|
 end
 ```
 
+## Unified API Key Configuration (v2.1+)
+
+As of v2.1.0, you can configure **all LLM provider API keys** directly in the `RubyLLM::Agents.configure` block. No separate `RubyLLM.configure` or `ruby_llm.rb` initializer needed:
+
+```ruby
+RubyLLM::Agents.configure do |config|
+  # API Keys — forwarded to RubyLLM automatically
+  config.openai_api_key = ENV["OPENAI_API_KEY"]
+  config.anthropic_api_key = ENV["ANTHROPIC_API_KEY"]
+  config.gemini_api_key = ENV["GOOGLE_API_KEY"]
+  config.deepseek_api_key = ENV["DEEPSEEK_API_KEY"]
+
+  # Custom endpoints
+  config.openai_api_base = "https://custom-endpoint.example.com"
+  config.ollama_api_base = "http://localhost:11434"
+
+  # Agent settings
+  config.default_model = "gpt-4o"
+  config.default_temperature = 0.0
+end
+```
+
+### All Forwarded Provider Attributes
+
+These attributes are set on `RubyLLM::Agents.configure` but forwarded to `RubyLLM.config` automatically:
+
+| Attribute | Description |
+|-----------|-------------|
+| `openai_api_key` | OpenAI API key |
+| `anthropic_api_key` | Anthropic API key |
+| `gemini_api_key` | Google Gemini API key |
+| `deepseek_api_key` | DeepSeek API key |
+| `openrouter_api_key` | OpenRouter API key |
+| `bedrock_api_key` | AWS Bedrock access key |
+| `bedrock_secret_key` | AWS Bedrock secret key |
+| `bedrock_session_token` | AWS Bedrock session token |
+| `bedrock_region` | AWS Bedrock region |
+| `mistral_api_key` | Mistral API key |
+| `perplexity_api_key` | Perplexity API key |
+| `xai_api_key` | xAI (Grok) API key |
+| `gpustack_api_key` | GPUStack API key |
+| `openai_api_base` | Custom OpenAI-compatible endpoint |
+| `openai_organization_id` | OpenAI organization ID |
+| `openai_project_id` | OpenAI project ID |
+| `gemini_api_base` | Custom Gemini endpoint |
+| `gpustack_api_base` | Custom GPUStack endpoint |
+| `ollama_api_base` | Ollama server URL |
+| `vertexai_project_id` | Google Vertex AI project ID |
+| `vertexai_location` | Google Vertex AI location |
+| `request_timeout` | HTTP request timeout for RubyLLM |
+| `max_retries` | HTTP-level retries for RubyLLM |
+
+### Migrating from Separate Configuration
+
+If you previously had a separate `config/initializers/ruby_llm.rb`:
+
+```ruby
+# BEFORE (two initializers):
+
+# config/initializers/ruby_llm.rb
+RubyLLM.configure do |config|
+  config.openai_api_key = ENV["OPENAI_API_KEY"]
+end
+
+# config/initializers/ruby_llm_agents.rb
+RubyLLM::Agents.configure do |config|
+  config.default_model = "gpt-4o"
+end
+```
+
+```ruby
+# AFTER (single initializer):
+
+# config/initializers/ruby_llm_agents.rb
+RubyLLM::Agents.configure do |config|
+  config.openai_api_key = ENV["OPENAI_API_KEY"]  # Forwarded to RubyLLM
+  config.default_model = "gpt-4o"
+end
+```
+
+> **Note:** Running `rails generate ruby_llm_agents:upgrade` will suggest consolidating if it detects a separate `ruby_llm.rb` initializer.
+
 ## All Configuration Options
 
 ### Default Agent Settings
@@ -276,6 +358,38 @@ end
 | `job_retry_attempts` | Integer | `3` | Background job retries |
 | `async_max_concurrency` | Integer | `10` | Max concurrent operations for async batch |
 
+### Image Operations
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `default_image_model` | `"gpt-image-1"` | Default image generation model |
+| `default_image_size` | `"1024x1024"` | Default image size |
+| `default_image_quality` | `"standard"` | Default quality (standard, hd) |
+| `default_image_style` | `"vivid"` | Default style (vivid, natural) |
+| `track_image_generation` | `true` | Track image operations |
+
+### Data Protection
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `tool_result_max_length` | `10_000` | Max chars for tool results |
+| `redaction` | `nil` | PII redaction config |
+
+```ruby
+config.redaction = {
+  fields: %w[ssn credit_card email],
+  patterns: [/\b\d{3}-\d{2}-\d{4}\b/],
+  placeholder: "[REDACTED]"
+}
+```
+
+### Directory Structure
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `root_directory` | `"agents"` | Root directory under `app/` |
+| `root_namespace` | `nil` | Module namespace for agents |
+
 ## Resetting Configuration
 
 For testing:
@@ -292,8 +406,10 @@ end
 
 ## Related Pages
 
+- [Installation](Installation) - Initial setup and API key configuration
 - [Budget Controls](Budget-Controls) - Cost limits
 - [Alerts](Alerts) - Notification setup
 - [Multi-Tenancy](Multi-Tenancy) - Tenant isolation
 - [Async/Fiber](Async-Fiber) - Concurrent execution
 - [Dashboard](Dashboard) - Monitoring UI
+- [Migration](Migration) - Upgrading between versions

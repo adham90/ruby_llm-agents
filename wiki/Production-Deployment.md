@@ -59,6 +59,11 @@ config.on_alert = ->(event, payload) {
 ```ruby
 # config/initializers/ruby_llm_agents.rb
 RubyLLM::Agents.configure do |config|
+  # API Keys (unified config, v2.1+) — no separate ruby_llm.rb needed
+  config.openai_api_key = ENV["OPENAI_API_KEY"]
+  config.anthropic_api_key = ENV["ANTHROPIC_API_KEY"]
+  config.gemini_api_key = ENV["GOOGLE_API_KEY"]
+
   # Performance
   config.async_logging = true
   config.cache_store = Rails.cache
