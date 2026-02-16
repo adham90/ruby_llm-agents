@@ -91,10 +91,16 @@ module RubyLLM
         #     Limit: {limit}
         #   S
         #
-        def user(template = nil)
+        def user(template = nil, &block)
           if template
             @user_template = template
             auto_register_params_from_template(template)
+          elsif block
+            Deprecations.warn(
+              "`user do ... end` is deprecated. Use a string argument or a `def user_prompt` method override instead.",
+              caller
+            )
+            @prompt_block = block
           end
           @user_template || @prompt_template || @prompt_block || inherited_or_default(:user_config, nil)
         end
@@ -108,15 +114,23 @@ module RubyLLM
 
         # Backward-compatible alias for `user`
         #
-        # @deprecated Use `user` instead
+        # @deprecated Use `user` instead. Will be removed in v3.0.
         # @param template [String, nil] Prompt template with {placeholder} syntax
         # @yield Block that returns the prompt string (evaluated at execution time)
         # @return [String, Proc, nil] The current prompt configuration
         def prompt(template = nil, &block)
           if template
+            Deprecations.warn(
+              "`prompt` is deprecated. Use `user` instead (e.g., `user \"#{template.truncate(40)}\"`).",
+              caller
+            )
             @user_template = template
             auto_register_params_from_template(template)
           elsif block
+            Deprecations.warn(
+              "`prompt do ... end` is deprecated. Use `user do ... end` or a `def user_prompt` method override instead.",
+              caller
+            )
             @prompt_block = block
           end
           @user_template || @prompt_template || @prompt_block || inherited_or_default(:user_config, nil)
@@ -155,6 +169,10 @@ module RubyLLM
             @system_template = text
             auto_register_params_from_template(text)
           elsif block
+            Deprecations.warn(
+              "`system do ... end` is deprecated. Use a string argument or a `def system_prompt` method override instead.",
+              caller
+            )
             @system_block = block
           end
           @system_template || @system_block || inherited_or_default(:system_config, nil)

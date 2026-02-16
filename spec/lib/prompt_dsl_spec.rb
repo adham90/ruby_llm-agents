@@ -485,6 +485,166 @@ RSpec.describe "Three-Role Prompt DSL" do
     end
   end
 
+  # ── Deprecation warnings (Phase 2) ───────────────────────────
+
+  describe "deprecation warnings" do
+    # Enable deprecation warnings for these tests
+    before do
+      RubyLLM::Agents::Deprecations.silenced = false
+      RubyLLM::Agents::Deprecations.raise_on_deprecation = true
+    end
+
+    after do
+      RubyLLM::Agents::Deprecations.raise_on_deprecation = false
+      RubyLLM::Agents::Deprecations.silenced = true
+    end
+
+    describe "`prompt` with string argument" do
+      it "emits deprecation warning" do
+        expect {
+          Class.new(RubyLLM::Agents::Base) { prompt "Search {query}" }
+        }.to raise_error(
+          RubyLLM::Agents::Deprecations::DeprecationError,
+          /`prompt` is deprecated.*Use `user` instead/
+        )
+      end
+
+      it "includes the template text in the warning" do
+        expect {
+          Class.new(RubyLLM::Agents::Base) { prompt "Search {query}" }
+        }.to raise_error(
+          RubyLLM::Agents::Deprecations::DeprecationError,
+          /Search \{query\}/
+        )
+      end
+
+      it "still sets the user template when silenced" do
+        RubyLLM::Agents::Deprecations.raise_on_deprecation = false
+        RubyLLM::Agents::Deprecations.silenced = true
+
+        agent_class = Class.new(RubyLLM::Agents::Base) { prompt "Hello {name}" }
+        expect(agent_class.user_config).to eq("Hello {name}")
+      end
+    end
+
+    describe "`prompt` with block" do
+      it "emits deprecation warning" do
+        expect {
+          Class.new(RubyLLM::Agents::Base) { prompt { "Dynamic" } }
+        }.to raise_error(
+          RubyLLM::Agents::Deprecations::DeprecationError,
+          /`prompt do \.\.\. end` is deprecated/
+        )
+      end
+
+      it "suggests using user or def user_prompt" do
+        expect {
+          Class.new(RubyLLM::Agents::Base) { prompt { "Dynamic" } }
+        }.to raise_error(
+          RubyLLM::Agents::Deprecations::DeprecationError,
+          /`user do \.\.\. end` or a `def user_prompt` method override/
+        )
+      end
+
+      it "still sets the block when silenced" do
+        RubyLLM::Agents::Deprecations.raise_on_deprecation = false
+        RubyLLM::Agents::Deprecations.silenced = true
+
+        agent_class = Class.new(RubyLLM::Agents::Base) { prompt { "Dynamic" } }
+        expect(agent_class.user_config).to be_a(Proc)
+      end
+    end
+
+    describe "`system` with block" do
+      it "emits deprecation warning" do
+        expect {
+          Class.new(RubyLLM::Agents::Base) { system { "Dynamic system" } }
+        }.to raise_error(
+          RubyLLM::Agents::Deprecations::DeprecationError,
+          /`system do \.\.\. end` is deprecated/
+        )
+      end
+
+      it "suggests using string or def system_prompt" do
+        expect {
+          Class.new(RubyLLM::Agents::Base) { system { "Dynamic system" } }
+        }.to raise_error(
+          RubyLLM::Agents::Deprecations::DeprecationError,
+          /string argument or a `def system_prompt` method override/
+        )
+      end
+
+      it "still sets the block when silenced" do
+        RubyLLM::Agents::Deprecations.raise_on_deprecation = false
+        RubyLLM::Agents::Deprecations.silenced = true
+
+        agent_class = Class.new(RubyLLM::Agents::Base) { system { "Dynamic" } }
+        expect(agent_class.system_config).to be_a(Proc)
+      end
+    end
+
+    describe "`user` with block" do
+      it "emits deprecation warning" do
+        expect {
+          Class.new(RubyLLM::Agents::Base) { user { "Dynamic user" } }
+        }.to raise_error(
+          RubyLLM::Agents::Deprecations::DeprecationError,
+          /`user do \.\.\. end` is deprecated/
+        )
+      end
+
+      it "suggests using string or def user_prompt" do
+        expect {
+          Class.new(RubyLLM::Agents::Base) { user { "Dynamic user" } }
+        }.to raise_error(
+          RubyLLM::Agents::Deprecations::DeprecationError,
+          /string argument or a `def user_prompt` method override/
+        )
+      end
+
+      it "still sets the block when silenced" do
+        RubyLLM::Agents::Deprecations.raise_on_deprecation = false
+        RubyLLM::Agents::Deprecations.silenced = true
+
+        agent_class = Class.new(RubyLLM::Agents::Base) { user { "Dynamic" } }
+        expect(agent_class.user_config).to be_a(Proc)
+      end
+    end
+
+    describe "no deprecation for current API" do
+      it "`user` with string does NOT emit warning" do
+        expect {
+          Class.new(RubyLLM::Agents::Base) { user "Search {query}" }
+        }.not_to raise_error
+      end
+
+      it "`system` with string does NOT emit warning" do
+        expect {
+          Class.new(RubyLLM::Agents::Base) { system "You are helpful." }
+        }.not_to raise_error
+      end
+
+      it "`assistant` with string does NOT emit warning" do
+        expect {
+          Class.new(RubyLLM::Agents::Base) { assistant '{"result":' }
+        }.not_to raise_error
+      end
+
+      it "`prompt` without arguments does NOT emit warning (read-only)" do
+        RubyLLM::Agents::Deprecations.raise_on_deprecation = false
+        RubyLLM::Agents::Deprecations.silenced = true
+
+        agent_class = Class.new(RubyLLM::Agents::Base) { user "Hello" }
+
+        RubyLLM::Agents::Deprecations.silenced = false
+        RubyLLM::Agents::Deprecations.raise_on_deprecation = true
+
+        # Reading via prompt (no args) should not warn
+        expect { agent_class.prompt }.not_to raise_error
+      end
+    end
+  end
+
   # ── Placeholder interpolation edge cases ──────────────────────
 
   describe "placeholder edge cases" do

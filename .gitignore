@@ -24,5 +24,11 @@
 /example/config/master.key
 /example/config/credentials.yml.enc
 
+# OS files
+.DS_Store
+
+# Built gems
+*.gem
+
 # Wiki clone (separate git repo)
 ruby_llm-agents.wiki/
