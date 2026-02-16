@@ -7,17 +7,23 @@ module RubyLLM
       #
       # Provides common configuration methods that every agent type needs:
       # - model: The LLM model to use
-      # - prompt: The user prompt (string with {placeholders} or block)
       # - system: System instructions
+      # - user: The user prompt (string with {placeholders})
+      # - assistant: Assistant prefill (string with optional {placeholders})
       # - description: Human-readable description
       # - timeout: Request timeout
       # - returns: Structured output schema
       #
-      # @example Simplified DSL
+      # Two levels for defining prompts:
+      # - Class-level string/heredoc for static content
+      # - Instance method override for dynamic content
+      #
+      # @example Template agent (structured input via .call)
       #   class SearchAgent < RubyLLM::Agents::BaseAgent
       #     model "gpt-4o"
       #     system "You are a helpful search assistant."
-      #     prompt "Search for: {query} (limit: {limit})"
+      #     user "Search for: {query} (limit: {limit})"
+      #     assistant '{"results":['
       #
       #     param :limit, default: 10  # Override auto-detected param
       #
@@ -29,10 +35,22 @@ module RubyLLM
       #     end
       #   end
       #
-      # @example Dynamic prompt with block
-      #   class SummaryAgent < RubyLLM::Agents::BaseAgent
-      #     prompt do
-      #       "Summarize in #{word_count} words: #{text}"
+      # @example Conversational agent (freeform input via .ask)
+      #   class RubyExpert < RubyLLM::Agents::BaseAgent
+      #     model "gpt-4o"
+      #     system "You are a senior Ruby developer."
+      #   end
+      #
+      #   RubyExpert.ask("What is metaprogramming?")
+      #
+      # @example Dynamic prompts with method overrides
+      #   class SmartAgent < RubyLLM::Agents::BaseAgent
+      #     def system_prompt
+      #       "You are helping #{company.name}. Today is #{Date.today}."
+      #     end
+      #
+      #     def user_prompt
+      #       "Question: #{params[:question]}"
       #     end
       #   end
       #
@@ -53,48 +71,69 @@ module RubyLLM
           @model || inherited_or_default(:model, default_model)
         end
 
-        # Sets the user prompt template or block
+        # Sets the user prompt template
         #
         # When a string is provided, {placeholder} syntax is used to interpolate
         # parameters. Parameters are automatically registered (as required) unless
         # already defined with `param`.
         #
-        # When a block is provided, it's evaluated in the instance context at
-        # execution time, allowing access to all instance methods and parameters.
+        # @param template [String, nil] Prompt template with {placeholder} syntax
+        # @return [String, nil] The current user prompt configuration
         #
+        # @example With template string (parameters auto-detected)
+        #   user "Search for: {query} in {category}"
+        #   # Automatically registers :query and :category as required params
+        #
+        # @example Multi-line with heredoc
+        #   user <<~S
+        #     Search for: {query}
+        #     Category: {category}
+        #     Limit: {limit}
+        #   S
+        #
+        def user(template = nil)
+          if template
+            @user_template = template
+            auto_register_params_from_template(template)
+          end
+          @user_template || @prompt_template || @prompt_block || inherited_or_default(:user_config, nil)
+        end
+
+        # Returns the user prompt configuration
+        #
+        # @return [String, Proc, nil] The user template, or nil
+        def user_config
+          @user_template || @prompt_template || @prompt_block || inherited_or_default(:user_config, nil)
+        end
+
+        # Backward-compatible alias for `user`
+        #
+        # @deprecated Use `user` instead
         # @param template [String, nil] Prompt template with {placeholder} syntax
         # @yield Block that returns the prompt string (evaluated at execution time)
         # @return [String, Proc, nil] The current prompt configuration
-        #
-        # @example With template string (parameters auto-detected)
-        #   prompt "Search for: {query} in {category}"
-        #   # Automatically registers :query and :category as required params
-        #
-        # @example With block for dynamic prompts
-        #   prompt do
-        #     base = "Analyze the following"
-        #     base += " in #{language}" if language != "en"
-        #     "#{base}: #{text}"
-        #   end
-        #
         def prompt(template = nil, &block)
           if template
-            @prompt_template = template
+            @user_template = template
             auto_register_params_from_template(template)
           elsif block
             @prompt_block = block
           end
-          @prompt_template || @prompt_block || inherited_or_default(:prompt_config, nil)
+          @user_template || @prompt_template || @prompt_block || inherited_or_default(:user_config, nil)
         end
 
-        # Returns the prompt configuration (template or block)
+        # Returns the prompt configuration (alias for user_config)
         #
+        # @deprecated Use `user_config` instead
         # @return [String, Proc, nil] The prompt template, block, or nil
         def prompt_config
-          @prompt_template || @prompt_block || inherited_or_default(:prompt_config, nil)
+          user_config
         end
 
         # Sets the system prompt/instructions
+        #
+        # When a string is provided, {placeholder} syntax is supported for
+        # parameter interpolation, same as the `user` DSL.
         #
         # @param text [String, nil] System instructions for the LLM
         # @yield Block that returns the system prompt (evaluated at execution time)
@@ -103,14 +142,18 @@ module RubyLLM
         # @example Static system prompt
         #   system "You are a helpful assistant. Be concise and accurate."
         #
-        # @example Dynamic system prompt
-        #   system do
-        #     "You are helping #{user_name}. Their preferences: #{preferences}"
+        # @example With placeholders
+        #   system "You are helping {user_name} with their {task}."
+        #
+        # @example Dynamic system prompt (method override)
+        #   def system_prompt
+        #     "You are helping #{user_name}. Today is #{Date.today}."
         #   end
         #
         def system(text = nil, &block)
           if text
             @system_template = text
+            auto_register_params_from_template(text)
           elsif block
             @system_block = block
           end
@@ -122,6 +165,39 @@ module RubyLLM
         # @return [String, Proc, nil] The system template, block, or nil
         def system_config
           @system_template || @system_block || inherited_or_default(:system_config, nil)
+        end
+
+        # Sets the assistant prefill string
+        #
+        # The assistant prefill is sent as the last message with the "assistant"
+        # role, priming the model to continue from that point. Useful for:
+        # - Forcing output format (e.g., starting with "{" for JSON)
+        # - Steering the response style
+        #
+        # Supports {placeholder} syntax for parameter interpolation.
+        #
+        # @param text [String, nil] The assistant prefill text
+        # @return [String, nil] The current assistant configuration
+        #
+        # @example Force JSON output
+        #   assistant '{"category":'
+        #
+        # @example With placeholders
+        #   assistant "Results for {query}:"
+        #
+        def assistant(text = nil)
+          if text
+            @assistant_template = text
+            auto_register_params_from_template(text)
+          end
+          @assistant_template || inherited_or_default(:assistant_config, nil)
+        end
+
+        # Returns the assistant prefill configuration
+        #
+        # @return [String, nil] The assistant template, or nil
+        def assistant_config
+          @assistant_template || inherited_or_default(:assistant_config, nil)
         end
 
         # Sets or returns the description for this agent class

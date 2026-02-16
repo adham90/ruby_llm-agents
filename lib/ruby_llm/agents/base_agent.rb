@@ -76,6 +76,39 @@ module RubyLLM
           instance.call(&block)
         end
 
+        # Executes the agent with a freeform message as the user prompt
+        #
+        # Designed for conversational agents that define a persona (system +
+        # optional assistant prefill) but accept freeform input at runtime.
+        # Also works on template agents as an escape hatch to bypass the
+        # user template.
+        #
+        # @param message [String] The user message to send
+        # @param with [String, Array<String>, nil] Attachments (files, URLs)
+        # @param kwargs [Hash] Additional options (model:, temperature:, etc.)
+        # @yield [chunk] Yields chunks when streaming
+        # @return [Result] The processed response
+        #
+        # @example Basic usage
+        #   RubyExpert.ask("What is metaprogramming?")
+        #
+        # @example With streaming
+        #   RubyExpert.ask("Explain closures") { |chunk| print chunk.content }
+        #
+        # @example With attachments
+        #   RubyExpert.ask("What's in this image?", with: "photo.jpg")
+        #
+        def ask(message, with: nil, **kwargs, &block)
+          opts = kwargs.merge(_ask_message: message)
+          opts[:with] = with if with
+
+          if block
+            stream(**opts, &block)
+          else
+            call(**opts)
+          end
+        end
+
         # Returns the agent type for this class
         #
         # Used by middleware to determine which tracking/budget config to use.
@@ -221,12 +254,13 @@ module RubyLLM
       # @param temperature [Float] Override the class-level temperature
       # @param options [Hash] Agent parameters defined via the param DSL
       def initialize(model: self.class.model, temperature: self.class.temperature, **options)
+        @ask_message = options.delete(:_ask_message)
         @model = model
         @temperature = temperature
         @options = options
         @tracked_tool_calls = []
         @pending_tool_call = nil
-        validate_required_params!
+        validate_required_params! unless @ask_message
       end
 
       # Executes the agent through the middleware pipeline
@@ -245,15 +279,21 @@ module RubyLLM
 
       # User prompt to send to the LLM
       #
-      # If a class-level `prompt` DSL is defined (string template or block),
-      # it will be used. Otherwise, subclasses must implement this method.
+      # Resolution order:
+      # 1. Subclass method override (standard Ruby dispatch — this method is never called)
+      # 2. .ask(message) runtime message — bypasses template
+      # 3. Class-level `user` / `prompt` template — interpolated with {placeholders}
+      # 4. Inherited from superclass
+      # 5. NotImplementedError
       #
       # @return [String] The user prompt
       def user_prompt
-        prompt_config = self.class.prompt_config
-        return resolve_prompt_from_config(prompt_config) if prompt_config
+        return @ask_message if @ask_message
 
-        raise NotImplementedError, "#{self.class} must implement #user_prompt or use the prompt DSL"
+        config = self.class.user_config
+        return resolve_prompt_from_config(config) if config
+
+        raise NotImplementedError, "#{self.class} must implement #user_prompt, use the `user` DSL, or call with .ask(message)"
       end
 
       # System prompt for LLM instructions
@@ -265,6 +305,19 @@ module RubyLLM
       def system_prompt
         system_config = self.class.system_config
         return resolve_prompt_from_config(system_config) if system_config
+
+        nil
+      end
+
+      # Assistant prefill to prime the model's response
+      #
+      # If a class-level `assistant` DSL is defined, it will be used.
+      # Otherwise returns nil (no prefill).
+      #
+      # @return [String, nil] The assistant prefill, or nil for none
+      def assistant_prompt
+        config = self.class.assistant_config
+        return resolve_prompt_from_config(config) if config
 
         nil
       end
@@ -381,6 +434,7 @@ module RubyLLM
         {
           temperature: temperature,
           system_prompt: system_prompt,
+          assistant_prefill: assistant_prompt,
           schema: schema,
           messages: resolved_messages,
           tools: resolved_tools,
@@ -419,11 +473,26 @@ module RubyLLM
 
       # Resolves messages for this execution
       #
+      # Includes conversation history and assistant prefill if defined.
+      # The assistant prefill is appended as the last message so it appears
+      # after the user prompt in the conversation.
+      #
       # @return [Array<Hash>] Messages to apply
       def resolved_messages
-        return @options[:messages] if @options[:messages]&.any?
+        msgs = @options[:messages]&.any? ? @options[:messages] : messages
+        msgs.dup
+      end
 
-        messages
+      # Returns the assistant prefill message if defined
+      #
+      # Called after the user prompt is sent to inject the prefill.
+      #
+      # @return [Hash, nil] The assistant prefill message hash, or nil
+      def resolved_assistant_prefill
+        prefill = assistant_prompt
+        return nil if prefill.nil? || (prefill.is_a?(String) && prefill.empty?)
+
+        { role: :assistant, content: prefill }
       end
 
       # Returns whether streaming is enabled
@@ -446,6 +515,7 @@ module RubyLLM
             timeout: self.class.timeout,
             system_prompt: system_prompt,
             user_prompt: user_prompt,
+            assistant_prompt: assistant_prompt,
             attachments: @options[:with],
             schema: schema&.class&.name,
             streaming: self.class.streaming,
@@ -546,20 +616,62 @@ module RubyLLM
 
       # Executes the LLM call
       #
+      # When an assistant prefill is defined, messages are added manually
+      # (user, then assistant) before calling complete, so the model
+      # continues from the prefill. Otherwise, uses the standard .ask flow.
+      #
       # @param client [RubyLLM::Chat] The configured client
       # @param context [Pipeline::Context] The execution context
       # @return [RubyLLM::Message] The response
       def execute_llm_call(client, context)
         timeout = self.class.timeout
-        ask_opts = {}
-        ask_opts[:with] = @options[:with] if @options[:with]
+        prefill = resolved_assistant_prefill
 
         Timeout.timeout(timeout) do
-          if streaming_enabled? && context.stream_block
-            execute_with_streaming(client, context, ask_opts)
+          if prefill
+            execute_with_prefill(client, context, prefill)
+          elsif streaming_enabled? && context.stream_block
+            execute_with_streaming(client, context)
           else
+            ask_opts = {}
+            ask_opts[:with] = @options[:with] if @options[:with]
             client.ask(user_prompt, **ask_opts)
           end
+        end
+      end
+
+      # Executes with assistant prefill
+      #
+      # Manually adds the user message and assistant prefill, then calls
+      # complete so the model continues from the prefill text.
+      #
+      # @param client [RubyLLM::Chat] The client
+      # @param context [Pipeline::Context] The context
+      # @param prefill [Hash] The assistant prefill message ({role:, content:})
+      # @return [RubyLLM::Message] The response
+      def execute_with_prefill(client, context, prefill)
+        # Add user message — use .ask for attachment support, then add prefill
+        # We use add_message + complete instead of .ask so we can insert the
+        # assistant prefill between user and completion
+        client.add_message(role: :user, content: user_prompt)
+        client.add_message(**prefill)
+
+        if streaming_enabled? && context.stream_block
+          first_chunk_at = nil
+          started_at = context.started_at || Time.current
+
+          response = client.complete do |chunk|
+            first_chunk_at ||= Time.current
+            context.stream_block.call(chunk)
+          end
+
+          if first_chunk_at
+            context.time_to_first_token_ms = ((first_chunk_at - started_at) * 1000).to_i
+          end
+
+          response
+        else
+          client.complete
         end
       end
 
@@ -567,11 +679,12 @@ module RubyLLM
       #
       # @param client [RubyLLM::Chat] The client
       # @param context [Pipeline::Context] The context
-      # @param ask_opts [Hash] Options for the ask call
       # @return [RubyLLM::Message] The response
-      def execute_with_streaming(client, context, ask_opts)
+      def execute_with_streaming(client, context)
         first_chunk_at = nil
         started_at = context.started_at || Time.current
+        ask_opts = {}
+        ask_opts[:with] = @options[:with] if @options[:with]
 
         response = client.ask(user_prompt, **ask_opts) do |chunk|
           first_chunk_at ||= Time.current
