@@ -138,7 +138,7 @@ RSpec.describe RubyLLM::Agents::ImageTransformer do
 
       expect(transformer.image).to eq("photo.jpg")
       expect(transformer.prompt).to eq("anime style")
-      expect(transformer.options).to eq({ strength: 0.9 })
+      expect(transformer.options).to eq({strength: 0.9})
     end
   end
 end

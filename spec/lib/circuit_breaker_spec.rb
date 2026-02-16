@@ -32,7 +32,7 @@ RSpec.describe RubyLLM::Agents::CircuitBreaker do
 
   describe ".from_config" do
     it "creates a breaker from config hash" do
-      config = { errors: 5, within: 30, cooldown: 120 }
+      config = {errors: 5, within: 30, cooldown: 120}
       breaker = described_class.from_config("TestAgent", "gpt-4o", config)
 
       expect(breaker.errors_threshold).to eq(5)

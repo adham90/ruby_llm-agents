@@ -83,23 +83,23 @@ ActiveRecord::Schema.define do
   # Execution details table (large payloads)
   create_table :ruby_llm_agents_execution_details, force: :cascade do |t|
     t.references :execution, null: false,
-                 foreign_key: { to_table: :ruby_llm_agents_executions, on_delete: :cascade },
-                 index: { unique: true }
+      foreign_key: {to_table: :ruby_llm_agents_executions, on_delete: :cascade},
+      index: {unique: true}
 
-    t.text     :error_message
-    t.text     :system_prompt
-    t.text     :user_prompt
-    t.text     :assistant_prompt
-    t.json     :response,             default: {}
-    t.json     :messages_summary,     default: {}, null: false
-    t.json     :tool_calls,           default: [], null: false
-    t.json     :attempts,             default: [], null: false
-    t.json     :fallback_chain
-    t.json     :parameters,           default: {}, null: false
-    t.string   :routed_to
-    t.json     :classification_result
+    t.text :error_message
+    t.text :system_prompt
+    t.text :user_prompt
+    t.text :assistant_prompt
+    t.json :response, default: {}
+    t.json :messages_summary, default: {}, null: false
+    t.json :tool_calls, default: [], null: false
+    t.json :attempts, default: [], null: false
+    t.json :fallback_chain
+    t.json :parameters, default: {}, null: false
+    t.string :routed_to
+    t.json :classification_result
     t.datetime :cached_at
-    t.integer  :cache_creation_tokens, default: 0
+    t.integer :cache_creation_tokens, default: 0
 
     t.timestamps
   end
@@ -139,16 +139,16 @@ ActiveRecord::Schema.define do
     t.boolean :active, default: true
 
     # Usage counter columns (DB-based budget tracking)
-    t.decimal :daily_cost_spent,        precision: 12, scale: 6, default: 0, null: false
-    t.decimal :monthly_cost_spent,      precision: 12, scale: 6, default: 0, null: false
-    t.bigint :daily_tokens_used,        default: 0, null: false
-    t.bigint :monthly_tokens_used,      default: 0, null: false
-    t.bigint :daily_executions_count,   default: 0, null: false
+    t.decimal :daily_cost_spent, precision: 12, scale: 6, default: 0, null: false
+    t.decimal :monthly_cost_spent, precision: 12, scale: 6, default: 0, null: false
+    t.bigint :daily_tokens_used, default: 0, null: false
+    t.bigint :monthly_tokens_used, default: 0, null: false
+    t.bigint :daily_executions_count, default: 0, null: false
     t.bigint :monthly_executions_count, default: 0, null: false
-    t.bigint :daily_error_count,        default: 0, null: false
-    t.bigint :monthly_error_count,      default: 0, null: false
+    t.bigint :daily_error_count, default: 0, null: false
+    t.bigint :monthly_error_count, default: 0, null: false
     t.datetime :last_execution_at
-    t.string   :last_execution_status
+    t.string :last_execution_status
     t.date :daily_reset_date
     t.date :monthly_reset_date
 
@@ -162,5 +162,4 @@ ActiveRecord::Schema.define do
   add_index :ruby_llm_agents_tenants, :name
   add_index :ruby_llm_agents_tenants, :active
   add_index :ruby_llm_agents_tenants, [:tenant_record_type, :tenant_record_id], name: "index_tenants_on_tenant_record"
-
 end

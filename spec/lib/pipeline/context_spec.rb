@@ -54,11 +54,11 @@ RSpec.describe RubyLLM::Agents::Pipeline::Context do
       context = described_class.new(
         input: "hello",
         agent_class: agent_class,
-        tenant: { id: "t1" },
+        tenant: {id: "t1"},
         custom_option: "value"
       )
 
-      expect(context.options[:tenant]).to eq({ id: "t1" })
+      expect(context.options[:tenant]).to eq({id: "t1"})
       expect(context.options[:custom_option]).to eq("value")
     end
 
@@ -174,7 +174,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Context do
       context[:key1] = "value1"
       context[:key2] = "value2"
 
-      expect(context.metadata).to eq({ key1: "value1", key2: "value2" })
+      expect(context.metadata).to eq({key1: "value1", key2: "value2"})
     end
   end
 

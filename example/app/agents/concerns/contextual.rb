@@ -36,7 +36,7 @@ module Concerns
           invalid = sources - VALID_SOURCES
           if invalid.any?
             raise ArgumentError,
-                  "Invalid context sources: #{invalid.join(', ')}. Valid sources: #{VALID_SOURCES.join(', ')}"
+              "Invalid context sources: #{invalid.join(", ")}. Valid sources: #{VALID_SOURCES.join(", ")}"
           end
 
           @context_sources = sources
@@ -103,7 +103,7 @@ module Concerns
         return nil unless superclass.respond_to?(attribute, true)
 
         superclass.send(attribute)
-      rescue StandardError
+      rescue
         nil
       end
     end
@@ -120,11 +120,11 @@ module Concerns
       # @return [String] Formatted context for prompt injection
       def context_prompt_prefix
         ctx = resolved_context
-        return '' if ctx.empty?
+        return "" if ctx.empty?
 
-        lines = ['Context:']
+        lines = ["Context:"]
         ctx.each do |key, value|
-          formatted_key = key.to_s.tr('_', ' ').capitalize
+          formatted_key = key.to_s.tr("_", " ").capitalize
           lines << "- #{formatted_key}: #{value}"
         end
         lines.join("\n")
@@ -201,7 +201,7 @@ module Concerns
 
         # Filter to only include configured fields if specified
         if config[:fields].any?
-          context.select { |k, _| config[:fields].include?(k) }
+          context.slice(*config[:fields])
         else
           context
         end
@@ -238,7 +238,6 @@ module Concerns
 
       def extract_field_from_source(source_data, field, source_type)
         # Try different extraction methods based on source type
-        "#{source_type}_#{field}".to_sym
         unprefixed_field = field.to_s.delete_prefix("#{source_type}_").to_sym
 
         # First try the exact field name
@@ -252,7 +251,7 @@ module Concerns
         end
 
         # Try extracting :id, :name etc. and mapping to user_id, user_name
-        base_field = field.to_s.delete_prefix("#{source_type}_").delete_prefix('user_').to_sym
+        base_field = field.to_s.delete_prefix("#{source_type}_").delete_prefix("user_").to_sym
         try_extract(source_data, base_field)
       end
 

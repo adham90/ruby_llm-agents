@@ -17,17 +17,17 @@ module RubyLlmAgents
     source_root File.expand_path("templates", __dir__)
 
     class_option :model, type: :string, default: "gpt-image-1",
-                 desc: "The image generation model to use"
+      desc: "The image generation model to use"
     class_option :size, type: :string, default: "1024x1024",
-                 desc: "Image size (e.g., 1024x1024, 1792x1024)"
+      desc: "Image size (e.g., 1024x1024, 1792x1024)"
     class_option :quality, type: :string, default: "standard",
-                 desc: "Image quality (standard, hd)"
+      desc: "Image quality (standard, hd)"
     class_option :style, type: :string, default: "vivid",
-                 desc: "Image style (vivid, natural)"
+      desc: "Image style (vivid, natural)"
     class_option :content_policy, type: :string, default: "standard",
-                 desc: "Content policy level (none, standard, moderate, strict)"
+      desc: "Content policy level (none, standard, moderate, strict)"
     class_option :cache, type: :string, default: nil,
-                 desc: "Cache TTL (e.g., '1.hour', '1.day')"
+      desc: "Cache TTL (e.g., '1.hour', '1.day')"
 
     def ensure_base_class_and_skill_file
       images_dir = "app/agents/images"

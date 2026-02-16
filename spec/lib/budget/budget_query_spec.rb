@@ -10,8 +10,8 @@ RSpec.describe RubyLLM::Agents::Budget::BudgetQuery do
       enforcement: :soft,
       global_daily: 100.0,
       global_monthly: 1000.0,
-      per_agent_daily: { "TestAgent" => 10.0 },
-      per_agent_monthly: { "TestAgent" => 100.0 },
+      per_agent_daily: {"TestAgent" => 10.0},
+      per_agent_monthly: {"TestAgent" => 100.0},
       global_daily_tokens: 100_000,
       global_monthly_tokens: 1_000_000
     }

@@ -357,7 +357,7 @@ RSpec.describe RubyLLM::Agents::Engine do
     describe "#current_tenant_id" do
       context "when tenant_id param is present" do
         before do
-          allow(controller).to receive(:params).and_return({ tenant_id: "tenant-abc" })
+          allow(controller).to receive(:params).and_return({tenant_id: "tenant-abc"})
         end
 
         it "returns the param value" do
@@ -382,9 +382,9 @@ RSpec.describe RubyLLM::Agents::Engine do
       end
 
       it "memoizes the result" do
-        allow(controller).to receive(:params).and_return({ tenant_id: "tenant-1" })
+        allow(controller).to receive(:params).and_return({tenant_id: "tenant-1"})
         controller.send(:current_tenant_id)
-        allow(controller).to receive(:params).and_return({ tenant_id: "tenant-2" })
+        allow(controller).to receive(:params).and_return({tenant_id: "tenant-2"})
 
         expect(controller.send(:current_tenant_id)).to eq("tenant-1")
       end

@@ -32,10 +32,10 @@ module RubyLLM
         included do
           # Association to executions via tenant_id
           has_many :executions,
-                   class_name: "RubyLLM::Agents::Execution",
-                   primary_key: :tenant_id,
-                   foreign_key: :tenant_id,
-                   inverse_of: false
+            class_name: "RubyLLM::Agents::Execution",
+            primary_key: :tenant_id,
+            foreign_key: :tenant_id,
+            inverse_of: false
         end
 
         # Cost queries
@@ -251,7 +251,7 @@ module RubyLLM
             Arel.sql("SUM(total_tokens)"),
             Arel.sql("COUNT(*)")
           ).to_h do |agent_type, total_cost, total_tokens, count|
-            [agent_type, { cost: total_cost || 0, tokens: total_tokens || 0, count: count }]
+            [agent_type, {cost: total_cost || 0, tokens: total_tokens || 0, count: count}]
           end
         end
 
@@ -269,7 +269,7 @@ module RubyLLM
             Arel.sql("SUM(total_tokens)"),
             Arel.sql("COUNT(*)")
           ).to_h do |model_id, total_cost, total_tokens, count|
-            [model_id, { cost: total_cost || 0, tokens: total_tokens || 0, count: count }]
+            [model_id, {cost: total_cost || 0, tokens: total_tokens || 0, count: count}]
           end
         end
 
@@ -287,7 +287,7 @@ module RubyLLM
             Arel.sql("SUM(total_tokens)"),
             Arel.sql("COUNT(*)")
           ).to_h do |date, total_cost, total_tokens, count|
-            [date.to_date, { cost: total_cost || 0, tokens: total_tokens || 0, count: count }]
+            [date.to_date, {cost: total_cost || 0, tokens: total_tokens || 0, count: count}]
           end
         end
 

@@ -24,7 +24,7 @@ RSpec.describe RubyLLM::Agents::BudgetTracker do
     context "with global daily budget and hard enforcement" do
       before do
         RubyLLM::Agents.configure do |config|
-          config.budgets = { global_daily: 10.0, enforcement: :hard }
+          config.budgets = {global_daily: 10.0, enforcement: :hard}
         end
       end
 
@@ -47,7 +47,7 @@ RSpec.describe RubyLLM::Agents::BudgetTracker do
     context "with global monthly budget and hard enforcement" do
       before do
         RubyLLM::Agents.configure do |config|
-          config.budgets = { global_monthly: 100.0, enforcement: :hard }
+          config.budgets = {global_monthly: 100.0, enforcement: :hard}
         end
       end
 
@@ -66,7 +66,7 @@ RSpec.describe RubyLLM::Agents::BudgetTracker do
       before do
         RubyLLM::Agents.configure do |config|
           config.budgets = {
-            per_agent_daily: { "ExpensiveAgent" => 5.0 },
+            per_agent_daily: {"ExpensiveAgent" => 5.0},
             enforcement: :hard
           }
         end
@@ -93,7 +93,7 @@ RSpec.describe RubyLLM::Agents::BudgetTracker do
     context "with soft enforcement" do
       before do
         RubyLLM::Agents.configure do |config|
-          config.budgets = { global_daily: 10.0, enforcement: :soft }
+          config.budgets = {global_daily: 10.0, enforcement: :soft}
         end
       end
 
@@ -151,7 +151,7 @@ RSpec.describe RubyLLM::Agents::BudgetTracker do
   describe ".remaining_budget" do
     before do
       RubyLLM::Agents.configure do |config|
-        config.budgets = { global_daily: 10.0 }
+        config.budgets = {global_daily: 10.0}
       end
     end
 
@@ -177,7 +177,7 @@ RSpec.describe RubyLLM::Agents::BudgetTracker do
   describe ".status" do
     before do
       RubyLLM::Agents.configure do |config|
-        config.budgets = { global_daily: 10.0, global_monthly: 100.0 }
+        config.budgets = {global_daily: 10.0, global_monthly: 100.0}
       end
     end
 
@@ -221,7 +221,7 @@ RSpec.describe RubyLLM::Agents::BudgetTracker do
     context "with global daily token budget and hard enforcement" do
       before do
         RubyLLM::Agents.configure do |config|
-          config.budgets = { global_daily_tokens: 10_000, enforcement: :hard }
+          config.budgets = {global_daily_tokens: 10_000, enforcement: :hard}
         end
       end
 
@@ -244,7 +244,7 @@ RSpec.describe RubyLLM::Agents::BudgetTracker do
     context "with global monthly token budget and hard enforcement" do
       before do
         RubyLLM::Agents.configure do |config|
-          config.budgets = { global_monthly_tokens: 100_000, enforcement: :hard }
+          config.budgets = {global_monthly_tokens: 100_000, enforcement: :hard}
         end
       end
 
@@ -262,7 +262,7 @@ RSpec.describe RubyLLM::Agents::BudgetTracker do
     context "with soft enforcement" do
       before do
         RubyLLM::Agents.configure do |config|
-          config.budgets = { global_daily_tokens: 10_000, enforcement: :soft }
+          config.budgets = {global_daily_tokens: 10_000, enforcement: :soft}
         end
       end
 
@@ -311,7 +311,7 @@ RSpec.describe RubyLLM::Agents::BudgetTracker do
   describe ".remaining_token_budget" do
     before do
       RubyLLM::Agents.configure do |config|
-        config.budgets = { global_daily_tokens: 10_000 }
+        config.budgets = {global_daily_tokens: 10_000}
       end
     end
 
@@ -337,7 +337,7 @@ RSpec.describe RubyLLM::Agents::BudgetTracker do
   describe ".calculate_forecast" do
     before do
       RubyLLM::Agents.configure do |config|
-        config.budgets = { enforcement: :soft, global_daily: 10.0, global_monthly: 100.0 }
+        config.budgets = {enforcement: :soft, global_daily: 10.0, global_monthly: 100.0}
       end
     end
 
@@ -360,7 +360,7 @@ RSpec.describe RubyLLM::Agents::BudgetTracker do
     before do
       RubyLLM::Agents.configure do |config|
         config.budgets = {
-          per_agent_monthly: { "ExpensiveAgent" => 50.0 },
+          per_agent_monthly: {"ExpensiveAgent" => 50.0},
           enforcement: :hard
         }
       end
@@ -380,7 +380,7 @@ RSpec.describe RubyLLM::Agents::BudgetTracker do
   describe "with tenant_config runtime override" do
     it "uses runtime tenant_config for check_budget!" do
       # Note: normalize_budget_config expects daily_budget_limit, not global_daily
-      runtime_config = { daily_budget_limit: 5.0, enforcement: :hard }
+      runtime_config = {daily_budget_limit: 5.0, enforcement: :hard}
       described_class.record_spend!("TestAgent", 10.0)
 
       expect { described_class.check_budget!("TestAgent", tenant_config: runtime_config) }.to raise_error(
@@ -389,7 +389,7 @@ RSpec.describe RubyLLM::Agents::BudgetTracker do
     end
 
     it "uses runtime tenant_config for record_spend!" do
-      runtime_config = { enforcement: :soft }
+      runtime_config = {enforcement: :soft}
 
       expect { described_class.record_spend!("TestAgent", 5.0, tenant_config: runtime_config) }.not_to raise_error
     end

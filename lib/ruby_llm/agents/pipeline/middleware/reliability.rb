@@ -172,8 +172,7 @@ module RubyLLM
                 tracker.complete_attempt(attempt, success: true, response: context.output)
 
                 return context
-
-              rescue StandardError => e
+              rescue => e
                 context.error = e
                 breaker&.record_failure!
                 tracker.complete_attempt(attempt, success: false, error: e)
@@ -305,7 +304,7 @@ module RubyLLM
             else
               sleep(seconds)
             end
-          rescue StandardError
+          rescue
             # Fall back to regular sleep if async detection fails
             sleep(seconds)
           end

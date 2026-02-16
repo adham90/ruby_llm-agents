@@ -135,9 +135,9 @@ module RubyLLM
             total_cost: model_cost,
             total_tokens: model_tokens,
             avg_duration_ms: durations[model_id]&.round || 0,
-            success_rate: count > 0 ? (successful.to_f / count * 100).round(1) : 0,
-            cost_per_1k_tokens: model_tokens > 0 ? (model_cost / model_tokens * 1000).round(4) : 0,
-            cost_percentage: total_cost > 0 ? (model_cost / total_cost * 100).round(1) : 0
+            success_rate: (count > 0) ? (successful.to_f / count * 100).round(1) : 0,
+            cost_per_1k_tokens: (model_tokens > 0) ? (model_cost / model_tokens * 1000).round(4) : 0,
+            cost_percentage: (total_cost > 0) ? (model_cost / total_cost * 100).round(1) : 0
           }
         end.sort_by { |m| -(m[:total_cost] || 0) }
       end
@@ -151,16 +151,16 @@ module RubyLLM
         total_errors = scope.count
 
         scope.group(:error_class)
-             .select("error_class, COUNT(*) as count, MAX(created_at) as last_seen")
-             .order("count DESC")
-             .limit(5)
-             .map do |row|
-          {
-            error_class: row.error_class || "Unknown Error",
-            count: row.count,
-            percentage: total_errors > 0 ? (row.count.to_f / total_errors * 100).round(1) : 0,
-            last_seen: row.last_seen
-          }
+          .select("error_class, COUNT(*) as count, MAX(created_at) as last_seen")
+          .order("count DESC")
+          .limit(5)
+          .map do |row|
+            {
+              error_class: row.error_class || "Unknown Error",
+              count: row.count,
+              percentage: (total_errors > 0) ? (row.count.to_f / total_errors * 100).round(1) : 0,
+              last_seen: row.last_seen
+            }
         end
       end
 
@@ -249,7 +249,7 @@ module RubyLLM
         end
 
         open_breakers
-      rescue StandardError => e
+      rescue => e
         Rails.logger.debug("[RubyLLM::Agents] Error loading open breakers: #{e.message}")
         []
       end
@@ -277,8 +277,8 @@ module RubyLLM
           monthly_limit: tenant.effective_monthly_limit,
           daily_spend: daily_spend,
           monthly_spend: monthly_spend,
-          daily_percentage: tenant.effective_daily_limit.to_f > 0 ? (daily_spend / tenant.effective_daily_limit * 100).round(1) : 0,
-          monthly_percentage: tenant.effective_monthly_limit.to_f > 0 ? (monthly_spend / tenant.effective_monthly_limit * 100).round(1) : 0,
+          daily_percentage: (tenant.effective_daily_limit.to_f > 0) ? (daily_spend / tenant.effective_daily_limit * 100).round(1) : 0,
+          monthly_percentage: (tenant.effective_monthly_limit.to_f > 0) ? (monthly_spend / tenant.effective_monthly_limit * 100).round(1) : 0,
           enforcement: tenant.effective_enforcement,
           per_agent_daily: tenant.per_agent_daily || {}
         }
@@ -308,7 +308,7 @@ module RubyLLM
 
         # Open circuit breakers
         load_open_breakers.each do |breaker|
-          alerts << { type: :breaker, data: breaker }
+          alerts << {type: :breaker, data: breaker}
         end
 
         # Budget breaches (>100% of limit)
@@ -341,7 +341,7 @@ module RubyLLM
         # Error spike detection (>5 errors in last 15 minutes)
         error_count_15m = base_scope.status_error.where("created_at > ?", 15.minutes.ago).count
         if error_count_15m >= 5
-          alerts << { type: :error_spike, data: { count: error_count_15m } }
+          alerts << {type: :error_spike, data: {count: error_count_15m}}
         end
 
         alerts.take(3)
@@ -366,9 +366,9 @@ module RubyLLM
           hash[agent_type] = {
             count: count,
             total_cost: total_cost,
-            avg_cost: count > 0 ? (total_cost / count).round(6) : 0,
+            avg_cost: (count > 0) ? (total_cost / count).round(6) : 0,
             avg_duration_ms: durations[agent_type]&.round || 0,
-            success_rate: count > 0 ? (successful.to_f / count * 100).round(1) : 0
+            success_rate: (count > 0) ? (successful.to_f / count * 100).round(1) : 0
           }
         end
       end

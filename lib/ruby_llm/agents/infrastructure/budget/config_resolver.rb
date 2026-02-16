@@ -120,7 +120,7 @@ module RubyLLM
             return nil unless tenant_budget_table_exists?
 
             TenantBudget.for_tenant(tenant_id)
-          rescue StandardError => e
+          rescue => e
             Rails.logger.warn("[RubyLLM::Agents] Failed to lookup tenant budget: #{e.message}")
             nil
           end
@@ -133,8 +133,8 @@ module RubyLLM
 
             # Check for new table name (tenants) or old table name (tenant_budgets) for backward compatibility
             @tenant_budget_table_exists = ::ActiveRecord::Base.connection.table_exists?(:ruby_llm_agents_tenants) ||
-                                          ::ActiveRecord::Base.connection.table_exists?(:ruby_llm_agents_tenant_budgets)
-          rescue StandardError
+              ::ActiveRecord::Base.connection.table_exists?(:ruby_llm_agents_tenant_budgets)
+          rescue
             @tenant_budget_table_exists = false
           end
 

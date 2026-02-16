@@ -30,7 +30,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Base do
 
   # Mock app (next handler in chain)
   let(:app) do
-    ->(ctx) { ctx.output = "processed"; ctx }
+    ->(ctx) {
+      ctx.output = "processed"
+      ctx
+    }
   end
 
   # Simple test middleware that calls through
@@ -194,7 +197,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Base do
     end
 
     it "chains middleware in correct order" do
-      core = ->(ctx) { ctx[:order] << :core; ctx }
+      core = ->(ctx) {
+        ctx[:order] << :core
+        ctx
+      }
       second = second_middleware_class.new(core, agent_class)
       first = first_middleware_class.new(second, agent_class)
 
@@ -206,12 +212,12 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Base do
       first.call(context)
 
       expect(context[:order]).to eq([
-                                      :first_before,
-                                      :second_before,
-                                      :core,
-                                      :second_after,
-                                      :first_after
-                                    ])
+        :first_before,
+        :second_before,
+        :core,
+        :second_after,
+        :first_after
+      ])
     end
   end
 
@@ -220,7 +226,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Base do
       Class.new(described_class) do
         def call(context)
           @app.call(context)
-        rescue StandardError => e
+        rescue => e
           context.error = e
           context
         end
@@ -291,7 +297,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Base do
     end
 
     it "continues chain when not short-circuiting" do
-      core = ->(ctx) { ctx.output = "from_core"; ctx }
+      core = ->(ctx) {
+        ctx.output = "from_core"
+        ctx
+      }
       middleware = short_circuit_middleware_class.new(core, agent_class)
 
       context = RubyLLM::Agents::Pipeline::Context.new(

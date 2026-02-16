@@ -46,7 +46,7 @@ module RubyLLM
           record_execution(result) if execution_tracking_enabled?
 
           result
-        rescue StandardError => e
+        rescue => e
           record_failed_execution(e, started_at) if execution_tracking_enabled?
           build_error_result(e, started_at)
         end
@@ -112,13 +112,13 @@ module RubyLLM
                 mode: "segmentation_mask",
                 **build_removal_options
               )
-            rescue StandardError
+            rescue
               # Mask generation failed, continue without it
               mask = nil
             end
           end
 
-          { foreground: foreground, mask: mask }
+          {foreground: foreground, mask: mask}
         end
 
         def build_removal_options

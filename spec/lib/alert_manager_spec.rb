@@ -9,7 +9,7 @@ RSpec.describe RubyLLM::Agents::AlertManager do
 
   describe ".notify" do
     let(:event) { :budget_soft_cap }
-    let(:payload) { { amount: 100, limit: 50 } }
+    let(:payload) { {amount: 100, limit: 50} }
 
     context "when on_alert is not configured" do
       it "does not raise an error" do
@@ -84,7 +84,7 @@ RSpec.describe RubyLLM::Agents::AlertManager do
           received_names << name
         end
 
-        described_class.notify(:breaker_open, { model: "gpt-4o" })
+        described_class.notify(:breaker_open, {model: "gpt-4o"})
 
         expect(received_names).to include("ruby_llm_agents.alert.breaker_open")
       ensure
@@ -126,7 +126,7 @@ RSpec.describe RubyLLM::Agents::AlertManager do
       end
 
       it "includes formatted message in cached alert" do
-        described_class.notify(:budget_soft_cap, { total_cost: 75.5, limit: 50.0 })
+        described_class.notify(:budget_soft_cap, {total_cost: 75.5, limit: 50.0})
 
         cached_alerts = cache.read("ruby_llm_agents:alerts:recent")
         expect(cached_alerts[0][:message]).to include("$75.5")
@@ -134,8 +134,8 @@ RSpec.describe RubyLLM::Agents::AlertManager do
       end
 
       it "prepends new alerts to the list" do
-        described_class.notify(:budget_soft_cap, { amount: 1 })
-        described_class.notify(:breaker_open, { agent_type: "TestAgent" })
+        described_class.notify(:budget_soft_cap, {amount: 1})
+        described_class.notify(:breaker_open, {agent_type: "TestAgent"})
 
         cached_alerts = cache.read("ruby_llm_agents:alerts:recent")
         expect(cached_alerts[0][:type]).to eq(:breaker_open)
@@ -143,7 +143,7 @@ RSpec.describe RubyLLM::Agents::AlertManager do
       end
 
       it "limits cached alerts to 50" do
-        55.times { |i| described_class.notify(:budget_soft_cap, { amount: i }) }
+        55.times { |i| described_class.notify(:budget_soft_cap, {amount: i}) }
 
         cached_alerts = cache.read("ruby_llm_agents:alerts:recent")
         expect(cached_alerts.length).to eq(50)
@@ -185,7 +185,7 @@ RSpec.describe RubyLLM::Agents::AlertManager do
         cache = ActiveSupport::Cache::MemoryStore.new
         RubyLLM::Agents.configure { |c| c.cache_store = cache }
 
-        described_class.notify(:budget_soft_cap, { total_cost: 75.0, limit: 50.0 })
+        described_class.notify(:budget_soft_cap, {total_cost: 75.0, limit: 50.0})
 
         cached = cache.read("ruby_llm_agents:alerts:recent")
         expect(cached[0][:message]).to eq("Budget soft cap reached: $75.0 / $50.0")
@@ -195,7 +195,7 @@ RSpec.describe RubyLLM::Agents::AlertManager do
         cache = ActiveSupport::Cache::MemoryStore.new
         RubyLLM::Agents.configure { |c| c.cache_store = cache }
 
-        described_class.notify(:budget_hard_cap, { total_cost: 110.0, limit: 100.0 })
+        described_class.notify(:budget_hard_cap, {total_cost: 110.0, limit: 100.0})
 
         cached = cache.read("ruby_llm_agents:alerts:recent")
         expect(cached[0][:message]).to eq("Budget hard cap exceeded: $110.0 / $100.0")
@@ -205,7 +205,7 @@ RSpec.describe RubyLLM::Agents::AlertManager do
         cache = ActiveSupport::Cache::MemoryStore.new
         RubyLLM::Agents.configure { |c| c.cache_store = cache }
 
-        described_class.notify(:breaker_open, { agent_type: "ContentAgent" })
+        described_class.notify(:breaker_open, {agent_type: "ContentAgent"})
 
         cached = cache.read("ruby_llm_agents:alerts:recent")
         expect(cached[0][:message]).to eq("Circuit breaker opened for ContentAgent")
@@ -215,7 +215,7 @@ RSpec.describe RubyLLM::Agents::AlertManager do
         cache = ActiveSupport::Cache::MemoryStore.new
         RubyLLM::Agents.configure { |c| c.cache_store = cache }
 
-        described_class.notify(:breaker_closed, { agent_type: "ContentAgent" })
+        described_class.notify(:breaker_closed, {agent_type: "ContentAgent"})
 
         cached = cache.read("ruby_llm_agents:alerts:recent")
         expect(cached[0][:message]).to eq("Circuit breaker closed for ContentAgent")
@@ -225,7 +225,7 @@ RSpec.describe RubyLLM::Agents::AlertManager do
         cache = ActiveSupport::Cache::MemoryStore.new
         RubyLLM::Agents.configure { |c| c.cache_store = cache }
 
-        described_class.notify(:agent_anomaly, { threshold_type: :cost })
+        described_class.notify(:agent_anomaly, {threshold_type: :cost})
 
         cached = cache.read("ruby_llm_agents:alerts:recent")
         expect(cached[0][:message]).to eq("Anomaly detected: cost threshold exceeded")

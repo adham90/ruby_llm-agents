@@ -321,22 +321,22 @@ module SchemaBuilder
 
       connection.create_table :ruby_llm_agents_execution_details, force: false, if_not_exists: true do |t|
         t.references :execution, null: false,
-                     foreign_key: { to_table: :ruby_llm_agents_executions, on_delete: :cascade },
-                     index: { unique: true }
+          foreign_key: {to_table: :ruby_llm_agents_executions, on_delete: :cascade},
+          index: {unique: true}
 
-        t.text     :error_message
-        t.text     :system_prompt
-        t.text     :user_prompt
-        t.json     :response,             default: {}
-        t.json     :messages_summary,     default: {}, null: false
-        t.json     :tool_calls,           default: [], null: false
-        t.json     :attempts,             default: [], null: false
-        t.json     :fallback_chain
-        t.json     :parameters,           default: {}, null: false
-        t.string   :routed_to
-        t.json     :classification_result
+        t.text :error_message
+        t.text :system_prompt
+        t.text :user_prompt
+        t.json :response, default: {}
+        t.json :messages_summary, default: {}, null: false
+        t.json :tool_calls, default: [], null: false
+        t.json :attempts, default: [], null: false
+        t.json :fallback_chain
+        t.json :parameters, default: {}, null: false
+        t.string :routed_to
+        t.json :classification_result
         t.datetime :cached_at
-        t.integer  :cache_creation_tokens, default: 0
+        t.integer :cache_creation_tokens, default: 0
 
         t.timestamps
       end
@@ -356,14 +356,14 @@ module SchemaBuilder
 
       # Detail columns moved to execution_details
       %i[error_message system_prompt user_prompt response messages_summary
-         tool_calls attempts fallback_chain parameters routed_to
-         classification_result cached_at cache_creation_tokens].each do |column|
+        tool_calls attempts fallback_chain parameters routed_to
+        classification_result cached_at cache_creation_tokens].each do |column|
         remove_column_if_exists(connection, table_name, column)
       end
 
       # Niche columns moved to metadata JSON
       %i[span_id response_cache_key time_to_first_token_ms
-         retryable rate_limited fallback_reason].each do |column|
+        retryable rate_limited fallback_reason].each do |column|
         remove_column_if_exists(connection, table_name, column)
       end
 
@@ -374,7 +374,7 @@ module SchemaBuilder
 
       # Remove redundant indexes
       %i[duration_ms total_cost messages_count attempts_count tool_calls_count
-         chosen_model_id execution_type response_cache_key agent_type tenant_id].each do |col|
+        chosen_model_id execution_type response_cache_key agent_type tenant_id].each do |col|
         if connection.index_exists?(table_name, col)
           connection.remove_index table_name, col
         end

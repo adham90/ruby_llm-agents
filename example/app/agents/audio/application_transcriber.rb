@@ -104,7 +104,7 @@ module Audio
     # ============================================
     # These settings are inherited by all transcribers
 
-    model 'whisper-1'
+    model "whisper-1"
 
     # ============================================
     # Shared Caching

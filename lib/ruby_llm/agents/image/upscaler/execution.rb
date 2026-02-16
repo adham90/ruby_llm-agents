@@ -45,7 +45,7 @@ module RubyLLM
           record_execution(result) if execution_tracking_enabled?
 
           result
-        rescue StandardError => e
+        rescue => e
           record_failed_execution(e, started_at) if execution_tracking_enabled?
           build_error_result(e, started_at)
         end
@@ -126,7 +126,7 @@ module RubyLLM
         def build_error_result(error, started_at)
           ImageUpscaleResult.new(
             image: nil,
-            source_image: self.image,
+            source_image: image,
             model_id: resolve_model,
             scale: resolve_scale,
             output_size: nil,
@@ -160,10 +160,8 @@ module RubyLLM
           elsif defined?(Vips)
             img = Vips::Image.new_from_file(image)
             [img.width, img.height]
-          else
-            nil
           end
-        rescue StandardError
+        rescue
           nil
         end
 

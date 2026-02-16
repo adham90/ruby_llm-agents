@@ -17,17 +17,17 @@ module RubyLlmAgents
     source_root File.expand_path("templates", __dir__)
 
     class_option :model, type: :string, default: "rembg",
-                 desc: "The segmentation model to use"
+      desc: "The segmentation model to use"
     class_option :output_format, type: :string, default: "png",
-                 desc: "Output format (png, webp)"
+      desc: "Output format (png, webp)"
     class_option :refine_edges, type: :boolean, default: false,
-                 desc: "Enable edge refinement"
+      desc: "Enable edge refinement"
     class_option :alpha_matting, type: :boolean, default: false,
-                 desc: "Enable alpha matting for better edges"
+      desc: "Enable alpha matting for better edges"
     class_option :return_mask, type: :boolean, default: false,
-                 desc: "Also return the segmentation mask"
+      desc: "Also return the segmentation mask"
     class_option :cache, type: :string, default: nil,
-                 desc: "Cache TTL (e.g., '1.hour', '1.day')"
+      desc: "Cache TTL (e.g., '1.hour', '1.day')"
 
     def ensure_base_class_and_skill_file
       images_dir = "app/agents/images"

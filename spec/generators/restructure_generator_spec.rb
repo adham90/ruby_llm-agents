@@ -447,12 +447,12 @@ RSpec.describe RubyLlmAgents::RestructureGenerator, type: :generator do
 
     it "preserves file permissions" do
       file_path = file("app/agents/support_agent.rb")
-      File.chmod(0755, file_path)
+      File.chmod(0o755, file_path)
 
       run_generator ["--root=llm"]
 
       new_path = file("app/llm/agents/support_agent.rb")
-      expect(File.stat(new_path).mode & 0777).to eq(0755)
+      expect(File.stat(new_path).mode & 0o777).to eq(0o755)
     end
 
     it "handles deeply nested subdirectories" do

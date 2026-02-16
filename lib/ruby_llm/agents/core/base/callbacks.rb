@@ -49,7 +49,7 @@ module RubyLLM
       #   before_call { |context| context.params[:sanitized] = true }
       #
       def before_call(method_name = nil, &block)
-        @callbacks ||= { before: [], after: [] }
+        @callbacks ||= {before: [], after: []}
         @callbacks[:before] << (block || method_name)
       end
 
@@ -71,7 +71,7 @@ module RubyLLM
       #   after_call { |context, response| notify_completion(response) }
       #
       def after_call(method_name = nil, &block)
-        @callbacks ||= { before: [], after: [] }
+        @callbacks ||= {before: [], after: []}
         @callbacks[:after] << (block || method_name)
       end
 
@@ -112,7 +112,7 @@ module RubyLLM
       #
       # @return [Hash] Hash with :before and :after arrays
       def callbacks
-        @callbacks ||= { before: [], after: [] }
+        @callbacks ||= {before: [], after: []}
       end
     end
 

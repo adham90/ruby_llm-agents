@@ -17,8 +17,8 @@ RSpec.describe RubyLLM::Agents::ExecutionLoggerJob, type: :job do
       input_tokens: 100,
       output_tokens: 50,
       total_tokens: 150,
-      parameters: { query: "test" },
-      response: { content: "response" }
+      parameters: {query: "test"},
+      response: {content: "response"}
     }
   end
 

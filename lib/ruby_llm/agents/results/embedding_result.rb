@@ -156,13 +156,13 @@ module RubyLLM
         return nil if v1.nil?
 
         v2 = case other
-             when EmbeddingResult
-               other.vector
-             when Array
-               other
-             else
-               raise ArgumentError, "other must be EmbeddingResult or Array, got #{other.class}"
-             end
+        when EmbeddingResult
+          other.vector
+        when Array
+          other
+        else
+          raise ArgumentError, "other must be EmbeddingResult or Array, got #{other.class}"
+        end
 
         return nil if v2.nil?
 
@@ -183,17 +183,17 @@ module RubyLLM
 
         similarities = others.each_with_index.map do |other, idx|
           v2 = case other
-               when EmbeddingResult
-                 other.vector
-               when Array
-                 other
-               else
-                 next nil
-               end
+          when EmbeddingResult
+            other.vector
+          when Array
+            other
+          else
+            next nil
+          end
 
           next nil if v2.nil?
 
-          { index: idx, similarity: cosine_similarity(v1, v2) }
+          {index: idx, similarity: cosine_similarity(v1, v2)}
         end.compact
 
         similarities.sort_by { |s| -s[:similarity] }.first(limit)

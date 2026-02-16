@@ -232,7 +232,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Base do
       allow(app).to receive(:call) { |ctx| ctx }
 
       middleware_instance = custom_middleware.new(app, agent_class)
-      result = middleware_instance.call(context)
+      middleware_instance.call(context)
 
       expect(context).to have_received(:output=).with("processed by middleware")
       expect(app).to have_received(:call).with(context)

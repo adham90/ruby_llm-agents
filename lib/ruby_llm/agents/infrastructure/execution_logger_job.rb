@@ -33,7 +33,7 @@ module RubyLLM
         execution = Execution.create!(filtered_data)
 
         # Create detail record if present
-        if detail_data && detail_data.values.any? { |v| v.present? && v != {} && v != [] }
+        if detail_data&.values&.any? { |v| v.present? && v != {} && v != [] }
           execution.create_detail!(detail_data)
         end
 

@@ -168,25 +168,25 @@ module RubyLLM
 
         def default_image_model
           RubyLLM::Agents.configuration.default_image_model
-        rescue StandardError
+        rescue
           "dall-e-3"
         end
 
         def default_image_size
           RubyLLM::Agents.configuration.default_image_size
-        rescue StandardError
+        rescue
           "1024x1024"
         end
 
         def default_image_quality
           RubyLLM::Agents.configuration.default_image_quality
-        rescue StandardError
+        rescue
           "standard"
         end
 
         def default_image_style
           RubyLLM::Agents.configuration.default_image_style
-        rescue StandardError
+        rescue
           "vivid"
         end
       end
@@ -241,7 +241,7 @@ module RubyLLM
         images = generate_images
 
         execution_completed_at = Time.current
-        duration_ms = ((execution_completed_at - execution_started_at) * 1000).to_i
+        ((execution_completed_at - execution_started_at) * 1000).to_i
 
         # Build result
         result = build_result(
@@ -257,7 +257,7 @@ module RubyLLM
         context.total_cost = result.total_cost
 
         context.output = result
-      rescue StandardError => e
+      rescue => e
         execution_completed_at = Time.current
         context.output = build_error_result(
           e,

@@ -115,6 +115,7 @@ RSpec.describe RubyLLM::Agents::DSL::Caching do
 
       child_class = Class.new(test_class) do
         extend RubyLLM::Agents::DSL::Caching
+
         cache_for 30.minutes
       end
 

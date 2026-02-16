@@ -91,7 +91,7 @@ RSpec.describe RubyLLM::Agents::ImageVariator do
       variator = described_class.new(image: "logo.png", count: 4)
 
       expect(variator.image).to eq("logo.png")
-      expect(variator.options).to eq({ count: 4 })
+      expect(variator.options).to eq({count: 4})
     end
   end
 

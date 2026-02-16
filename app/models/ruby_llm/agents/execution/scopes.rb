@@ -149,12 +149,10 @@ module RubyLLM
               else
                 joined.where("json_extract(#{detail_table}.parameters, ?) IS NOT NULL", "$.#{key}")
               end
+            elsif value
+              joined.where("#{detail_table}.parameters @> ?", {key => value}.to_json)
             else
-              if value
-                joined.where("#{detail_table}.parameters @> ?", { key => value }.to_json)
-              else
-                joined.where("#{detail_table}.parameters ? :key", key: key.to_s)
-              end
+              joined.where("#{detail_table}.parameters ? :key", key: key.to_s)
             end
           end
 
@@ -299,7 +297,7 @@ module RubyLLM
             if connection.adapter_name.downcase.include?("sqlite")
               where("json_extract(metadata, ?) = 1", "$.#{key}")
             else
-              where("metadata @> ?", { key.to_s => true }.to_json)
+              where("metadata @> ?", {key.to_s => true}.to_json)
             end
           end
 

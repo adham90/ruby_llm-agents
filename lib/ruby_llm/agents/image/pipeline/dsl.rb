@@ -76,7 +76,7 @@ module RubyLLM
         #   before_pipeline { |ctx| ctx[:started_at] = Time.current }
         #
         def before_pipeline(method_name = nil, &block)
-          @callbacks ||= { before: [], after: [] }
+          @callbacks ||= {before: [], after: []}
           @callbacks[:before] << (block || method_name)
         end
 
@@ -91,7 +91,7 @@ module RubyLLM
         #   after_pipeline { |result| notify_completion(result) }
         #
         def after_pipeline(method_name = nil, &block)
-          @callbacks ||= { before: [], after: [] }
+          @callbacks ||= {before: [], after: []}
           @callbacks[:after] << (block || method_name)
         end
 
@@ -99,7 +99,7 @@ module RubyLLM
         #
         # @return [Hash] Hash with :before and :after arrays
         def callbacks
-          @callbacks ||= { before: [], after: [] }
+          @callbacks ||= {before: [], after: []}
         end
 
         # Set or get the description
@@ -148,7 +148,7 @@ module RubyLLM
           end
         end
 
-        alias stop_on_error? stop_on_error
+        alias_method :stop_on_error?, :stop_on_error
 
         private
 
@@ -163,11 +163,11 @@ module RubyLLM
           step_keys = config.keys & valid_keys
 
           if step_keys.empty?
-            raise ArgumentError, "Step :#{name} must specify one of: #{valid_keys.join(', ')}"
+            raise ArgumentError, "Step :#{name} must specify one of: #{valid_keys.join(", ")}"
           end
 
           if step_keys.size > 1
-            raise ArgumentError, "Step :#{name} can only specify one step type, got: #{step_keys.join(', ')}"
+            raise ArgumentError, "Step :#{name} can only specify one step type, got: #{step_keys.join(", ")}"
           end
 
           # Validate the class responds to call

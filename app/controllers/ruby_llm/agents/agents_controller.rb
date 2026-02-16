@@ -55,14 +55,14 @@ module RubyLLM
 
         @agent_count = @agents.size
         @deleted_count = @deleted_agents.size
-      rescue StandardError => e
+      rescue => e
         Rails.logger.error("[RubyLLM::Agents] Error loading agents: #{e.message}")
         @agents = []
         @deleted_agents = []
-        @agents_by_type = { agent: [], embedder: [], speaker: [], transcriber: [], image_generator: [] }
+        @agents_by_type = {agent: [], embedder: [], speaker: [], transcriber: [], image_generator: []}
         @agent_count = 0
         @deleted_count = 0
-        @sort_params = { column: DEFAULT_AGENT_SORT_COLUMN, direction: DEFAULT_AGENT_SORT_DIRECTION }
+        @sort_params = {column: DEFAULT_AGENT_SORT_COLUMN, direction: DEFAULT_AGENT_SORT_DIRECTION}
         flash.now[:alert] = "Error loading agents list"
       end
 
@@ -88,7 +88,7 @@ module RubyLLM
           # Only load circuit breaker status for base agents
           load_circuit_breaker_status if @agent_type_kind == "agent"
         end
-      rescue StandardError => e
+      rescue => e
         Rails.logger.error("[RubyLLM::Agents] Error loading agent #{@agent_type}: #{e.message}")
         redirect_to ruby_llm_agents.agents_path, alert: "Error loading agent details"
       end
@@ -118,9 +118,9 @@ module RubyLLM
       def load_filter_options
         # Single query to get all filter options (fixes N+1)
         filter_data = Execution.by_agent(@agent_type)
-                               .where.not(model_id: nil)
-                               .or(Execution.by_agent(@agent_type).where.not(temperature: nil))
-                               .pluck(:model_id, :temperature)
+          .where.not(model_id: nil)
+          .or(Execution.by_agent(@agent_type).where.not(temperature: nil))
+          .pluck(:model_id, :temperature)
 
         @models = filter_data.map(&:first).compact.uniq.sort
         @temperatures = filter_data.map(&:last).compact.uniq.sort
@@ -167,9 +167,7 @@ module RubyLLM
 
         # Apply time range filter with validation
         days = parse_days_param
-        scope = apply_time_filter(scope, days)
-
-        scope
+        apply_time_filter(scope, days)
       end
 
       # Loads chart data for agent performance visualization
@@ -300,7 +298,7 @@ module RubyLLM
       def safe_config_call(method)
         return nil unless @agent_class&.respond_to?(method)
         @agent_class.public_send(method)
-      rescue StandardError
+      rescue
         nil
       end
 
@@ -313,7 +311,11 @@ module RubyLLM
       def load_circuit_breaker_status
         return unless @agent_class.respond_to?(:reliability_config)
 
-        config = @agent_class.reliability_config rescue nil
+        config = begin
+          @agent_class.reliability_config
+        rescue
+          nil
+        end
         return unless config
 
         # Collect all models: primary + fallbacks
@@ -355,7 +357,7 @@ module RubyLLM
 
           @circuit_breaker_status[model_id] = status
         end
-      rescue StandardError => e
+      rescue => e
         Rails.logger.debug("[RubyLLM::Agents] Could not load circuit breaker status: #{e.message}")
         @circuit_breaker_status = {}
       end
@@ -394,7 +396,7 @@ module RubyLLM
           end
         end
 
-        direction == "desc" ? sorted.reverse : sorted
+        (direction == "desc") ? sorted.reverse : sorted
       end
     end
   end

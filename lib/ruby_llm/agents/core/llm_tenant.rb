@@ -70,9 +70,9 @@ module RubyLLM
       included do
         # Link to gem's Tenant model via polymorphic association
         has_one :llm_tenant_record,
-                class_name: "RubyLLM::Agents::Tenant",
-                as: :tenant_record,
-                dependent: :destroy
+          class_name: "RubyLLM::Agents::Tenant",
+          as: :tenant_record,
+          dependent: :destroy
 
         # Backward compatible alias (llm_budget points to same Tenant record)
         # @deprecated Use llm_tenant_record instead
@@ -106,10 +106,10 @@ module RubyLLM
 
           # Executions tracked for this tenant via tenant_id string column
           has_many :llm_executions,
-                   class_name: "RubyLLM::Agents::Execution",
-                   foreign_key: :tenant_id,
-                   primary_key: id,
-                   dependent: :nullify
+            class_name: "RubyLLM::Agents::Execution",
+            foreign_key: :tenant_id,
+            primary_key: id,
+            dependent: :nullify
 
           # Auto-create tenant record callback
           after_create :create_default_llm_tenant if llm_tenant_options[:budget]

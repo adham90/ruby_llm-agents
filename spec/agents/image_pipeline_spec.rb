@@ -287,8 +287,8 @@ RSpec.describe RubyLLM::Agents::ImagePipeline do
     it "sets options and context" do
       pipeline = described_class.new(prompt: "test", tenant: "org1")
 
-      expect(pipeline.options).to eq({ prompt: "test", tenant: "org1" })
-      expect(pipeline.context).to eq({ prompt: "test", tenant: "org1" })
+      expect(pipeline.options).to eq({prompt: "test", tenant: "org1"})
+      expect(pipeline.context).to eq({prompt: "test", tenant: "org1"})
     end
 
     it "initializes with empty step results" do

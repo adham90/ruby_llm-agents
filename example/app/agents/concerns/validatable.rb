@@ -93,7 +93,7 @@ module Concerns
         return [] unless superclass.respond_to?(:validations)
 
         superclass.validations
-      rescue StandardError
+      rescue
         []
       end
     end
@@ -105,7 +105,7 @@ module Concerns
       def validate!
         return true if valid?
 
-        raise ValidationError, validation_errors.join(', ')
+        raise ValidationError, validation_errors.join(", ")
       end
 
       # Check if all validations pass
@@ -158,7 +158,7 @@ module Concerns
       def validate_presence(field, options)
         value = get_field_value(field)
 
-        return unless value.nil? || (value.respond_to?(:empty?) && value.empty?)
+        return if !value.nil? && !(value.respond_to?(:empty?) && value.empty?)
 
         add_error(field, options[:message] || "#{field} can't be blank")
       end
@@ -197,7 +197,7 @@ module Concerns
         values = options[:values]
         return if values.include?(value)
 
-        add_error(field, options[:message] || "#{field} must be one of: #{values.join(', ')}")
+        add_error(field, options[:message] || "#{field} must be one of: #{values.join(", ")}")
       end
 
       def validate_exclusion(field, options)
@@ -207,7 +207,7 @@ module Concerns
         values = options[:values]
         return unless values.include?(value)
 
-        add_error(field, options[:message] || "#{field} cannot be one of: #{values.join(', ')}")
+        add_error(field, options[:message] || "#{field} cannot be one of: #{values.join(", ")}")
       end
 
       def validate_numericality(field, options)

@@ -19,7 +19,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
       def self.reliability_config
         {
-          retries: { max: 2, backoff: :exponential, base: 0.1, max_delay: 1.0 },
+          retries: {max: 2, backoff: :exponential, base: 0.1, max_delay: 1.0},
           fallback_models: ["fallback-model"],
           total_timeout: 30
         }
@@ -313,9 +313,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
           def self.reliability_config
             {
-              retries: { max: 2 },
+              retries: {max: 2},
               fallback_models: ["fallback-model"],
-              circuit_breaker: { errors: 3, within: 60, cooldown: 300 }
+              circuit_breaker: {errors: 3, within: 60, cooldown: 300}
             }
           end
         end
@@ -367,7 +367,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
           def self.reliability_config
             {
-              retries: { max: 2, backoff: :exponential, base: 0.1, max_delay: 1.0 },
+              retries: {max: 2, backoff: :exponential, base: 0.1, max_delay: 1.0},
               fallback_models: []
             }
           end
@@ -427,9 +427,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
           def self.reliability_config
             {
-              retries: { max: 0 },
+              retries: {max: 0},
               fallback_models: ["fallback-model"],
-              circuit_breaker: { errors: 3, within: 60, cooldown: 300 }
+              circuit_breaker: {errors: 3, within: 60, cooldown: 300}
             }
           end
         end
@@ -530,7 +530,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
         attempts_seen = []
 
         allow(app).to receive(:call) do |ctx|
-          attempts_seen << { model: ctx.model, attempt: ctx.attempt }
+          attempts_seen << {model: ctx.model, attempt: ctx.attempt}
           if ctx.model == "primary-model"
             raise Timeout::Error, "timeout"
           end
@@ -552,7 +552,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
           def self.reliability_config
             {
-              retries: { max: 3, backoff: :exponential, base: 0.1, max_delay: 1.0 },
+              retries: {max: 3, backoff: :exponential, base: 0.1, max_delay: 1.0},
               fallback_models: []
             }
           end
@@ -588,7 +588,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
           def self.reliability_config
             {
-              retries: { max: 2, backoff: :exponential, base: 0.1, max_delay: 1.0 },
+              retries: {max: 2, backoff: :exponential, base: 0.1, max_delay: 1.0},
               fallback_models: ["gpt-4.1-mini", "claude-haiku-4-5"]
             }
           end
@@ -731,8 +731,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
       context "chat agent (build_client)" do
         it "passes context to build_client so fallback model is used" do
-          agent_instance = double("agent_instance")
-          chat_client = double("chat_client")
+          double("agent_instance")
+          double("chat_client")
 
           # Simulate: primary fails, fallback succeeds
           allow(app).to receive(:call) do |ctx|
@@ -956,9 +956,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
           def self.reliability_config
             {
-              retries: { max: 0 },
+              retries: {max: 0},
               fallback_models: ["fallback-model"],
-              circuit_breaker: { errors: 3, within: 60, cooldown: 300 }
+              circuit_breaker: {errors: 3, within: 60, cooldown: 300}
             }
           end
         end

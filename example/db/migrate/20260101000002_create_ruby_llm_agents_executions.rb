@@ -81,8 +81,8 @@ class CreateRubyLLMAgentsExecutions < ActiveRecord::Migration[8.1]
 
     # Foreign keys for execution hierarchy
     add_foreign_key :ruby_llm_agents_executions, :ruby_llm_agents_executions,
-                    column: :parent_execution_id, on_delete: :nullify
+      column: :parent_execution_id, on_delete: :nullify
     add_foreign_key :ruby_llm_agents_executions, :ruby_llm_agents_executions,
-                    column: :root_execution_id, on_delete: :nullify
+      column: :root_execution_id, on_delete: :nullify
   end
 end

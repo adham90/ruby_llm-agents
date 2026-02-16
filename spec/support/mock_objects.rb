@@ -133,24 +133,24 @@ module RubyLLM
           def safe
             new(
               flagged: false,
-              categories: { "hate" => false, "violence" => false },
-              scores: { "hate" => 0.001, "violence" => 0.002 }
+              categories: {"hate" => false, "violence" => false},
+              scores: {"hate" => 0.001, "violence" => 0.002}
             )
           end
 
           def flagged_hate
             new(
               flagged: true,
-              categories: { "hate" => true, "violence" => false },
-              scores: { "hate" => 0.95, "violence" => 0.001 }
+              categories: {"hate" => true, "violence" => false},
+              scores: {"hate" => 0.95, "violence" => 0.001}
             )
           end
 
           def flagged_violence
             new(
               flagged: true,
-              categories: { "hate" => false, "violence" => true },
-              scores: { "hate" => 0.001, "violence" => 0.92 }
+              categories: {"hate" => false, "violence" => true},
+              scores: {"hate" => 0.001, "violence" => 0.92}
             )
           end
         end

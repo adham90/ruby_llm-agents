@@ -70,7 +70,7 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
 
     it "processes response content" do
       hash_response = build_real_response(input_tokens: 100, output_tokens: 50)
-      hash_response.content = { "key" => "value", "number" => 42 }
+      hash_response.content = {"key" => "value", "number" => 42}
       mock_chat_with_hash = build_mock_chat_client(response: hash_response)
       stub_ruby_llm_chat(mock_chat_with_hash)
 
@@ -84,7 +84,7 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
       agent.send(:execute, context)
 
       # Hash keys should be symbolized
-      expect(context.output.content).to eq({ key: "value", number: 42 })
+      expect(context.output.content).to eq({key: "value", number: 42})
     end
   end
 
@@ -157,7 +157,7 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
       end
 
       it "works with hash schema value" do
-        hash_schema = { type: "object", properties: { answer: { type: "string" } } }
+        hash_schema = {type: "object", properties: {answer: {type: "string"}}}
         hash_schema_class = Class.new(described_class) do
           define_singleton_method(:name) { "HashSchemaAgent" }
           model "gpt-4o"
@@ -248,8 +248,8 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
 
           def messages
             [
-              { role: :user, content: "Hello" },
-              { role: :assistant, content: "Hi there!" }
+              {role: :user, content: "Hello"},
+              {role: :assistant, content: "Hi there!"}
             ]
           end
         end
@@ -292,7 +292,10 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
 
     it "respects timeout setting" do
       slow_chat = build_mock_chat_client
-      allow(slow_chat).to receive(:ask) { sleep 0.1; real_response }
+      allow(slow_chat).to receive(:ask) {
+        sleep 0.1
+        real_response
+      }
 
       short_timeout_class = Class.new(test_agent_class) do
         def self.name
@@ -323,7 +326,7 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
       it "yields chunks when streaming" do
         chunks = []
         streaming_chat = build_mock_streaming_chat(
-          chunks: [{ content: "Hello" }, { content: " World" }],
+          chunks: [{content: "Hello"}, {content: " World"}],
           final_response: real_response
         )
         stub_ruby_llm_chat(streaming_chat)
@@ -340,12 +343,12 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
 
         streaming_agent.send(:execute_llm_call, streaming_chat, streaming_context)
 
-        expect(chunks).to eq([{ content: "Hello" }, { content: " World" }])
+        expect(chunks).to eq([{content: "Hello"}, {content: " World"}])
       end
 
       it "records time to first token" do
         streaming_chat = build_mock_streaming_chat(
-          chunks: [{ content: "Hello" }],
+          chunks: [{content: "Hello"}],
           final_response: real_response
         )
         stub_ruby_llm_chat(streaming_chat)
@@ -601,12 +604,12 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
 
     it "symbolizes hash keys" do
       hash_response = build_real_response(content: "placeholder")
-      hash_response.content = { "key" => "value", "nested" => { "inner" => "data" } }
+      hash_response.content = {"key" => "value", "nested" => {"inner" => "data"}}
 
       result = agent.send(:process_response, hash_response)
 
       expect(result[:key]).to eq("value")
-      expect(result[:nested]).to eq({ "inner" => "data" }) # Only top-level keys symbolized
+      expect(result[:nested]).to eq({"inner" => "data"}) # Only top-level keys symbolized
     end
   end
 
@@ -632,7 +635,7 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
     end
 
     it "handles hash-based thinking" do
-      response = build_real_response(thinking: { text: "thinking text", signature: "sig123", tokens: 500 })
+      response = build_real_response(thinking: {text: "thinking text", signature: "sig123", tokens: 500})
 
       result = agent.send(:result_thinking_data, response)
 

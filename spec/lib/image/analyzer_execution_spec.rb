@@ -292,7 +292,7 @@ RSpec.describe RubyLLM::Agents::ImageAnalyzer::Execution do
       end
 
       it "normalizes object data" do
-        objects = [{ name: "car", location: "center", confidence: "HIGH" }]
+        objects = [{name: "car", location: "center", confidence: "HIGH"}]
         result = execution_instance.test_normalize_objects(objects)
 
         expect(result.first[:name]).to eq("car")
@@ -300,7 +300,7 @@ RSpec.describe RubyLLM::Agents::ImageAnalyzer::Execution do
       end
 
       it "skips non-hash items" do
-        result = execution_instance.test_normalize_objects(["invalid", { name: "valid" }])
+        result = execution_instance.test_normalize_objects(["invalid", {name: "valid"}])
         expect(result.size).to eq(1)
       end
     end
@@ -311,7 +311,7 @@ RSpec.describe RubyLLM::Agents::ImageAnalyzer::Execution do
       end
 
       it "normalizes color data" do
-        colors = [{ hex: "#FF0000", name: "red", percentage: "25" }]
+        colors = [{hex: "#FF0000", name: "red", percentage: "25"}]
         result = execution_instance.test_normalize_colors(colors)
 
         expect(result.first[:hex]).to eq("#FF0000")

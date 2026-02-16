@@ -46,13 +46,13 @@ RSpec.describe "Multi-tenancy Edge Cases" do
       end
 
       it "maintains tenant context through execution" do
-        agent = agent_class.new(query: "test", tenant: { id: "tenant-123" })
+        agent = agent_class.new(query: "test", tenant: {id: "tenant-123"})
         expect(agent.resolved_tenant_id).to eq("tenant-123")
       end
 
       it "resolves different tenant contexts independently" do
-        agent_a = agent_class.new(query: "test", tenant: { id: "tenant-a" })
-        agent_b = agent_class.new(query: "test", tenant: { id: "tenant-b" })
+        agent_a = agent_class.new(query: "test", tenant: {id: "tenant-a"})
+        agent_b = agent_class.new(query: "test", tenant: {id: "tenant-b"})
 
         expect(agent_a.resolved_tenant_id).to eq("tenant-a")
         expect(agent_b.resolved_tenant_id).to eq("tenant-b")
@@ -76,13 +76,11 @@ RSpec.describe "Multi-tenancy Edge Cases" do
 
       %w[tenant-1 tenant-2 tenant-3].each do |tenant_id|
         threads << Thread.new do
-          begin
-            agent = agent_class.new(query: "test", tenant: { id: tenant_id })
-            result = agent.call
-            results << { tenant: tenant_id, success: result.success? }
-          rescue StandardError => e
-            errors << { tenant: tenant_id, error: e.message }
-          end
+          agent = agent_class.new(query: "test", tenant: {id: tenant_id})
+          result = agent.call
+          results << {tenant: tenant_id, success: result.success?}
+        rescue => e
+          errors << {tenant: tenant_id, error: e.message}
         end
       end
 
@@ -229,7 +227,7 @@ RSpec.describe "Multi-tenancy Edge Cases" do
     it "handles tenant without id key" do
       agent_class = create_tenant_agent_class do
         def resolve_tenant
-          { name: "Test Tenant", settings: {} }
+          {name: "Test Tenant", settings: {}}
         end
       end
 
@@ -240,7 +238,7 @@ RSpec.describe "Multi-tenancy Edge Cases" do
     it "handles tenant with string id" do
       agent_class = create_tenant_agent_class do
         def resolve_tenant
-          { id: "string-tenant-id" }
+          {id: "string-tenant-id"}
         end
       end
 
@@ -251,7 +249,7 @@ RSpec.describe "Multi-tenancy Edge Cases" do
     it "handles tenant with integer id" do
       agent_class = create_tenant_agent_class do
         def resolve_tenant
-          { id: 12345 }
+          {id: 12345}
         end
       end
 
@@ -286,8 +284,8 @@ RSpec.describe "Multi-tenancy Edge Cases" do
     end
 
     it "handles switching tenants between executions" do
-      agent_a = agent_class.new(query: "test", tenant: { id: "switch-a" })
-      agent_b = agent_class.new(query: "test", tenant: { id: "switch-b" })
+      agent_a = agent_class.new(query: "test", tenant: {id: "switch-a"})
+      agent_b = agent_class.new(query: "test", tenant: {id: "switch-b"})
 
       result_a = agent_a.call
       result_b = agent_b.call
@@ -321,7 +319,7 @@ RSpec.describe "Multi-tenancy Edge Cases" do
       ]
 
       special_ids.each do |tenant_id|
-        agent = agent_class.new(query: "test", tenant: { id: tenant_id })
+        agent = agent_class.new(query: "test", tenant: {id: tenant_id})
         expect(agent.resolved_tenant_id).to eq(tenant_id)
       end
     end

@@ -7,7 +7,7 @@ RSpec.describe RubyLLM::Agents::Reliability::Executor do
   let(:fallback_models) { ["gpt-4o-mini", "claude-3-haiku"] }
   let(:base_config) do
     {
-      retries: { max: 2, backoff: :exponential, base: 0.01, max_delay: 0.1 },
+      retries: {max: 2, backoff: :exponential, base: 0.01, max_delay: 0.1},
       fallback_models: fallback_models,
       circuit_breaker: nil,
       total_timeout: nil
@@ -59,7 +59,7 @@ RSpec.describe RubyLLM::Agents::Reliability::Executor do
     context "with tenant_id" do
       subject(:executor) do
         described_class.new(
-          config: base_config.merge(circuit_breaker: { errors: 3, within: 60 }),
+          config: base_config.merge(circuit_breaker: {errors: 3, within: 60}),
           primary_model: primary_model,
           agent_type: "TestAgent",
           tenant_id: "tenant-123"
@@ -180,9 +180,9 @@ RSpec.describe RubyLLM::Agents::Reliability::Executor do
     context "with circuit breaker open" do
       let(:base_config) do
         {
-          retries: { max: 0 },
+          retries: {max: 0},
           fallback_models: fallback_models,
-          circuit_breaker: { errors: 1, within: 60 }
+          circuit_breaker: {errors: 1, within: 60}
         }
       end
 
@@ -215,7 +215,7 @@ RSpec.describe RubyLLM::Agents::Reliability::Executor do
     context "with total timeout" do
       let(:base_config) do
         {
-          retries: { max: 5, base: 0.01 },
+          retries: {max: 5, base: 0.01},
           fallback_models: [],
           total_timeout: 0.05 # 50ms
         }
@@ -234,7 +234,7 @@ RSpec.describe RubyLLM::Agents::Reliability::Executor do
     context "with single model and no retries" do
       let(:fallback_models) { [] }
       let(:base_config) do
-        { retries: { max: 0 }, fallback_models: [] }
+        {retries: {max: 0}, fallback_models: []}
       end
 
       it "raises immediately on failure" do
@@ -250,9 +250,9 @@ RSpec.describe RubyLLM::Agents::Reliability::Executor do
   describe "circuit breaker integration" do
     let(:base_config) do
       {
-        retries: { max: 0 },
+        retries: {max: 0},
         fallback_models: ["gpt-4o-mini"],
-        circuit_breaker: { errors: 2, within: 60 }
+        circuit_breaker: {errors: 2, within: 60}
       }
     end
 

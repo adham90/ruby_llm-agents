@@ -46,7 +46,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
   describe "#call" do
     it "sets started_at timestamp" do
       context = build_context
-      allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+      allow(app).to receive(:call) { |ctx|
+        ctx.output = "result"
+        ctx
+      }
       allow(config).to receive(:track_embeddings).and_return(false)
 
       result = middleware.call(context)
@@ -56,7 +59,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
     it "sets completed_at timestamp on success" do
       context = build_context
-      allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+      allow(app).to receive(:call) { |ctx|
+        ctx.output = "result"
+        ctx
+      }
       allow(config).to receive(:track_embeddings).and_return(false)
 
       result = middleware.call(context)
@@ -97,10 +103,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     context "when tracking is enabled" do
       let(:mock_execution) do
         double("RubyLLM::Agents::Execution",
-               id: 123,
-               status: "running",
-               detail: nil,
-               class: RubyLLM::Agents::Execution)
+          id: 123,
+          status: "running",
+          detail: nil,
+          class: RubyLLM::Agents::Execution)
       end
 
       before do
@@ -299,7 +305,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         context.output_tokens = 200
         context.total_cost = 0.0035
 
-        allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+        allow(app).to receive(:call) { |ctx|
+          ctx.output = "result"
+          ctx
+        }
         allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
 
         expect(mock_execution).to receive(:update!).with(
@@ -323,7 +332,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       it "does not create execution records" do
         context = build_context
 
-        allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+        allow(app).to receive(:call) { |ctx|
+          ctx.output = "result"
+          ctx
+        }
 
         # Should not call create! if tracking is disabled
         if defined?(RubyLLM::Agents::Execution)
@@ -337,10 +349,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     context "when result is cached" do
       let(:mock_execution) do
         double("RubyLLM::Agents::Execution",
-               id: 123,
-               status: "running",
-               detail: nil,
-               class: RubyLLM::Agents::Execution)
+          id: 123,
+          status: "running",
+          detail: nil,
+          class: RubyLLM::Agents::Execution)
       end
 
       before do
@@ -355,7 +367,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         context = build_context
         context.cached = true
 
-        allow(app).to receive(:call) { |ctx| ctx.output = "cached_result"; ctx }
+        allow(app).to receive(:call) { |ctx|
+          ctx.output = "cached_result"
+          ctx
+        }
 
         expect(RubyLLM::Agents::Execution).not_to receive(:create!)
 
@@ -368,7 +383,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         context = build_context
         context.cached = true
 
-        allow(app).to receive(:call) { |ctx| ctx.output = "cached_result"; ctx }
+        allow(app).to receive(:call) { |ctx|
+          ctx.output = "cached_result"
+          ctx
+        }
 
         expect(RubyLLM::Agents::Execution).to receive(:create!).with(
           hash_including(status: "running")
@@ -385,10 +403,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     context "async logging" do
       let(:mock_execution) do
         double("RubyLLM::Agents::Execution",
-               id: 123,
-               status: "running",
-               detail: nil,
-               class: RubyLLM::Agents::Execution)
+          id: 123,
+          status: "running",
+          detail: nil,
+          class: RubyLLM::Agents::Execution)
       end
 
       before do
@@ -490,73 +508,125 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
     it "checks track_embeddings for embedding agents" do
       agent_class = Class.new do
-        def self.name; "EmbedAgent"; end
-        def self.agent_type; :embedding; end
-        def self.model; "embed-model"; end
+        def self.name
+          "EmbedAgent"
+        end
+
+        def self.agent_type
+          :embedding
+        end
+
+        def self.model
+          "embed-model"
+        end
       end
 
       middleware = described_class.new(app, agent_class)
       context = RubyLLM::Agents::Pipeline::Context.new(input: "test", agent_class: agent_class)
 
       expect(config).to receive(:track_embeddings).and_return(false)
-      allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+      allow(app).to receive(:call) { |ctx|
+        ctx.output = "result"
+        ctx
+      }
 
       middleware.call(context)
     end
 
     it "checks track_image_generation for image agents" do
       agent_class = Class.new do
-        def self.name; "ImageAgent"; end
-        def self.agent_type; :image; end
-        def self.model; "dalle-3"; end
+        def self.name
+          "ImageAgent"
+        end
+
+        def self.agent_type
+          :image
+        end
+
+        def self.model
+          "dalle-3"
+        end
       end
 
       middleware = described_class.new(app, agent_class)
       context = RubyLLM::Agents::Pipeline::Context.new(input: "test", agent_class: agent_class)
 
       expect(config).to receive(:track_image_generation).and_return(false)
-      allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+      allow(app).to receive(:call) { |ctx|
+        ctx.output = "result"
+        ctx
+      }
 
       middleware.call(context)
     end
 
     it "checks track_audio for audio agents" do
       agent_class = Class.new do
-        def self.name; "AudioAgent"; end
-        def self.agent_type; :audio; end
-        def self.model; "whisper-1"; end
+        def self.name
+          "AudioAgent"
+        end
+
+        def self.agent_type
+          :audio
+        end
+
+        def self.model
+          "whisper-1"
+        end
       end
 
       middleware = described_class.new(app, agent_class)
       context = RubyLLM::Agents::Pipeline::Context.new(input: "test", agent_class: agent_class)
 
       expect(config).to receive(:track_audio).and_return(false)
-      allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+      allow(app).to receive(:call) { |ctx|
+        ctx.output = "result"
+        ctx
+      }
 
       middleware.call(context)
     end
 
     it "checks track_executions for conversation agents" do
       agent_class = Class.new do
-        def self.name; "ChatAgent"; end
-        def self.agent_type; :conversation; end
-        def self.model; "gpt-4o"; end
+        def self.name
+          "ChatAgent"
+        end
+
+        def self.agent_type
+          :conversation
+        end
+
+        def self.model
+          "gpt-4o"
+        end
       end
 
       middleware = described_class.new(app, agent_class)
       context = RubyLLM::Agents::Pipeline::Context.new(input: "test", agent_class: agent_class)
 
       expect(config).to receive(:track_executions).and_return(false)
-      allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+      allow(app).to receive(:call) { |ctx|
+        ctx.output = "result"
+        ctx
+      }
 
       middleware.call(context)
     end
 
     it "falls back to false when tracking config raises an error" do
       agent_class = Class.new do
-        def self.name; "ErrorAgent"; end
-        def self.agent_type; :unknown_type; end
-        def self.model; "test-model"; end
+        def self.name
+          "ErrorAgent"
+        end
+
+        def self.agent_type
+          :unknown_type
+        end
+
+        def self.model
+          "test-model"
+        end
       end
 
       middleware = described_class.new(app, agent_class)
@@ -564,7 +634,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
       # Make config raise an error
       allow(RubyLLM::Agents).to receive(:configuration).and_raise(StandardError.new("Config error"))
-      allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+      allow(app).to receive(:call) { |ctx|
+        ctx.output = "result"
+        ctx
+      }
 
       # Should not raise, just skip tracking
       expect { middleware.call(context) }.not_to raise_error
@@ -574,10 +647,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
   describe "multi-tenancy support" do
     let(:mock_execution) do
       double("RubyLLM::Agents::Execution",
-             id: 123,
-             status: "running",
-             detail: nil,
-             class: RubyLLM::Agents::Execution)
+        id: 123,
+        status: "running",
+        detail: nil,
+        class: RubyLLM::Agents::Execution)
     end
 
     before do
@@ -591,7 +664,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       context = build_context
       context.tenant_id = "tenant-123"
 
-      allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+      allow(app).to receive(:call) { |ctx|
+        ctx.output = "result"
+        ctx
+      }
 
       expect(RubyLLM::Agents::Execution).to receive(:create!).with(
         hash_including(tenant_id: "tenant-123")
@@ -608,7 +684,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       context = build_context
       context.tenant_id = "tenant-123"
 
-      allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+      allow(app).to receive(:call) { |ctx|
+        ctx.output = "result"
+        ctx
+      }
 
       expect(RubyLLM::Agents::Execution).to receive(:create!).with(
         hash_not_including(:tenant_id)
@@ -623,10 +702,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
   describe "cache key tracking" do
     let(:mock_execution) do
       double("RubyLLM::Agents::Execution",
-             id: 123,
-             status: "running",
-             detail: nil,
-             class: RubyLLM::Agents::Execution)
+        id: 123,
+        status: "running",
+        detail: nil,
+        class: RubyLLM::Agents::Execution)
     end
 
     before do
@@ -642,7 +721,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       context.cached = true
       context[:cache_key] = "ruby_llm_agents/test/key"
 
-      allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+      allow(app).to receive(:call) { |ctx|
+        ctx.output = "result"
+        ctx
+      }
       allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
 
       expect(mock_execution).to receive(:update!).with(
@@ -656,10 +738,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
   describe "metadata tracking" do
     let(:mock_execution) do
       double("RubyLLM::Agents::Execution",
-             id: 123,
-             status: "running",
-             detail: nil,
-             class: RubyLLM::Agents::Execution)
+        id: 123,
+        status: "running",
+        detail: nil,
+        class: RubyLLM::Agents::Execution)
     end
 
     before do
@@ -700,7 +782,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       context = build_context
       # Don't add any metadata
 
-      allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+      allow(app).to receive(:call) { |ctx|
+        ctx.output = "result"
+        ctx
+      }
       allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
 
       expect(mock_execution).to receive(:update!).with(
@@ -714,17 +799,25 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
   describe "parameter sanitization" do
     let(:mock_execution) do
       double("RubyLLM::Agents::Execution",
-             id: 123,
-             status: "running",
-             detail: nil,
-             class: RubyLLM::Agents::Execution)
+        id: 123,
+        status: "running",
+        detail: nil,
+        class: RubyLLM::Agents::Execution)
     end
 
     let(:agent_class_with_options) do
       Class.new do
-        def self.name; "AgentWithOptions"; end
-        def self.agent_type; :embedding; end
-        def self.model; "test-model"; end
+        def self.name
+          "AgentWithOptions"
+        end
+
+        def self.agent_type
+          :embedding
+        end
+
+        def self.model
+          "test-model"
+        end
       end
     end
 
@@ -758,7 +851,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         agent_instance: agent_instance
       )
 
-      allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+      allow(app).to receive(:call) { |ctx|
+        ctx.output = "result"
+        ctx
+      }
 
       # Parameters are now stored on the detail record, not the execution
       expect(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
@@ -783,10 +879,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
   describe "response persistence" do
     let(:mock_execution) do
       double("RubyLLM::Agents::Execution",
-             id: 123,
-             status: "running",
-             detail: nil,
-             class: RubyLLM::Agents::Execution)
+        id: 123,
+        status: "running",
+        detail: nil,
+        class: RubyLLM::Agents::Execution)
     end
 
     before do
@@ -869,7 +965,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       it "applies redaction to response content" do
         context = build_context
 
-        result_obj = RubyLLM::Agents::Result.new(content: { message: "Hello", password: "secret123" })
+        result_obj = RubyLLM::Agents::Result.new(content: {message: "Hello", password: "secret123"})
         allow(app).to receive(:call) do |ctx|
           ctx.output = result_obj
           ctx
@@ -943,10 +1039,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     describe "reliability attempts persistence" do
       let(:mock_execution) do
         double("RubyLLM::Agents::Execution",
-               id: 456,
-               status: "running",
-               detail: nil,
-               class: RubyLLM::Agents::Execution)
+          id: 456,
+          status: "running",
+          detail: nil,
+          class: RubyLLM::Agents::Execution)
       end
 
       before do
@@ -957,8 +1053,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       it "persists reliability_attempts in the execution record" do
         context = build_context
         context[:reliability_attempts] = [
-          { "model_id" => "gemini-2.5-flash", "error_class" => "StandardError", "error_message" => "quota exceeded" },
-          { "model_id" => "gpt-4.1-mini", "error_class" => nil, "error_message" => nil }
+          {"model_id" => "gemini-2.5-flash", "error_class" => "StandardError", "error_message" => "quota exceeded"},
+          {"model_id" => "gpt-4.1-mini", "error_class" => nil, "error_message" => nil}
         ]
 
         allow(app).to receive(:call) do |ctx|
@@ -979,8 +1075,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         expect(mock_execution).to receive(:create_detail!).with(
           hash_including(
             attempts: [
-              { "model_id" => "gemini-2.5-flash", "error_class" => "StandardError", "error_message" => "quota exceeded" },
-              { "model_id" => "gpt-4.1-mini", "error_class" => nil, "error_message" => nil }
+              {"model_id" => "gemini-2.5-flash", "error_class" => "StandardError", "error_message" => "quota exceeded"},
+              {"model_id" => "gpt-4.1-mini", "error_class" => nil, "error_message" => nil}
             ]
           )
         )

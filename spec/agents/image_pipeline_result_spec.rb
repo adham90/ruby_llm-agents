@@ -24,7 +24,7 @@ RSpec.describe RubyLLM::Agents::ImagePipelineResult do
       model_id: "gpt-image-1",
       total_cost: 0.04,
       to_blob: "generated_blob",
-      save: ->(path) { File.write(path, "fake") if false }
+      save: ->(path) {}
     )
   end
 
@@ -38,7 +38,7 @@ RSpec.describe RubyLLM::Agents::ImagePipelineResult do
       model_id: "real-esrgan",
       total_cost: 0.01,
       to_blob: "upscaled_blob",
-      save: ->(path) { File.write(path, "fake") if false }
+      save: ->(path) {}
     )
   end
 
@@ -64,9 +64,9 @@ RSpec.describe RubyLLM::Agents::ImagePipelineResult do
 
   let(:successful_step_results) do
     [
-      { name: :generate, type: :generator, result: generator_result },
-      { name: :upscale, type: :upscaler, result: upscaler_result },
-      { name: :analyze, type: :analyzer, result: analyzer_result }
+      {name: :generate, type: :generator, result: generator_result},
+      {name: :upscale, type: :upscaler, result: upscaler_result},
+      {name: :analyze, type: :analyzer, result: analyzer_result}
     ]
   end
 
@@ -77,7 +77,7 @@ RSpec.describe RubyLLM::Agents::ImagePipelineResult do
       completed_at: Time.current,
       tenant_id: "org-123",
       pipeline_class: "TestPipeline",
-      context: { prompt: "test" }
+      context: {prompt: "test"}
     )
   end
 
@@ -89,8 +89,8 @@ RSpec.describe RubyLLM::Agents::ImagePipelineResult do
 
       it "returns false when any step failed" do
         step_results = [
-          { name: :generate, type: :generator, result: generator_result },
-          { name: :upscale, type: :upscaler, result: failed_result }
+          {name: :generate, type: :generator, result: generator_result},
+          {name: :upscale, type: :upscaler, result: failed_result}
         ]
 
         result = described_class.new(
@@ -148,8 +148,8 @@ RSpec.describe RubyLLM::Agents::ImagePipelineResult do
 
       it "returns true when some succeed and some fail" do
         step_results = [
-          { name: :generate, type: :generator, result: generator_result },
-          { name: :upscale, type: :upscaler, result: failed_result }
+          {name: :generate, type: :generator, result: generator_result},
+          {name: :upscale, type: :upscaler, result: failed_result}
         ]
 
         result = described_class.new(
@@ -213,8 +213,8 @@ RSpec.describe RubyLLM::Agents::ImagePipelineResult do
     describe "#failed_step_count" do
       it "returns number of failed steps" do
         step_results = [
-          { name: :generate, type: :generator, result: generator_result },
-          { name: :upscale, type: :upscaler, result: failed_result }
+          {name: :generate, type: :generator, result: generator_result},
+          {name: :upscale, type: :upscaler, result: failed_result}
         ]
 
         result = described_class.new(
@@ -258,7 +258,7 @@ RSpec.describe RubyLLM::Agents::ImagePipelineResult do
 
       it "returns nil if no analyzer step" do
         step_results = [
-          { name: :generate, type: :generator, result: generator_result }
+          {name: :generate, type: :generator, result: generator_result}
         ]
 
         result = described_class.new(
@@ -290,7 +290,7 @@ RSpec.describe RubyLLM::Agents::ImagePipelineResult do
       it "returns transformer step result" do
         transformer_result = OpenStruct.new(success?: true, error?: false, total_cost: 0.02)
         step_results = [
-          { name: :transform, type: :transformer, result: transformer_result }
+          {name: :transform, type: :transformer, result: transformer_result}
         ]
 
         result = described_class.new(
@@ -314,7 +314,7 @@ RSpec.describe RubyLLM::Agents::ImagePipelineResult do
       it "returns remover step result" do
         remover_result = OpenStruct.new(success?: true, error?: false, total_cost: 0.005)
         step_results = [
-          { name: :remove_bg, type: :remover, result: remover_result }
+          {name: :remove_bg, type: :remover, result: remover_result}
         ]
 
         result = described_class.new(
@@ -363,7 +363,7 @@ RSpec.describe RubyLLM::Agents::ImagePipelineResult do
         total_cost: 0.01
       )
       step_results = [
-        { name: :generate, type: :generator, result: data_result }
+        {name: :generate, type: :generator, result: data_result}
       ]
 
       result = described_class.new(
@@ -392,7 +392,7 @@ RSpec.describe RubyLLM::Agents::ImagePipelineResult do
         total_cost: 0.01
       )
       step_results = [
-        { name: :generate, type: :generator, result: base64_result }
+        {name: :generate, type: :generator, result: base64_result}
       ]
 
       result = described_class.new(
@@ -420,7 +420,7 @@ RSpec.describe RubyLLM::Agents::ImagePipelineResult do
     it "returns nil when no step has to_blob" do
       no_blob_result = OpenStruct.new(success?: true, error?: false, total_cost: 0.01)
       step_results = [
-        { name: :analyze, type: :analyzer, result: no_blob_result }
+        {name: :analyze, type: :analyzer, result: no_blob_result}
       ]
 
       result = described_class.new(
@@ -502,7 +502,7 @@ RSpec.describe RubyLLM::Agents::ImagePipelineResult do
     it "creates CachedImagePipelineResult" do
       cache_data = {
         step_results: [
-          { name: :generate, type: :generator, cached_result: { url: "https://example.com/cached.png" } }
+          {name: :generate, type: :generator, cached_result: {url: "https://example.com/cached.png"}}
         ],
         total_cost: 0.04,
         cached_at: Time.current.iso8601
@@ -524,7 +524,7 @@ RSpec.describe RubyLLM::Agents::CachedImagePipelineResult do
         {
           name: :generate,
           type: :generator,
-          cached_result: { url: "https://example.com/cached.png", urls: ["https://example.com/cached.png"] }
+          cached_result: {url: "https://example.com/cached.png", urls: ["https://example.com/cached.png"]}
         }
       ],
       total_cost: 0.04,
@@ -546,7 +546,7 @@ RSpec.describe RubyLLM::Agents::CachedImagePipelineResult do
     end
 
     it "returns false when empty" do
-      result = described_class.new({ step_results: [], total_cost: 0 })
+      result = described_class.new({step_results: [], total_cost: 0})
       expect(result.success?).to be false
     end
   end

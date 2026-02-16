@@ -187,7 +187,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
     context "when inherit_global_defaults is true and limit is not set" do
       before do
         RubyLLM::Agents.configure do |config|
-          config.budgets = { global_daily: 25.0 }
+          config.budgets = {global_daily: 25.0}
         end
       end
 
@@ -216,7 +216,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
     context "when inherit_global_defaults is true and limit is not set" do
       before do
         RubyLLM::Agents.configure do |config|
-          config.budgets = { global_monthly: 250.0 }
+          config.budgets = {global_monthly: 250.0}
         end
       end
 
@@ -245,7 +245,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
     context "when inherit_global_defaults is true and limit is not set" do
       before do
         RubyLLM::Agents.configure do |config|
-          config.budgets = { global_daily_tokens: 500_000 }
+          config.budgets = {global_daily_tokens: 500_000}
         end
       end
 
@@ -274,7 +274,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
     context "when inherit_global_defaults is true and limit is not set" do
       before do
         RubyLLM::Agents.configure do |config|
-          config.budgets = { global_monthly_tokens: 5_000_000 }
+          config.budgets = {global_monthly_tokens: 5_000_000}
         end
       end
 
@@ -303,7 +303,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
     context "when inherit_global_defaults is true and limit is not set" do
       before do
         RubyLLM::Agents.configure do |config|
-          config.budgets = { global_daily_executions: 250 }
+          config.budgets = {global_daily_executions: 250}
         end
       end
 
@@ -332,7 +332,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
     context "when inherit_global_defaults is true and limit is not set" do
       before do
         RubyLLM::Agents.configure do |config|
-          config.budgets = { global_monthly_executions: 5_000 }
+          config.budgets = {global_monthly_executions: 5_000}
         end
       end
 
@@ -352,7 +352,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
 
   describe "#effective_per_agent_daily" do
     it "returns tenant-specific limit when set" do
-      budget = described_class.new(per_agent_daily: { "TestAgent" => 10.0 })
+      budget = described_class.new(per_agent_daily: {"TestAgent" => 10.0})
       expect(budget.effective_per_agent_daily("TestAgent")).to eq(10.0)
     end
 
@@ -369,7 +369,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
     context "with inherit_global_defaults true" do
       before do
         RubyLLM::Agents.configure do |config|
-          config.budgets = { per_agent_daily: { "GlobalAgent" => 15.0 } }
+          config.budgets = {per_agent_daily: {"GlobalAgent" => 15.0}}
         end
       end
 
@@ -380,7 +380,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
 
       it "prefers tenant-specific over global" do
         budget = described_class.new(
-          per_agent_daily: { "GlobalAgent" => 5.0 },
+          per_agent_daily: {"GlobalAgent" => 5.0},
           inherit_global_defaults: true
         )
         expect(budget.effective_per_agent_daily("GlobalAgent")).to eq(5.0)
@@ -390,7 +390,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
 
   describe "#effective_per_agent_monthly" do
     it "returns tenant-specific limit when set" do
-      budget = described_class.new(per_agent_monthly: { "TestAgent" => 100.0 })
+      budget = described_class.new(per_agent_monthly: {"TestAgent" => 100.0})
       expect(budget.effective_per_agent_monthly("TestAgent")).to eq(100.0)
     end
 
@@ -414,7 +414,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
     context "with inherit_global_defaults true" do
       before do
         RubyLLM::Agents.configure do |config|
-          config.budgets = { per_agent_monthly: { "GlobalAgent" => 150.0 } }
+          config.budgets = {per_agent_monthly: {"GlobalAgent" => 150.0}}
         end
       end
 
@@ -425,7 +425,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
 
       it "prefers tenant-specific over global" do
         budget = described_class.new(
-          per_agent_monthly: { "GlobalAgent" => 50.0 },
+          per_agent_monthly: {"GlobalAgent" => 50.0},
           inherit_global_defaults: true
         )
         expect(budget.effective_per_agent_monthly("GlobalAgent")).to eq(50.0)
@@ -457,7 +457,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
 
       it "falls back to global config when inherit_global_defaults is true" do
         RubyLLM::Agents.configure do |config|
-          config.budgets = { enforcement: :hard }
+          config.budgets = {enforcement: :hard}
         end
 
         budget = described_class.new(enforcement: nil, inherit_global_defaults: true)
@@ -466,7 +466,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
 
       it "uses global default :none when inherit_global_defaults is true" do
         RubyLLM::Agents.configure do |config|
-          config.budgets = { enforcement: :none }
+          config.budgets = {enforcement: :none}
         end
 
         budget = described_class.new(enforcement: nil, inherit_global_defaults: true)
@@ -501,8 +501,8 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
         monthly_token_limit: 10_000_000,
         daily_execution_limit: 500,
         monthly_execution_limit: 10_000,
-        per_agent_daily: { "AgentA" => 10.0 },
-        per_agent_monthly: { "AgentA" => 100.0 },
+        per_agent_daily: {"AgentA" => 10.0},
+        per_agent_monthly: {"AgentA" => 100.0},
         enforcement: "hard"
       )
 
@@ -544,16 +544,16 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
       before do
         RubyLLM::Agents.configure do |config|
           config.budgets = {
-            per_agent_daily: { "GlobalAgentDaily" => 20.0 },
-            per_agent_monthly: { "GlobalAgentMonthly" => 200.0 }
+            per_agent_daily: {"GlobalAgentDaily" => 20.0},
+            per_agent_monthly: {"GlobalAgentMonthly" => 200.0}
           }
         end
       end
 
       it "merges tenant-specific limits with global defaults" do
         budget = described_class.new(
-          per_agent_daily: { "TenantAgentDaily" => 15.0 },
-          per_agent_monthly: { "TenantAgentMonthly" => 150.0 },
+          per_agent_daily: {"TenantAgentDaily" => 15.0},
+          per_agent_monthly: {"TenantAgentMonthly" => 150.0},
           inherit_global_defaults: true
         )
         config = budget.to_budget_config
@@ -571,8 +571,8 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
 
       it "tenant-specific limits override global defaults for same agent" do
         budget = described_class.new(
-          per_agent_daily: { "GlobalAgentDaily" => 5.0 },
-          per_agent_monthly: { "GlobalAgentMonthly" => 50.0 },
+          per_agent_daily: {"GlobalAgentDaily" => 5.0},
+          per_agent_monthly: {"GlobalAgentMonthly" => 50.0},
           inherit_global_defaults: true
         )
         config = budget.to_budget_config
@@ -599,22 +599,22 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
       before do
         RubyLLM::Agents.configure do |config|
           config.budgets = {
-            per_agent_daily: { "GlobalAgent" => 20.0 },
-            per_agent_monthly: { "GlobalAgent" => 200.0 }
+            per_agent_daily: {"GlobalAgent" => 20.0},
+            per_agent_monthly: {"GlobalAgent" => 200.0}
           }
         end
       end
 
       it "does not include global limits" do
         budget = described_class.new(
-          per_agent_daily: { "TenantAgent" => 15.0 },
-          per_agent_monthly: { "TenantAgent" => 150.0 },
+          per_agent_daily: {"TenantAgent" => 15.0},
+          per_agent_monthly: {"TenantAgent" => 150.0},
           inherit_global_defaults: false
         )
         config = budget.to_budget_config
 
-        expect(config[:per_agent_daily]).to eq({ "TenantAgent" => 15.0 })
-        expect(config[:per_agent_monthly]).to eq({ "TenantAgent" => 150.0 })
+        expect(config[:per_agent_daily]).to eq({"TenantAgent" => 15.0})
+        expect(config[:per_agent_monthly]).to eq({"TenantAgent" => 150.0})
         expect(config[:per_agent_daily]).not_to include("GlobalAgent")
         expect(config[:per_agent_monthly]).not_to include("GlobalAgent")
       end

@@ -72,7 +72,7 @@ module RubyLLM
               period: period,
               count: count,
               total_cost: total_cost,
-              avg_cost: count > 0 ? (total_cost / count).round(6) : 0,
+              avg_cost: (count > 0) ? (total_cost / count).round(6) : 0,
               total_tokens: scope.total_tokens_sum || 0,
               avg_tokens: scope.avg_tokens&.round || 0,
               avg_duration_ms: scope.avg_duration&.round || 0,
@@ -179,7 +179,7 @@ module RubyLLM
             total_duration_count = 0
             total_tokens = 0
 
-            (23.downto(0)).each do |hours_ago|
+            23.downto(0).each do |hours_ago|
               bucket_time = (reference_time - hours_ago.hours).beginning_of_hour
               rows = results[bucket_time] || []
 
@@ -206,7 +206,7 @@ module RubyLLM
               total_duration_count += duration_rows.count
             end
 
-            avg_duration_ms = total_duration_count > 0 ? (total_duration_sum / total_duration_count).round : 0
+            avg_duration_ms = (total_duration_count > 0) ? (total_duration_sum / total_duration_count).round : 0
 
             {
               range: "today",
@@ -218,11 +218,11 @@ module RubyLLM
                 tokens: total_tokens
               },
               series: [
-                { name: "Success", data: success_data },
-                { name: "Errors", data: failed_data },
-                { name: "Cost", data: cost_data },
-                { name: "Duration", data: duration_data },
-                { name: "Tokens", data: tokens_data }
+                {name: "Success", data: success_data},
+                {name: "Errors", data: failed_data},
+                {name: "Cost", data: cost_data},
+                {name: "Duration", data: duration_data},
+                {name: "Tokens", data: tokens_data}
               ]
             }
           end
@@ -283,7 +283,7 @@ module RubyLLM
               total_duration_count += duration_rows.count
             end
 
-            avg_duration_ms = total_duration_count > 0 ? (total_duration_sum / total_duration_count).round : 0
+            avg_duration_ms = (total_duration_count > 0) ? (total_duration_sum / total_duration_count).round : 0
 
             {
               range: "#{days}d",
@@ -296,11 +296,11 @@ module RubyLLM
                 tokens: total_tokens
               },
               series: [
-                { name: "Success", data: success_data },
-                { name: "Errors", data: failed_data },
-                { name: "Cost", data: cost_data },
-                { name: "Duration", data: duration_data },
-                { name: "Tokens", data: tokens_data }
+                {name: "Success", data: success_data},
+                {name: "Errors", data: failed_data},
+                {name: "Cost", data: cost_data},
+                {name: "Duration", data: duration_data},
+                {name: "Tokens", data: tokens_data}
               ]
             }
           end
@@ -359,7 +359,7 @@ module RubyLLM
               total_duration_count += duration_rows.count
             end
 
-            avg_duration_ms = total_duration_count > 0 ? (total_duration_sum / total_duration_count).round : 0
+            avg_duration_ms = (total_duration_count > 0) ? (total_duration_sum / total_duration_count).round : 0
 
             {
               range: "custom",
@@ -374,11 +374,11 @@ module RubyLLM
                 tokens: total_tokens
               },
               series: [
-                { name: "Success", data: success_data },
-                { name: "Errors", data: failed_data },
-                { name: "Cost", data: cost_data },
-                { name: "Duration", data: duration_data },
-                { name: "Tokens", data: tokens_data }
+                {name: "Success", data: success_data},
+                {name: "Errors", data: failed_data},
+                {name: "Cost", data: cost_data},
+                {name: "Duration", data: duration_data},
+                {name: "Tokens", data: tokens_data}
               ]
             }
           end
@@ -398,7 +398,7 @@ module RubyLLM
             reference_time = Time.current.beginning_of_hour
 
             # Create entries for the last 24 hours ending at current hour
-            (23.downto(0)).each do |hours_ago|
+            23.downto(0).each do |hours_ago|
               start_time = reference_time - hours_ago.hours
               end_time = start_time + 1.hour
               time_label = start_time.in_time_zone.strftime("%H:%M")
@@ -409,8 +409,8 @@ module RubyLLM
             end
 
             [
-              { name: "Success", data: success_data },
-              { name: "Failed", data: failed_data }
+              {name: "Success", data: success_data},
+              {name: "Failed", data: failed_data}
             ]
           end
 
@@ -447,8 +447,8 @@ module RubyLLM
             end
 
             [
-              { name: "Input Cost", data: input_cost_data },
-              { name: "Output Cost", data: output_cost_data }
+              {name: "Input Cost", data: input_cost_data},
+              {name: "Output Cost", data: output_cost_data}
             ]
           end
 
@@ -514,7 +514,7 @@ module RubyLLM
             (rate_limited_count.to_f / total * 100).round(1)
           end
 
-        private
+          private
 
           # Calculates success rate percentage for a scope
           #
@@ -547,7 +547,7 @@ module RubyLLM
             {
               count: count,
               total_cost: total_cost,
-              avg_cost: count > 0 ? (total_cost / count).round(6) : 0,
+              avg_cost: (count > 0) ? (total_cost / count).round(6) : 0,
               avg_tokens: scope.avg_tokens&.round || 0,
               avg_duration_ms: scope.avg_duration&.round || 0,
               success_rate: calculate_success_rate(scope)

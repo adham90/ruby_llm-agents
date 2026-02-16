@@ -166,7 +166,7 @@ module RubyLLM
 
         def default_transcription_model
           RubyLLM::Agents.configuration.default_transcription_model
-        rescue StandardError
+        rescue
           "whisper-1"
         end
       end
@@ -334,22 +334,22 @@ module RubyLLM
       def agent_cache_key
         # Generate content hash based on input type
         content_hash = case @audio
-                       when String
-                         if @audio.start_with?("http://", "https://")
-                           Digest::SHA256.hexdigest(@audio)
-                         elsif File.exist?(@audio)
-                           Digest::SHA256.file(@audio).hexdigest
-                         else
-                           Digest::SHA256.hexdigest(@audio)
-                         end
-                       when File, IO
-                         @audio.rewind if @audio.respond_to?(:rewind)
-                         Digest::SHA256.hexdigest(@audio.read).tap do
-                           @audio.rewind if @audio.respond_to?(:rewind)
-                         end
-                       else
-                         Digest::SHA256.hexdigest(@audio.to_s)
-                       end
+        when String
+          if @audio.start_with?("http://", "https://")
+            Digest::SHA256.hexdigest(@audio)
+          elsif File.exist?(@audio)
+            Digest::SHA256.file(@audio).hexdigest
+          else
+            Digest::SHA256.hexdigest(@audio)
+          end
+        when File, IO
+          @audio.rewind if @audio.respond_to?(:rewind)
+          Digest::SHA256.hexdigest(@audio.read).tap do
+            @audio.rewind if @audio.respond_to?(:rewind)
+          end
+        else
+          Digest::SHA256.hexdigest(@audio.to_s)
+        end
 
         components = [
           "ruby_llm_agents",
@@ -389,15 +389,15 @@ module RubyLLM
         case audio
         when String
           if audio.start_with?("http://", "https://")
-            { source: audio, type: :url }
+            {source: audio, type: :url}
           elsif looks_like_file_path?(audio)
-            { source: audio, type: :file_path }
+            {source: audio, type: :file_path}
           else
             # Assume it's binary data
-            { source: audio, type: :binary, format: format }
+            {source: audio, type: :binary, format: format}
           end
         when File, IO
-          { source: audio, type: :file_object }
+          {source: audio, type: :file_object}
         else
           raise ArgumentError, "audio must be a file path, URL, File object, or binary data"
         end
@@ -451,7 +451,7 @@ module RubyLLM
 
           begin
             return execute_transcription(audio_input, model)
-          rescue StandardError => e
+          rescue => e
             last_error = e
             retries += 1
 
@@ -498,7 +498,7 @@ module RubyLLM
       # @param model [String] Model to use
       # @return [Hash] Options for transcription
       def build_transcribe_options(model)
-        options = { model: model }
+        options = {model: model}
 
         # Add language if specified
         lang = resolved_language
@@ -618,15 +618,15 @@ module RubyLLM
         # Estimate based on model and duration
         model = raw_result[:model].to_s
         price_per_minute = case model
-                           when /whisper-1/
-                             0.006
-                           when /gpt-4o-transcribe/
-                             0.01
-                           when /gpt-4o-mini-transcribe/
-                             0.005
-                           else
-                             0.006 # Default to whisper pricing
-                           end
+        when /whisper-1/
+          0.006
+        when /gpt-4o-transcribe/
+          0.01
+        when /gpt-4o-mini-transcribe/
+          0.005
+        else
+          0.006 # Default to whisper pricing
+        end
 
         duration_minutes * price_per_minute
       end
@@ -657,7 +657,7 @@ module RubyLLM
       # Calculates exponential backoff delay
       def calculate_backoff(attempt)
         config = self.class.reliability_config
-        base = config&.backoff == :constant ? 1.0 : 0.4
+        base = (config&.backoff == :constant) ? 1.0 : 0.4
         max_delay = 10.0
 
         delay = base * (2**(attempt - 1))

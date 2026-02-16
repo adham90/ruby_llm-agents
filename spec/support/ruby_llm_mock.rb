@@ -88,7 +88,7 @@ module RubyLLM
     end
 
     def add_message(role:, content:)
-      @messages << { role: role, content: content }
+      @messages << {role: role, content: content}
       self
     end
 
@@ -140,7 +140,7 @@ module RubyLLM
     end
 
     def usage
-      { input_tokens: @input_tokens }
+      {input_tokens: @input_tokens}
     end
 
     def cost
@@ -156,16 +156,14 @@ module RubyLLM
       @model_id = model_id
       @flagged = flagged
       @categories = categories
-      @results = [{ flagged: flagged, categories: categories, category_scores: {} }]
+      @results = [{flagged: flagged, categories: categories, category_scores: {}}]
     end
 
     def flagged?
       @flagged
     end
 
-    def categories
-      @categories
-    end
+    attr_reader :categories
 
     def category_scores
       {}

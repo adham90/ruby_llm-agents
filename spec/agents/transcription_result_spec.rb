@@ -11,8 +11,8 @@ RSpec.describe RubyLLM::Agents::TranscriptionResult do
 
     it "sets segments" do
       segments = [
-        { start: 0.0, end: 1.0, text: "Hello" },
-        { start: 1.0, end: 2.0, text: "world" }
+        {start: 0.0, end: 1.0, text: "Hello"},
+        {start: 1.0, end: 2.0, text: "world"}
       ]
       result = described_class.new(segments: segments)
       expect(result.segments).to eq(segments)
@@ -20,8 +20,8 @@ RSpec.describe RubyLLM::Agents::TranscriptionResult do
 
     it "sets words" do
       words = [
-        { start: 0.0, end: 0.5, text: "Hello" },
-        { start: 0.5, end: 1.0, text: "world" }
+        {start: 0.0, end: 0.5, text: "Hello"},
+        {start: 0.5, end: 1.0, text: "world"}
       ]
       result = described_class.new(words: words)
       expect(result.words).to eq(words)
@@ -67,8 +67,8 @@ RSpec.describe RubyLLM::Agents::TranscriptionResult do
     it "sets speaker diarization data" do
       speakers = ["Speaker 1", "Speaker 2"]
       speaker_segments = [
-        { speaker: "Speaker 1", start: 0.0, end: 5.0, text: "Hello" },
-        { speaker: "Speaker 2", start: 5.0, end: 10.0, text: "Hi there" }
+        {speaker: "Speaker 1", start: 0.0, end: 5.0, text: "Hello"},
+        {speaker: "Speaker 2", start: 5.0, end: 10.0, text: "Hi there"}
       ]
 
       result = described_class.new(
@@ -125,8 +125,8 @@ RSpec.describe RubyLLM::Agents::TranscriptionResult do
       result = described_class.new(
         text: "Hello world",
         segments: [
-          { start: 0.0, end: 2.5, text: "Hello world" },
-          { start: 3.0, end: 5.5, text: "How are you?" }
+          {start: 0.0, end: 2.5, text: "Hello world"},
+          {start: 3.0, end: 5.5, text: "How are you?"}
         ]
       )
 
@@ -150,8 +150,8 @@ RSpec.describe RubyLLM::Agents::TranscriptionResult do
       result = described_class.new(
         text: "Hello world",
         segments: [
-          { start: 0.0, end: 2.5, text: "Hello world" },
-          { start: 3.0, end: 5.5, text: "How are you?" }
+          {start: 0.0, end: 2.5, text: "Hello world"},
+          {start: 3.0, end: 5.5, text: "How are you?"}
         ]
       )
 
@@ -194,9 +194,9 @@ RSpec.describe RubyLLM::Agents::TranscriptionResult do
     it "finds segment at given timestamp" do
       result = described_class.new(
         segments: [
-          { start: 0.0, end: 5.0, text: "First segment" },
-          { start: 5.0, end: 10.0, text: "Second segment" },
-          { start: 10.0, end: 15.0, text: "Third segment" }
+          {start: 0.0, end: 5.0, text: "First segment"},
+          {start: 5.0, end: 10.0, text: "Second segment"},
+          {start: 10.0, end: 15.0, text: "Third segment"}
         ]
       )
 
@@ -207,7 +207,7 @@ RSpec.describe RubyLLM::Agents::TranscriptionResult do
     it "returns nil when no segment at timestamp" do
       result = described_class.new(
         segments: [
-          { start: 0.0, end: 5.0, text: "First segment" }
+          {start: 0.0, end: 5.0, text: "First segment"}
         ]
       )
 
@@ -224,9 +224,9 @@ RSpec.describe RubyLLM::Agents::TranscriptionResult do
     it "extracts text between timestamps (fully contained segments)" do
       result = described_class.new(
         segments: [
-          { start: 0.0, end: 5.0, text: "First segment." },
-          { start: 5.0, end: 10.0, text: "Second segment." },
-          { start: 10.0, end: 15.0, text: "Third segment." }
+          {start: 0.0, end: 5.0, text: "First segment."},
+          {start: 5.0, end: 10.0, text: "Second segment."},
+          {start: 10.0, end: 15.0, text: "Third segment."}
         ]
       )
 
@@ -239,7 +239,7 @@ RSpec.describe RubyLLM::Agents::TranscriptionResult do
     it "returns empty string when no matching segments" do
       result = described_class.new(
         segments: [
-          { start: 0.0, end: 5.0, text: "First segment" }
+          {start: 0.0, end: 5.0, text: "First segment"}
         ]
       )
 
@@ -254,8 +254,8 @@ RSpec.describe RubyLLM::Agents::TranscriptionResult do
 
       result = described_class.new(
         text: "Hello world",
-        segments: [{ start: 0.0, end: 1.0, text: "Hello world" }],
-        words: [{ start: 0.0, end: 0.5, text: "Hello" }],
+        segments: [{start: 0.0, end: 1.0, text: "Hello world"}],
+        words: [{start: 0.0, end: 0.5, text: "Hello"}],
         audio_duration: 1.0,
         audio_format: "mp3",
         language: "en",

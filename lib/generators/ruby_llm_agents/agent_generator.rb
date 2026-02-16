@@ -22,11 +22,11 @@ module RubyLlmAgents
     argument :params, type: :array, default: [], banner: "param[:required|:default] param[:required|:default]"
 
     class_option :model, type: :string, default: "gemini-2.0-flash",
-                 desc: "The LLM model to use"
+      desc: "The LLM model to use"
     class_option :temperature, type: :numeric, default: 0.0,
-                 desc: "The temperature setting (0.0-1.0)"
+      desc: "The temperature setting (0.0-1.0)"
     class_option :cache, type: :string, default: nil,
-                 desc: "Cache TTL (e.g., '1.hour', '30.minutes')"
+      desc: "Cache TTL (e.g., '1.hour', '30.minutes')"
 
     def ensure_base_class_and_skill_file
       agents_dir = "app/agents"
@@ -80,7 +80,7 @@ module RubyLlmAgents
         if p.required?
           "#{p.name}: value"
         else
-          "#{p.name}: #{p.default || 'value'}"
+          "#{p.name}: #{p.default || "value"}"
         end
       end.join(", ")
     end

@@ -51,7 +51,7 @@ module RubyLLM
           # @return [Boolean]
           def budgets_enabled?
             global_config.budgets_enabled?
-          rescue StandardError
+          rescue
             false
           end
 
@@ -78,7 +78,7 @@ module RubyLLM
             )
           rescue RubyLLM::Agents::Reliability::BudgetExceededError
             raise
-          rescue StandardError => e
+          rescue => e
             error("Budget check failed: #{e.message}")
           end
 
@@ -117,7 +117,7 @@ module RubyLLM
                 tenant_id: context.tenant_id
               )
             end
-          rescue StandardError => e
+          rescue => e
             error("Failed to record spend: #{e.message}")
           end
         end

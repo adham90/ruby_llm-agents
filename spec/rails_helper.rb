@@ -49,7 +49,6 @@ require "ruby_llm/agents/core/base"
 
 # Force loading of autoloaded constants that specs reference
 # This must happen after Rails.application.initialize! and before specs load
-RubyLLM::Agents::Execution
 
 # Load support files
 Dir[File.join(__dir__, "support/**/*.rb")].sort.each { |f| require f }
@@ -112,7 +111,7 @@ RSpec.configure do |config|
     # Only reload if there are more tests to run that need the schema
     ActiveRecord::Schema.verbose = false
     load File.join(__dir__, "dummy/db/schema.rb")
-  rescue StandardError
+  rescue
     # Ignore errors during schema reload
   end
 end

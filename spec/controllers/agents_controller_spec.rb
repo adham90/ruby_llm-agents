@@ -45,9 +45,9 @@ RSpec.describe RubyLLM::Agents::AgentsController, type: :controller do
     context "with sorting" do
       before do
         allow(RubyLLM::Agents::AgentRegistry).to receive(:all_with_details).and_return([
-          { name: "BAgent", agent_type: "agent", is_workflow: false, active: true, execution_count: 10, total_cost: 1.5 },
-          { name: "AAgent", agent_type: "agent", is_workflow: false, active: true, execution_count: 5, total_cost: 2.0 },
-          { name: "CAgent", agent_type: "embedder", is_workflow: false, active: true, execution_count: 20, total_cost: 0.5 }
+          {name: "BAgent", agent_type: "agent", is_workflow: false, active: true, execution_count: 10, total_cost: 1.5},
+          {name: "AAgent", agent_type: "agent", is_workflow: false, active: true, execution_count: 5, total_cost: 2.0},
+          {name: "CAgent", agent_type: "embedder", is_workflow: false, active: true, execution_count: 20, total_cost: 0.5}
         ])
       end
 
@@ -57,44 +57,44 @@ RSpec.describe RubyLLM::Agents::AgentsController, type: :controller do
       end
 
       it "sorts by name descending when specified" do
-        get :index, params: { sort: "name", direction: "desc" }
+        get :index, params: {sort: "name", direction: "desc"}
         expect(assigns(:agents).map { |a| a[:name] }).to eq(%w[CAgent BAgent AAgent])
       end
 
       it "sorts by execution_count" do
-        get :index, params: { sort: "execution_count", direction: "desc" }
+        get :index, params: {sort: "execution_count", direction: "desc"}
         expect(assigns(:agents).map { |a| a[:execution_count] }).to eq([20, 10, 5])
       end
 
       it "sorts by total_cost" do
-        get :index, params: { sort: "total_cost", direction: "asc" }
+        get :index, params: {sort: "total_cost", direction: "asc"}
         expect(assigns(:agents).map { |a| a[:total_cost] }).to eq([0.5, 1.5, 2.0])
       end
 
       it "ignores invalid sort columns" do
-        get :index, params: { sort: "invalid_column" }
+        get :index, params: {sort: "invalid_column"}
         # Should fall back to default (name asc)
         expect(assigns(:agents).map { |a| a[:name] }).to eq(%w[AAgent BAgent CAgent])
       end
 
       it "ignores invalid sort directions" do
-        get :index, params: { sort: "name", direction: "invalid" }
+        get :index, params: {sort: "name", direction: "invalid"}
         # Should fall back to default direction (asc)
         expect(assigns(:agents).map { |a| a[:name] }).to eq(%w[AAgent BAgent CAgent])
       end
 
       it "assigns sort_params" do
-        get :index, params: { sort: "execution_count", direction: "desc" }
-        expect(assigns(:sort_params)).to eq({ column: "execution_count", direction: "desc" })
+        get :index, params: {sort: "execution_count", direction: "desc"}
+        expect(assigns(:sort_params)).to eq({column: "execution_count", direction: "desc"})
       end
     end
 
     context "with deleted agents" do
       before do
         allow(RubyLLM::Agents::AgentRegistry).to receive(:all_with_details).and_return([
-          { name: "ActiveAgent", agent_type: "agent", is_workflow: false, active: true, execution_count: 10 },
-          { name: "DeletedAgent", agent_type: "agent", is_workflow: false, active: false, execution_count: 5 },
-          { name: "ActiveEmbedder", agent_type: "embedder", is_workflow: false, active: true, execution_count: 15 }
+          {name: "ActiveAgent", agent_type: "agent", is_workflow: false, active: true, execution_count: 10},
+          {name: "DeletedAgent", agent_type: "agent", is_workflow: false, active: false, execution_count: 5},
+          {name: "ActiveEmbedder", agent_type: "embedder", is_workflow: false, active: true, execution_count: 15}
         ])
       end
 
@@ -122,8 +122,8 @@ RSpec.describe RubyLLM::Agents::AgentsController, type: :controller do
 
       it "sorts deleted agents" do
         allow(RubyLLM::Agents::AgentRegistry).to receive(:all_with_details).and_return([
-          { name: "DeletedB", agent_type: "agent", is_workflow: false, active: false },
-          { name: "DeletedA", agent_type: "agent", is_workflow: false, active: false }
+          {name: "DeletedB", agent_type: "agent", is_workflow: false, active: false},
+          {name: "DeletedA", agent_type: "agent", is_workflow: false, active: false}
         ])
         get :index
         expect(assigns(:deleted_agents).map { |a| a[:name] }).to eq(%w[DeletedA DeletedB])
@@ -141,22 +141,22 @@ RSpec.describe RubyLLM::Agents::AgentsController, type: :controller do
     end
 
     it "returns http success" do
-      get :show, params: { id: "TestAgent" }
+      get :show, params: {id: "TestAgent"}
       expect(response).to have_http_status(:success)
     end
 
     it "assigns @agent_type" do
-      get :show, params: { id: "TestAgent" }
+      get :show, params: {id: "TestAgent"}
       expect(assigns(:agent_type)).to eq("TestAgent")
     end
 
     it "assigns @stats" do
-      get :show, params: { id: "TestAgent" }
+      get :show, params: {id: "TestAgent"}
       expect(assigns(:stats)).to be_a(Hash)
     end
 
     it "assigns @executions" do
-      get :show, params: { id: "TestAgent" }
+      get :show, params: {id: "TestAgent"}
       expect(assigns(:executions)).to be_present
     end
 
@@ -167,12 +167,12 @@ RSpec.describe RubyLLM::Agents::AgentsController, type: :controller do
       end
 
       it "filters by valid status" do
-        get :show, params: { id: "TestAgent", statuses: "success" }
+        get :show, params: {id: "TestAgent", statuses: "success"}
         expect(assigns(:executions).pluck(:status).uniq).to eq(["success"])
       end
 
       it "ignores invalid status" do
-        get :show, params: { id: "TestAgent", statuses: "invalid_status" }
+        get :show, params: {id: "TestAgent", statuses: "invalid_status"}
         # Should return all results since invalid status is ignored
         expect(assigns(:executions).count).to be >= 0
       end
@@ -185,13 +185,13 @@ RSpec.describe RubyLLM::Agents::AgentsController, type: :controller do
       end
 
       it "filters by positive days" do
-        get :show, params: { id: "TestAgent", days: "7" }
+        get :show, params: {id: "TestAgent", days: "7"}
         # 2 recent executions: 1 from let! + 1 from before block
         expect(assigns(:executions).count).to eq(2)
       end
 
       it "ignores negative days" do
-        get :show, params: { id: "TestAgent", days: "-5" }
+        get :show, params: {id: "TestAgent", days: "-5"}
         # Should return all results: 1 from let! + 2 from before block = 3
         expect(assigns(:executions).count).to eq(3)
       end
@@ -203,18 +203,18 @@ RSpec.describe RubyLLM::Agents::AgentsController, type: :controller do
       end
 
       it "paginates results" do
-        get :show, params: { id: "TestAgent" }
+        get :show, params: {id: "TestAgent"}
         expect(assigns(:executions).count).to eq(25)
         expect(assigns(:pagination)[:total_pages]).to eq(2)
       end
 
       it "handles page parameter" do
-        get :show, params: { id: "TestAgent", page: "2" }
+        get :show, params: {id: "TestAgent", page: "2"}
         expect(assigns(:pagination)[:current_page]).to eq(2)
       end
 
       it "handles invalid page parameter" do
-        get :show, params: { id: "TestAgent", page: "0" }
+        get :show, params: {id: "TestAgent", page: "0"}
         expect(assigns(:pagination)[:current_page]).to eq(1)
       end
     end
@@ -226,7 +226,7 @@ RSpec.describe RubyLLM::Agents::AgentsController, type: :controller do
       end
 
       it "redirects with error message" do
-        get :show, params: { id: "TestAgent" }
+        get :show, params: {id: "TestAgent"}
         expect(response).to redirect_to(controller.ruby_llm_agents.agents_path)
         expect(flash[:alert]).to eq("Error loading agent details")
       end

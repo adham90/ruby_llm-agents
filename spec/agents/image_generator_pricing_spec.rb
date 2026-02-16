@@ -87,7 +87,7 @@ RSpec.describe RubyLLM::Agents::ImageGenerator::Pricing do
             "tiered-model" => {
               "1024x1024" => 0.05,
               "512x512" => 0.025,
-              default: 0.05
+              :default => 0.05
             }
           }
         end
@@ -169,7 +169,7 @@ RSpec.describe RubyLLM::Agents::ImageGenerator::Pricing do
 
   describe ".refresh!" do
     it "clears cached data" do
-      described_class.instance_variable_set(:@litellm_data, { "test" => true })
+      described_class.instance_variable_set(:@litellm_data, {"test" => true})
       described_class.instance_variable_set(:@litellm_fetched_at, Time.now)
 
       allow(Net::HTTP).to receive(:new).and_raise(Errno::ECONNREFUSED)

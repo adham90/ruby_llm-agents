@@ -71,7 +71,7 @@ module RubyLLM
           # @return [ActiveSupport::Cache::Store, nil]
           def cache_store
             global_config.cache_store
-          rescue StandardError
+          rescue
             nil
           end
 
@@ -130,7 +130,7 @@ module RubyLLM
             else
               input.to_json
             end
-          rescue StandardError
+          rescue
             input.to_s
           end
 
@@ -140,7 +140,7 @@ module RubyLLM
           # @return [Object, nil] Cached value or nil
           def cache_read(key)
             cache_store.read(key)
-          rescue StandardError => e
+          rescue => e
             error("Cache read failed: #{e.message}")
             nil
           end
@@ -154,7 +154,7 @@ module RubyLLM
             options[:expires_in] = cache_ttl if cache_ttl
 
             cache_store.write(key, value, **options)
-          rescue StandardError => e
+          rescue => e
             error("Cache write failed: #{e.message}")
           end
         end

@@ -12,16 +12,16 @@ RSpec.describe RubyLLM::Agents::ImageAnalysisResult do
       description: "A beautiful sunset over mountain ranges with orange and purple hues.",
       tags: %w[sunset mountains nature landscape orange sky],
       objects: [
-        { name: "mountain", location: "center", confidence: "high" },
-        { name: "sun", location: "top", confidence: "high" }
+        {name: "mountain", location: "center", confidence: "high"},
+        {name: "sun", location: "top", confidence: "high"}
       ],
       colors: [
-        { hex: "#FF6B35", name: "orange", percentage: 30 },
-        { hex: "#4A1A6C", name: "purple", percentage: 25 },
-        { hex: "#1E3A5F", name: "navy", percentage: 20 }
+        {hex: "#FF6B35", name: "orange", percentage: 30},
+        {hex: "#4A1A6C", name: "purple", percentage: 25},
+        {hex: "#1E3A5F", name: "navy", percentage: 20}
       ],
       text: nil,
-      raw_response: { caption: "A sunset over mountains" },
+      raw_response: {caption: "A sunset over mountains"},
       started_at: 2.seconds.ago,
       completed_at: Time.current,
       tenant_id: "tenant-123",
@@ -267,8 +267,8 @@ RSpec.describe RubyLLM::Agents::CachedImageAnalysisResult do
       caption: "A sunset",
       description: "Description",
       tags: %w[sunset mountains],
-      objects: [{ name: "sun" }],
-      colors: [{ hex: "#FF0000", percentage: 50 }],
+      objects: [{name: "sun"}],
+      colors: [{hex: "#FF0000", percentage: 50}],
       text: nil,
       total_cost: 0.01,
       cached_at: Time.current.iso8601

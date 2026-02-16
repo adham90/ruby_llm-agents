@@ -4,7 +4,7 @@ require "rails_helper"
 
 RSpec.describe RubyLLM::Agents::Reliability::BreakerManager do
   let(:agent_type) { "TestAgent" }
-  let(:config) { { errors: 3, within: 60, cooldown: 30 } }
+  let(:config) { {errors: 3, within: 60, cooldown: 30} }
   let(:tenant_id) { nil }
 
   subject(:manager) do

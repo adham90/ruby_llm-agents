@@ -30,6 +30,7 @@ module RubyLLM
     # @api public
     class CircuitBreaker
       include CacheHelper
+
       attr_reader :agent_type, :model_id, :tenant_id, :errors_threshold, :window_seconds, :cooldown_seconds
 
       # @param agent_type [String] The agent class name

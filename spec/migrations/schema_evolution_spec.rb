@@ -184,7 +184,7 @@ RSpec.describe "Schema Evolution Compatibility", type: :migration do
       build_schema_for_version("0.2.3")
 
       # Create parent and child
-      hierarchy = MigrationTestData.seed_execution_hierarchy
+      MigrationTestData.seed_execution_hierarchy
 
       # Verify referential integrity maintained after upgrade
       apply_migrations_from_to("0.2.3", "0.4.0")
@@ -276,7 +276,6 @@ RSpec.describe "Schema Evolution Compatibility", type: :migration do
         )
       }.to raise_error(ActiveRecord::RecordNotUnique)
     end
-
   end
 
   describe "table existence across versions" do

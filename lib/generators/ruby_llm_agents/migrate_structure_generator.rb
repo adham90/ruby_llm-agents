@@ -158,7 +158,7 @@ module RubyLlmAgents
 
       directories.each do |dir|
         if options[:dry_run]
-          say_status :dry_run, "Would create #{dir.sub(Rails.root.to_s + '/', '')}", :yellow
+          say_status :dry_run, "Would create #{dir.sub(Rails.root.to_s + "/", "")}", :yellow
         else
           FileUtils.mkdir_p(dir)
           say_status :mkdir, dir.sub(Rails.root.to_s + "/", ""), :green
@@ -393,7 +393,7 @@ module RubyLlmAgents
 
       if content != original_content
         File.write(file_path, content)
-        say_status :updated, "base classes in #{file_path.sub(Rails.root.to_s + '/', '')}", :blue
+        say_status :updated, "base classes in #{file_path.sub(Rails.root.to_s + "/", "")}", :blue
       end
     end
 
@@ -441,7 +441,7 @@ module RubyLlmAgents
         next unless File.directory?(subdir) && Dir.empty?(subdir)
 
         if options[:dry_run]
-          say_status :dry_run, "Would remove empty #{subdir.sub(Rails.root.to_s + '/', '')}", :yellow
+          say_status :dry_run, "Would remove empty #{subdir.sub(Rails.root.to_s + "/", "")}", :yellow
         else
           FileUtils.rmdir(subdir)
           say_status :removed, subdir.sub(Rails.root.to_s + "/", ""), :red
@@ -452,7 +452,7 @@ module RubyLlmAgents
       return unless File.directory?(dir) && Dir.empty?(dir)
 
       if options[:dry_run]
-        say_status :dry_run, "Would remove empty #{dir.sub(Rails.root.to_s + '/', '')}", :yellow
+        say_status :dry_run, "Would remove empty #{dir.sub(Rails.root.to_s + "/", "")}", :yellow
       else
         FileUtils.rmdir(dir)
         say_status :removed, dir.sub(Rails.root.to_s + "/", ""), :red

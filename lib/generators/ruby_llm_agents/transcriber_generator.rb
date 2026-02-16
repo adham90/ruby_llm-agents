@@ -17,13 +17,13 @@ module RubyLlmAgents
     source_root File.expand_path("templates", __dir__)
 
     class_option :model, type: :string, default: "whisper-1",
-                 desc: "The transcription model to use"
+      desc: "The transcription model to use"
     class_option :language, type: :string, default: nil,
-                 desc: "Language code (e.g., 'en', 'es')"
+      desc: "Language code (e.g., 'en', 'es')"
     class_option :output_format, type: :string, default: "text",
-                 desc: "Output format (text, srt, vtt, json)"
+      desc: "Output format (text, srt, vtt, json)"
     class_option :cache, type: :string, default: nil,
-                 desc: "Cache TTL (e.g., '30.days')"
+      desc: "Cache TTL (e.g., '30.days')"
 
     def ensure_base_class_and_skill_file
       audio_dir = "app/agents/audio"

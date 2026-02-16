@@ -110,7 +110,7 @@ RSpec.describe "Execution tenant scopes" do
       it "returns all when resolver returns nil" do
         RubyLLM::Agents.configure do |config|
           config.multi_tenancy_enabled = true
-          config.tenant_resolver = -> { nil }
+          config.tenant_resolver = -> {}
         end
 
         result = RubyLLM::Agents::Execution.for_current_tenant

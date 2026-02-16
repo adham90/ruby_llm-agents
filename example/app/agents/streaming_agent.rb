@@ -23,9 +23,9 @@
 #   puts result.content
 #
 class StreamingAgent < ApplicationAgent
-  description 'Demonstrates streaming responses for real-time output'
+  description "Demonstrates streaming responses for real-time output"
 
-  model 'gpt-4o-mini'
+  model "gpt-4o-mini"
   temperature 0.8 # Higher temperature for creative responses
   timeout 60
 
@@ -49,7 +49,7 @@ class StreamingAgent < ApplicationAgent
 
   def metadata
     {
-      showcase: 'streaming',
+      showcase: "streaming",
       features: %w[streaming time_to_first_token]
     }
   end

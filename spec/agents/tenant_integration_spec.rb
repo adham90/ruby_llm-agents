@@ -123,7 +123,7 @@ RSpec.describe "Agent tenant integration" do
 
     context "with Hash tenant config" do
       it "extracts id from hash" do
-        agent = test_agent_class.new(tenant: { id: "hash-tenant", daily_limit: 100 })
+        agent = test_agent_class.new(tenant: {id: "hash-tenant", daily_limit: 100})
 
         expect(agent.resolved_tenant_id).to eq("hash-tenant")
         # In new architecture, runtime config is part of the tenant hash itself

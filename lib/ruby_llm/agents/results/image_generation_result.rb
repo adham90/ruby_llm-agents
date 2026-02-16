@@ -21,8 +21,8 @@ module RubyLLM
     #
     class ImageGenerationResult
       attr_reader :images, :prompt, :model_id, :size, :quality, :style,
-                  :started_at, :completed_at, :tenant_id, :generator_class,
-                  :error_class, :error_message
+        :started_at, :completed_at, :tenant_id, :generator_class,
+        :error_class, :error_message
 
       # Initialize a new result
       #
@@ -39,8 +39,8 @@ module RubyLLM
       # @param error_class [String, nil] Error class name if failed
       # @param error_message [String, nil] Error message if failed
       def initialize(images:, prompt:, model_id:, size:, quality:, style:,
-                     started_at:, completed_at:, tenant_id:, generator_class:,
-                     error_class: nil, error_message: nil)
+        started_at:, completed_at:, tenant_id:, generator_class:,
+        error_class: nil, error_message: nil)
         @images = images
         @prompt = prompt
         @model_id = model_id
@@ -294,7 +294,7 @@ module RubyLLM
     #
     class CachedImageGenerationResult
       attr_reader :urls, :datas, :mime_type, :revised_prompts, :model_id,
-                  :total_cost, :cached_at
+        :total_cost, :cached_at
 
       def initialize(data)
         @urls = data[:urls] || []

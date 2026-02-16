@@ -78,8 +78,8 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
 
         # Detail columns still present on executions (not yet cleaned up)
         %i[system_prompt user_prompt error_message response tool_calls
-           attempts fallback_chain parameters routed_to
-           classification_result cached_at cache_creation_tokens].include?(column)
+          attempts fallback_chain parameters routed_to
+          classification_result cached_at cache_creation_tokens].include?(column)
       end
 
       run_generator

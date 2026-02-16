@@ -43,7 +43,7 @@ module RubyLLM
 
           # Store in cache for dashboard display
           store_for_dashboard(event, full_payload)
-        rescue StandardError => e
+        rescue => e
           Rails.logger.error("[RubyLLM::Agents::AlertManager] Failed: #{e.message}")
         end
 
@@ -72,7 +72,7 @@ module RubyLLM
           return unless handler.respond_to?(:call)
 
           handler.call(event, payload)
-        rescue StandardError => e
+        rescue => e
           Rails.logger.warn("[RubyLLM::Agents::AlertManager] Handler failed: #{e.message}")
         end
 
@@ -83,7 +83,7 @@ module RubyLLM
         # @return [void]
         def emit_notification(event, payload)
           ActiveSupport::Notifications.instrument("ruby_llm_agents.alert.#{event}", payload)
-        rescue StandardError
+        rescue
           # Ignore notification failures
         end
 
@@ -106,7 +106,7 @@ module RubyLLM
           alerts = alerts.first(50)
 
           cache.write(key, alerts, expires_in: 24.hours)
-        rescue StandardError
+        rescue
           # Ignore cache failures
         end
 

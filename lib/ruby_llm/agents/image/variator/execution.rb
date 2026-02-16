@@ -45,7 +45,7 @@ module RubyLLM
           record_execution(result) if execution_tracking_enabled?
 
           result
-        rescue StandardError => e
+        rescue => e
           record_failed_execution(e, started_at) if execution_tracking_enabled?
           build_error_result(e, started_at)
         end

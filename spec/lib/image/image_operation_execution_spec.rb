@@ -90,7 +90,7 @@ RSpec.describe RubyLLM::Agents::Concerns::ImageOperationExecution do
       end
 
       def build_metadata(_result)
-        { test: true }
+        {test: true}
       end
     end
   end
@@ -114,7 +114,7 @@ RSpec.describe RubyLLM::Agents::Concerns::ImageOperationExecution do
     end
 
     it "extracts tenant id from hash with :id key" do
-      instance = test_class.new(tenant: { id: "tenant-abc" })
+      instance = test_class.new(tenant: {id: "tenant-abc"})
       instance.test_resolve_tenant_context!
 
       expect(instance.get_tenant_id).to eq("tenant-abc")
@@ -260,18 +260,18 @@ RSpec.describe RubyLLM::Agents::Concerns::ImageOperationExecution do
 
       it "returns cached result when cache hit" do
         cache_key = test_instance.test_cache_key
-        Rails.cache.write(cache_key, { cached: true })
+        Rails.cache.write(cache_key, {cached: true})
 
         result = test_instance.test_check_cache(mock_result_class)
         expect(result).to be_a(mock_result_class)
-        expect(result.data).to eq({ cached: true })
+        expect(result.data).to eq({cached: true})
       end
     end
   end
 
   describe "#write_cache" do
     let(:mock_result) do
-      double("Result", success?: true, to_cache: { data: "cached" })
+      double("Result", success?: true, to_cache: {data: "cached"})
     end
 
     context "when Rails.cache is available" do
@@ -285,11 +285,11 @@ RSpec.describe RubyLLM::Agents::Concerns::ImageOperationExecution do
         test_instance.test_write_cache(mock_result)
 
         cached = memory_store.read(test_instance.test_cache_key)
-        expect(cached).to eq({ data: "cached" })
+        expect(cached).to eq({data: "cached"})
       end
 
       it "does not write failed result to cache" do
-        failed_result = double("Result", success?: false, to_cache: { data: "cached" })
+        failed_result = double("Result", success?: false, to_cache: {data: "cached"})
 
         test_instance.test_write_cache(failed_result)
 
@@ -423,7 +423,7 @@ RSpec.describe RubyLLM::Agents::Concerns::ImageOperationExecution do
 
     it "returns truthy when budgets are configured with enforcement" do
       RubyLLM::Agents.configure do |config|
-        config.budgets = { enforcement: :soft, global_daily: 10.0 }
+        config.budgets = {enforcement: :soft, global_daily: 10.0}
       end
 
       expect(test_instance.test_budget_tracking_enabled?).to be_truthy
@@ -431,7 +431,7 @@ RSpec.describe RubyLLM::Agents::Concerns::ImageOperationExecution do
 
     it "returns falsey when enforcement is :none" do
       RubyLLM::Agents.configure do |config|
-        config.budgets = { enforcement: :none, global_daily: 10.0 }
+        config.budgets = {enforcement: :none, global_daily: 10.0}
       end
 
       expect(test_instance.test_budget_tracking_enabled?).to be_falsey
@@ -450,7 +450,7 @@ RSpec.describe RubyLLM::Agents::Concerns::ImageOperationExecution do
 
     it "resolves model aliases" do
       RubyLLM::Agents.configure do |config|
-        config.image_model_aliases = { "dall-e-3": "dall-e-3-hd" }
+        config.image_model_aliases = {"dall-e-3": "dall-e-3-hd"}
       end
 
       expect(test_instance.test_resolve_model).to eq("dall-e-3-hd")
@@ -458,7 +458,7 @@ RSpec.describe RubyLLM::Agents::Concerns::ImageOperationExecution do
 
     it "returns original model when no alias exists" do
       RubyLLM::Agents.configure do |config|
-        config.image_model_aliases = { other: "other-hd" }
+        config.image_model_aliases = {other: "other-hd"}
       end
 
       expect(test_instance.test_resolve_model).to eq("dall-e-3")

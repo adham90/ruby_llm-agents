@@ -60,7 +60,7 @@ RSpec.describe "Assistant prompt persistence" do
       expect(detail).to be_present
       expect(detail.system_prompt).to eq("You are a JSON extractor.")
       expect(detail.user_prompt).to eq("Extract data from: test document")
-      expect(detail.assistant_prompt).to eq('```json')
+      expect(detail.assistant_prompt).to eq("```json")
     end
 
     it "stores nil assistant_prompt when agent has no assistant prefill" do
@@ -101,7 +101,7 @@ RSpec.describe "Assistant prompt persistence" do
       full_prompt_agent_class.call(query: "delegation test")
 
       execution = RubyLLM::Agents::Execution.last
-      expect(execution.assistant_prompt).to eq('```json')
+      expect(execution.assistant_prompt).to eq("```json")
     end
 
     it "returns nil when detail is missing" do
@@ -121,7 +121,7 @@ RSpec.describe "Assistant prompt persistence" do
       key_data = agent.cache_key_data
 
       expect(key_data).to have_key(:assistant_prompt)
-      expect(key_data[:assistant_prompt]).to eq('```json')
+      expect(key_data[:assistant_prompt]).to eq("```json")
     end
 
     it "includes nil assistant_prompt when not defined" do

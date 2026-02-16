@@ -170,7 +170,7 @@ RSpec.describe RubyLLM::Agents::BackgroundRemover do
       )
 
       expect(remover.image).to eq("photo.jpg")
-      expect(remover.options).to eq({ alpha_matting: true, return_mask: true })
+      expect(remover.options).to eq({alpha_matting: true, return_mask: true})
     end
   end
 

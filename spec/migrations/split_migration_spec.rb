@@ -72,8 +72,8 @@ RSpec.describe "SplitExecutionDetailsFromExecutions migration", type: :migration
   shared_examples "v2.0.0 executions schema (no detail/niche/workflow columns)" do
     it "removes detail columns from executions" do
       %i[error_message system_prompt user_prompt response messages_summary
-         tool_calls attempts fallback_chain parameters routed_to
-         classification_result cached_at cache_creation_tokens].each do |col|
+        tool_calls attempts fallback_chain parameters routed_to
+        classification_result cached_at cache_creation_tokens].each do |col|
         expect(column_exists?(col)).to be(false),
           "Expected executions NOT to have detail column '#{col}'"
       end
@@ -81,7 +81,7 @@ RSpec.describe "SplitExecutionDetailsFromExecutions migration", type: :migration
 
     it "removes niche columns from executions" do
       %i[span_id response_cache_key time_to_first_token_ms
-         retryable rate_limited fallback_reason].each do |col|
+        retryable rate_limited fallback_reason].each do |col|
         expect(column_exists?(col)).to be(false),
           "Expected executions NOT to have niche column '#{col}'"
       end
@@ -107,9 +107,9 @@ RSpec.describe "SplitExecutionDetailsFromExecutions migration", type: :migration
 
     it "has all required v2.0.0 columns on executions" do
       %i[execution_type chosen_model_id messages_count attempts_count
-         tool_calls_count streaming finish_reason cache_hit trace_id
-         request_id parent_execution_id root_execution_id tenant_id
-         cached_tokens].each do |col|
+        tool_calls_count streaming finish_reason cache_hit trace_id
+        request_id parent_execution_id root_execution_id tenant_id
+        cached_tokens].each do |col|
         expect(column_exists?(col)).to be(true),
           "Expected executions to have required column '#{col}'"
       end
@@ -347,7 +347,7 @@ RSpec.describe "SplitExecutionDetailsFromExecutions migration", type: :migration
     # that no longer exist on executions after the v2.0.0 migration).
     def seed_v2_compatible_data(count: 3)
       conn = ActiveRecord::Base.connection
-      records = { executions: [], execution_details: [] }
+      records = {executions: [], execution_details: []}
 
       count.times do |i|
         now = Time.current
@@ -369,14 +369,14 @@ RSpec.describe "SplitExecutionDetailsFromExecutions migration", type: :migration
             now - 5.minutes, now, 1000, "success",
             500, 200, 700,
             0.01, 0.005, 0.015,
-            "{}",  nil, "chat", "gpt-4",
+            "{}", nil, "chat", "gpt-4",
             5, 1, 0,
             true, "end_turn", false, 0,
             "tenant_#{i % 3 + 1}", now, now
           ])
         )
         exec_id = conn.select_value("SELECT last_insert_rowid()")
-        records[:executions] << { id: exec_id, agent_type: "V2Agent#{i}" }
+        records[:executions] << {id: exec_id, agent_type: "V2Agent#{i}"}
 
         # Insert matching execution_detail
         conn.execute(
@@ -387,7 +387,7 @@ RSpec.describe "SplitExecutionDetailsFromExecutions migration", type: :migration
               cache_creation_tokens, created_at, updated_at)
              VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             exec_id, "System prompt #{i}", "User prompt #{i}",
-            { content: "Response #{i}" }.to_json,
+            {content: "Response #{i}"}.to_json,
             {}.to_json, [].to_json, [].to_json, {}.to_json,
             0, now, now
           ])
@@ -641,7 +641,7 @@ RSpec.describe "SplitExecutionDetailsFromExecutions migration", type: :migration
         )
         params = detail["parameters"]
         params = JSON.parse(params) if params.is_a?(String)
-        expect(params).to eq({ "key" => "value" })
+        expect(params).to eq({"key" => "value"})
       end
     end
 
@@ -657,11 +657,11 @@ RSpec.describe "SplitExecutionDetailsFromExecutions migration", type: :migration
             arguments: {
               nested: {
                 deeply: {
-                  value: [1, 2, { key: "val", arr: [true, false, nil] }]
+                  value: [1, 2, {key: "val", arr: [true, false, nil]}]
                 }
               }
             },
-            result: { output: { data: [{ id: 1 }, { id: 2 }] } }
+            result: {output: {data: [{id: 1}, {id: 2}]}}
           }
         ]
 

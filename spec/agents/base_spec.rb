@@ -97,7 +97,11 @@ RSpec.describe RubyLLM::Agents::Base do
 
       it "allows multiple tools" do
         tool1 = mock_tool
-        tool2 = Class.new { def self.name; "AnotherTool"; end }
+        tool2 = Class.new {
+          def self.name
+            "AnotherTool"
+          end
+        }
         klass = Class.new(described_class) do
           tools [tool1, tool2]
         end
@@ -549,8 +553,8 @@ RSpec.describe RubyLLM::Agents::Base do
 
       it "can be overridden in subclass" do
         custom_messages = [
-          { role: :user, content: "Hello" },
-          { role: :assistant, content: "Hi there!" }
+          {role: :user, content: "Hello"},
+          {role: :assistant, content: "Hi there!"}
         ]
 
         custom_class = Class.new(agent_class) do
@@ -569,13 +573,13 @@ RSpec.describe RubyLLM::Agents::Base do
       end
 
       it "returns messages from options when passed at call time" do
-        messages = [{ role: :user, content: "Previous message" }]
+        messages = [{role: :user, content: "Previous message"}]
         agent = agent_class.new(query: "test", messages: messages)
         expect(agent.send(:resolved_messages)).to eq(messages)
       end
 
       it "returns messages from template method when defined" do
-        template_messages = [{ role: :assistant, content: "Template message" }]
+        template_messages = [{role: :assistant, content: "Template message"}]
 
         custom_class = Class.new(agent_class) do
           define_method(:messages) { template_messages }
@@ -586,8 +590,8 @@ RSpec.describe RubyLLM::Agents::Base do
       end
 
       it "prioritizes options over template method" do
-        template_messages = [{ role: :assistant, content: "Template message" }]
-        option_messages = [{ role: :user, content: "Option message" }]
+        template_messages = [{role: :assistant, content: "Template message"}]
+        option_messages = [{role: :user, content: "Option message"}]
 
         custom_class = Class.new(agent_class) do
           define_method(:messages) { template_messages }
@@ -598,8 +602,8 @@ RSpec.describe RubyLLM::Agents::Base do
       end
 
       it "prioritizes options messages over template method" do
-        option_messages = [{ role: :user, content: "Option message" }]
-        template_messages = [{ role: :user, content: "Template message" }]
+        option_messages = [{role: :user, content: "Option message"}]
+        template_messages = [{role: :user, content: "Template message"}]
 
         custom_class = Class.new(agent_class) do
           define_method(:messages) { template_messages }
@@ -622,8 +626,8 @@ RSpec.describe RubyLLM::Agents::Base do
 
       it "applies messages via add_message calls" do
         messages = [
-          { role: :user, content: "First message" },
-          { role: :assistant, content: "Second message" }
+          {role: :user, content: "First message"},
+          {role: :assistant, content: "Second message"}
         ]
 
         agent = agent_class.new(query: "test", messages: messages)
@@ -634,7 +638,7 @@ RSpec.describe RubyLLM::Agents::Base do
       end
 
       it "uses symbol roles" do
-        messages = [{ role: :user, content: "Hello" }]
+        messages = [{role: :user, content: "Hello"}]
         agent = agent_class.new(query: "test", messages: messages)
         agent.send(:build_client)
 
@@ -642,7 +646,7 @@ RSpec.describe RubyLLM::Agents::Base do
       end
 
       it "converts string roles to symbols" do
-        messages = [{ role: "assistant", content: "Hello" }]
+        messages = [{role: "assistant", content: "Hello"}]
         agent = agent_class.new(query: "test", messages: messages)
         agent.send(:build_client)
 
@@ -665,7 +669,7 @@ RSpec.describe RubyLLM::Agents::Base do
       end
 
       it "passes messages to the client when called via class method" do
-        messages = [{ role: :user, content: "Remember my name is Alice" }]
+        messages = [{role: :user, content: "Remember my name is Alice"}]
 
         agent = agent_class.new(query: "What is my name?", messages: messages)
         agent.send(:build_client)
@@ -677,8 +681,8 @@ RSpec.describe RubyLLM::Agents::Base do
         agent = agent_class.new(
           query: "Continue our conversation",
           messages: [
-            { role: :user, content: "Tell me a joke" },
-            { role: :assistant, content: "Why did the chicken cross the road?" }
+            {role: :user, content: "Tell me a joke"},
+            {role: :assistant, content: "Why did the chicken cross the road?"}
           ]
         )
         agent.send(:build_client)
@@ -689,8 +693,8 @@ RSpec.describe RubyLLM::Agents::Base do
 
       it "works with template method in subclass" do
         conversation_history = [
-          { role: :user, content: "What is 2+2?" },
-          { role: :assistant, content: "4" }
+          {role: :user, content: "What is 2+2?"},
+          {role: :assistant, content: "4"}
         ]
 
         chat_agent_class = Class.new(agent_class) do
@@ -713,9 +717,9 @@ RSpec.describe RubyLLM::Agents::Base do
           def messages
             case context_type
             when :technical
-              [{ role: :system, content: "You are a technical expert" }]
+              [{role: :system, content: "You are a technical expert"}]
             when :friendly
-              [{ role: :system, content: "You are a friendly assistant" }]
+              [{role: :system, content: "You are a friendly assistant"}]
             else
               []
             end
@@ -724,12 +728,12 @@ RSpec.describe RubyLLM::Agents::Base do
 
         technical_agent = dynamic_agent_class.new(query: "Help me", context_type: :technical)
         expect(technical_agent.send(:resolved_messages)).to eq([
-          { role: :system, content: "You are a technical expert" }
+          {role: :system, content: "You are a technical expert"}
         ])
 
         friendly_agent = dynamic_agent_class.new(query: "Help me", context_type: :friendly)
         expect(friendly_agent.send(:resolved_messages)).to eq([
-          { role: :system, content: "You are a friendly assistant" }
+          {role: :system, content: "You are a friendly assistant"}
         ])
 
         default_agent = dynamic_agent_class.new(query: "Help me")
@@ -765,14 +769,14 @@ RSpec.describe RubyLLM::Agents::Base do
 
     it "returns id from hash tenant" do
       agent = agent_class.new(query: "test")
-      allow(agent).to receive(:resolve_tenant).and_return({ id: 123 })
+      allow(agent).to receive(:resolve_tenant).and_return({id: 123})
 
       expect(agent.resolved_tenant_id).to eq("123")
     end
 
     it "returns nil when tenant hash has no id" do
       agent = agent_class.new(query: "test")
-      allow(agent).to receive(:resolve_tenant).and_return({ name: "Test Tenant" })
+      allow(agent).to receive(:resolve_tenant).and_return({name: "Test Tenant"})
 
       expect(agent.resolved_tenant_id).to be_nil
     end

@@ -21,7 +21,7 @@ RSpec.describe "Version Upgrade Paths", type: :migration do
 
     it "applies all migrations to reach 0.4.0" do
       # Seed data at v0.1.0
-      records = MigrationTestData.seed_v0_1_0_data(count: 5)
+      MigrationTestData.seed_v0_1_0_data(count: 5)
       expect(record_count).to eq(5)
 
       # Apply migrations to 0.4.0
@@ -82,7 +82,7 @@ RSpec.describe "Version Upgrade Paths", type: :migration do
     end
 
     it "upgrades to 0.4.0 preserving streaming data" do
-      records = MigrationTestData.seed_v0_2_3_data(count: 5)
+      MigrationTestData.seed_v0_2_3_data(count: 5)
 
       # Verify streaming data exists
       streaming_records = all_records.select { |r| r["streaming"] == true || r["streaming"] == 1 }
@@ -125,7 +125,7 @@ RSpec.describe "Version Upgrade Paths", type: :migration do
     end
 
     it "upgrades to 0.4.0 preserving tool calls" do
-      records = MigrationTestData.seed_v0_3_3_data(count: 5)
+      MigrationTestData.seed_v0_3_3_data(count: 5)
 
       # Verify tool calls exist
       records_with_tools = all_records.select { |r| (r["tool_calls_count"] || 0) > 0 }
@@ -244,7 +244,7 @@ RSpec.describe "Version Upgrade Paths", type: :migration do
     end
 
     it "applies all migrations from 0.3.3 to 2.0.0" do
-      records = MigrationTestData.seed_v0_3_3_data(count: 3)
+      MigrationTestData.seed_v0_3_3_data(count: 3)
 
       apply_migrations_from_to("0.3.3", "2.0.0")
 

@@ -37,7 +37,7 @@ module RubyLLM
             next unless should_run_step?(step_def)
 
             result = execute_step(step_def, current_image)
-            @step_results << { name: step_def[:name], type: step_def[:type], result: result }
+            @step_results << {name: step_def[:name], type: step_def[:type], result: result}
 
             # Update context with result
             @context[step_def[:name]] = result
@@ -63,7 +63,7 @@ module RubyLLM
           record_execution(result) if execution_tracking_enabled?
 
           result
-        rescue StandardError => e
+        rescue => e
           record_failed_execution(e) if execution_tracking_enabled?
           build_error_result(e)
         end
@@ -218,11 +218,11 @@ module RubyLLM
           return unless tenant
 
           @tenant_id = case tenant
-                       when Hash then tenant[:id]
-                       when Integer, String then tenant
-                       else
-                         tenant.try(:llm_tenant_id) || tenant.try(:id)
-                       end
+          when Hash then tenant[:id]
+          when Integer, String then tenant
+          else
+            tenant.try(:llm_tenant_id) || tenant.try(:id)
+          end
         end
 
         # Budget tracking
@@ -327,7 +327,7 @@ module RubyLLM
           else
             RubyLLM::Agents::Execution.create!(execution_data)
           end
-        rescue StandardError => e
+        rescue => e
           Rails.logger.error("[RubyLLM::Agents] Failed to record pipeline execution: #{e.message}") if defined?(Rails)
         end
 
@@ -359,7 +359,7 @@ module RubyLLM
           else
             RubyLLM::Agents::Execution.create!(execution_data)
           end
-        rescue StandardError => e
+        rescue => e
           Rails.logger.error("[RubyLLM::Agents] Failed to record failed pipeline execution: #{e.message}") if defined?(Rails)
         end
 

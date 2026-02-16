@@ -367,7 +367,7 @@ RSpec.describe "Performance and Timeout Constraints" do
       end
 
       agent = agent_class.new
-      result = agent.call
+      agent.call
 
       # Get the recorded execution
       execution = RubyLLM::Agents::Execution.last

@@ -17,11 +17,11 @@ module RubyLlmAgents
     source_root File.expand_path("templates", __dir__)
 
     class_option :steps, type: :string, default: "generate,upscale",
-                 desc: "Pipeline steps (comma-separated: generate,upscale,transform,analyze,remove_background)"
+      desc: "Pipeline steps (comma-separated: generate,upscale,transform,analyze,remove_background)"
     class_option :stop_on_error, type: :boolean, default: true,
-                 desc: "Stop pipeline on first error"
+      desc: "Stop pipeline on first error"
     class_option :cache, type: :string, default: nil,
-                 desc: "Cache TTL (e.g., '1.hour', '1.day')"
+      desc: "Cache TTL (e.g., '1.hour', '1.day')"
 
     def ensure_base_class_and_skill_file
       images_dir = "app/agents/images"
@@ -132,17 +132,17 @@ module RubyLlmAgents
         class_base = name.split("/").map(&:camelize).join("::")
         case step
         when :generate
-          { step: step, type: :generator, class_name: "Images::#{class_base}Generator" }
+          {step: step, type: :generator, class_name: "Images::#{class_base}Generator"}
         when :upscale
-          { step: step, type: :upscaler, class_name: "Images::#{class_base}Upscaler" }
+          {step: step, type: :upscaler, class_name: "Images::#{class_base}Upscaler"}
         when :transform
-          { step: step, type: :transformer, class_name: "Images::#{class_base}Transformer" }
+          {step: step, type: :transformer, class_name: "Images::#{class_base}Transformer"}
         when :analyze
-          { step: step, type: :analyzer, class_name: "Images::#{class_base}Analyzer" }
+          {step: step, type: :analyzer, class_name: "Images::#{class_base}Analyzer"}
         when :remove_background
-          { step: step, type: :remover, class_name: "Images::#{class_base}BackgroundRemover" }
+          {step: step, type: :remover, class_name: "Images::#{class_base}BackgroundRemover"}
         else
-          { step: step, type: step, class_name: "Images::#{class_base}#{step.to_s.camelize}" }
+          {step: step, type: step, class_name: "Images::#{class_base}#{step.to_s.camelize}"}
         end
       end
     end

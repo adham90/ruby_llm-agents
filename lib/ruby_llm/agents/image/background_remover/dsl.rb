@@ -30,7 +30,7 @@ module RubyLLM
         def output_format(value = nil)
           if value
             unless VALID_OUTPUT_FORMATS.include?(value)
-              raise ArgumentError, "Output format must be one of: #{VALID_OUTPUT_FORMATS.join(', ')}"
+              raise ArgumentError, "Output format must be one of: #{VALID_OUTPUT_FORMATS.join(", ")}"
             end
             @output_format = value
           else

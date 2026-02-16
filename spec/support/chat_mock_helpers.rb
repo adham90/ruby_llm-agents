@@ -3,7 +3,6 @@
 # Shared mock helpers for RubyLLM::Chat client tests
 # Replaces repetitive mock setup with reusable, verified helpers
 module ChatMockHelpers
-
   # Build a mock RubyLLM::Chat client with all standard chainable methods
   #
   # @param response [RubyLLM::Message] The response the mock should return when #ask is called
@@ -127,7 +126,7 @@ module ChatMockHelpers
     mock_client = build_mock_chat_client
 
     allow(mock_client).to receive(:ask) do |_, &block|
-      chunks.each { |chunk| block.call(chunk) if block }
+      chunks.each { |chunk| block&.call(chunk) }
       final_response || build_mock_response
     end
 
@@ -201,7 +200,7 @@ module ChatMockHelpers
     stub_ruby_llm_chat(client)
     stub_agent_configuration
 
-    { client: client, response: response }
+    {client: client, response: response}
   end
 end
 

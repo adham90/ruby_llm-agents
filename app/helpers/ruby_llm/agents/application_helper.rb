@@ -12,7 +12,7 @@ module RubyLLM
       include Chartkick::Helper if defined?(Chartkick)
 
       # Wiki base URL for documentation links
-      WIKI_BASE_URL = "https://github.com/adham90/ruby_llm-agents/wiki/".freeze
+      WIKI_BASE_URL = "https://github.com/adham90/ruby_llm-agents/wiki/"
 
       # Page to documentation mapping
       DOC_PAGES = {
@@ -176,7 +176,7 @@ module RubyLLM
       def render_sparkline(trend_data, metric_key, color_class: "text-blue-500")
         return "".html_safe if trend_data.blank? || trend_data.length < 2
 
-        values = trend_data.map { |d| d[metric_key].to_f || 0 }
+        values = trend_data.map { |d| d[metric_key].to_f }
         max_val = values.max || 1
         min_val = values.min || 0
         range = max_val - min_val
@@ -197,8 +197,7 @@ module RubyLLM
             "stroke-width": "2",
             "stroke-linecap": "round",
             "stroke-linejoin": "round",
-            class: color_class
-          )
+            class: color_class)
         end
       end
 
@@ -212,27 +211,27 @@ module RubyLLM
       # @return [ActiveSupport::SafeBuffer] HTML badge element
       def comparison_badge(change_pct, metric_type)
         threshold = case metric_type
-                    when :success_rate then 5
-                    when :cost, :tokens then 15
-                    when :duration then 20
-                    when :count then 25
-                    else 10
-                    end
+        when :success_rate then 5
+        when :cost, :tokens then 15
+        when :duration then 20
+        when :count then 25
+        else 10
+        end
 
         # Determine what "improvement" means for this metric
         # For cost/tokens/duration: negative change is good (lower is better)
         # For success_rate/count: positive change is good (higher is better)
         is_improvement = case metric_type
-                         when :success_rate, :count then change_pct > threshold
-                         when :cost, :tokens, :duration then change_pct < -threshold
-                         else false
-                         end
+        when :success_rate, :count then change_pct > threshold
+        when :cost, :tokens, :duration then change_pct < -threshold
+        else false
+        end
 
         is_regression = case metric_type
-                        when :success_rate, :count then change_pct < -threshold
-                        when :cost, :tokens, :duration then change_pct > threshold
-                        else false
-                        end
+        when :success_rate, :count then change_pct < -threshold
+        when :cost, :tokens, :duration then change_pct > threshold
+        else false
+        end
 
         if is_improvement
           content_tag(:span, class: "inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-500/20 rounded-full") do
@@ -279,7 +278,7 @@ module RubyLLM
         positive_is_good = metric_type.in?(%i[success tokens count])
         is_improvement = positive_is_good ? change_pct > 0 : change_pct < 0
 
-        arrow = change_pct > 0 ? "\u2191" : "\u2193"
+        arrow = (change_pct > 0) ? "\u2191" : "\u2193"
         color = is_improvement ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
 
         content_tag(:span, "#{arrow}#{change_pct.abs}%", class: "text-xs font-medium #{color} ml-1")
@@ -323,24 +322,24 @@ module RubyLLM
       # @return [String] Tailwind CSS classes for row background
       def comparison_row_class(change_pct, metric_type)
         threshold = case metric_type
-                    when :success_rate then 5
-                    when :cost, :tokens then 15
-                    when :duration then 20
-                    when :count then 25
-                    else 10
-                    end
+        when :success_rate then 5
+        when :cost, :tokens then 15
+        when :duration then 20
+        when :count then 25
+        else 10
+        end
 
         is_improvement = case metric_type
-                         when :success_rate, :count then change_pct > threshold
-                         when :cost, :tokens, :duration then change_pct < -threshold
-                         else false
-                         end
+        when :success_rate, :count then change_pct > threshold
+        when :cost, :tokens, :duration then change_pct < -threshold
+        else false
+        end
 
         is_regression = case metric_type
-                        when :success_rate, :count then change_pct < -threshold
-                        when :cost, :tokens, :duration then change_pct > threshold
-                        else false
-                        end
+        when :success_rate, :count then change_pct < -threshold
+        when :cost, :tokens, :duration then change_pct > threshold
+        else false
+        end
 
         if is_improvement
           "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
@@ -433,7 +432,7 @@ module RubyLLM
             str_start = i
             i += 1
             while i < chars.length
-              if chars[i] == '\\'
+              if chars[i] == "\\"
                 i += 2
               elsif chars[i] == '"'
                 i += 1
@@ -442,49 +441,49 @@ module RubyLLM
                 i += 1
               end
             end
-            tokens << { type: :string, value: chars[str_start...i].join }
-          when /[0-9\-]/
+            tokens << {type: :string, value: chars[str_start...i].join}
+          when /[0-9-]/
             # Number token: starts with digit or minus, continues with digits/decimals/exponents
             num_start = i
             i += 1
-            while i < chars.length && chars[i] =~ /[0-9.eE+\-]/
+            while i < chars.length && chars[i] =~ /[0-9.eE+-]/
               i += 1
             end
-            tokens << { type: :number, value: chars[num_start...i].join }
-          when 't'
+            tokens << {type: :number, value: chars[num_start...i].join}
+          when "t"
             # Boolean token: check for "true" keyword
-            if chars[i, 4].join == 'true'
-              tokens << { type: :boolean, value: 'true' }
+            if chars[i, 4].join == "true"
+              tokens << {type: :boolean, value: "true"}
               i += 4
             else
-              tokens << { type: :text, value: char }
+              tokens << {type: :text, value: char}
               i += 1
             end
-          when 'f'
+          when "f"
             # Boolean token: check for "false" keyword
-            if chars[i, 5].join == 'false'
-              tokens << { type: :boolean, value: 'false' }
+            if chars[i, 5].join == "false"
+              tokens << {type: :boolean, value: "false"}
               i += 5
             else
-              tokens << { type: :text, value: char }
+              tokens << {type: :text, value: char}
               i += 1
             end
-          when 'n'
+          when "n"
             # Null token: check for "null" keyword
-            if chars[i, 4].join == 'null'
-              tokens << { type: :null, value: 'null' }
+            if chars[i, 4].join == "null"
+              tokens << {type: :null, value: "null"}
               i += 4
             else
-              tokens << { type: :text, value: char }
+              tokens << {type: :text, value: char}
               i += 1
             end
-          when ':', ',', '{', '}', '[', ']', ' ', "\n", "\t"
+          when ":", ",", "{", "}", "[", "]", " ", "\n", "\t"
             # Punctuation token: structural characters and whitespace
-            tokens << { type: :punct, value: char }
+            tokens << {type: :punct, value: char}
             i += 1
           else
             # Fallback for unexpected characters
-            tokens << { type: :text, value: char }
+            tokens << {type: :text, value: char}
             i += 1
           end
         end
@@ -503,10 +502,10 @@ module RubyLLM
             is_key = false
             (idx + 1...tokens.length).each do |j|
               if tokens[j][:type] == :punct
-                if tokens[j][:value] == ':'
+                if tokens[j][:value] == ":"
                   is_key = true
                   break
-                elsif tokens[j][:value] !~ /\s/
+                elsif !/\s/.match?(tokens[j][:value])
                   # Non-whitespace punct that isn't colon - not a key
                   break
                 end
@@ -517,10 +516,10 @@ module RubyLLM
             end
 
             escaped_value = ERB::Util.html_escape(token[:value])
-            if is_key
-              result << %(<span class="text-purple-600 dark:text-purple-400">#{escaped_value}</span>)
+            result << if is_key
+              %(<span class="text-purple-600 dark:text-purple-400">#{escaped_value}</span>)
             else
-              result << %(<span class="text-green-600 dark:text-green-400">#{escaped_value}</span>)
+              %(<span class="text-green-600 dark:text-green-400">#{escaped_value}</span>)
             end
           when :number
             result << %(<span class="text-blue-600 dark:text-blue-400">#{token[:value]}</span>)

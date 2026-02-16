@@ -45,7 +45,7 @@ module Concerns
         record_metric(:success, true)
 
         result
-      rescue StandardError => e
+      rescue => e
         @execution_ended_at = current_time
         record_metric(:ended_at, @execution_ended_at.iso8601)
         record_metric(:duration_ms, calculate_duration_ms)
@@ -64,10 +64,10 @@ module Concerns
         @execution_metrics ||= {}
 
         metric_data = if tags.empty?
-                        value
-                      else
-                        { value: value, tags: tags }
-                      end
+          value
+        else
+          {value: value, tags: tags}
+        end
 
         @execution_metrics[name.to_sym] = metric_data
 
@@ -135,7 +135,7 @@ module Concerns
             total: metrics[:total_tokens]
           }.compact,
           cache_hit: metrics[:cache_hit],
-          error: metrics[:success] == false ? metrics[:error_class] : nil
+          error: (metrics[:success] == false) ? metrics[:error_class] : nil
         }.compact
       end
 

@@ -34,9 +34,9 @@ module MigrationTestData
           input_cost: rand(1..100) / 1000.0,
           output_cost: rand(1..100) / 1000.0,
           total_cost: rand(2..200) / 1000.0,
-          parameters: { prompt: "Test prompt #{i}", max_tokens: 1000 }.to_json,
-          response: { content: "Test response #{i}" }.to_json,
-          metadata: { test_key: "test_value_#{i}" }.to_json,
+          parameters: {prompt: "Test prompt #{i}", max_tokens: 1000}.to_json,
+          response: {content: "Test response #{i}"}.to_json,
+          metadata: {test_key: "test_value_#{i}"}.to_json,
           error_class: i.even? ? nil : "TestError",
           error_message: i.even? ? nil : "Test error message #{i}",
           created_at: now,
@@ -89,9 +89,9 @@ module MigrationTestData
           input_cost: rand(1..100) / 1000.0,
           output_cost: rand(1..100) / 1000.0,
           total_cost: rand(2..200) / 1000.0,
-          parameters: { prompt: "Streaming test #{i}" }.to_json,
-          response: { content: "Streaming response #{i}" }.to_json,
-          metadata: { streaming: true }.to_json,
+          parameters: {prompt: "Streaming test #{i}"}.to_json,
+          response: {content: "Streaming response #{i}"}.to_json,
+          metadata: {streaming: true}.to_json,
           error_class: nil,
           error_message: nil,
 
@@ -148,8 +148,8 @@ module MigrationTestData
         started_at = now - rand(1..60).minutes
 
         tool_calls = [
-          { name: "search", arguments: { query: "test #{i}" }, result: "found #{i} results" },
-          { name: "calculate", arguments: { expression: "2+2" }, result: "4" }
+          {name: "search", arguments: {query: "test #{i}"}, result: "found #{i} results"},
+          {name: "calculate", arguments: {expression: "2+2"}, result: "4"}
         ]
 
         record = {
@@ -168,9 +168,9 @@ module MigrationTestData
           input_cost: rand(1..100) / 1000.0,
           output_cost: rand(1..100) / 1000.0,
           total_cost: rand(2..200) / 1000.0,
-          parameters: { tools: %w[search calculate] }.to_json,
-          response: { content: "Used tools #{i}" }.to_json,
-          metadata: { has_tools: true }.to_json,
+          parameters: {tools: %w[search calculate]}.to_json,
+          response: {content: "Used tools #{i}"}.to_json,
+          metadata: {has_tools: true}.to_json,
           error_class: nil,
           error_message: nil,
 
@@ -201,7 +201,7 @@ module MigrationTestData
           workflow_type: "parallel",
           workflow_step: "step_#{i % 3}",
           routed_to: "SpecializedAgent#{i}",
-          classification_result: { category: "technical", confidence: 0.95 }.to_json,
+          classification_result: {category: "technical", confidence: 0.95}.to_json,
           created_at: now,
           updated_at: now
         }
@@ -229,7 +229,7 @@ module MigrationTestData
     # @return [Hash] Created records grouped by table
     def seed_v0_4_0_data(count: 3)
       connection = ActiveRecord::Base.connection
-      result = { executions: [], tenant_budgets: [] }
+      result = {executions: [], tenant_budgets: []}
 
       # Create tenant budgets first
       tenant_ids = %w[tenant_1 tenant_2 tenant_3]
@@ -242,8 +242,8 @@ module MigrationTestData
           monthly_limit: (i + 1) * 1000.0,
           daily_token_limit: (i + 1) * 1_000_000,
           monthly_token_limit: (i + 1) * 10_000_000,
-          per_agent_daily: { "TestAgent" => (i + 1) * 10.0 }.to_json,
-          per_agent_monthly: { "TestAgent" => (i + 1) * 100.0 }.to_json,
+          per_agent_daily: {"TestAgent" => (i + 1) * 10.0}.to_json,
+          per_agent_monthly: {"TestAgent" => (i + 1) * 100.0}.to_json,
           enforcement: %w[none soft hard][i],
           inherit_global_defaults: i != 2,
           created_at: now,
@@ -271,12 +271,12 @@ module MigrationTestData
         tenant_id = tenant_ids[i % tenant_ids.length]
 
         attempts = [
-          { model: "gpt-4", status: "success", duration_ms: rand(100..1000) }
+          {model: "gpt-4", status: "success", duration_ms: rand(100..1000)}
         ]
 
         messages_summary = {
-          first: { role: "user", content: "Hello..." },
-          last: { role: "assistant", content: "Here is..." }
+          first: {role: "user", content: "Hello..."},
+          last: {role: "assistant", content: "Here is..."}
         }
 
         record = {
@@ -295,9 +295,9 @@ module MigrationTestData
           input_cost: rand(1..100) / 1000.0,
           output_cost: rand(1..100) / 1000.0,
           total_cost: rand(2..200) / 1000.0,
-          parameters: { test: true }.to_json,
-          response: { content: "Response #{i}" }.to_json,
-          metadata: { full_version: true }.to_json,
+          parameters: {test: true}.to_json,
+          response: {content: "Response #{i}"}.to_json,
+          metadata: {full_version: true}.to_json,
           error_class: nil,
           error_message: nil,
 
@@ -367,7 +367,7 @@ module MigrationTestData
     # @return [Hash] Created records grouped by table
     def seed_v2_0_0_data(count: 3)
       connection = ActiveRecord::Base.connection
-      result = { executions: [], tenants: [], execution_details: [] }
+      result = {executions: [], tenants: [], execution_details: []}
 
       # Create tenants (renamed from tenant_budgets)
       tenant_ids = %w[tenant_1 tenant_2 tenant_3]
@@ -380,12 +380,12 @@ module MigrationTestData
           monthly_limit: (i + 1) * 1000.0,
           daily_token_limit: (i + 1) * 1_000_000,
           monthly_token_limit: (i + 1) * 10_000_000,
-          per_agent_daily: { "TestAgent" => (i + 1) * 10.0 }.to_json,
-          per_agent_monthly: { "TestAgent" => (i + 1) * 100.0 }.to_json,
+          per_agent_daily: {"TestAgent" => (i + 1) * 10.0}.to_json,
+          per_agent_monthly: {"TestAgent" => (i + 1) * 100.0}.to_json,
           enforcement: %w[none soft hard][i],
           inherit_global_defaults: i != 2,
           active: true,
-          metadata: { plan: "tier_#{i + 1}" }.to_json,
+          metadata: {plan: "tier_#{i + 1}"}.to_json,
           created_at: now,
           updated_at: now
         }
@@ -425,9 +425,9 @@ module MigrationTestData
           input_cost: rand(1..100) / 1000.0,
           output_cost: rand(1..100) / 1000.0,
           total_cost: rand(2..200) / 1000.0,
-          parameters: { test: true }.to_json,
-          response: { content: "Response #{i}" }.to_json,
-          metadata: { v2: true }.to_json,
+          parameters: {test: true}.to_json,
+          response: {content: "Response #{i}"}.to_json,
+          metadata: {v2: true}.to_json,
           error_class: nil,
           error_message: nil,
           streaming: true,
@@ -452,13 +452,13 @@ module MigrationTestData
           tool_calls_count: 0,
           routed_to: nil,
           classification_result: nil,
-          attempts: [{ model: "gpt-4", status: "success" }].to_json,
+          attempts: [{model: "gpt-4", status: "success"}].to_json,
           attempts_count: 1,
           chosen_model_id: "gpt-4",
           fallback_chain: %w[gpt-4 gpt-3.5-turbo].to_json,
           tenant_id: tenant_id,
           messages_count: rand(1..10),
-          messages_summary: { first: { role: "user" }, last: { role: "assistant" } }.to_json,
+          messages_summary: {first: {role: "user"}, last: {role: "assistant"}}.to_json,
           created_at: now,
           updated_at: now
         }
@@ -482,12 +482,12 @@ module MigrationTestData
           error_message: nil,
           system_prompt: "System prompt #{i}",
           user_prompt: "User prompt #{i}",
-          response: { content: "Response #{i}" }.to_json,
-          messages_summary: { first: { role: "user" }, last: { role: "assistant" } }.to_json,
+          response: {content: "Response #{i}"}.to_json,
+          messages_summary: {first: {role: "user"}, last: {role: "assistant"}}.to_json,
           tool_calls: [].to_json,
-          attempts: [{ model: "gpt-4", status: "success" }].to_json,
+          attempts: [{model: "gpt-4", status: "success"}].to_json,
           fallback_chain: %w[gpt-4 gpt-3.5-turbo].to_json,
-          parameters: { test: true }.to_json,
+          parameters: {test: true}.to_json,
           routed_to: nil,
           classification_result: nil,
           cached_at: nil,
@@ -541,7 +541,7 @@ module MigrationTestData
         total_cost: 0.015,
         parameters: {}.to_json,
         response: {}.to_json,
-        metadata: { is_root: true }.to_json,
+        metadata: {is_root: true}.to_json,
         streaming: false,
         trace_id: trace_id,
         span_id: SecureRandom.hex(8),
@@ -592,7 +592,7 @@ module MigrationTestData
           total_cost: 0.0015,
           parameters: {}.to_json,
           response: {}.to_json,
-          metadata: { is_child: true, child_index: i }.to_json,
+          metadata: {is_child: true, child_index: i}.to_json,
           streaming: false,
           trace_id: trace_id,
           span_id: SecureRandom.hex(8),
@@ -616,7 +616,7 @@ module MigrationTestData
         children << child
       end
 
-      { root: root, children: children }
+      {root: root, children: children}
     end
 
     # Seed large dataset for performance testing
@@ -645,9 +645,9 @@ module MigrationTestData
           rand(1..100) / 1000.0,
           rand(1..100) / 1000.0,
           rand(2..200) / 1000.0,
-          { batch: i }.to_json,
-          { result: i }.to_json,
-          { bulk: true }.to_json,
+          {batch: i}.to_json,
+          {result: i}.to_json,
+          {bulk: true}.to_json,
           now,
           now
         ]

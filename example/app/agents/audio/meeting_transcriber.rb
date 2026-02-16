@@ -26,13 +26,13 @@
 #
 module Audio
   class MeetingTranscriber < ApplicationTranscriber
-    description 'Transcribes business meetings with high accuracy'
+    description "Transcribes business meetings with high accuracy"
 
     # Whisper-1 for reliable meeting transcription
-    model 'whisper-1'
+    model "whisper-1"
 
     # English language (most business meetings)
-    language 'en'
+    language "en"
 
     # Plain text output for meeting notes
     output_format :text
@@ -45,7 +45,7 @@ module Audio
 
     # Context hint for better accuracy
     def prompt
-      'Business meeting with multiple speakers discussing projects, deadlines, and action items.'
+      "Business meeting with multiple speakers discussing projects, deadlines, and action items."
     end
   end
 end

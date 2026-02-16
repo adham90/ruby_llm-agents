@@ -37,18 +37,18 @@ class CreateRubyLLMAgentsTenants < ActiveRecord::Migration[8.1]
       t.boolean :active, default: true
 
       # Usage counter columns (DB-based budget tracking)
-      t.decimal :daily_cost_spent,        precision: 12, scale: 6, default: 0, null: false
-      t.decimal :monthly_cost_spent,      precision: 12, scale: 6, default: 0, null: false
-      t.bigint :daily_tokens_used,        default: 0, null: false
-      t.bigint :monthly_tokens_used,      default: 0, null: false
-      t.bigint :daily_executions_count,   default: 0, null: false
+      t.decimal :daily_cost_spent, precision: 12, scale: 6, default: 0, null: false
+      t.decimal :monthly_cost_spent, precision: 12, scale: 6, default: 0, null: false
+      t.bigint :daily_tokens_used, default: 0, null: false
+      t.bigint :monthly_tokens_used, default: 0, null: false
+      t.bigint :daily_executions_count, default: 0, null: false
       t.bigint :monthly_executions_count, default: 0, null: false
-      t.bigint :daily_error_count,        default: 0, null: false
-      t.bigint :monthly_error_count,      default: 0, null: false
+      t.bigint :daily_error_count, default: 0, null: false
+      t.bigint :monthly_error_count, default: 0, null: false
 
       # Last execution metadata
       t.datetime :last_execution_at
-      t.string   :last_execution_status
+      t.string :last_execution_status
 
       # Period tracking (for lazy reset)
       t.date :daily_reset_date
@@ -64,7 +64,7 @@ class CreateRubyLLMAgentsTenants < ActiveRecord::Migration[8.1]
     add_index :ruby_llm_agents_tenants, :name
     add_index :ruby_llm_agents_tenants, :active
     add_index :ruby_llm_agents_tenants,
-              [:tenant_record_type, :tenant_record_id],
-              name: "index_ruby_llm_agents_tenant_budgets_on_tenant_record"
+      [:tenant_record_type, :tenant_record_id],
+      name: "index_ruby_llm_agents_tenant_budgets_on_tenant_record"
   end
 end

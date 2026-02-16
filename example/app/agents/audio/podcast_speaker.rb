@@ -27,13 +27,13 @@
 #
 module Audio
   class PodcastSpeaker < ApplicationSpeaker
-    description 'Generates podcast-style audio for long-form content'
+    description "Generates podcast-style audio for long-form content"
 
     # Standard model for faster processing of long content
-    model 'tts-1'
+    model "tts-1"
 
     # Onyx voice - deep, authoritative, podcast-friendly
-    voice 'onyx'
+    voice "onyx"
 
     # Slightly slower for podcast pacing
     speed 0.95

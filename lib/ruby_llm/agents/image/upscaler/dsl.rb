@@ -29,7 +29,7 @@ module RubyLLM
         def scale(value = nil)
           if value
             unless VALID_SCALES.include?(value)
-              raise ArgumentError, "Scale must be one of: #{VALID_SCALES.join(', ')}"
+              raise ArgumentError, "Scale must be one of: #{VALID_SCALES.join(", ")}"
             end
             @scale = value
           else

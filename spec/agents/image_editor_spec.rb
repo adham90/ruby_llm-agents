@@ -78,7 +78,7 @@ RSpec.describe RubyLLM::Agents::ImageEditor do
       expect(editor.image).to eq("photo.png")
       expect(editor.mask).to eq("mask.png")
       expect(editor.prompt).to eq("Replace background")
-      expect(editor.options).to eq({ count: 2 })
+      expect(editor.options).to eq({count: 2})
     end
   end
 

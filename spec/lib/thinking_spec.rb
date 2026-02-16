@@ -50,7 +50,7 @@ RSpec.describe "Thinking Support" do
       it "falls back to configuration default when set" do
         original_default = RubyLLM::Agents.configuration.default_thinking
         begin
-          RubyLLM::Agents.configuration.default_thinking = { effort: :medium }
+          RubyLLM::Agents.configuration.default_thinking = {effort: :medium}
           klass = create_agent_class
           expect(klass.thinking[:effort]).to eq(:medium)
         ensure
@@ -89,13 +89,13 @@ RSpec.describe "Thinking Support" do
 
       it "can be set to effort configuration" do
         config = RubyLLM::Agents::Configuration.new
-        config.default_thinking = { effort: :medium }
+        config.default_thinking = {effort: :medium}
         expect(config.default_thinking[:effort]).to eq(:medium)
       end
 
       it "can be set with budget" do
         config = RubyLLM::Agents::Configuration.new
-        config.default_thinking = { effort: :high, budget: 10_000 }
+        config.default_thinking = {effort: :high, budget: 10_000}
         expect(config.default_thinking[:budget]).to eq(10_000)
       end
     end
@@ -216,7 +216,7 @@ RSpec.describe "Thinking Support" do
       end
 
       it "returns runtime override when provided" do
-        agent = agent_class.new(thinking: { effort: :low, budget: 1000 })
+        agent = agent_class.new(thinking: {effort: :low, budget: 1000})
         config = agent.resolved_thinking
         expect(config[:effort]).to eq(:low)
         expect(config[:budget]).to eq(1000)
@@ -228,7 +228,7 @@ RSpec.describe "Thinking Support" do
       end
 
       it "returns nil when thinking effort is :none" do
-        agent = agent_class.new(thinking: { effort: :none })
+        agent = agent_class.new(thinking: {effort: :none})
         expect(agent.resolved_thinking).to be_nil
       end
 
@@ -362,7 +362,11 @@ RSpec.describe "Thinking Support" do
 
   describe "complete agent with thinking" do
     it "supports full configuration with thinking" do
-      tool = Class.new { def self.name; "TestTool"; end }
+      tool = Class.new {
+        def self.name
+          "TestTool"
+        end
+      }
 
       klass = create_agent_class do
         model "claude-opus-4.5"

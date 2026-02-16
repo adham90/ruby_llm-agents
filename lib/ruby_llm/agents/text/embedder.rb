@@ -117,19 +117,19 @@ module RubyLLM
 
         def default_embedding_model
           RubyLLM::Agents.configuration.default_embedding_model
-        rescue StandardError
+        rescue
           "text-embedding-3-small"
         end
 
         def default_embedding_dimensions
           RubyLLM::Agents.configuration.default_embedding_dimensions
-        rescue StandardError
+        rescue
           nil
         end
 
         def default_embedding_batch_size
           RubyLLM::Agents.configuration.default_embedding_batch_size
-        rescue StandardError
+        rescue
           100
         end
       end
@@ -333,7 +333,7 @@ module RubyLLM
       def execute_batch(texts, context = nil)
         preprocessed = texts.map { |t| preprocess(t) }
 
-        embed_options = { model: context&.model || resolved_model }
+        embed_options = {model: context&.model || resolved_model}
         embed_options[:dimensions] = resolved_dimensions if resolved_dimensions
 
         response = RubyLLM.embed(preprocessed, **embed_options)
@@ -405,15 +405,15 @@ module RubyLLM
         model_name = response.model.to_s
 
         price_per_million = case model_name
-                            when /text-embedding-3-small/
-                              0.02
-                            when /text-embedding-3-large/
-                              0.13
-                            when /text-embedding-ada/
-                              0.10
-                            else
-                              0.02 # Default to small pricing
-                            end
+        when /text-embedding-3-small/
+          0.02
+        when /text-embedding-3-large/
+          0.13
+        when /text-embedding-ada/
+          0.10
+        else
+          0.02 # Default to small pricing
+        end
 
         (tokens / 1_000_000.0) * price_per_million
       end

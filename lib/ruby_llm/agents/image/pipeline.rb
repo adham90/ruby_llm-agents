@@ -63,7 +63,7 @@ module RubyLLM
           super
           # Copy steps to subclass
           subclass.instance_variable_set(:@steps, @steps&.dup || [])
-          subclass.instance_variable_set(:@callbacks, @callbacks&.dup || { before: [], after: [] })
+          subclass.instance_variable_set(:@callbacks, @callbacks&.dup || {before: [], after: []})
           subclass.instance_variable_set(:@version, @version)
           subclass.instance_variable_set(:@description, @description)
           subclass.instance_variable_set(:@cache_ttl, @cache_ttl)

@@ -17,17 +17,17 @@ module RubyLlmAgents
     source_root File.expand_path("templates", __dir__)
 
     class_option :provider, type: :string, default: "openai",
-                 desc: "The TTS provider to use (openai, elevenlabs)"
+      desc: "The TTS provider to use (openai, elevenlabs)"
     class_option :model, type: :string, default: nil,
-                 desc: "The TTS model to use"
+      desc: "The TTS model to use"
     class_option :voice, type: :string, default: "nova",
-                 desc: "The voice to use"
+      desc: "The voice to use"
     class_option :speed, type: :numeric, default: 1.0,
-                 desc: "Speech speed (0.25-4.0 for OpenAI)"
+      desc: "Speech speed (0.25-4.0 for OpenAI)"
     class_option :format, type: :string, default: "mp3",
-                 desc: "Output format (mp3, wav, ogg, flac)"
+      desc: "Output format (mp3, wav, ogg, flac)"
     class_option :cache, type: :string, default: nil,
-                 desc: "Cache TTL (e.g., '7.days')"
+      desc: "Cache TTL (e.g., '7.days')"
 
     def ensure_base_class_and_skill_file
       audio_dir = "app/agents/audio"

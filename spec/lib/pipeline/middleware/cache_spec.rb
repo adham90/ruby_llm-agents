@@ -90,10 +90,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
     context "when caching is enabled" do
       it "returns cached result on cache hit" do
         context = build_context
-        cached_output = { embedding: [0.1, 0.2, 0.3] }
+        cached_output = {embedding: [0.1, 0.2, 0.3]}
 
         # Pre-populate cache
-        cache_key = "ruby_llm_agents/embedding/TestAgent/test-model/#{Digest::SHA256.hexdigest('test input')}"
+        cache_key = "ruby_llm_agents/embedding/TestAgent/test-model/#{Digest::SHA256.hexdigest("test input")}"
         cache_store.write(cache_key, cached_output)
 
         # Should not call the next middleware on cache hit
@@ -107,7 +107,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
 
       it "executes and caches on cache miss" do
         context = build_context
-        expected_output = { embedding: [0.4, 0.5, 0.6] }
+        expected_output = {embedding: [0.4, 0.5, 0.6]}
 
         expect(app).to receive(:call) do |ctx|
           ctx.output = expected_output
@@ -120,7 +120,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
         expect(result.cached).to be_falsey
 
         # Verify it was cached
-        cache_key = "ruby_llm_agents/embedding/TestAgent/test-model/#{Digest::SHA256.hexdigest('test input')}"
+        cache_key = "ruby_llm_agents/embedding/TestAgent/test-model/#{Digest::SHA256.hexdigest("test input")}"
         expect(cache_store.read(cache_key)).to eq(expected_output)
       end
 
@@ -132,16 +132,16 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
           ctx
         end
 
-        result = middleware.call(context)
+        middleware.call(context)
 
         # Verify it was not cached
-        cache_key = "ruby_llm_agents/embedding/TestAgent/test-model/#{Digest::SHA256.hexdigest('test input')}"
+        cache_key = "ruby_llm_agents/embedding/TestAgent/test-model/#{Digest::SHA256.hexdigest("test input")}"
         expect(cache_store.read(cache_key)).to be_nil
       end
 
       it "uses cache TTL from agent class" do
         context = build_context
-        expected_output = { embedding: [0.4, 0.5, 0.6] }
+        expected_output = {embedding: [0.4, 0.5, 0.6]}
 
         allow(app).to receive(:call) do |ctx|
           ctx.output = expected_output
@@ -161,11 +161,14 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
     context "cache key generation" do
       it "includes agent type in cache key" do
         context = build_context
-        allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+        allow(app).to receive(:call) { |ctx|
+          ctx.output = "result"
+          ctx
+        }
 
         middleware.call(context)
 
-        cache_key = "ruby_llm_agents/embedding/TestAgent/test-model/#{Digest::SHA256.hexdigest('test input')}"
+        cache_key = "ruby_llm_agents/embedding/TestAgent/test-model/#{Digest::SHA256.hexdigest("test input")}"
         expect(cache_store.exist?(cache_key)).to be true
       end
 
@@ -184,8 +187,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
         middleware.call(context1)
         middleware.call(context2)
 
-        key1 = "ruby_llm_agents/embedding/TestAgent/test-model/#{Digest::SHA256.hexdigest('input one')}"
-        key2 = "ruby_llm_agents/embedding/TestAgent/test-model/#{Digest::SHA256.hexdigest('input two')}"
+        key1 = "ruby_llm_agents/embedding/TestAgent/test-model/#{Digest::SHA256.hexdigest("input one")}"
+        key2 = "ruby_llm_agents/embedding/TestAgent/test-model/#{Digest::SHA256.hexdigest("input two")}"
 
         expect(cache_store.read(key1)).to eq("result for input one")
         expect(cache_store.read(key2)).to eq("result for input two")
@@ -197,7 +200,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
           agent_class: agent_class
         )
 
-        allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+        allow(app).to receive(:call) { |ctx|
+          ctx.output = "result"
+          ctx
+        }
 
         # Should not raise
         expect { middleware.call(context) }.not_to raise_error
@@ -205,11 +211,14 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
 
       it "handles hash inputs" do
         context = RubyLLM::Agents::Pipeline::Context.new(
-          input: { text: "hello", options: { format: "json" } },
+          input: {text: "hello", options: {format: "json"}},
           agent_class: agent_class
         )
 
-        allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+        allow(app).to receive(:call) { |ctx|
+          ctx.output = "result"
+          ctx
+        }
 
         # Should not raise
         expect { middleware.call(context) }.not_to raise_error
@@ -231,7 +240,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
           agent_class: agent_class
         )
 
-        allow(app).to receive(:call) { |ctx| ctx.output = "result"; ctx }
+        allow(app).to receive(:call) { |ctx|
+          ctx.output = "result"
+          ctx
+        }
 
         # Should not raise, falls back to to_s
         expect { middleware.call(context) }.not_to raise_error
@@ -241,7 +253,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
     context "error handling" do
       it "continues execution when cache read fails" do
         context = build_context
-        expected_output = { embedding: [0.4, 0.5, 0.6] }
+        expected_output = {embedding: [0.4, 0.5, 0.6]}
 
         # Make cache read fail
         allow(cache_store).to receive(:read).and_raise(StandardError.new("Read failed"))
@@ -257,7 +269,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
 
       it "continues execution when cache write fails" do
         context = build_context
-        expected_output = { embedding: [0.4, 0.5, 0.6] }
+        expected_output = {embedding: [0.4, 0.5, 0.6]}
 
         # Allow read but fail write
         allow(cache_store).to receive(:read).and_return(nil)
@@ -288,11 +300,11 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
     context "with skip_cache option" do
       it "skips cache read but still writes when skip_cache is true" do
         context = build_context(skip_cache: true)
-        cached_output = { embedding: [0.1, 0.2, 0.3] }
-        new_output = { embedding: [0.4, 0.5, 0.6] }
+        cached_output = {embedding: [0.1, 0.2, 0.3]}
+        new_output = {embedding: [0.4, 0.5, 0.6]}
 
         # Pre-populate cache
-        cache_key = "ruby_llm_agents/embedding/TestAgent/test-model/#{Digest::SHA256.hexdigest('test input')}"
+        cache_key = "ruby_llm_agents/embedding/TestAgent/test-model/#{Digest::SHA256.hexdigest("test input")}"
         cache_store.write(cache_key, cached_output)
 
         # Should call the next middleware even though cache has a value

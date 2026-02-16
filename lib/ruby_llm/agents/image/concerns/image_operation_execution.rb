@@ -20,11 +20,11 @@ module RubyLLM
           return unless tenant
 
           @tenant_id = case tenant
-                       when Hash then tenant[:id]
-                       when Integer, String then tenant
-                       else
-                         tenant.try(:llm_tenant_id) || tenant.try(:id)
-                       end
+          when Hash then tenant[:id]
+          when Integer, String then tenant
+          else
+            tenant.try(:llm_tenant_id) || tenant.try(:id)
+          end
         end
 
         # Check budget before execution
@@ -87,7 +87,7 @@ module RubyLLM
           else
             RubyLLM::Agents::Execution.create!(execution_data)
           end
-        rescue StandardError => e
+        rescue => e
           Rails.logger.error("[RubyLLM::Agents] Failed to record #{execution_type} execution: #{e.message}") if defined?(Rails)
         end
 
@@ -101,7 +101,7 @@ module RubyLLM
           else
             RubyLLM::Agents::Execution.create!(execution_data)
           end
-        rescue StandardError => e
+        rescue => e
           Rails.logger.error("[RubyLLM::Agents] Failed to record failed #{execution_type} execution: #{e.message}") if defined?(Rails)
         end
 
@@ -142,7 +142,7 @@ module RubyLLM
         end
 
         def build_metadata(result)
-          { count: result.count }
+          {count: result.count}
         end
 
         def budget_tracking_enabled?

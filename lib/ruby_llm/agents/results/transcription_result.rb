@@ -322,7 +322,7 @@ module RubyLLM
         return nil unless segments.present?
 
         segments.find do |segment|
-          timestamp >= segment[:start] && timestamp <= segment[:end]
+          timestamp.between?(segment[:start], segment[:end])
         end
       end
 

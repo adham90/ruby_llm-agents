@@ -17,13 +17,13 @@ module RubyLlmAgents
     source_root File.expand_path("templates", __dir__)
 
     class_option :model, type: :string, default: "real-esrgan",
-                 desc: "The upscaling model to use"
+      desc: "The upscaling model to use"
     class_option :scale, type: :string, default: "4",
-                 desc: "Upscale factor (2, 4, or 8)"
+      desc: "Upscale factor (2, 4, or 8)"
     class_option :face_enhance, type: :boolean, default: false,
-                 desc: "Enable face enhancement"
+      desc: "Enable face enhancement"
     class_option :cache, type: :string, default: nil,
-                 desc: "Cache TTL (e.g., '1.hour', '1.day')"
+      desc: "Cache TTL (e.g., '1.hour', '1.day')"
 
     def ensure_base_class_and_skill_file
       images_dir = "app/agents/images"

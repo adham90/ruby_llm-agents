@@ -97,8 +97,8 @@ RSpec.describe "RubyLLM::Agents Error Classes" do
 
     it "generates default message listing models" do
       attempts = [
-        { model: "gpt-4", error: "timeout" },
-        { model: "claude-3", error: "rate limit" }
+        {model: "gpt-4", error: "timeout"},
+        {model: "claude-3", error: "rate limit"}
       ]
       error = RubyLLM::Agents::AllModelsFailedError.new(attempts: attempts)
       expect(error.message).to eq("All models failed: gpt-4, claude-3")
@@ -110,7 +110,7 @@ RSpec.describe "RubyLLM::Agents Error Classes" do
     end
 
     it "stores attempts array" do
-      attempts = [{ model: "gpt-4" }, { model: "claude-3" }]
+      attempts = [{model: "gpt-4"}, {model: "claude-3"}]
       error = RubyLLM::Agents::AllModelsFailedError.new(attempts: attempts)
       expect(error.attempts).to eq(attempts)
     end

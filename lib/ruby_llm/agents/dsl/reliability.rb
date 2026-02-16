@@ -168,7 +168,7 @@ module RubyLLM
         def fallback_provider(provider = nil, **options)
           if provider
             @fallback_providers ||= []
-            @fallback_providers << { provider: provider, **options }
+            @fallback_providers << {provider: provider, **options}
           end
           @fallback_providers || inherited_fallback_providers || []
         end
@@ -201,7 +201,7 @@ module RubyLLM
         #   circuit_breaker errors: 10, within: 60, cooldown: 300
         def circuit_breaker(errors: nil, within: nil, cooldown: nil)
           if errors || within || cooldown
-            @circuit_breaker_config ||= { errors: 10, within: 60, cooldown: 300 }
+            @circuit_breaker_config ||= {errors: 10, within: 60, cooldown: 300}
             @circuit_breaker_config[:errors] = errors if errors
             @circuit_breaker_config[:within] = within if within
             @circuit_breaker_config[:cooldown] = cooldown if cooldown
@@ -297,8 +297,8 @@ module RubyLLM
         # Inner builder class for block-style configuration
         class ReliabilityBuilder
           attr_reader :retries_config, :fallback_models_list, :total_timeout_value,
-                      :circuit_breaker_config, :retryable_patterns_list, :fallback_providers_list,
-                      :non_fallback_errors_list
+            :circuit_breaker_config, :retryable_patterns_list, :fallback_providers_list,
+            :non_fallback_errors_list
 
           def initialize
             @retries_config = nil
@@ -332,7 +332,7 @@ module RubyLLM
           #   fallback_provider :openai, voice: "nova"
           #   fallback_provider :elevenlabs, voice: "Rachel", model: "eleven_multilingual_v2"
           def fallback_provider(provider, **options)
-            @fallback_providers_list << { provider: provider, **options }
+            @fallback_providers_list << {provider: provider, **options}
           end
 
           def total_timeout(seconds)
@@ -366,8 +366,8 @@ module RubyLLM
         #
         class OnFailureBuilder
           attr_reader :retries_config, :fallback_models_list, :total_timeout_value,
-                      :circuit_breaker_config, :retryable_patterns_list, :fallback_providers_list,
-                      :non_fallback_errors_list
+            :circuit_breaker_config, :retryable_patterns_list, :fallback_providers_list,
+            :non_fallback_errors_list
 
           def initialize
             @retries_config = nil
@@ -423,7 +423,7 @@ module RubyLLM
           # @param options [Hash] Provider-specific options
           #
           def fallback_provider(provider, **options)
-            @fallback_providers_list << { provider: provider, **options }
+            @fallback_providers_list << {provider: provider, **options}
           end
 
           # Configure timeout for all retry/fallback attempts
@@ -440,7 +440,7 @@ module RubyLLM
           end
 
           # Also support total_timeout for compatibility
-          alias total_timeout timeout
+          alias_method :total_timeout, :timeout
 
           # Configure circuit breaker
           #

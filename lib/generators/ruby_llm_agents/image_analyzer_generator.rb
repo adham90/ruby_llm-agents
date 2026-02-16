@@ -17,19 +17,19 @@ module RubyLlmAgents
     source_root File.expand_path("templates", __dir__)
 
     class_option :model, type: :string, default: "gpt-4o",
-                 desc: "The vision model to use"
+      desc: "The vision model to use"
     class_option :analysis_type, type: :string, default: "detailed",
-                 desc: "Analysis type (caption, detailed, tags, objects, colors, all)"
+      desc: "Analysis type (caption, detailed, tags, objects, colors, all)"
     class_option :extract_colors, type: :boolean, default: false,
-                 desc: "Enable color extraction"
+      desc: "Enable color extraction"
     class_option :detect_objects, type: :boolean, default: false,
-                 desc: "Enable object detection"
+      desc: "Enable object detection"
     class_option :extract_text, type: :boolean, default: false,
-                 desc: "Enable text extraction (OCR)"
+      desc: "Enable text extraction (OCR)"
     class_option :max_tags, type: :string, default: "10",
-                 desc: "Maximum number of tags to return"
+      desc: "Maximum number of tags to return"
     class_option :cache, type: :string, default: nil,
-                 desc: "Cache TTL (e.g., '1.hour', '1.day')"
+      desc: "Cache TTL (e.g., '1.hour', '1.day')"
 
     def ensure_base_class_and_skill_file
       images_dir = "app/agents/images"

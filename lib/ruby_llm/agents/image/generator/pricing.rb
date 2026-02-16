@@ -158,7 +158,7 @@ module RubyLLM
           else
             fetch_from_url
           end
-        rescue StandardError => e
+        rescue => e
           warn "[RubyLLM::Agents] Failed to fetch LiteLLM pricing: #{e.message}"
           {}
         end
@@ -178,7 +178,7 @@ module RubyLLM
           else
             {}
           end
-        rescue StandardError => e
+        rescue => e
           warn "[RubyLLM::Agents] HTTP error fetching LiteLLM pricing: #{e.message}"
           {}
         end
@@ -314,9 +314,9 @@ module RubyLLM
 
         def fallback_pricing_table
           {
-            "gpt-image-1" => { standard: 0.04, hd: 0.08, large_hd: 0.12 },
-            "dall-e-3" => { standard: 0.04, hd: 0.08, large_hd: 0.12 },
-            "dall-e-2" => { "1024x1024" => 0.02, "512x512" => 0.018, "256x256" => 0.016 },
+            "gpt-image-1" => {standard: 0.04, hd: 0.08, large_hd: 0.12},
+            "dall-e-3" => {standard: 0.04, hd: 0.08, large_hd: 0.12},
+            "dall-e-2" => {"1024x1024" => 0.02, "512x512" => 0.018, "256x256" => 0.016},
             "flux-pro" => 0.05,
             "flux-dev" => 0.025,
             "flux-schnell" => 0.003,
@@ -332,16 +332,15 @@ module RubyLLM
           width, height = size.to_s.split("x").map(&:to_i)
           return nil if width.zero? || height.zero?
           width * height
-        rescue StandardError
+        rescue
           nil
         end
 
         def normalize_model_id(model_id)
           model_id.to_s
-                  .downcase
-                  .gsub(/[^a-z0-9.-]/, "-")
-                  .gsub(/-+/, "-")
-                  .gsub(/^-|-$/, "")
+            .downcase
+            .gsub(/[^a-z0-9.-]/, "-").squeeze("-")
+            .gsub(/^-|-$/, "")
         end
 
         def config

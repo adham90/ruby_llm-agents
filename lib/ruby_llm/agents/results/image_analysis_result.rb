@@ -18,9 +18,9 @@ module RubyLLM
     #
     class ImageAnalysisResult
       attr_reader :image, :model_id, :analysis_type,
-                  :caption, :description, :tags, :objects, :colors, :text,
-                  :raw_response, :started_at, :completed_at, :tenant_id, :analyzer_class,
-                  :error_class, :error_message
+        :caption, :description, :tags, :objects, :colors, :text,
+        :raw_response, :started_at, :completed_at, :tenant_id, :analyzer_class,
+        :error_class, :error_message
 
       # Initialize a new result
       #
@@ -41,8 +41,8 @@ module RubyLLM
       # @param error_class [String, nil] Error class name if failed
       # @param error_message [String, nil] Error message if failed
       def initialize(image:, model_id:, analysis_type:, caption:, description:, tags:,
-                     objects:, colors:, text:, raw_response:, started_at:, completed_at:,
-                     tenant_id:, analyzer_class:, error_class: nil, error_message: nil)
+        objects:, colors:, text:, raw_response:, started_at:, completed_at:,
+        tenant_id:, analyzer_class:, error_class: nil, error_message: nil)
         @image = image
         @model_id = model_id
         @analysis_type = analysis_type
@@ -235,8 +235,8 @@ module RubyLLM
     # Lightweight result for cached analyses
     class CachedImageAnalysisResult
       attr_reader :image, :model_id, :analysis_type,
-                  :caption, :description, :tags, :objects, :colors, :text,
-                  :total_cost, :cached_at
+        :caption, :description, :tags, :objects, :colors, :text,
+        :total_cost, :cached_at
 
       def initialize(data)
         @image = data[:image]

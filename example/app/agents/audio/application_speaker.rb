@@ -110,8 +110,8 @@ module Audio
     # These settings are inherited by all speakers
 
     provider :openai
-    model 'tts-1'
-    voice 'alloy'
+    model "tts-1"
+    voice "alloy"
 
     # ============================================
     # Shared Caching

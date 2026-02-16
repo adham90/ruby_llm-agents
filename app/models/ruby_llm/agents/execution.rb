@@ -67,27 +67,27 @@ module RubyLLM
       belongs_to :parent_execution, class_name: "RubyLLM::Agents::Execution", optional: true
       belongs_to :root_execution, class_name: "RubyLLM::Agents::Execution", optional: true
       has_many :child_executions, class_name: "RubyLLM::Agents::Execution",
-               foreign_key: :parent_execution_id, dependent: :nullify, inverse_of: :parent_execution
+        foreign_key: :parent_execution_id, dependent: :nullify, inverse_of: :parent_execution
 
       # Detail record for large payloads (prompts, responses, tool calls, etc.)
       has_one :detail, class_name: "RubyLLM::Agents::ExecutionDetail",
-              foreign_key: :execution_id, dependent: :destroy
+        foreign_key: :execution_id, dependent: :destroy
 
       # Delegations so existing code keeps working transparently
       delegate :system_prompt, :user_prompt, :assistant_prompt, :response, :error_message,
-               :messages_summary, :tool_calls, :attempts, :fallback_chain,
-               :parameters, :routed_to, :classification_result,
-               :cached_at, :cache_creation_tokens,
-               to: :detail, prefix: false, allow_nil: true
+        :messages_summary, :tool_calls, :attempts, :fallback_chain,
+        :parameters, :routed_to, :classification_result,
+        :cached_at, :cache_creation_tokens,
+        to: :detail, prefix: false, allow_nil: true
 
       # Validations
       validates :agent_type, :model_id, :started_at, presence: true
-      validates :status, inclusion: { in: statuses.keys }
-      validates :temperature, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 2 }, allow_nil: true
-      validates :input_tokens, :output_tokens, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
-      validates :duration_ms, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
-      validates :input_cost, :output_cost, :total_cost, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
-      validates :finish_reason, inclusion: { in: FINISH_REASONS }, allow_nil: true
+      validates :status, inclusion: {in: statuses.keys}
+      validates :temperature, numericality: {greater_than_or_equal_to: 0, less_than_or_equal_to: 2}, allow_nil: true
+      validates :input_tokens, :output_tokens, numericality: {greater_than_or_equal_to: 0}, allow_nil: true
+      validates :duration_ms, numericality: {greater_than_or_equal_to: 0}, allow_nil: true
+      validates :input_cost, :output_cost, :total_cost, numericality: {greater_than_or_equal_to: 0}, allow_nil: true
+      validates :finish_reason, inclusion: {in: FINISH_REASONS}, allow_nil: true
 
       before_save :calculate_total_tokens, if: -> { input_tokens_changed? || output_tokens_changed? }
       before_save :calculate_total_cost, if: -> { input_cost_changed? || output_cost_changed? }
@@ -130,10 +130,10 @@ module RubyLLM
       # @return [Boolean] true if more than one attempt was made
       def has_retries?
         count = if self.class.column_names.include?("attempts_count")
-                  attempts_count
-                elsif self.class.column_names.include?("attempts")
-                  attempts&.size
-                end
+          attempts_count
+        elsif self.class.column_names.include?("attempts")
+          attempts&.size
+        end
         (count || 0) > 1
       end
 
@@ -278,16 +278,16 @@ module RubyLLM
       # @return [Hash] Now strip metrics with period-over-period comparisons
       def self.now_strip_data(range: "today")
         current_scope = case range
-                        when "7d" then last_n_days(7)
-                        when "30d" then last_n_days(30)
-                        else today
-                        end
+        when "7d" then last_n_days(7)
+        when "30d" then last_n_days(30)
+        else today
+        end
 
         previous_scope = case range
-                         when "7d" then where(created_at: 14.days.ago.beginning_of_day..7.days.ago.beginning_of_day)
-                         when "30d" then where(created_at: 60.days.ago.beginning_of_day..30.days.ago.beginning_of_day)
-                         else yesterday
-                         end
+        when "7d" then where(created_at: 14.days.ago.beginning_of_day..7.days.ago.beginning_of_day)
+        when "30d" then where(created_at: 60.days.ago.beginning_of_day..30.days.ago.beginning_of_day)
+        else yesterday
+        end
 
         current = {
           running: running.count,
@@ -371,7 +371,7 @@ module RubyLLM
         return nil unless lookup_model_id
 
         RubyLLM::Models.find(lookup_model_id)
-      rescue StandardError
+      rescue
         nil
       end
     end

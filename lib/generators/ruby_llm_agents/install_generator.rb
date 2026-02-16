@@ -22,11 +22,11 @@ module RubyLlmAgents
     source_root File.expand_path("templates", __dir__)
 
     class_option :skip_migration, type: :boolean, default: false,
-                 desc: "Skip generating the migration file"
+      desc: "Skip generating the migration file"
     class_option :skip_initializer, type: :boolean, default: false,
-                 desc: "Skip generating the initializer file"
+      desc: "Skip generating the initializer file"
     class_option :mount_dashboard, type: :boolean, default: true,
-                 desc: "Mount the dashboard engine in routes"
+      desc: "Mount the dashboard engine in routes"
 
     def create_migration_file
       return if options[:skip_migration]

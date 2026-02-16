@@ -61,7 +61,7 @@ module RubyLLM
           # @return [Float] New total
           def increment_spend(scope, period, amount, agent_type: nil, tenant_id: nil)
             key = budget_cache_key(scope, period, agent_type: agent_type, tenant_id: tenant_id)
-            ttl = period == :daily ? 1.day : 31.days
+            ttl = (period == :daily) ? 1.day : 31.days
 
             # Read-modify-write for float values (cache increment is for integers)
             current = (SpendRecorder.cache_read(key) || 0).to_f
@@ -81,7 +81,7 @@ module RubyLLM
           def increment_tokens(scope, period, tokens, agent_type: nil, tenant_id: nil)
             # For now, we only track global token usage (not per-agent)
             key = token_cache_key(period, tenant_id: tenant_id)
-            ttl = period == :daily ? 1.day : 31.days
+            ttl = (period == :daily) ? 1.day : 31.days
 
             current = (SpendRecorder.cache_read(key) || 0).to_i
             new_total = current + tokens
@@ -102,7 +102,7 @@ module RubyLLM
           # @param period [Symbol] :daily or :monthly
           # @return [String] Date string
           def date_key_part(period)
-            period == :daily ? Date.current.to_s : Date.current.strftime("%Y-%m")
+            (period == :daily) ? Date.current.to_s : Date.current.strftime("%Y-%m")
           end
 
           # Generates an alert cache key
@@ -156,28 +156,28 @@ module RubyLLM
           def check_soft_cap_alerts(agent_type, tenant_id, budget_config)
             # Check global daily
             check_budget_alert(:global_daily, budget_config[:global_daily],
-                              BudgetQuery.current_spend(:global, :daily, tenant_id: tenant_id),
-                              agent_type, tenant_id, budget_config)
+              BudgetQuery.current_spend(:global, :daily, tenant_id: tenant_id),
+              agent_type, tenant_id, budget_config)
 
             # Check global monthly
             check_budget_alert(:global_monthly, budget_config[:global_monthly],
-                              BudgetQuery.current_spend(:global, :monthly, tenant_id: tenant_id),
-                              agent_type, tenant_id, budget_config)
+              BudgetQuery.current_spend(:global, :monthly, tenant_id: tenant_id),
+              agent_type, tenant_id, budget_config)
 
             # Check per-agent daily
             agent_daily_limit = budget_config[:per_agent_daily]&.dig(agent_type)
             if agent_daily_limit
               check_budget_alert(:per_agent_daily, agent_daily_limit,
-                                BudgetQuery.current_spend(:agent, :daily, agent_type: agent_type, tenant_id: tenant_id),
-                                agent_type, tenant_id, budget_config)
+                BudgetQuery.current_spend(:agent, :daily, agent_type: agent_type, tenant_id: tenant_id),
+                agent_type, tenant_id, budget_config)
             end
 
             # Check per-agent monthly
             agent_monthly_limit = budget_config[:per_agent_monthly]&.dig(agent_type)
             if agent_monthly_limit
               check_budget_alert(:per_agent_monthly, agent_monthly_limit,
-                                BudgetQuery.current_spend(:agent, :monthly, agent_type: agent_type, tenant_id: tenant_id),
-                                agent_type, tenant_id, budget_config)
+                BudgetQuery.current_spend(:agent, :monthly, agent_type: agent_type, tenant_id: tenant_id),
+                agent_type, tenant_id, budget_config)
             end
           end
 
@@ -194,7 +194,7 @@ module RubyLLM
             return unless limit
             return if current <= limit
 
-            event = budget_config[:enforcement] == :hard ? :budget_hard_cap : :budget_soft_cap
+            event = (budget_config[:enforcement] == :hard) ? :budget_hard_cap : :budget_soft_cap
 
             # Prevent duplicate alerts by using a cache key (include tenant for isolation)
             key = alert_cache_key("budget_alert", scope, tenant_id)
@@ -221,13 +221,13 @@ module RubyLLM
           def check_soft_token_alerts(agent_type, tenant_id, budget_config)
             # Check global daily tokens
             check_token_alert(:global_daily_tokens, budget_config[:global_daily_tokens],
-                             BudgetQuery.current_tokens(:daily, tenant_id: tenant_id),
-                             agent_type, tenant_id, budget_config)
+              BudgetQuery.current_tokens(:daily, tenant_id: tenant_id),
+              agent_type, tenant_id, budget_config)
 
             # Check global monthly tokens
             check_token_alert(:global_monthly_tokens, budget_config[:global_monthly_tokens],
-                             BudgetQuery.current_tokens(:monthly, tenant_id: tenant_id),
-                             agent_type, tenant_id, budget_config)
+              BudgetQuery.current_tokens(:monthly, tenant_id: tenant_id),
+              agent_type, tenant_id, budget_config)
           end
 
           # Checks if a token alert should be fired
@@ -243,7 +243,7 @@ module RubyLLM
             return unless limit
             return if current <= limit
 
-            event = budget_config[:enforcement] == :hard ? :token_hard_cap : :token_soft_cap
+            event = (budget_config[:enforcement] == :hard) ? :token_hard_cap : :token_soft_cap
 
             # Prevent duplicate alerts
             key = alert_cache_key("token_alert", scope, tenant_id)

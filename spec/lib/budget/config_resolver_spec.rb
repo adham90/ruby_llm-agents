@@ -57,7 +57,7 @@ RSpec.describe RubyLLM::Agents::Budget::ConfigResolver do
       it "returns nil when no tenant_id and no resolver returns nil" do
         RubyLLM::Agents.configure do |c|
           c.multi_tenancy_enabled = true
-          c.tenant_resolver = -> { nil }
+          c.tenant_resolver = -> {}
         end
 
         result = described_class.resolve_tenant_id(nil)
@@ -110,7 +110,7 @@ RSpec.describe RubyLLM::Agents::Budget::ConfigResolver do
           c.multi_tenancy_enabled = true
           c.tenant_config_resolver = lambda { |tenant_id|
             if tenant_id == "premium_org"
-              { daily_budget_limit: 500.0, monthly_budget_limit: 2000.0, enforcement: :soft }
+              {daily_budget_limit: 500.0, monthly_budget_limit: 2000.0, enforcement: :soft}
             end
           }
         end
@@ -126,8 +126,8 @@ RSpec.describe RubyLLM::Agents::Budget::ConfigResolver do
       it "falls back to global config when resolver returns nil" do
         RubyLLM::Agents.configure do |c|
           c.multi_tenancy_enabled = true
-          c.tenant_config_resolver = ->(_tenant_id) { nil }
-          c.budgets = { enforcement: :soft, global_daily: 10.0 }
+          c.tenant_config_resolver = ->(_tenant_id) {}
+          c.budgets = {enforcement: :soft, global_daily: 10.0}
         end
 
         result = described_class.resolve_budget_config("unknown_org")
@@ -144,8 +144,8 @@ RSpec.describe RubyLLM::Agents::Budget::ConfigResolver do
           enforcement: :hard,
           global_daily: 100.0,
           global_monthly: 1000.0,
-          per_agent_daily: { "TestAgent" => 10.0 },
-          per_agent_monthly: { "TestAgent" => 100.0 },
+          per_agent_daily: {"TestAgent" => 10.0},
+          per_agent_monthly: {"TestAgent" => 100.0},
           global_daily_tokens: 100_000,
           global_monthly_tokens: 1_000_000
         }
@@ -159,8 +159,8 @@ RSpec.describe RubyLLM::Agents::Budget::ConfigResolver do
       expect(result[:enforcement]).to eq(:hard)
       expect(result[:global_daily]).to eq(100.0)
       expect(result[:global_monthly]).to eq(1000.0)
-      expect(result[:per_agent_daily]).to eq({ "TestAgent" => 10.0 })
-      expect(result[:per_agent_monthly]).to eq({ "TestAgent" => 100.0 })
+      expect(result[:per_agent_daily]).to eq({"TestAgent" => 10.0})
+      expect(result[:per_agent_monthly]).to eq({"TestAgent" => 100.0})
       expect(result[:global_daily_tokens]).to eq(100_000)
       expect(result[:global_monthly_tokens]).to eq(1_000_000)
     end
@@ -171,7 +171,7 @@ RSpec.describe RubyLLM::Agents::Budget::ConfigResolver do
 
     before do
       RubyLLM::Agents.configure do |c|
-        c.budgets = { enforcement: :soft }
+        c.budgets = {enforcement: :soft}
       end
     end
 
@@ -193,7 +193,7 @@ RSpec.describe RubyLLM::Agents::Budget::ConfigResolver do
     end
 
     it "uses enforcement from raw config when provided" do
-      raw_config = { enforcement: :hard }
+      raw_config = {enforcement: :hard}
 
       result = described_class.normalize_budget_config(raw_config, global_config)
 
@@ -209,7 +209,7 @@ RSpec.describe RubyLLM::Agents::Budget::ConfigResolver do
     end
 
     it "sets enabled to false when enforcement is :none" do
-      raw_config = { enforcement: :none }
+      raw_config = {enforcement: :none}
 
       result = described_class.normalize_budget_config(raw_config, global_config)
 

@@ -235,7 +235,7 @@ module RubyLLM
       def safe_value(response, method, default = nil)
         return default unless response.respond_to?(method)
         response.public_send(method)
-      rescue StandardError
+      rescue
         default
       end
 
@@ -249,7 +249,7 @@ module RubyLLM
           model_id: attempt[:model_id],
           attempt_index: @attempts.length
         )
-      rescue StandardError
+      rescue
         # Ignore notification failures
       end
 
@@ -275,7 +275,7 @@ module RubyLLM
         end
 
         ActiveSupport::Notifications.instrument(event, payload)
-      rescue StandardError
+      rescue
         # Ignore notification failures
       end
 
@@ -288,7 +288,7 @@ module RubyLLM
           "ruby_llm_agents.attempt.short_circuit",
           model_id: attempt[:model_id]
         )
-      rescue StandardError
+      rescue
         # Ignore notification failures
       end
     end

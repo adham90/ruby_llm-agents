@@ -7,7 +7,7 @@ RSpec.describe RubyLLM::Agents::Reliability::Executor, "edge cases" do
   let(:fallback_models) { ["gpt-4o-mini", "claude-3-haiku"] }
   let(:base_config) do
     {
-      retries: { max: 2, backoff: :exponential, base: 0.01, max_delay: 0.1 },
+      retries: {max: 2, backoff: :exponential, base: 0.01, max_delay: 0.1},
       fallback_models: fallback_models,
       circuit_breaker: nil,
       total_timeout: nil
@@ -38,7 +38,7 @@ RSpec.describe RubyLLM::Agents::Reliability::Executor, "edge cases" do
 
       it "handles connection reset errors" do
         attempts = 0
-        result = executor.execute do |model|
+        executor.execute do |model|
           attempts += 1
           if attempts <= 1
             raise Errno::ECONNRESET, "Connection reset by peer"
@@ -59,7 +59,7 @@ RSpec.describe RubyLLM::Agents::Reliability::Executor, "edge cases" do
         models_tried = []
         result = executor.execute do |model|
           models_tried << model
-          model == "gpt-4o" ? nil : "fallback success"
+          (model == "gpt-4o") ? nil : "fallback success"
         end
 
         # nil triggers fallback, so we get the result from the fallback model
@@ -72,7 +72,7 @@ RSpec.describe RubyLLM::Agents::Reliability::Executor, "edge cases" do
   describe "timeout enforcement" do
     let(:base_config) do
       {
-        retries: { max: 10, base: 0.01 },
+        retries: {max: 10, base: 0.01},
         fallback_models: [],
         total_timeout: 0.05
       }
@@ -115,9 +115,9 @@ RSpec.describe RubyLLM::Agents::Reliability::Executor, "edge cases" do
   describe "circuit breaker state transitions" do
     let(:base_config) do
       {
-        retries: { max: 0 },
+        retries: {max: 0},
         fallback_models: fallback_models,
-        circuit_breaker: { errors: 2, within: 60 }
+        circuit_breaker: {errors: 2, within: 60}
       }
     end
 
@@ -145,7 +145,7 @@ RSpec.describe RubyLLM::Agents::Reliability::Executor, "edge cases" do
       allow(executor.breaker_manager).to receive(:record_success!)
 
       models_tried = []
-      result = executor.execute do |model|
+      executor.execute do |model|
         models_tried << model
         "success"
       end
@@ -213,13 +213,12 @@ RSpec.describe RubyLLM::Agents::Reliability::Executor, "edge cases" do
   describe "backoff strategies" do
     let(:base_config) do
       {
-        retries: { max: 3, backoff: :exponential, base: 0.01, max_delay: 1.0 },
+        retries: {max: 3, backoff: :exponential, base: 0.01, max_delay: 1.0},
         fallback_models: []
       }
     end
 
     it "applies exponential backoff" do
-      delays = []
       attempt = 0
 
       begin
@@ -240,7 +239,7 @@ RSpec.describe RubyLLM::Agents::Reliability::Executor, "edge cases" do
     context "with linear backoff" do
       let(:base_config) do
         {
-          retries: { max: 3, backoff: :linear, base: 0.01, max_delay: 1.0 },
+          retries: {max: 3, backoff: :linear, base: 0.01, max_delay: 1.0},
           fallback_models: []
         }
       end
@@ -315,7 +314,7 @@ RSpec.describe RubyLLM::Agents::Reliability::Executor, "edge cases" do
   describe "tenant isolation" do
     let(:tenant_executor) do
       described_class.new(
-        config: base_config.merge(circuit_breaker: { errors: 3, within: 60 }),
+        config: base_config.merge(circuit_breaker: {errors: 3, within: 60}),
         primary_model: primary_model,
         agent_type: "TestAgent",
         tenant_id: "tenant-123"
@@ -350,7 +349,7 @@ RSpec.describe RubyLLM::Agents::Reliability::Executor, "edge cases" do
   describe "edge case: zero retries" do
     let(:base_config) do
       {
-        retries: { max: 0 },
+        retries: {max: 0},
         fallback_models: ["gpt-4o-mini"]
       }
     end

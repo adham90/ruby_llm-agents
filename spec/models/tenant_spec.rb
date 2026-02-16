@@ -30,7 +30,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
         # Create executions for this tenant
         RubyLLM::Agents::Execution.create!(
           agent_type: "TestAgent",
-                    model_id: "gpt-4",
+          model_id: "gpt-4",
           started_at: Time.current,
           status: "success",
           total_cost: 0.50,
@@ -39,7 +39,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
 
         RubyLLM::Agents::Execution.create!(
           agent_type: "TestAgent",
-                    model_id: "gpt-4",
+          model_id: "gpt-4",
           started_at: Time.current,
           status: "success",
           total_cost: 0.25,
@@ -49,7 +49,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
         # Create execution for yesterday
         RubyLLM::Agents::Execution.create!(
           agent_type: "TestAgent",
-                    model_id: "gpt-4",
+          model_id: "gpt-4",
           started_at: 1.day.ago,
           created_at: 1.day.ago,
           status: "success",
@@ -90,7 +90,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
       before do
         RubyLLM::Agents::Execution.create!(
           agent_type: "TestAgent",
-                    model_id: "gpt-4",
+          model_id: "gpt-4",
           started_at: Time.current,
           status: "success",
           total_tokens: 1000,
@@ -99,7 +99,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
 
         RubyLLM::Agents::Execution.create!(
           agent_type: "TestAgent",
-                    model_id: "gpt-4",
+          model_id: "gpt-4",
           started_at: 1.day.ago,
           created_at: 1.day.ago,
           status: "success",
@@ -128,7 +128,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
         3.times do
           RubyLLM::Agents::Execution.create!(
             agent_type: "TestAgent",
-                        model_id: "gpt-4",
+            model_id: "gpt-4",
             started_at: Time.current,
             status: "success",
             tenant_id: tenant.tenant_id
@@ -138,7 +138,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
         2.times do
           RubyLLM::Agents::Execution.create!(
             agent_type: "TestAgent",
-                        model_id: "gpt-4",
+            model_id: "gpt-4",
             started_at: 1.day.ago,
             created_at: 1.day.ago,
             status: "success",
@@ -172,7 +172,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
       before do
         RubyLLM::Agents::Execution.create!(
           agent_type: "TestAgent",
-                    model_id: "gpt-4",
+          model_id: "gpt-4",
           started_at: Time.current,
           status: "success",
           total_cost: 0.50,
@@ -201,7 +201,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
       before do
         RubyLLM::Agents::Execution.create!(
           agent_type: "ChatAgent",
-                    model_id: "gpt-4",
+          model_id: "gpt-4",
           started_at: Time.current,
           status: "success",
           total_cost: 0.50,
@@ -212,7 +212,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
         2.times do
           RubyLLM::Agents::Execution.create!(
             agent_type: "SummaryAgent",
-                        model_id: "gpt-3.5-turbo",
+            model_id: "gpt-3.5-turbo",
             started_at: Time.current,
             status: "success",
             total_cost: 0.10,
@@ -239,7 +239,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
       before do
         RubyLLM::Agents::Execution.create!(
           agent_type: "TestAgent",
-                    model_id: "gpt-4",
+          model_id: "gpt-4",
           started_at: Time.current,
           status: "success",
           total_cost: 1.00,
@@ -250,7 +250,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
         2.times do
           RubyLLM::Agents::Execution.create!(
             agent_type: "TestAgent",
-                        model_id: "gpt-3.5-turbo",
+            model_id: "gpt-3.5-turbo",
             started_at: Time.current,
             status: "success",
             total_cost: 0.05,
@@ -277,7 +277,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
       before do
         RubyLLM::Agents::Execution.create!(
           agent_type: "TestAgent",
-                    model_id: "gpt-4",
+          model_id: "gpt-4",
           started_at: Time.current,
           status: "success",
           total_cost: 0.50,
@@ -287,7 +287,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
 
         RubyLLM::Agents::Execution.create!(
           agent_type: "TestAgent",
-                    model_id: "gpt-4",
+          model_id: "gpt-4",
           started_at: 1.day.ago,
           created_at: 1.day.ago,
           status: "success",
@@ -322,7 +322,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
         5.times do |i|
           RubyLLM::Agents::Execution.create!(
             agent_type: "TestAgent",
-                        model_id: "gpt-4",
+            model_id: "gpt-4",
             started_at: Time.current - i.hours,
             created_at: Time.current - i.hours,
             status: "success",
@@ -342,7 +342,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
         10.times do
           RubyLLM::Agents::Execution.create!(
             agent_type: "TestAgent",
-                        model_id: "gpt-4",
+            model_id: "gpt-4",
             started_at: Time.current,
             status: "success",
             tenant_id: tenant.tenant_id
@@ -359,7 +359,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
         3.times do
           exec = RubyLLM::Agents::Execution.create!(
             agent_type: "TestAgent",
-                        model_id: "gpt-4",
+            model_id: "gpt-4",
             started_at: Time.current,
             status: "error",
             error_class: "TestError",
@@ -371,7 +371,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
         2.times do
           RubyLLM::Agents::Execution.create!(
             agent_type: "TestAgent",
-                        model_id: "gpt-4",
+            model_id: "gpt-4",
             started_at: Time.current,
             status: "success",
             tenant_id: tenant.tenant_id
@@ -393,7 +393,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
       it "respects the period parameter" do
         RubyLLM::Agents::Execution.create!(
           agent_type: "TestAgent",
-                    model_id: "gpt-4",
+          model_id: "gpt-4",
           started_at: 2.days.ago,
           created_at: 2.days.ago,
           status: "error",

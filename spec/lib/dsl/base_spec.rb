@@ -148,7 +148,7 @@ RSpec.describe RubyLLM::Agents::DSL::Base do
 
     context "with hash value" do
       it "sets and returns schema from a hash" do
-        hash_schema = { type: "object", properties: { name: { type: "string" } } }
+        hash_schema = {type: "object", properties: {name: {type: "string"}}}
         test_class.schema(hash_schema)
         expect(test_class.schema).to eq(hash_schema)
       end

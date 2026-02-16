@@ -133,7 +133,7 @@ module RubyLLM
         # @return [void]
         def param(name, required: false, default: nil, type: nil)
           @params ||= {}
-          @params[name] = { required: required, default: default, type: type }
+          @params[name] = {required: required, default: default, type: type}
           define_method(name) do
             @options[name] || @options[name.to_s] || self.class.params.dig(name, :default)
           end
@@ -217,7 +217,7 @@ module RubyLLM
 
           # Fall back to global configuration default
           RubyLLM::Agents.configuration.default_thinking
-        rescue StandardError
+        rescue
           nil
         end
 
@@ -227,13 +227,13 @@ module RubyLLM
 
         def default_streaming
           RubyLLM::Agents.configuration.default_streaming
-        rescue StandardError
+        rescue
           false
         end
 
         def default_temperature
           RubyLLM::Agents.configuration.default_temperature
-        rescue StandardError
+        rescue
           0.7
         end
       end
@@ -455,7 +455,7 @@ module RubyLLM
         if tenant_value.is_a?(Hash)
           tenant_value
         elsif tenant_value.respond_to?(:llm_tenant_id)
-          { id: tenant_value.llm_tenant_id, object: tenant_value }
+          {id: tenant_value.llm_tenant_id, object: tenant_value}
         else
           raise ArgumentError, "tenant must be a Hash or respond to :llm_tenant_id"
         end
@@ -465,7 +465,7 @@ module RubyLLM
       #
       # @return [Array<Class>] Tool classes to use
       def resolved_tools
-        if self.class.instance_methods(false).include?(:tools)
+        if self.class.method_defined?(:tools, false)
           tools
         else
           self.class.tools
@@ -493,7 +493,7 @@ module RubyLLM
         prefill = assistant_prompt
         return nil if prefill.nil? || (prefill.is_a?(String) && prefill.empty?)
 
-        { role: :assistant, content: prefill }
+        {role: :assistant, content: prefill}
       end
 
       # Returns whether streaming is enabled
@@ -544,7 +544,7 @@ module RubyLLM
 
           if config[:type] && has_value && !value.nil? && !value.is_a?(config[:type])
             raise ArgumentError,
-                  "#{self.class} expected #{config[:type]} for :#{name}, got #{value.class}"
+              "#{self.class} expected #{config[:type]} for :#{name}, got #{value.class}"
           end
         end
       end
@@ -594,8 +594,8 @@ module RubyLLM
       def build_client(context = nil)
         effective_model = context&.model || model
         client = RubyLLM.chat
-                        .with_model(effective_model)
-                        .with_temperature(temperature)
+          .with_model(effective_model)
+          .with_temperature(temperature)
 
         client = client.with_instructions(system_prompt) if system_prompt
         client = client.with_schema(schema) if schema
@@ -735,7 +735,7 @@ module RubyLLM
         return nil unless defined?(RubyLLM::Models)
 
         RubyLLM::Models.find(model_id)
-      rescue StandardError
+      rescue
         nil
       end
 
@@ -789,7 +789,7 @@ module RubyLLM
       # @return [Hash] Hash with thinking data or empty hash
       def safe_extract_thinking_data(response)
         result_thinking_data(response)
-      rescue StandardError
+      rescue
         {}
       end
 
@@ -894,7 +894,7 @@ module RubyLLM
           content = result.to_s
         end
 
-        { content: content, status: status, error_message: error_message }
+        {content: content, status: status, error_message: error_message}
       end
 
       # Truncates tool result if it exceeds the configured max length
@@ -917,7 +917,7 @@ module RubyLLM
       # @return [Integer] Max length
       def tool_result_max_length
         RubyLLM::Agents.configuration.tool_result_max_length || 10_000
-      rescue StandardError
+      rescue
         10_000
       end
 

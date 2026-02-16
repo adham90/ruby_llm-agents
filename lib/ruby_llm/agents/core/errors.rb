@@ -29,7 +29,7 @@ module RubyLLM
 
       def initialize(message = nil, model: nil)
         @model = model
-        super(message || "Circuit breaker is open#{model ? " for #{model}" : ""}")
+        super(message || "Circuit breaker is open#{" for #{model}" if model}")
       end
     end
 
@@ -78,7 +78,7 @@ module RubyLLM
       def initialize(message = nil, tenant_id: nil, budget_type: nil)
         @tenant_id = tenant_id
         @budget_type = budget_type
-        super(message || "Budget exceeded#{tenant_id ? " for tenant #{tenant_id}" : ""}")
+        super(message || "Budget exceeded#{" for tenant #{tenant_id}" if tenant_id}")
       end
     end
 

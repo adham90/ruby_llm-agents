@@ -63,8 +63,8 @@ RSpec.describe RubyLLM::Agents::Reliability do
       it "accepts optional attempts data" do
         last_error = StandardError.new("API error")
         attempts_data = [
-          { "model_id" => "gpt-4o", "error_class" => "StandardError" },
-          { "model_id" => "claude-3", "error_class" => "StandardError" }
+          {"model_id" => "gpt-4o", "error_class" => "StandardError"},
+          {"model_id" => "claude-3", "error_class" => "StandardError"}
         ]
         error = described_class.new(%w[gpt-4o claude-3], last_error, attempts: attempts_data)
         expect(error.attempts).to eq(attempts_data)

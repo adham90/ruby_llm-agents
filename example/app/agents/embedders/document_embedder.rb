@@ -31,10 +31,10 @@
 #
 module Embedders
   class DocumentEmbedder < ApplicationEmbedder
-    description 'Embeds documents for indexing and search'
+    description "Embeds documents for indexing and search"
 
     # Use small model for cost efficiency
-    model 'text-embedding-3-small'
+    model "text-embedding-3-small"
 
     # Reduced dimensions for storage efficiency
     # 512 dimensions still capture most semantic information

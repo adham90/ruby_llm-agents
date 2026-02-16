@@ -19,8 +19,7 @@ RSpec.describe RubyLLM::Agents::ImageGenerator::ActiveStorageSupport do
   let(:mock_record) do
     double("Record",
       hero_image: mock_attachment,
-      photos: mock_attachments
-    )
+      photos: mock_attachments)
   end
 
   # Mock successful image result
@@ -168,8 +167,7 @@ RSpec.describe RubyLLM::Agents::ImageGenerator::ActiveStorageSupport do
         data: "base64data1",
         url: "https://example.com/1.png",
         to_blob: "\x89PNG1",
-        mime_type: "image/png"
-      )
+        mime_type: "image/png")
     end
 
     let(:mock_image_2) do
@@ -177,8 +175,7 @@ RSpec.describe RubyLLM::Agents::ImageGenerator::ActiveStorageSupport do
         data: nil,
         url: "https://example.com/2.png",
         to_blob: "\x89PNG2",
-        mime_type: "image/png"
-      )
+        mime_type: "image/png")
     end
 
     let(:multi_image_result) do

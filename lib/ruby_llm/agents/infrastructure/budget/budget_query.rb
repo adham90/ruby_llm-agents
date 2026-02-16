@@ -58,9 +58,9 @@ module RubyLLM
           # @return [Float] Total spend in USD
           def current_global_spend(period)
             total = RubyLLM::Agents::Execution
-                      .where("created_at >= ?", period_start(period))
-                      .where(tenant_id: nil)
-                      .sum(:total_cost)
+              .where("created_at >= ?", period_start(period))
+              .where(tenant_id: nil)
+              .sum(:total_cost)
             key = SpendRecorder.budget_cache_key(:global, period)
             BudgetQuery.cache_write(key, total, expires_in: period_ttl(period))
             total
@@ -72,9 +72,9 @@ module RubyLLM
           # @return [Integer] Total tokens used
           def current_global_tokens(period)
             total = RubyLLM::Agents::Execution
-                      .where("created_at >= ?", period_start(period))
-                      .where(tenant_id: nil)
-                      .sum(:total_tokens)
+              .where("created_at >= ?", period_start(period))
+              .where(tenant_id: nil)
+              .sum(:total_tokens)
             key = SpendRecorder.token_cache_key(period)
             BudgetQuery.cache_write(key, total, expires_in: period_ttl(period))
             total
@@ -106,7 +106,7 @@ module RubyLLM
           # @param tenant_id [String, nil] The tenant identifier
           # @param budget_config [Hash] Budget configuration
           # @return [Float, nil] Remaining budget in USD, or nil if no limit configured
-          def remaining_budget(scope, period, agent_type: nil, tenant_id: nil, budget_config:)
+          def remaining_budget(scope, period, budget_config:, agent_type: nil, tenant_id: nil)
             limit = case [scope, period]
             when [:global, :daily]
               budget_config[:global_daily]
@@ -129,7 +129,7 @@ module RubyLLM
           # @param tenant_id [String, nil] The tenant identifier
           # @param budget_config [Hash] Budget configuration
           # @return [Integer, nil] Remaining token budget, or nil if no limit configured
-          def remaining_token_budget(period, tenant_id: nil, budget_config:)
+          def remaining_token_budget(period, budget_config:, tenant_id: nil)
             limit = case period
             when :daily
               budget_config[:global_daily_tokens]
@@ -148,7 +148,7 @@ module RubyLLM
           # @param tenant_id [String, nil] The tenant identifier
           # @param budget_config [Hash] Budget configuration
           # @return [Hash] Budget status information
-          def status(agent_type: nil, tenant_id: nil, budget_config:)
+          def status(budget_config:, agent_type: nil, tenant_id: nil)
             {
               tenant_id: tenant_id,
               enabled: budget_config[:enabled],

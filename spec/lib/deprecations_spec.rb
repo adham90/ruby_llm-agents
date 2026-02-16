@@ -132,12 +132,11 @@ RSpec.describe RubyLLM::Agents::Deprecations do
               "#{expected_prefix} #{message}",
               kind_of(Array)
             )
-            deprecations.warn(message)
           else
             # Pre-7.1 Rails falls back to Kernel.warn
             expect(Kernel).to receive(:warn).with(/#{Regexp.escape(expected_prefix)}/)
-            deprecations.warn(message)
           end
+          deprecations.warn(message)
         end
 
         it "includes the message in the warning" do
@@ -148,11 +147,10 @@ RSpec.describe RubyLLM::Agents::Deprecations do
               /#{Regexp.escape(message)}/,
               kind_of(Array)
             )
-            deprecations.warn(message)
           else
             expect(Kernel).to receive(:warn).with(/#{Regexp.escape(message)}/)
-            deprecations.warn(message)
           end
+          deprecations.warn(message)
         end
       end
 
@@ -167,11 +165,10 @@ RSpec.describe RubyLLM::Agents::Deprecations do
               /#{Regexp.escape(expected_prefix)}/,
               custom_callstack
             )
-            deprecations.warn(message, custom_callstack)
           else
             expect(Kernel).to receive(:warn).with(/custom_file\.rb:42/)
-            deprecations.warn(message, custom_callstack)
           end
+          deprecations.warn(message, custom_callstack)
         end
       end
     end

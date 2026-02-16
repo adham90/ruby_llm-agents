@@ -65,7 +65,12 @@ RSpec.describe RubyLLM::Agents::Pipeline::Builder do
 
   # Core executor
   let(:core) do
-    ->(ctx) { ctx[:order] ||= []; ctx[:order] << :core; ctx.output = "done"; ctx }
+    ->(ctx) {
+      ctx[:order] ||= []
+      ctx[:order] << :core
+      ctx.output = "done"
+      ctx
+    }
   end
 
   describe "#initialize" do
@@ -229,17 +234,17 @@ RSpec.describe RubyLLM::Agents::Pipeline::Builder do
       it "always includes Tenant middleware" do
         # Allow Middleware classes to be available
         stub_const("RubyLLM::Agents::Pipeline::Middleware::Tenant",
-                   Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-                     def call(context)
-                       @app.call(context)
-                     end
-                   end)
+          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
+            def call(context)
+              @app.call(context)
+            end
+          end)
         stub_const("RubyLLM::Agents::Pipeline::Middleware::Instrumentation",
-                   Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-                     def call(context)
-                       @app.call(context)
-                     end
-                   end)
+          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
+            def call(context)
+              @app.call(context)
+            end
+          end)
 
         builder = described_class.for(minimal_agent)
 
@@ -263,23 +268,23 @@ RSpec.describe RubyLLM::Agents::Pipeline::Builder do
 
       it "includes Cache middleware" do
         stub_const("RubyLLM::Agents::Pipeline::Middleware::Tenant",
-                   Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-                     def call(context)
-                       @app.call(context)
-                     end
-                   end)
+          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
+            def call(context)
+              @app.call(context)
+            end
+          end)
         stub_const("RubyLLM::Agents::Pipeline::Middleware::Cache",
-                   Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-                     def call(context)
-                       @app.call(context)
-                     end
-                   end)
+          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
+            def call(context)
+              @app.call(context)
+            end
+          end)
         stub_const("RubyLLM::Agents::Pipeline::Middleware::Instrumentation",
-                   Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-                     def call(context)
-                       @app.call(context)
-                     end
-                   end)
+          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
+            def call(context)
+              @app.call(context)
+            end
+          end)
 
         builder = described_class.for(cached_agent)
 
@@ -306,23 +311,23 @@ RSpec.describe RubyLLM::Agents::Pipeline::Builder do
 
       it "includes Reliability middleware when retries > 0" do
         stub_const("RubyLLM::Agents::Pipeline::Middleware::Tenant",
-                   Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-                     def call(context)
-                       @app.call(context)
-                     end
-                   end)
+          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
+            def call(context)
+              @app.call(context)
+            end
+          end)
         stub_const("RubyLLM::Agents::Pipeline::Middleware::Instrumentation",
-                   Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-                     def call(context)
-                       @app.call(context)
-                     end
-                   end)
+          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
+            def call(context)
+              @app.call(context)
+            end
+          end)
         stub_const("RubyLLM::Agents::Pipeline::Middleware::Reliability",
-                   Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-                     def call(context)
-                       @app.call(context)
-                     end
-                   end)
+          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
+            def call(context)
+              @app.call(context)
+            end
+          end)
 
         builder = described_class.for(reliable_agent)
 
@@ -345,23 +350,23 @@ RSpec.describe RubyLLM::Agents::Pipeline::Builder do
         end
 
         stub_const("RubyLLM::Agents::Pipeline::Middleware::Tenant",
-                   Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-                     def call(context)
-                       @app.call(context)
-                     end
-                   end)
+          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
+            def call(context)
+              @app.call(context)
+            end
+          end)
         stub_const("RubyLLM::Agents::Pipeline::Middleware::Instrumentation",
-                   Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-                     def call(context)
-                       @app.call(context)
-                     end
-                   end)
+          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
+            def call(context)
+              @app.call(context)
+            end
+          end)
         stub_const("RubyLLM::Agents::Pipeline::Middleware::Reliability",
-                   Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-                     def call(context)
-                       @app.call(context)
-                     end
-                   end)
+          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
+            def call(context)
+              @app.call(context)
+            end
+          end)
 
         builder = described_class.for(fallback_only_agent)
 

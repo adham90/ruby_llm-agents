@@ -210,7 +210,7 @@ RSpec.describe RubyLLM::Agents::Speaker do
         end
 
         lexicon = base_speaker.lexicon_config
-        expect(lexicon.pronunciations).to eq({ "API" => "A P I", "SQL" => "sequel" })
+        expect(lexicon.pronunciations).to eq({"API" => "A P I", "SQL" => "sequel"})
       end
 
       it "applies pronunciations to text" do
@@ -223,7 +223,6 @@ RSpec.describe RubyLLM::Agents::Speaker do
         expect(result).to eq("The A P I is great")
       end
     end
-
   end
 
   describe "#call" do
@@ -629,7 +628,7 @@ RSpec.describe RubyLLM::Agents::Speaker do
     it "converts to hash" do
       lexicon.pronounce("API", "A P I")
 
-      expect(lexicon.to_h).to eq({ "API" => "A P I" })
+      expect(lexicon.to_h).to eq({"API" => "A P I"})
     end
   end
 end

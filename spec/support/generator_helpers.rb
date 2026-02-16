@@ -52,7 +52,7 @@ module GeneratorHelpers
           key, value = arg.sub("--", "").split("=", 2)
           key = key.tr("-", "_").to_sym
           # Try to convert numeric values
-          value = value.to_f if value =~ /\A\d+\.?\d*\z/
+          value = value.to_f if /\A\d+\.?\d*\z/.match?(value)
           options[key] = value
         else
           # Handle --foo as foo: true

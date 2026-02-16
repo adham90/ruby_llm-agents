@@ -35,13 +35,13 @@ module RubyLLM
 
         included do
           # Validations
-          validates :enforcement, inclusion: { in: ENFORCEMENT_MODES }, allow_nil: true
+          validates :enforcement, inclusion: {in: ENFORCEMENT_MODES}, allow_nil: true
           validates :daily_limit, :monthly_limit,
-                    numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+            numericality: {greater_than_or_equal_to: 0}, allow_nil: true
           validates :daily_token_limit, :monthly_token_limit,
-                    numericality: { greater_than_or_equal_to: 0, only_integer: true }, allow_nil: true
+            numericality: {greater_than_or_equal_to: 0, only_integer: true}, allow_nil: true
           validates :daily_execution_limit, :monthly_execution_limit,
-                    numericality: { greater_than_or_equal_to: 0, only_integer: true }, allow_nil: true
+            numericality: {greater_than_or_equal_to: 0, only_integer: true}, allow_nil: true
 
           # Scopes
           scope :with_budgets, -> { where.not(daily_limit: nil).or(where.not(monthly_limit: nil)) }
@@ -203,17 +203,23 @@ module RubyLLM
         def remaining_budget(type: :daily_cost)
           case type
           when :daily_cost
-            effective_daily_limit && (ensure_daily_reset!; effective_daily_limit - daily_cost_spent)
+            effective_daily_limit && (ensure_daily_reset!
+                                      effective_daily_limit - daily_cost_spent)
           when :monthly_cost
-            effective_monthly_limit && (ensure_monthly_reset!; effective_monthly_limit - monthly_cost_spent)
+            effective_monthly_limit && (ensure_monthly_reset!
+                                        effective_monthly_limit - monthly_cost_spent)
           when :daily_tokens
-            effective_daily_token_limit && (ensure_daily_reset!; effective_daily_token_limit - daily_tokens_used)
+            effective_daily_token_limit && (ensure_daily_reset!
+                                            effective_daily_token_limit - daily_tokens_used)
           when :monthly_tokens
-            effective_monthly_token_limit && (ensure_monthly_reset!; effective_monthly_token_limit - monthly_tokens_used)
+            effective_monthly_token_limit && (ensure_monthly_reset!
+                                              effective_monthly_token_limit - monthly_tokens_used)
           when :daily_executions
-            effective_daily_execution_limit && (ensure_daily_reset!; effective_daily_execution_limit - daily_executions_count)
+            effective_daily_execution_limit && (ensure_daily_reset!
+                                                effective_daily_execution_limit - daily_executions_count)
           when :monthly_executions
-            effective_monthly_execution_limit && (ensure_monthly_reset!; effective_monthly_execution_limit - monthly_executions_count)
+            effective_monthly_execution_limit && (ensure_monthly_reset!
+                                                  effective_monthly_execution_limit - monthly_executions_count)
           end
         end
 

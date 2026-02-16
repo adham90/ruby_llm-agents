@@ -194,19 +194,19 @@ module RubyLLM
 
         def default_tts_provider
           RubyLLM::Agents.configuration.default_tts_provider
-        rescue StandardError
+        rescue
           :openai
         end
 
         def default_tts_model
           RubyLLM::Agents.configuration.default_tts_model
-        rescue StandardError
+        rescue
           "tts-1"
         end
 
         def default_tts_voice
           RubyLLM::Agents.configuration.default_tts_voice
-        rescue StandardError
+        rescue
           "nova"
         end
       end
@@ -430,7 +430,7 @@ module RubyLLM
 
         RubyLLM.speak(text, **options.merge(stream: true)) do |chunk|
           audio_chunks << chunk.audio if chunk.respond_to?(:audio)
-          @streaming_block.call(chunk) if @streaming_block
+          @streaming_block&.call(chunk)
         end
 
         {
@@ -453,7 +453,7 @@ module RubyLLM
         }
 
         speed = resolved_speed
-        options[:speed] = speed if speed && speed != 1.0
+        options[:speed] = speed if speed && (speed - 1.0).abs > Float::EPSILON
         options[:response_format] = resolved_output_format.to_s
 
         if resolved_provider == :elevenlabs
@@ -498,17 +498,17 @@ module RubyLLM
         model_name = raw_result[:model].to_s
 
         price_per_1k_chars = case provider
-                            when :openai
-                              model_name.include?("hd") ? 0.030 : 0.015
-                            when :elevenlabs
-                              0.30
-                            when :google
-                              0.016
-                            when :polly
-                              0.016
-                            else
-                              0.015
-                            end
+        when :openai
+          model_name.include?("hd") ? 0.030 : 0.015
+        when :elevenlabs
+          0.30
+        when :google
+          0.016
+        when :polly
+          0.016
+        else
+          0.015
+        end
 
         (characters / 1000.0) * price_per_1k_chars
       end

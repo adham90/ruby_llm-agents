@@ -17,14 +17,14 @@ FactoryBot.define do
     output_cost { 0.006 }
     total_cost { 0.009 }
     tool_calls_count { 0 }
-    metadata { { query: "test query" } }
+    metadata { {query: "test query"} }
 
     # Create a detail record with default values after creation
     after(:create) do |execution|
       unless execution.detail.present?
         execution.create_detail!(
-          parameters: { query: "test query" },
-          response: { content: "test response" },
+          parameters: {query: "test query"},
+          response: {content: "test response"},
           tool_calls: [],
           cache_creation_tokens: 0
         )
@@ -82,12 +82,12 @@ FactoryBot.define do
           {
             "id" => "call_abc123",
             "name" => "search_database",
-            "arguments" => { "query" => "test" }
+            "arguments" => {"query" => "test"}
           },
           {
             "id" => "call_def456",
             "name" => "format_response",
-            "arguments" => { "format" => "json" }
+            "arguments" => {"format" => "json"}
           }
         ]
         execution.detail ? execution.detail.update!(tool_calls: tool_calls_data) :
@@ -100,11 +100,11 @@ FactoryBot.define do
       finish_reason { "tool_calls" }
       after(:create) do |execution|
         tool_calls_data = [
-          { "id" => "call_001", "name" => "tool_one", "arguments" => { "arg" => "value1" } },
-          { "id" => "call_002", "name" => "tool_two", "arguments" => { "arg" => "value2" } },
-          { "id" => "call_003", "name" => "tool_three", "arguments" => { "arg" => "value3" } },
-          { "id" => "call_004", "name" => "tool_four", "arguments" => { "arg" => "value4" } },
-          { "id" => "call_005", "name" => "tool_five", "arguments" => { "arg" => "value5" } }
+          {"id" => "call_001", "name" => "tool_one", "arguments" => {"arg" => "value1"}},
+          {"id" => "call_002", "name" => "tool_two", "arguments" => {"arg" => "value2"}},
+          {"id" => "call_003", "name" => "tool_three", "arguments" => {"arg" => "value3"}},
+          {"id" => "call_004", "name" => "tool_four", "arguments" => {"arg" => "value4"}},
+          {"id" => "call_005", "name" => "tool_five", "arguments" => {"arg" => "value5"}}
         ]
         execution.detail ? execution.detail.update!(tool_calls: tool_calls_data) :
           execution.create_detail!(tool_calls: tool_calls_data)
@@ -116,7 +116,7 @@ FactoryBot.define do
       finish_reason { "tool_calls" }
       after(:create) do |execution|
         tool_calls_data = [
-          { "id" => "call_single", "name" => "single_tool", "arguments" => { "key" => "value" } }
+          {"id" => "call_single", "name" => "single_tool", "arguments" => {"key" => "value"}}
         ]
         execution.detail ? execution.detail.update!(tool_calls: tool_calls_data) :
           execution.create_detail!(tool_calls: tool_calls_data)
@@ -128,7 +128,7 @@ FactoryBot.define do
       finish_reason { "tool_calls" }
       after(:create) do |execution|
         tool_calls_data = [
-          { "id" => "call_no_args", "name" => "tool_without_args", "arguments" => {} }
+          {"id" => "call_no_args", "name" => "tool_without_args", "arguments" => {}}
         ]
         execution.detail ? execution.detail.update!(tool_calls: tool_calls_data) :
           execution.create_detail!(tool_calls: tool_calls_data)
@@ -140,7 +140,7 @@ FactoryBot.define do
       finish_reason { "tool_calls" }
       after(:create) do |execution|
         tool_calls_data = [
-          { id: "call_sym_123", name: "symbol_tool", arguments: { key: "value" } }
+          {id: "call_sym_123", name: "symbol_tool", arguments: {key: "value"}}
         ]
         execution.detail ? execution.detail.update!(tool_calls: tool_calls_data) :
           execution.create_detail!(tool_calls: tool_calls_data)
@@ -155,7 +155,7 @@ FactoryBot.define do
           {
             "id" => "call_enhanced_1",
             "name" => "weather_lookup",
-            "arguments" => { "city" => "Paris" },
+            "arguments" => {"city" => "Paris"},
             "result" => "15°C, partly cloudy",
             "status" => "success",
             "error_message" => nil,
@@ -166,7 +166,7 @@ FactoryBot.define do
           {
             "id" => "call_enhanced_2",
             "name" => "database_query",
-            "arguments" => { "sql" => "SELECT * FROM users" },
+            "arguments" => {"sql" => "SELECT * FROM users"},
             "result" => "[{\"id\": 1, \"name\": \"Alice\"}]",
             "status" => "success",
             "error_message" => nil,
@@ -188,7 +188,7 @@ FactoryBot.define do
           {
             "id" => "call_error_1",
             "name" => "api_call",
-            "arguments" => { "endpoint" => "/users" },
+            "arguments" => {"endpoint" => "/users"},
             "result" => nil,
             "status" => "error",
             "error_message" => "ConnectionError: Failed to connect to API",
@@ -210,7 +210,7 @@ FactoryBot.define do
           {
             "id" => "call_legacy_1",
             "name" => "old_tool",
-            "arguments" => { "param" => "value" }
+            "arguments" => {"param" => "value"}
           }
         ]
         execution.detail ? execution.detail.update!(tool_calls: tool_calls_data) :
@@ -240,7 +240,7 @@ FactoryBot.define do
       input_cost { 0 }
       output_cost { 0 }
       total_cost { 0 }
-      metadata { { response_cache_key: "ruby_llm_agent/TestAgent/v1.0/#{SecureRandom.hex(8)}" } }
+      metadata { {response_cache_key: "ruby_llm_agent/TestAgent/v1.0/#{SecureRandom.hex(8)}"} }
     end
 
     trait :with_moderation do
@@ -248,8 +248,8 @@ FactoryBot.define do
       moderation_result do
         {
           "flagged" => false,
-          "categories" => { "hate" => false, "violence" => false },
-          "scores" => { "hate" => 0.001, "violence" => 0.002 }
+          "categories" => {"hate" => false, "violence" => false},
+          "scores" => {"hate" => 0.001, "violence" => 0.002}
         }
       end
     end
@@ -259,8 +259,8 @@ FactoryBot.define do
       moderation_result do
         {
           "flagged" => true,
-          "categories" => { "hate" => true, "violence" => false },
-          "scores" => { "hate" => 0.95, "violence" => 0.001 }
+          "categories" => {"hate" => true, "violence" => false},
+          "scores" => {"hate" => 0.95, "violence" => 0.001}
         }
       end
     end
@@ -288,7 +288,7 @@ FactoryBot.define do
     trait :image_generation do
       agent_type { "ImageGenerator" }
       model_id { "dall-e-3" }
-      metadata { { prompt: "A sunset over mountains", size: "1024x1024" } }
+      metadata { {prompt: "A sunset over mountains", size: "1024x1024"} }
     end
 
     trait :embedding do

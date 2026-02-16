@@ -288,12 +288,12 @@ RSpec.describe RubyLLM::Agents::Embedder do
 
         batches_processed = []
         embedder_with_small_batch.call(texts: ["A", "B", "C"]) do |batch_result, index|
-          batches_processed << { index: index, count: batch_result.count }
+          batches_processed << {index: index, count: batch_result.count}
         end
 
         expect(batches_processed).to eq([
-          { index: 0, count: 2 },
-          { index: 1, count: 1 }
+          {index: 0, count: 2},
+          {index: 1, count: 1}
         ])
       end
     end

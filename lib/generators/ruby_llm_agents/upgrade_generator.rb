@@ -164,13 +164,13 @@ module RubyLlmAgents
       return false unless ActiveRecord::Base.connection.table_exists?(table)
 
       ActiveRecord::Base.connection.column_exists?(table, column)
-    rescue StandardError
+    rescue
       false
     end
 
     def table_exists?(table)
       ActiveRecord::Base.connection.table_exists?(table)
-    rescue StandardError
+    rescue
       false
     end
   end

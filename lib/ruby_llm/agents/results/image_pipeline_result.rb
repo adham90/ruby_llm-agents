@@ -22,7 +22,7 @@ module RubyLLM
     #
     class ImagePipelineResult
       attr_reader :step_results, :started_at, :completed_at, :tenant_id,
-                  :pipeline_class, :context, :error_class, :error_message
+        :pipeline_class, :context, :error_class, :error_message
 
       # Initialize a new pipeline result
       #
@@ -35,7 +35,7 @@ module RubyLLM
       # @param error_class [String, nil] Error class name if failed
       # @param error_message [String, nil] Error message if failed
       def initialize(step_results:, started_at:, completed_at:, tenant_id:,
-                     pipeline_class:, context:, error_class: nil, error_message: nil)
+        pipeline_class:, context:, error_class: nil, error_message: nil)
         @step_results = step_results
         @started_at = started_at
         @completed_at = completed_at
@@ -100,7 +100,7 @@ module RubyLLM
         step_data&.dig(:result)
       end
 
-      alias [] step
+      alias_method :[], :step
 
       # Get step names
       #
@@ -378,7 +378,7 @@ module RubyLLM
         step_data&.dig(:cached_result)
       end
 
-      alias [] step
+      alias_method :[], :step
 
       def final_image
         # Find last non-analyzer step

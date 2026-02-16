@@ -37,25 +37,25 @@ module RubyLlmAgents
     # Maps old directory -> { category:, type: }
     DIRECTORY_MAPPING = {
       # Top-level under llm/
-      "agents" => { category: nil, type: "agents" },
-      "tools" => { category: nil, type: "tools" },
+      "agents" => {category: nil, type: "agents"},
+      "tools" => {category: nil, type: "tools"},
 
       # Audio group
-      "speakers" => { category: :audio, type: "speakers" },
-      "transcribers" => { category: :audio, type: "transcribers" },
+      "speakers" => {category: :audio, type: "speakers"},
+      "transcribers" => {category: :audio, type: "transcribers"},
 
       # Image group
-      "image_generators" => { category: :image, type: "generators" },
-      "image_editors" => { category: :image, type: "editors" },
-      "image_analyzers" => { category: :image, type: "analyzers" },
-      "image_transformers" => { category: :image, type: "transformers" },
-      "image_upscalers" => { category: :image, type: "upscalers" },
-      "image_variators" => { category: :image, type: "variators" },
-      "background_removers" => { category: :image, type: "background_removers" },
+      "image_generators" => {category: :image, type: "generators"},
+      "image_editors" => {category: :image, type: "editors"},
+      "image_analyzers" => {category: :image, type: "analyzers"},
+      "image_transformers" => {category: :image, type: "transformers"},
+      "image_upscalers" => {category: :image, type: "upscalers"},
+      "image_variators" => {category: :image, type: "variators"},
+      "background_removers" => {category: :image, type: "background_removers"},
 
       # Text group
-      "embedders" => { category: :text, type: "embedders" },
-      "moderators" => { category: :text, type: "moderators" }
+      "embedders" => {category: :text, type: "embedders"},
+      "moderators" => {category: :text, type: "moderators"}
     }.freeze
 
     def validate_root_directory

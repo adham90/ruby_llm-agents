@@ -185,7 +185,7 @@ RSpec.describe "Tenant auto-creation on agent execution" do
 
   describe "newly created organizations (after_create still works)" do
     it "creates Tenant record via after_create callback as before" do
-      org = AutoCreateTestOrg.create!(name: "New Corp", slug: "new-corp")
+      AutoCreateTestOrg.create!(name: "New Corp", slug: "new-corp")
 
       # after_create should have created the record
       tenant = RubyLLM::Agents::Tenant.find_by(tenant_id: "new-corp")
@@ -211,7 +211,7 @@ RSpec.describe "Tenant auto-creation on agent execution" do
     it "creates a minimal Tenant record for hash tenants" do
       expect(RubyLLM::Agents::Tenant.find_by(tenant_id: "hash-only-tenant")).to be_nil
 
-      AutoCreateTenantTestAgent.call(tenant: { id: "hash-only-tenant" })
+      AutoCreateTenantTestAgent.call(tenant: {id: "hash-only-tenant"})
 
       tenant = RubyLLM::Agents::Tenant.find_by(tenant_id: "hash-only-tenant")
       expect(tenant).to be_present
@@ -220,11 +220,11 @@ RSpec.describe "Tenant auto-creation on agent execution" do
 
     it "does not duplicate hash tenants on repeated calls" do
       expect {
-        AutoCreateTenantTestAgent.call(tenant: { id: "hash-repeat" })
+        AutoCreateTenantTestAgent.call(tenant: {id: "hash-repeat"})
       }.to change { RubyLLM::Agents::Tenant.where(tenant_id: "hash-repeat").count }.from(0).to(1)
 
       expect {
-        AutoCreateTenantTestAgent.call(tenant: { id: "hash-repeat" })
+        AutoCreateTenantTestAgent.call(tenant: {id: "hash-repeat"})
       }.not_to change { RubyLLM::Agents::Tenant.where(tenant_id: "hash-repeat").count }
     end
   end

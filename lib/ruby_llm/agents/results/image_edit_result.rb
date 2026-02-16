@@ -18,8 +18,8 @@ module RubyLLM
     #
     class ImageEditResult
       attr_reader :images, :source_image, :mask, :prompt, :model_id, :size,
-                  :started_at, :completed_at, :tenant_id, :editor_class,
-                  :error_class, :error_message
+        :started_at, :completed_at, :tenant_id, :editor_class,
+        :error_class, :error_message
 
       # Initialize a new result
       #
@@ -36,8 +36,8 @@ module RubyLLM
       # @param error_class [String, nil] Error class name if failed
       # @param error_message [String, nil] Error message if failed
       def initialize(images:, source_image:, mask:, prompt:, model_id:, size:,
-                     started_at:, completed_at:, tenant_id:, editor_class:,
-                     error_class: nil, error_message: nil)
+        started_at:, completed_at:, tenant_id:, editor_class:,
+        error_class: nil, error_message: nil)
         @images = images
         @source_image = source_image
         @mask = mask

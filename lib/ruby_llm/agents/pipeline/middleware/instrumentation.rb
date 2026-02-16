@@ -52,10 +52,10 @@ module RubyLLM
               begin
                 complete_execution(execution, context, status: "success")
                 status_update_completed = true
-              rescue StandardError
+              rescue
                 # Let ensure block handle via mark_execution_failed!
               end
-            rescue StandardError => e
+            rescue => e
               context.completed_at = Time.current
               context.error = e
               raised_exception = e
@@ -63,7 +63,7 @@ module RubyLLM
               begin
                 complete_execution(execution, context, status: determine_error_status(e))
                 status_update_completed = true
-              rescue StandardError
+              rescue
                 # Let ensure block handle via mark_execution_failed!
               end
 
@@ -100,7 +100,7 @@ module RubyLLM
             end
 
             execution
-          rescue StandardError => e
+          rescue => e
             error("Failed to create running execution record: #{e.message}")
             nil
           end
@@ -131,7 +131,7 @@ module RubyLLM
 
             # Save detail data (prompts, responses, tool calls, etc.)
             save_execution_details(execution, context, status)
-          rescue StandardError => e
+          rescue => e
             error("Failed to complete execution record: #{e.message}")
             raise # Re-raise for ensure block to handle via mark_execution_failed!
           end
@@ -160,16 +160,16 @@ module RubyLLM
 
             # Store error_message in detail table (best-effort)
             begin
-              detail_attrs = { error_message: error_message }
+              detail_attrs = {error_message: error_message}
               if execution.detail
                 execution.detail.update_columns(detail_attrs)
               else
                 RubyLLM::Agents::ExecutionDetail.create!(detail_attrs.merge(execution_id: execution.id))
               end
-            rescue StandardError
+            rescue
               # Non-critical
             end
-          rescue StandardError => e
+          rescue => e
             error("CRITICAL: Failed emergency status update for execution #{execution&.id}: #{e.message}")
           end
 
@@ -223,7 +223,11 @@ module RubyLLM
             }
 
             # Store niche cache key in metadata
-            merged_metadata = context.metadata.dup rescue {}
+            merged_metadata = begin
+              context.metadata.dup
+            rescue
+              {}
+            end
             if context.cached? && context[:cache_key]
               merged_metadata["response_cache_key"] = context[:cache_key]
             end
@@ -284,7 +288,7 @@ module RubyLLM
             else
               execution.create_detail!(detail_data)
             end
-          rescue StandardError => e
+          rescue => e
             error("Failed to save execution details: #{e.message}")
           end
 
@@ -304,7 +308,7 @@ module RubyLLM
             else
               create_execution_record(data)
             end
-          rescue StandardError => e
+          rescue => e
             error("Failed to record execution: #{e.message}")
           end
 
@@ -314,7 +318,11 @@ module RubyLLM
           # @param status [String] "success" or "error"
           # @return [Hash] Execution data
           def build_execution_data(context, status)
-            merged_metadata = context.metadata.dup rescue {}
+            merged_metadata = begin
+              context.metadata.dup
+            rescue
+              {}
+            end
             if context.cached? && context[:cache_key]
               merged_metadata["response_cache_key"] = context[:cache_key]
             end
@@ -355,7 +363,7 @@ module RubyLLM
             end
 
             # Store detail data for separate creation
-            detail_data = { parameters: sanitize_parameters(context) }
+            detail_data = {parameters: sanitize_parameters(context)}
             if global_config.persist_prompts
               exec_opts = context.options[:options] || {}
               detail_data[:system_prompt] = exec_opts[:system_prompt]
@@ -396,7 +404,11 @@ module RubyLLM
           def sanitize_parameters(context)
             return {} unless context.agent_instance.respond_to?(:options, true)
 
-            params = context.agent_instance.send(:options) rescue {}
+            params = begin
+              context.agent_instance.send(:options)
+            rescue
+              {}
+            end
             params = params.dup
             params.transform_keys!(&:to_s)
 
@@ -421,7 +433,7 @@ module RubyLLM
             return "" if message.nil?
 
             message.to_s.truncate(1000)
-          rescue StandardError
+          rescue
             message.to_s[0, 1000]
           end
 
@@ -436,7 +448,7 @@ module RubyLLM
             return nil if content.nil?
 
             # Build response hash similar to core instrumentation
-            response_data = { content: content }
+            response_data = {content: content}
 
             # Add model_id if available
             response_data[:model_id] = context.model_used if context.model_used
@@ -446,7 +458,7 @@ module RubyLLM
             response_data[:output_tokens] = context.output_tokens if context.output_tokens
 
             response_data
-          rescue StandardError => e
+          rescue => e
             error("Failed to serialize response: #{e.message}")
             nil
           end
@@ -464,7 +476,7 @@ module RubyLLM
           def create_execution_record(data)
             detail_data = data.delete(:_detail_data)
             execution = Execution.create!(data)
-            if detail_data && detail_data.values.any? { |v| v.present? && v != {} && v != [] }
+            if detail_data&.values&.any? { |v| v.present? && v != {} && v != [] }
               execution.create_detail!(detail_data)
             end
             execution
@@ -487,7 +499,7 @@ module RubyLLM
             else
               cfg.track_executions
             end
-          rescue StandardError
+          rescue
             false
           end
 
@@ -496,7 +508,7 @@ module RubyLLM
           # @return [Boolean]
           def track_cache_hits?
             global_config.respond_to?(:track_cache_hits) && global_config.track_cache_hits
-          rescue StandardError
+          rescue
             false
           end
 
@@ -505,7 +517,7 @@ module RubyLLM
           # @return [Boolean]
           def async_logging?
             global_config.async_logging && defined?(Infrastructure::ExecutionLoggerJob)
-          rescue StandardError
+          rescue
             false
           end
 
@@ -520,7 +532,7 @@ module RubyLLM
             @_assistant_prompt_column_exists = begin
               defined?(RubyLLM::Agents::ExecutionDetail) &&
                 RubyLLM::Agents::ExecutionDetail.column_names.include?("assistant_prompt")
-            rescue StandardError
+            rescue
               false
             end
           end

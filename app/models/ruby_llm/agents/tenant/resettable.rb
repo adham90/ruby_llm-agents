@@ -71,19 +71,19 @@ module RubyLLM
           last_exec = executions.order(created_at: :desc).pick(:created_at, :status)
 
           update_columns(
-            daily_cost_spent:        daily_stats[:cost],
-            daily_tokens_used:       daily_stats[:tokens],
-            daily_executions_count:  daily_stats[:count],
-            daily_error_count:       daily_stats[:errors],
-            daily_reset_date:        today,
+            daily_cost_spent: daily_stats[:cost],
+            daily_tokens_used: daily_stats[:tokens],
+            daily_executions_count: daily_stats[:count],
+            daily_error_count: daily_stats[:errors],
+            daily_reset_date: today,
 
-            monthly_cost_spent:       monthly_stats[:cost],
-            monthly_tokens_used:      monthly_stats[:tokens],
+            monthly_cost_spent: monthly_stats[:cost],
+            monthly_tokens_used: monthly_stats[:tokens],
             monthly_executions_count: monthly_stats[:count],
-            monthly_error_count:      monthly_stats[:errors],
-            monthly_reset_date:       bom,
+            monthly_error_count: monthly_stats[:errors],
+            monthly_reset_date: bom,
 
-            last_execution_at:     last_exec&.first,
+            last_execution_at: last_exec&.first,
             last_execution_status: last_exec&.last
           )
 
@@ -120,7 +120,7 @@ module RubyLLM
             Arel.sql("COALESCE(SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END), 0)")
           )
 
-          { cost: agg[0], tokens: agg[1], count: agg[2], errors: agg[3] }
+          {cost: agg[0], tokens: agg[1], count: agg[2], errors: agg[3]}
         end
       end
     end

@@ -209,6 +209,7 @@ RSpec.describe RubyLLM::Agents::DSL::Reliability do
 
       child_class = Class.new(test_class) do
         extend RubyLLM::Agents::DSL::Reliability
+
         retries max: 5
       end
       expect(child_class.retries_config[:max]).to eq(5)

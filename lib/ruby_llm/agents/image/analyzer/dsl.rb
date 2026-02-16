@@ -31,7 +31,7 @@ module RubyLLM
         def analysis_type(value = nil)
           if value
             unless VALID_ANALYSIS_TYPES.include?(value)
-              raise ArgumentError, "Analysis type must be one of: #{VALID_ANALYSIS_TYPES.join(', ')}"
+              raise ArgumentError, "Analysis type must be one of: #{VALID_ANALYSIS_TYPES.join(", ")}"
             end
             @analysis_type = value
           else

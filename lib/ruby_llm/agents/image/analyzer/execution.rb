@@ -46,7 +46,7 @@ module RubyLLM
           record_execution(result) if execution_tracking_enabled?
 
           result
-        rescue StandardError => e
+        rescue => e
           record_failed_execution(e, started_at) if execution_tracking_enabled?
           build_error_result(e, started_at)
         end
@@ -138,8 +138,8 @@ module RubyLLM
             caption: "Brief caption string",
             description: "Detailed description string (if applicable)",
             tags: ["array", "of", "tag", "strings"],
-            objects: [{ name: "object name", location: "position", confidence: "high/medium/low" }],
-            colors: [{ hex: "#RRGGBB", name: "color name", percentage: 25 }],
+            objects: [{name: "object name", location: "position", confidence: "high/medium/low"}],
+            colors: [{hex: "#RRGGBB", name: "color name", percentage: 25}],
             text: "Extracted text if any"
           }
 
@@ -154,7 +154,7 @@ module RubyLLM
 
           # Use RubyLLM chat with vision
           chat = RubyLLM.chat(model: model)
-          chat.ask(prompt, with: { image: image_content })
+          chat.ask(prompt, with: {image: image_content})
         end
 
         def prepare_image_content

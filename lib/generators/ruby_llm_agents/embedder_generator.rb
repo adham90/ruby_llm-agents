@@ -17,13 +17,13 @@ module RubyLlmAgents
     source_root File.expand_path("templates", __dir__)
 
     class_option :model, type: :string, default: "text-embedding-3-small",
-                 desc: "The embedding model to use"
+      desc: "The embedding model to use"
     class_option :dimensions, type: :numeric, default: nil,
-                 desc: "Vector dimensions (nil for model default)"
+      desc: "Vector dimensions (nil for model default)"
     class_option :batch_size, type: :numeric, default: 100,
-                 desc: "Texts per API call for batch processing"
+      desc: "Texts per API call for batch processing"
     class_option :cache, type: :string, default: nil,
-                 desc: "Cache TTL (e.g., '1.week', '1.day')"
+      desc: "Cache TTL (e.g., '1.week', '1.day')"
 
     def ensure_base_class_and_skill_file
       embedders_dir = "app/agents/embedders"

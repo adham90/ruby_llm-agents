@@ -5,8 +5,8 @@ require "rails_helper"
 RSpec.describe RubyLLM::Agents::Result do
   describe "#initialize" do
     it "sets content" do
-      result = described_class.new(content: { key: "value" })
-      expect(result.content).to eq({ key: "value" })
+      result = described_class.new(content: {key: "value"})
+      expect(result.content).to eq({key: "value"})
     end
 
     it "sets token usage" do
@@ -91,7 +91,7 @@ RSpec.describe RubyLLM::Agents::Result do
     end
 
     it "sets reliability info" do
-      attempts = [{ model_id: "gpt-4o", duration_ms: 500 }]
+      attempts = [{model_id: "gpt-4o", duration_ms: 500}]
       result = described_class.new(
         content: "test",
         attempts: attempts,
@@ -129,8 +129,8 @@ RSpec.describe RubyLLM::Agents::Result do
 
     it "sets tool calls" do
       tool_calls = [
-        { "id" => "call_abc", "name" => "search", "arguments" => { "query" => "test" } },
-        { "id" => "call_def", "name" => "calculate", "arguments" => { "x" => 10 } }
+        {"id" => "call_abc", "name" => "search", "arguments" => {"query" => "test"}},
+        {"id" => "call_def", "name" => "calculate", "arguments" => {"x" => 10}}
       ]
       result = described_class.new(
         content: "test",
@@ -287,10 +287,10 @@ RSpec.describe RubyLLM::Agents::Result do
 
   describe "#to_h" do
     it "returns all attributes as a hash" do
-      tool_calls = [{ "id" => "call_abc", "name" => "search", "arguments" => {} }]
+      tool_calls = [{"id" => "call_abc", "name" => "search", "arguments" => {}}]
 
       result = described_class.new(
-        content: { key: "value" },
+        content: {key: "value"},
         input_tokens: 100,
         output_tokens: 50,
         model_id: "gpt-4o",
@@ -301,7 +301,7 @@ RSpec.describe RubyLLM::Agents::Result do
 
       hash = result.to_h
 
-      expect(hash[:content]).to eq({ key: "value" })
+      expect(hash[:content]).to eq({key: "value"})
       expect(hash[:input_tokens]).to eq(100)
       expect(hash[:output_tokens]).to eq(50)
       expect(hash[:total_tokens]).to eq(150)
@@ -315,7 +315,7 @@ RSpec.describe RubyLLM::Agents::Result do
   describe "backward compatibility delegations" do
     let(:result) do
       described_class.new(
-        content: { key: "value", nested: { deep: "data" } }
+        content: {key: "value", nested: {deep: "data"}}
       )
     end
 
@@ -332,13 +332,13 @@ RSpec.describe RubyLLM::Agents::Result do
     end
 
     it "delegates values to content" do
-      expect(result.values).to eq(["value", { deep: "data" }])
+      expect(result.values).to eq(["value", {deep: "data"}])
     end
 
     it "delegates each to content" do
       pairs = []
       result.each { |k, v| pairs << [k, v] }
-      expect(pairs).to eq([[:key, "value"], [:nested, { deep: "data" }]])
+      expect(pairs).to eq([[:key, "value"], [:nested, {deep: "data"}]])
     end
 
     it "delegates map to content" do
@@ -354,7 +354,7 @@ RSpec.describe RubyLLM::Agents::Result do
 
   describe "#to_json" do
     it "returns content as JSON" do
-      result = described_class.new(content: { key: "value" })
+      result = described_class.new(content: {key: "value"})
       expect(result.to_json).to eq('{"key":"value"}')
     end
   end

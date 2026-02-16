@@ -16,8 +16,8 @@ module RubyLLM
     #
     class ImageUpscaleResult
       attr_reader :image, :source_image, :model_id, :scale, :output_size, :face_enhance,
-                  :started_at, :completed_at, :tenant_id, :upscaler_class,
-                  :error_class, :error_message
+        :started_at, :completed_at, :tenant_id, :upscaler_class,
+        :error_class, :error_message
 
       # Initialize a new result
       #
@@ -34,8 +34,8 @@ module RubyLLM
       # @param error_class [String, nil] Error class name if failed
       # @param error_message [String, nil] Error message if failed
       def initialize(image:, source_image:, model_id:, scale:, output_size:, face_enhance:,
-                     started_at:, completed_at:, tenant_id:, upscaler_class:,
-                     error_class: nil, error_message: nil)
+        started_at:, completed_at:, tenant_id:, upscaler_class:,
+        error_class: nil, error_message: nil)
         @image = image
         @source_image = source_image
         @model_id = model_id
@@ -198,7 +198,7 @@ module RubyLLM
     # Lightweight result for cached upscales
     class CachedImageUpscaleResult
       attr_reader :url, :data, :mime_type, :model_id, :scale, :output_size,
-                  :total_cost, :cached_at
+        :total_cost, :cached_at
 
       def initialize(data)
         @url = data[:url]

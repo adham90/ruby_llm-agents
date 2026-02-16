@@ -152,5 +152,4 @@ RSpec.describe RubyLlmAgents::AgentGenerator, type: :generator do
       expect(content).to include("class SearchIntentAgent < ApplicationAgent")
     end
   end
-
 end

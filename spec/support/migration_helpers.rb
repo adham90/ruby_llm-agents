@@ -109,7 +109,7 @@ module MigrationHelpers
 
     # Clear schema_migrations if it exists
     connection.execute("DELETE FROM schema_migrations") if connection.table_exists?("schema_migrations")
-  rescue StandardError
+  rescue
     # Ignore errors during cleanup
   end
 

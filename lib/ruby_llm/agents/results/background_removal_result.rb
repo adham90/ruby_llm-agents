@@ -16,9 +16,9 @@ module RubyLLM
     #
     class BackgroundRemovalResult
       attr_reader :foreground, :mask, :source_image, :model_id, :output_format,
-                  :alpha_matting, :refine_edges,
-                  :started_at, :completed_at, :tenant_id, :remover_class,
-                  :error_class, :error_message
+        :alpha_matting, :refine_edges,
+        :started_at, :completed_at, :tenant_id, :remover_class,
+        :error_class, :error_message
 
       # Initialize a new result
       #
@@ -36,8 +36,8 @@ module RubyLLM
       # @param error_class [String, nil] Error class name if failed
       # @param error_message [String, nil] Error message if failed
       def initialize(foreground:, mask:, source_image:, model_id:, output_format:,
-                     alpha_matting:, refine_edges:, started_at:, completed_at:,
-                     tenant_id:, remover_class:, error_class: nil, error_message: nil)
+        alpha_matting:, refine_edges:, started_at:, completed_at:,
+        tenant_id:, remover_class:, error_class: nil, error_message: nil)
         @foreground = foreground
         @mask = mask
         @source_image = source_image
@@ -224,7 +224,7 @@ module RubyLLM
     # Lightweight result for cached removals
     class CachedBackgroundRemovalResult
       attr_reader :url, :data, :mask_url, :mask_data, :mime_type, :model_id,
-                  :output_format, :total_cost, :cached_at
+        :output_format, :total_cost, :cached_at
 
       def initialize(data)
         @url = data[:url]

@@ -53,7 +53,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Tenant do
 
     context "with hash tenant" do
       it "extracts tenant_id from hash" do
-        context = build_context(tenant: { id: "org_123" })
+        context = build_context(tenant: {id: "org_123"})
         allow(app).to receive(:call).with(context).and_return(context)
 
         result = middleware.call(context)
@@ -64,7 +64,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Tenant do
 
       it "extracts tenant_object from hash with :object key" do
         mock_tenant = Object.new
-        context = build_context(tenant: { id: "org_123", object: mock_tenant })
+        context = build_context(tenant: {id: "org_123", object: mock_tenant})
         allow(app).to receive(:call).with(context).and_return(context)
 
         result = middleware.call(context)
@@ -75,18 +75,18 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Tenant do
 
       it "extracts additional config from hash excluding :id and :object" do
         mock_tenant = Object.new
-        context = build_context(tenant: { id: "org_123", object: mock_tenant, budget_limit: 100.0 })
+        context = build_context(tenant: {id: "org_123", object: mock_tenant, budget_limit: 100.0})
         allow(app).to receive(:call).with(context).and_return(context)
 
         result = middleware.call(context)
 
         expect(result.tenant_id).to eq("org_123")
         expect(result.tenant_object).to eq(mock_tenant)
-        expect(result.tenant_config).to eq({ budget_limit: 100.0 })
+        expect(result.tenant_config).to eq({budget_limit: 100.0})
       end
 
       it "converts numeric id to string" do
-        context = build_context(tenant: { id: 123 })
+        context = build_context(tenant: {id: 123})
         allow(app).to receive(:call).with(context).and_return(context)
 
         result = middleware.call(context)
@@ -103,7 +103,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Tenant do
           end
 
           def llm_config
-            { model_override: "gpt-4" }
+            {model_override: "gpt-4"}
           end
         end.new
       end
@@ -124,7 +124,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Tenant do
 
         result = middleware.call(context)
 
-        expect(result.tenant_config).to eq({ model_override: "gpt-4" })
+        expect(result.tenant_config).to eq({model_override: "gpt-4"})
       end
 
       it "handles objects without llm_config" do
@@ -177,7 +177,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Tenant do
           end
 
           def llm_api_keys
-            { openai: "sk-tenant-object-key" }
+            {openai: "sk-tenant-object-key"}
           end
         end.new
       end

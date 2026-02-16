@@ -294,7 +294,7 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
         end
 
         def resolved_messages
-          [{ role: :user, content: "Hello" }]
+          [{role: :user, content: "Hello"}]
         end
 
         # Expose private methods for testing
@@ -543,7 +543,7 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       end
 
       it "extracts thinking data from hash" do
-        thinking = { text: "Thinking...", signature: "sig456", tokens: 75 }
+        thinking = {text: "Thinking...", signature: "sig456", tokens: 75}
         mock_response = double("Response", thinking: thinking)
         allow(mock_response).to receive(:respond_to?).with(:thinking).and_return(true)
 
@@ -566,7 +566,11 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
 
       it "returns 'rate_limit' for rate limit errors" do
         attempt = tracker.start_attempt("gpt-4")
-        error = Class.new(StandardError) { def self.name; "RateLimitError"; end }.new("Rate limited")
+        error = Class.new(StandardError) {
+          def self.name
+            "RateLimitError"
+          end
+        }.new("Rate limited")
         tracker.complete_attempt(attempt, success: false, error: error)
 
         result = test_instance.test_determine_fallback_reason(tracker)
@@ -586,7 +590,11 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
 
       it "returns 'safety' for content filter errors" do
         attempt = tracker.start_attempt("gpt-4")
-        error = Class.new(StandardError) { def self.name; "ContentFilterError"; end }.new("Blocked")
+        error = Class.new(StandardError) {
+          def self.name
+            "ContentFilterError"
+          end
+        }.new("Blocked")
         tracker.complete_attempt(attempt, success: false, error: error)
 
         result = test_instance.test_determine_fallback_reason(tracker)
@@ -596,7 +604,11 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
 
       it "returns 'price_limit' for budget exceeded errors" do
         attempt = tracker.start_attempt("gpt-4")
-        error = Class.new(StandardError) { def self.name; "BudgetExceededError"; end }.new("Over budget")
+        error = Class.new(StandardError) {
+          def self.name
+            "BudgetExceededError"
+          end
+        }.new("Over budget")
         tracker.complete_attempt(attempt, success: false, error: error)
 
         result = test_instance.test_determine_fallback_reason(tracker)
@@ -630,21 +642,33 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       end
 
       it "returns true for connection errors" do
-        error = Class.new(StandardError) { def self.name; "ConnectionError"; end }.new("Connection failed")
+        error = Class.new(StandardError) {
+          def self.name
+            "ConnectionError"
+          end
+        }.new("Connection failed")
         result = test_instance.test_retryable_error?(error)
 
         expect(result).to be true
       end
 
       it "returns true for rate limit errors" do
-        error = Class.new(StandardError) { def self.name; "RateLimitError"; end }.new("Rate limited")
+        error = Class.new(StandardError) {
+          def self.name
+            "RateLimitError"
+          end
+        }.new("Rate limited")
         result = test_instance.test_retryable_error?(error)
 
         expect(result).to be true
       end
 
       it "returns true for service unavailable errors" do
-        error = Class.new(StandardError) { def self.name; "ServiceUnavailableError"; end }.new("Unavailable")
+        error = Class.new(StandardError) {
+          def self.name
+            "ServiceUnavailableError"
+          end
+        }.new("Unavailable")
         result = test_instance.test_retryable_error?(error)
 
         expect(result).to be true
@@ -666,14 +690,22 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       end
 
       it "returns true for RateLimitError class" do
-        error = Class.new(StandardError) { def self.name; "RateLimitError"; end }.new("Rate limited")
+        error = Class.new(StandardError) {
+          def self.name
+            "RateLimitError"
+          end
+        }.new("Rate limited")
         result = test_instance.test_rate_limit_error?(error)
 
         expect(result).to be true
       end
 
       it "returns true for TooManyRequests class" do
-        error = Class.new(StandardError) { def self.name; "TooManyRequestsError"; end }.new("Too many requests")
+        error = Class.new(StandardError) {
+          def self.name
+            "TooManyRequestsError"
+          end
+        }.new("Too many requests")
         result = test_instance.test_rate_limit_error?(error)
 
         expect(result).to be true
@@ -714,7 +746,7 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       it "returns first message when only one" do
         instance = test_class.new
         allow(instance).to receive(:resolved_messages).and_return([
-          { role: :user, content: "Hello" }
+          {role: :user, content: "Hello"}
         ])
 
         result = instance.test_messages_summary
@@ -727,9 +759,9 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       it "returns first and last when multiple messages" do
         instance = test_class.new
         allow(instance).to receive(:resolved_messages).and_return([
-          { role: :user, content: "Hello" },
-          { role: :assistant, content: "Hi there" },
-          { role: :user, content: "How are you?" }
+          {role: :user, content: "Hello"},
+          {role: :assistant, content: "Hi there"},
+          {role: :user, content: "How are you?"}
         ])
 
         result = instance.test_messages_summary
@@ -744,7 +776,7 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
         instance = test_class.new
         long_content = "x" * 1000
         allow(instance).to receive(:resolved_messages).and_return([
-          { role: :user, content: long_content }
+          {role: :user, content: long_content}
         ])
 
         result = instance.test_messages_summary
@@ -755,7 +787,7 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
 
     describe "#sanitized_parameters" do
       it "excludes skip_cache and dry_run" do
-        test_instance.options = { query: "test", skip_cache: true, dry_run: true }
+        test_instance.options = {query: "test", skip_cache: true, dry_run: true}
         result = test_instance.test_sanitized_parameters
 
         expect(result).not_to have_key(:skip_cache)
@@ -884,7 +916,11 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
         mock_resp = double("Response", input_tokens: 100, output_tokens: 50, cached_tokens: 0, cache_creation_tokens: 0, model_id: "gpt-4")
         tracker.complete_attempt(attempt, success: true, response: mock_resp)
 
-        error = Class.new(StandardError) { def self.name; "RateLimitError"; end }.new("Rate limited")
+        error = Class.new(StandardError) {
+          def self.name
+            "RateLimitError"
+          end
+        }.new("Rate limited")
         result = test_instance.test_extract_routing_data(tracker, error)
 
         expect(result[:retryable]).to be true
@@ -926,9 +962,9 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       it "serializes tool calls with to_h method" do
         tool_call = double("ToolCall")
         allow(tool_call).to receive(:respond_to?).with(:to_h).and_return(true)
-        allow(tool_call).to receive(:to_h).and_return({ id: "call_1", name: "calculator", arguments: { x: 1, y: 2 } })
+        allow(tool_call).to receive(:to_h).and_return({id: "call_1", name: "calculator", arguments: {x: 1, y: 2}})
 
-        mock_response = double("Response", tool_calls: { "call_1" => tool_call })
+        mock_response = double("Response", tool_calls: {"call_1" => tool_call})
         allow(mock_response).to receive(:respond_to?).with(:tool_calls).and_return(true)
 
         result = test_instance.test_serialize_tool_calls(mock_response)
@@ -941,9 +977,9 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
         tool_call = double("ToolCall")
         allow(tool_call).to receive(:respond_to?).with(:to_h).and_return(false)
         allow(tool_call).to receive(:[]).with(:name).and_return("search")
-        allow(tool_call).to receive(:[]).with(:arguments).and_return({ query: "test" })
+        allow(tool_call).to receive(:[]).with(:arguments).and_return({query: "test"})
 
-        mock_response = double("Response", tool_calls: { "call_2" => tool_call })
+        mock_response = double("Response", tool_calls: {"call_2" => tool_call})
         allow(mock_response).to receive(:respond_to?).with(:tool_calls).and_return(true)
 
         result = test_instance.test_serialize_tool_calls(mock_response)
@@ -977,7 +1013,7 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
 
       it "includes tool_calls from accumulated_tool_calls" do
         test_instance.accumulated_tool_calls = [
-          { id: "call_1", name: "search", arguments: {} }
+          {id: "call_1", name: "search", arguments: {}}
         ]
         mock_response = double("Response",
           content: "Done",
@@ -1024,7 +1060,7 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
 
       it "creates execution record with cache_hit: true" do
         expect {
-          test_instance.test_record_cache_hit_execution("cache_key_123", { result: "cached" }, 1.second.ago)
+          test_instance.test_record_cache_hit_execution("cache_key_123", {result: "cached"}, 1.second.ago)
         }.to change(RubyLLM::Agents::Execution, :count).by(1)
 
         execution = RubyLLM::Agents::Execution.last
@@ -1034,7 +1070,7 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       end
 
       it "sets token counts to zero" do
-        test_instance.test_record_cache_hit_execution("cache_key_123", { result: "cached" }, 1.second.ago)
+        test_instance.test_record_cache_hit_execution("cache_key_123", {result: "cached"}, 1.second.ago)
 
         execution = RubyLLM::Agents::Execution.last
         expect(execution.input_tokens).to eq(0)
@@ -1043,7 +1079,7 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       end
 
       it "records the cache key" do
-        test_instance.test_record_cache_hit_execution("my_cache_key", { result: "cached" }, 1.second.ago)
+        test_instance.test_record_cache_hit_execution("my_cache_key", {result: "cached"}, 1.second.ago)
 
         execution = RubyLLM::Agents::Execution.last
         expect(execution.response_cache_key).to eq("my_cache_key")
@@ -1051,7 +1087,7 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
 
       it "calculates duration_ms correctly" do
         started_at = 0.1.seconds.ago
-        test_instance.test_record_cache_hit_execution("cache_key", { result: "cached" }, started_at)
+        test_instance.test_record_cache_hit_execution("cache_key", {result: "cached"}, started_at)
 
         execution = RubyLLM::Agents::Execution.last
         expect(execution.duration_ms).to be >= 100
@@ -1065,14 +1101,14 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
 
         expect(RubyLLM::Agents::ExecutionLoggerJob).to receive(:perform_later).with(hash_including(cache_hit: true))
 
-        test_instance.test_record_cache_hit_execution("cache_key", { result: "cached" }, 1.second.ago)
+        test_instance.test_record_cache_hit_execution("cache_key", {result: "cached"}, 1.second.ago)
       end
 
       it "handles errors gracefully" do
         allow(RubyLLM::Agents::Execution).to receive(:create!).and_raise(StandardError.new("DB error"))
 
         expect {
-          test_instance.test_record_cache_hit_execution("cache_key", { result: "cached" }, 1.second.ago)
+          test_instance.test_record_cache_hit_execution("cache_key", {result: "cached"}, 1.second.ago)
         }.not_to raise_error
       end
     end
@@ -1119,7 +1155,7 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
         end
 
         def resolved_messages
-          [{ role: :user, content: "Hello" }]
+          [{role: :user, content: "Hello"}]
         end
 
         # Expose private methods for testing
@@ -1240,7 +1276,7 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
         after do
           RubyLLM::Agents.configure do |config|
             config.multi_tenancy_enabled = false
-            config.tenant_resolver = -> { nil }
+            config.tenant_resolver = -> {}
           end
         end
 

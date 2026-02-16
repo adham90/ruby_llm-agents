@@ -17,7 +17,7 @@ module RubyLLM
       include Sortable
 
       CSV_COLUMNS = %w[id agent_type status model_id total_tokens total_cost
-                       duration_ms created_at error_class error_message].freeze
+        duration_ms created_at error_class error_message].freeze
 
       # Lists all executions with filtering and pagination
       #
@@ -55,7 +55,7 @@ module RubyLLM
             render turbo_stream: turbo_stream.replace(
               "executions_list",
               partial: "ruby_llm/agents/executions/list",
-              locals: { executions: @executions, pagination: @pagination, filter_stats: @filter_stats }
+              locals: {executions: @executions, pagination: @pagination, filter_stats: @filter_stats}
             )
           end
         end
@@ -92,8 +92,8 @@ module RubyLLM
       # @return [String] CSV row string
       def generate_csv_row(execution)
         redacted_error_message = if execution.error_message.present?
-                                   Redactor.redact_string(execution.error_message)
-                                 end
+          Redactor.redact_string(execution.error_message)
+        end
 
         CSV.generate_line([
           execution.id,
@@ -207,9 +207,7 @@ module RubyLLM
         scope = scope.where(parent_execution_id: nil)
 
         # Eager load children for grouping
-        scope = scope.includes(:child_executions)
-
-        scope
+        scope.includes(:child_executions)
       end
     end
   end

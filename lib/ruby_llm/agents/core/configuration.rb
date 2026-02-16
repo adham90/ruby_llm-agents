@@ -390,79 +390,80 @@ module RubyLLM
         end
       end
 
+      # Attributes with custom setters (validation) — only readers here
+      attr_reader :default_embedding_dimensions, :default_embedding_batch_size
+
       # Attributes without validation (simple accessors)
       attr_accessor :default_model,
-                    :async_logging,
-                    :async_max_concurrency,
-                    :retention_period,
-                    :dashboard_parent_controller,
-                    :basic_auth_username,
-                    :basic_auth_password,
-                    :default_fallback_models,
-                    :default_total_timeout,
-                    :default_streaming,
-                    :default_tools,
-                    :default_thinking,
-                    :on_alert,
-                    :persist_prompts,
-                    :persist_responses,
-                    :multi_tenancy_enabled,
-                    :persist_messages_summary,
-                    :default_retryable_patterns,
-                    :default_embedding_model,
-                    :default_embedding_dimensions,
-                    :default_embedding_batch_size,
-                    :track_embeddings,
-                    :default_transcription_model,
-                    :track_transcriptions,
-                    :default_tts_provider,
-                    :default_tts_model,
-                    :default_tts_voice,
-                    :track_speech,
-                    :track_executions,
-                    :track_audio,
-                    :track_cache_hits,
-                    :default_image_model,
-                    :default_image_size,
-                    :default_image_quality,
-                    :default_image_style,
-                    :max_image_prompt_length,
-                    :track_image_generation,
-                    :image_model_aliases,
-                    :litellm_pricing_url,
-                    :litellm_pricing_cache_ttl,
-                    :default_image_cost,
-                    :image_model_pricing,
-                    :default_variator_model,
-                    :default_editor_model,
-                    :default_transformer_model,
-                    :default_upscaler_model,
-                    :default_variation_strength,
-                    :default_transform_strength,
-                    :default_analyzer_model,
-                    :default_analysis_type,
-                    :default_analyzer_max_tags,
-                    :default_background_remover_model,
-                    :default_background_output_format,
-                    :root_directory,
-                    :root_namespace,
-                    :tool_result_max_length,
-                    :redaction
+        :async_logging,
+        :async_max_concurrency,
+        :retention_period,
+        :dashboard_parent_controller,
+        :basic_auth_username,
+        :basic_auth_password,
+        :default_fallback_models,
+        :default_total_timeout,
+        :default_streaming,
+        :default_tools,
+        :default_thinking,
+        :on_alert,
+        :persist_prompts,
+        :persist_responses,
+        :multi_tenancy_enabled,
+        :persist_messages_summary,
+        :default_retryable_patterns,
+        :default_embedding_model,
+        :track_embeddings,
+        :default_transcription_model,
+        :track_transcriptions,
+        :default_tts_provider,
+        :default_tts_model,
+        :default_tts_voice,
+        :track_speech,
+        :track_executions,
+        :track_audio,
+        :track_cache_hits,
+        :default_image_model,
+        :default_image_size,
+        :default_image_quality,
+        :default_image_style,
+        :max_image_prompt_length,
+        :track_image_generation,
+        :image_model_aliases,
+        :litellm_pricing_url,
+        :litellm_pricing_cache_ttl,
+        :default_image_cost,
+        :image_model_pricing,
+        :default_variator_model,
+        :default_editor_model,
+        :default_transformer_model,
+        :default_upscaler_model,
+        :default_variation_strength,
+        :default_transform_strength,
+        :default_analyzer_model,
+        :default_analysis_type,
+        :default_analyzer_max_tags,
+        :default_background_remover_model,
+        :default_background_output_format,
+        :root_directory,
+        :root_namespace,
+        :tool_result_max_length,
+        :redaction
 
       # Attributes with validation (readers only, custom setters below)
       attr_reader :default_temperature,
-                  :default_timeout,
-                  :anomaly_cost_threshold,
-                  :anomaly_duration_threshold,
-                  :per_page,
-                  :recent_executions_limit,
-                  :job_retry_attempts,
-                  :messages_summary_max_length,
-                  :dashboard_auth,
-                  :tenant_resolver,
-                  :tenant_config_resolver,
-                  :default_retries,
-                  :budgets
+        :default_timeout,
+        :anomaly_cost_threshold,
+        :anomaly_duration_threshold,
+        :per_page,
+        :recent_executions_limit,
+        :job_retry_attempts,
+        :messages_summary_max_length,
+        :dashboard_auth,
+        :tenant_resolver,
+        :tenant_config_resolver,
+        :default_retries,
+        :budgets
 
       attr_writer :cache_store
 
@@ -597,7 +598,7 @@ module RubyLLM
       # @param value [Integer, nil] Dimensions (must be nil or > 0)
       # @raise [ArgumentError] If value is not nil or positive
       def default_embedding_dimensions=(value)
-        unless value.nil? || (value.is_a?(Numeric) && value > 0)
+        if !value.nil? && !(value.is_a?(Numeric) && value > 0)
           raise ArgumentError, "default_embedding_dimensions must be nil or greater than 0"
         end
 
@@ -627,13 +628,13 @@ module RubyLLM
         @job_retry_attempts = 3
 
         # Reliability defaults (all disabled by default for backward compatibility)
-        @default_retries = { max: 0, backoff: :exponential, base: 0.4, max_delay: 3.0, on: [] }
+        @default_retries = {max: 0, backoff: :exponential, base: 0.4, max_delay: 3.0, on: []}
         @default_fallback_models = []
         @default_total_timeout = nil
         @default_retryable_patterns = {
           rate_limiting: ["rate limit", "rate_limit", "too many requests", "429", "quota"],
           server_errors: ["500", "502", "503", "504", "service unavailable",
-                         "internal server error", "bad gateway", "gateway timeout"],
+            "internal server error", "bad gateway", "gateway timeout"],
           capacity: ["overloaded", "capacity"]
         }
 
@@ -650,7 +651,7 @@ module RubyLLM
 
         # Multi-tenancy defaults (disabled for backward compatibility)
         @multi_tenancy_enabled = false
-        @tenant_resolver = -> { nil }
+        @tenant_resolver = -> {}
         @tenant_config_resolver = nil
 
         # Messages summary defaults
@@ -783,7 +784,7 @@ module RubyLLM
         return false unless async_available?
 
         defined?(::Async::Task) && ::Async::Task.current?
-      rescue StandardError
+      rescue
         false
       end
 

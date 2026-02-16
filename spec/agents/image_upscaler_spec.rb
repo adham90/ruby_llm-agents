@@ -130,7 +130,7 @@ RSpec.describe RubyLLM::Agents::ImageUpscaler do
       upscaler = described_class.new(image: "photo.jpg", scale: 8, face_enhance: true)
 
       expect(upscaler.image).to eq("photo.jpg")
-      expect(upscaler.options).to eq({ scale: 8, face_enhance: true })
+      expect(upscaler.options).to eq({scale: 8, face_enhance: true})
     end
   end
 

@@ -319,7 +319,7 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
     end
 
     it "sets thinking configuration" do
-      expect(agent_class.thinking_config).to eq({ effort: :high, budget: 10000 })
+      expect(agent_class.thinking_config).to eq({effort: :high, budget: 10000})
     end
   end
 
@@ -339,7 +339,7 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
     end
 
     it "builds context with tenant when provided as hash" do
-      agent = agent_class.new(query: "test", tenant: { id: "org_123" })
+      agent = agent_class.new(query: "test", tenant: {id: "org_123"})
       context = agent.send(:build_context)
 
       expect(context.agent_class).to eq(agent_class)
@@ -427,7 +427,7 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
     describe "#start_tracking_tool_call" do
       it "captures tool call data with timestamp" do
         agent = agent_class.new
-        tool_call = double("ToolCall", id: "call_123", name: "weather_lookup", arguments: { city: "Paris" })
+        tool_call = double("ToolCall", id: "call_123", name: "weather_lookup", arguments: {city: "Paris"})
 
         freeze_time = Time.parse("2025-01-27T10:30:45.123Z")
         allow(Time).to receive(:current).and_return(freeze_time)
@@ -437,13 +437,13 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
         pending_call = agent.instance_variable_get(:@pending_tool_call)
         expect(pending_call[:id]).to eq("call_123")
         expect(pending_call[:name]).to eq("weather_lookup")
-        expect(pending_call[:arguments]).to eq({ city: "Paris" })
+        expect(pending_call[:arguments]).to eq({city: "Paris"})
         expect(pending_call[:called_at]).to eq("2025-01-27T10:30:45.123Z")
       end
 
       it "handles hash-style tool calls" do
         agent = agent_class.new
-        tool_call = { id: "call_123", name: "search", arguments: { q: "test" } }
+        tool_call = {id: "call_123", name: "search", arguments: {q: "test"}}
 
         agent.send(:start_tracking_tool_call, tool_call)
 
@@ -463,7 +463,7 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
         agent.instance_variable_set(:@pending_tool_call, {
           id: "call_123",
           name: "weather",
-          arguments: { city: "Paris" },
+          arguments: {city: "Paris"},
           called_at: start_time.iso8601(3),
           started_at: start_time
         })
@@ -532,7 +532,7 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
 
       it "converts non-string results to JSON" do
         agent = agent_class.new
-        result = { key: "value", count: 42 }
+        result = {key: "value", count: 42}
         truncated = agent.send(:truncate_tool_result, result)
         expect(truncated).to include("key")
         expect(truncated).to include("value")
@@ -551,7 +551,7 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
 
       it "extracts content from hash" do
         agent = agent_class.new
-        data = agent.send(:extract_tool_result, { content: "hash result" })
+        data = agent.send(:extract_tool_result, {content: "hash result"})
 
         expect(data[:content]).to eq("hash result")
         expect(data[:status]).to eq("success")
@@ -559,7 +559,7 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
 
       it "detects error in hash" do
         agent = agent_class.new
-        data = agent.send(:extract_tool_result, { error: "Something failed" })
+        data = agent.send(:extract_tool_result, {error: "Something failed"})
 
         expect(data[:status]).to eq("error")
         expect(data[:error_message]).to eq("Something failed")

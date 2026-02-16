@@ -240,8 +240,8 @@ RSpec.describe RubyLLM::Agents::Budget::SpendRecorder do
         enforcement: :soft,
         global_daily: 10.0,
         global_monthly: 100.0,
-        per_agent_daily: { "TestAgent" => 5.0 },
-        per_agent_monthly: { "TestAgent" => 50.0 }
+        per_agent_daily: {"TestAgent" => 5.0},
+        per_agent_monthly: {"TestAgent" => 50.0}
       }
     end
 
@@ -414,7 +414,7 @@ RSpec.describe RubyLLM::Agents::Budget::SpendRecorder do
 
   describe "edge cases" do
     it "handles concurrent spend recordings" do
-      budget_config = { enabled: false, enforcement: :soft }
+      budget_config = {enabled: false, enforcement: :soft}
 
       threads = 10.times.map do
         Thread.new do

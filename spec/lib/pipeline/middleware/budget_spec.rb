@@ -56,7 +56,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Budget do
       end
 
       it "checks budget before execution via tenant model" do
-        context = build_context(tenant: { id: "org_123" })
+        context = build_context(tenant: {id: "org_123"})
         context.tenant_id = "org_123"
 
         tenant = instance_double(RubyLLM::Agents::Tenant)

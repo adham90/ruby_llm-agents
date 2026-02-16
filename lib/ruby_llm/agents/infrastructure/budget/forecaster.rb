@@ -13,7 +13,7 @@ module RubyLLM
           # @param tenant_id [String, nil] The tenant identifier
           # @param budget_config [Hash] Budget configuration
           # @return [Hash, nil] Forecast information
-          def calculate_forecast(tenant_id: nil, budget_config:)
+          def calculate_forecast(budget_config:, tenant_id: nil)
             return nil unless budget_config[:enabled]
             return nil unless budget_config[:global_daily] || budget_config[:global_monthly]
 

@@ -44,8 +44,8 @@ FactoryBot.define do
     end
 
     trait :with_per_agent_limits do
-      per_agent_daily { { "TestAgent" => 10.0, "ExpensiveAgent" => 25.0 } }
-      per_agent_monthly { { "TestAgent" => 100.0, "ExpensiveAgent" => 250.0 } }
+      per_agent_daily { {"TestAgent" => 10.0, "ExpensiveAgent" => 25.0} }
+      per_agent_monthly { {"TestAgent" => 100.0, "ExpensiveAgent" => 250.0} }
     end
 
     trait :strict do

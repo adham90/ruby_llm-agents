@@ -127,8 +127,20 @@ RSpec.describe "DSL Inheritance" do
   end
 
   describe "tools inheritance" do
-    let(:tool1) { Class.new { def self.name; "Tool1"; end } }
-    let(:tool2) { Class.new { def self.name; "Tool2"; end } }
+    let(:tool1) {
+      Class.new {
+        def self.name
+          "Tool1"
+        end
+      }
+    }
+    let(:tool2) {
+      Class.new {
+        def self.name
+          "Tool2"
+        end
+      }
+    }
 
     it "inherits tools from parent" do
       t1 = tool1

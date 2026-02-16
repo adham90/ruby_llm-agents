@@ -56,7 +56,7 @@ module RubyLLM
       #
       module Base
         # Regex pattern to extract {placeholder} parameters from prompt strings
-        PLACEHOLDER_PATTERN = /\{(\w+)\}/.freeze
+        PLACEHOLDER_PATTERN = /\{(\w+)\}/
 
         # @!group Configuration DSL
 
@@ -306,7 +306,7 @@ module RubyLLM
         # @return [String] The default model
         def default_model
           RubyLLM::Agents.configuration.default_model
-        rescue StandardError
+        rescue
           "gpt-4o"
         end
 
@@ -315,7 +315,7 @@ module RubyLLM
         # @return [Integer] The default timeout
         def default_timeout
           RubyLLM::Agents.configuration.default_timeout
-        rescue StandardError
+        rescue
           120
         end
       end

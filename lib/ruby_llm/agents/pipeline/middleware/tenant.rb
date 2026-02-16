@@ -79,8 +79,8 @@ module RubyLLM
                 context.tenant_config = extract_tenant_config(tenant_value)
               else
                 raise ArgumentError,
-                      "tenant must respond to :llm_tenant_id (use llm_tenant DSL), " \
-                      "or be a Hash with :id key, got #{tenant_value.class}"
+                  "tenant must respond to :llm_tenant_id (use llm_tenant DSL), " \
+                  "or be a Hash with :id key, got #{tenant_value.class}"
               end
             end
           end
@@ -106,7 +106,7 @@ module RubyLLM
               # For hash-based or string tenants, ensure a minimal record exists
               RubyLLM::Agents::Tenant.find_or_create_by!(tenant_id: context.tenant_id)
             end
-          rescue StandardError => e
+          rescue => e
             # Don't fail the execution if tenant record creation fails
             log_tenant_warning("ensure tenant record", e)
           end
@@ -117,7 +117,7 @@ module RubyLLM
           def ensure_tenant_for_model!(tenant_object)
             # Check polymorphic link first, then tenant_id
             existing = RubyLLM::Agents::Tenant.find_by(tenant_record: tenant_object) ||
-                       RubyLLM::Agents::Tenant.find_by(tenant_id: tenant_object.llm_tenant_id)
+              RubyLLM::Agents::Tenant.find_by(tenant_id: tenant_object.llm_tenant_id)
             return if existing
 
             options = tenant_object.class.try(:llm_tenant_options) || {}
@@ -146,7 +146,7 @@ module RubyLLM
             return @tenant_table_exists if defined?(@tenant_table_exists)
 
             @tenant_table_exists = ::ActiveRecord::Base.connection.table_exists?(:ruby_llm_agents_tenants)
-          rescue StandardError
+          rescue
             @tenant_table_exists = false
           end
 
@@ -181,7 +181,7 @@ module RubyLLM
             return if api_keys.blank?
 
             apply_api_keys_to_ruby_llm(api_keys)
-          rescue StandardError => e
+          rescue => e
             # Log but don't fail if API key extraction fails
             warn_api_key_error("tenant object", e)
           end
@@ -228,7 +228,7 @@ module RubyLLM
             return nil unless tenant.respond_to?(:llm_config)
 
             tenant.llm_config
-          rescue StandardError
+          rescue
             nil
           end
         end

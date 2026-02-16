@@ -17,17 +17,17 @@ module RubyLlmAgents
     source_root File.expand_path("templates", __dir__)
 
     class_option :model, type: :string, default: "sdxl",
-                 desc: "The image model to use"
+      desc: "The image model to use"
     class_option :size, type: :string, default: "1024x1024",
-                 desc: "Output image size (e.g., 1024x1024)"
+      desc: "Output image size (e.g., 1024x1024)"
     class_option :strength, type: :string, default: "0.75",
-                 desc: "Transformation strength (0.0-1.0)"
+      desc: "Transformation strength (0.0-1.0)"
     class_option :template, type: :string, default: nil,
-                 desc: "Prompt template (use {prompt} as placeholder)"
+      desc: "Prompt template (use {prompt} as placeholder)"
     class_option :content_policy, type: :string, default: "standard",
-                 desc: "Content policy level (none, standard, moderate, strict)"
+      desc: "Content policy level (none, standard, moderate, strict)"
     class_option :cache, type: :string, default: nil,
-                 desc: "Cache TTL (e.g., '1.hour', '1.day')"
+      desc: "Cache TTL (e.g., '1.hour', '1.day')"
 
     def ensure_base_class_and_skill_file
       images_dir = "app/agents/images"

@@ -428,7 +428,7 @@ RSpec.describe "Three-Role Prompt DSL" do
       agent = agent_class.new
       prefill = agent.send(:resolved_assistant_prefill)
 
-      expect(prefill).to eq({ role: :assistant, content: '{"result":' })
+      expect(prefill).to eq({role: :assistant, content: '{"result":'})
     end
 
     it "resolved_assistant_prefill returns nil when not defined" do

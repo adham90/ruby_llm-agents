@@ -164,7 +164,7 @@ module RubyLLM
           # @return [Boolean]
           def budgets_enabled?
             RubyLLM::Agents.configuration.budgets_enabled?
-          rescue StandardError
+          rescue
             false
           end
 
@@ -176,7 +176,7 @@ module RubyLLM
             return false unless agent_class
 
             agent_class.respond_to?(:cache_enabled?) && agent_class.cache_enabled?
-          rescue StandardError
+          rescue
             false
           end
 
@@ -192,20 +192,20 @@ module RubyLLM
             return false unless agent_class
 
             retries = if agent_class.respond_to?(:retries)
-                        agent_class.retries
-                      else
-                        0
-                      end
+              agent_class.retries
+            else
+              0
+            end
 
             fallbacks = if agent_class.respond_to?(:fallback_models)
-                          agent_class.fallback_models
-                        else
-                          []
-                        end
+              agent_class.fallback_models
+            else
+              []
+            end
 
             (retries.is_a?(Integer) && retries.positive?) ||
               (fallbacks.is_a?(Array) && fallbacks.any?)
-          rescue StandardError
+          rescue
             false
           end
         end

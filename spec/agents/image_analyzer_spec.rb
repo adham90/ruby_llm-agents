@@ -146,7 +146,7 @@ RSpec.describe RubyLLM::Agents::ImageAnalyzer do
       )
 
       expect(analyzer.image).to eq("photo.jpg")
-      expect(analyzer.options).to eq({ analysis_type: :all, extract_colors: true })
+      expect(analyzer.options).to eq({analysis_type: :all, extract_colors: true})
     end
   end
 

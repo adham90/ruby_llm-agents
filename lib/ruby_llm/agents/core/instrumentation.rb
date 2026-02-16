@@ -63,48 +63,46 @@ module RubyLLM
         # Use catch to intercept successful early returns from the block
         # The block uses `throw :execution_success, result` instead of `return`
         result = catch(:execution_success) do
+          yield(attempt_tracker)
+          # If we reach here normally (no throw), the block completed without success
+          # This happens when AllModelsExhaustedError is raised
+          nil
+        rescue Timeout::Error, Reliability::TotalTimeoutError => e
+          raised_exception = e
           begin
-            yield(attempt_tracker)
-            # If we reach here normally (no throw), the block completed without success
-            # This happens when AllModelsExhaustedError is raised
-            nil
-          rescue Timeout::Error, Reliability::TotalTimeoutError => e
-            raised_exception = e
-            begin
-              complete_execution_with_attempts(
-                execution,
-                attempt_tracker: attempt_tracker,
-                completed_at: Time.current,
-                status: "timeout",
-                error: e
-              )
-              @status_update_completed = true
-            rescue StandardError => completion_err
-              completion_error = completion_err
-            end
-            raise
-          rescue StandardError => e
-            raised_exception = e
-            begin
-              complete_execution_with_attempts(
-                execution,
-                attempt_tracker: attempt_tracker,
-                completed_at: Time.current,
-                status: "error",
-                error: e
-              )
-              @status_update_completed = true
-            rescue StandardError => completion_err
-              completion_error = completion_err
-            end
-            raise
-          ensure
-            # Only run emergency fallback if we haven't completed AND we're not in success path
-            # The success path completion happens AFTER the catch block
-            unless @status_update_completed || !$!
-              actual_error = completion_error || raised_exception || $!
-              mark_execution_failed!(execution, error: actual_error)
-            end
+            complete_execution_with_attempts(
+              execution,
+              attempt_tracker: attempt_tracker,
+              completed_at: Time.current,
+              status: "timeout",
+              error: e
+            )
+            @status_update_completed = true
+          rescue => completion_err
+            completion_error = completion_err
+          end
+          raise
+        rescue => e
+          raised_exception = e
+          begin
+            complete_execution_with_attempts(
+              execution,
+              attempt_tracker: attempt_tracker,
+              completed_at: Time.current,
+              status: "error",
+              error: e
+            )
+            @status_update_completed = true
+          rescue => completion_err
+            completion_error = completion_err
+          end
+          raise
+        ensure
+          # Only run emergency fallback if we haven't completed AND we're not in success path
+          # The success path completion happens AFTER the catch block
+          unless @status_update_completed || !$!
+            actual_error = completion_error || raised_exception || $!
+            mark_execution_failed!(execution, error: actual_error)
           end
         end
 
@@ -119,7 +117,7 @@ module RubyLLM
               status: "success"
             )
             @status_update_completed = true
-          rescue StandardError => e
+          rescue => e
             Rails.logger.error("[RubyLLM::Agents] Failed to complete successful execution: #{e.class}: #{e.message}")
             mark_execution_failed!(execution, error: e)
           end
@@ -165,7 +163,7 @@ module RubyLLM
               response: @last_response
             )
             @status_update_completed = true
-          rescue StandardError => e
+          rescue => e
             completion_error = e
             # Don't re-raise - let ensure block handle via mark_execution_failed!
           end
@@ -181,11 +179,11 @@ module RubyLLM
               error: e
             )
             @status_update_completed = true
-          rescue StandardError => completion_err
+          rescue => completion_err
             completion_error = completion_err
           end
           raise
-        rescue StandardError => e
+        rescue => e
           raised_exception = e
           begin
             complete_execution(
@@ -195,7 +193,7 @@ module RubyLLM
               error: e
             )
             @status_update_completed = true
-          rescue StandardError => completion_err
+          rescue => completion_err
             completion_error = completion_err
           end
           raise
@@ -258,7 +256,7 @@ module RubyLLM
         # Add fallback chain tracking (count only on execution, chain stored in detail)
         if fallback_chain.any?
           execution_data[:attempts_count] = 0
-          @_pending_detail_data = { fallback_chain: fallback_chain, attempts: [] }
+          @_pending_detail_data = {fallback_chain: fallback_chain, attempts: []}
         end
 
         # Add tenant_id if multi-tenancy is enabled
@@ -285,7 +283,7 @@ module RubyLLM
         execution.create_detail!(detail_data) if has_data
 
         execution
-      rescue StandardError => e
+      rescue => e
         # Log error but don't fail the agent execution itself
         Rails.logger.error("[RubyLLM::Agents] Failed to create execution record: #{e.message}")
         nil
@@ -356,7 +354,7 @@ module RubyLLM
           begin
             execution.calculate_costs!
             execution.save!
-          rescue StandardError => cost_error
+          rescue => cost_error
             Rails.logger.warn("[RubyLLM::Agents] Cost calculation failed: #{cost_error.message}")
           end
         end
@@ -364,12 +362,12 @@ module RubyLLM
         # Record token usage for budget tracking
         record_token_usage(execution)
       rescue ActiveRecord::RecordInvalid => e
-        Rails.logger.error("[RubyLLM::Agents] Validation failed for execution #{execution&.id}: #{e.record.errors.full_messages.join(', ')}")
+        Rails.logger.error("[RubyLLM::Agents] Validation failed for execution #{execution&.id}: #{e.record.errors.full_messages.join(", ")}")
         if Rails.env.development? || Rails.env.test?
           Rails.logger.error("[RubyLLM::Agents] Update data: #{update_data.inspect}")
         end
         raise
-      rescue StandardError => e
+      rescue => e
         Rails.logger.error("[RubyLLM::Agents] Failed to update execution record #{execution&.id}: #{e.class}: #{e.message}")
         if Rails.env.development? || Rails.env.test?
           Rails.logger.error("[RubyLLM::Agents] Update data: #{update_data.inspect}")
@@ -465,7 +463,7 @@ module RubyLLM
           begin
             execution.aggregate_attempt_costs!
             execution.save!
-          rescue StandardError => cost_error
+          rescue => cost_error
             Rails.logger.warn("[RubyLLM::Agents] Cost calculation failed: #{cost_error.message}")
           end
         end
@@ -473,12 +471,12 @@ module RubyLLM
         # Record token usage for budget tracking
         record_token_usage(execution)
       rescue ActiveRecord::RecordInvalid => e
-        Rails.logger.error("[RubyLLM::Agents] Validation failed for execution #{execution&.id}: #{e.record.errors.full_messages.join(', ')}")
+        Rails.logger.error("[RubyLLM::Agents] Validation failed for execution #{execution&.id}: #{e.record.errors.full_messages.join(", ")}")
         if Rails.env.development? || Rails.env.test?
           Rails.logger.error("[RubyLLM::Agents] Update data: #{update_data.inspect}")
         end
         raise
-      rescue StandardError => e
+      rescue => e
         Rails.logger.error("[RubyLLM::Agents] Failed to update execution record #{execution&.id}: #{e.class}: #{e.message}")
         if Rails.env.development? || Rails.env.test?
           Rails.logger.error("[RubyLLM::Agents] Update data: #{update_data.inspect}")
@@ -624,7 +622,7 @@ module RubyLLM
       # @return [String, nil] The system prompt or nil if unavailable
       def safe_system_prompt
         respond_to?(:system_prompt) ? system_prompt.to_s : nil
-      rescue StandardError => e
+      rescue => e
         Rails.logger.warn("[RubyLLM::Agents] Could not capture system_prompt: #{e.message}")
         nil
       end
@@ -634,7 +632,7 @@ module RubyLLM
       # @return [String, nil] The user prompt or nil if unavailable
       def safe_user_prompt
         respond_to?(:user_prompt) ? user_prompt.to_s : nil
-      rescue StandardError => e
+      rescue => e
         Rails.logger.warn("[RubyLLM::Agents] Could not capture user_prompt: #{e.message}")
         nil
       end
@@ -644,7 +642,7 @@ module RubyLLM
       # @return [String, nil] The assistant prompt or nil if unavailable
       def safe_assistant_prompt
         respond_to?(:assistant_prompt) ? assistant_prompt&.to_s : nil
-      rescue StandardError => e
+      rescue => e
         Rails.logger.warn("[RubyLLM::Agents] Could not capture assistant_prompt: #{e.message}")
         nil
       end
@@ -665,7 +663,7 @@ module RubyLLM
       def safe_response_value(response, method, default = nil)
         return default unless response.respond_to?(method)
         response.public_send(method)
-      rescue StandardError
+      rescue
         default
       end
 
@@ -702,7 +700,7 @@ module RubyLLM
       # @return [String, nil] Normalized finish reason
       def safe_extract_finish_reason(response)
         reason = safe_response_value(response, :finish_reason) ||
-                 safe_response_value(response, :stop_reason)
+          safe_response_value(response, :stop_reason)
         return nil unless reason
 
         # Normalize to standard values
@@ -850,7 +848,7 @@ module RubyLLM
           if tool_call.respond_to?(:to_h)
             tool_call.to_h
           else
-            { id: id, name: tool_call[:name], arguments: tool_call[:arguments] }
+            {id: id, name: tool_call[:name], arguments: tool_call[:arguments]}
           end
         end
       end
@@ -919,7 +917,7 @@ module RubyLLM
           }
           execution.create_detail!(detail_data) if detail_data.values.any?(&:present?)
         end
-      rescue StandardError => e
+      rescue => e
         Rails.logger.error("[RubyLLM::Agents] Failed to record cache hit execution: #{e.message}")
       end
 
@@ -940,7 +938,7 @@ module RubyLLM
             tenant_id: tenant_id,
             tenant_config: tenant_config
           )
-        rescue StandardError => e
+        rescue => e
           Rails.logger.warn("[RubyLLM::Agents] Failed to record token usage: #{e.message}")
         end
       end
@@ -956,7 +954,7 @@ module RubyLLM
 
         @_assistant_prompt_column_exists = begin
           RubyLLM::Agents::ExecutionDetail.column_names.include?("assistant_prompt")
-        rescue StandardError
+        rescue
           false
         end
       end
@@ -1001,16 +999,16 @@ module RubyLLM
 
         # Store error_message in detail table (best-effort)
         begin
-          detail_attrs = { error_message: error_message.to_s.truncate(65535) }
+          detail_attrs = {error_message: error_message.to_s.truncate(65535)}
           if execution.detail
             execution.detail.update_columns(detail_attrs)
           else
             RubyLLM::Agents::ExecutionDetail.create!(detail_attrs.merge(execution_id: execution.id))
           end
-        rescue StandardError
+        rescue
           # Non-critical — error_class on execution is sufficient for filtering
         end
-      rescue StandardError => e
+      rescue => e
         Rails.logger.error("[RubyLLM::Agents] CRITICAL: Failed emergency status update for execution #{execution&.id}: #{e.message}")
       end
     end

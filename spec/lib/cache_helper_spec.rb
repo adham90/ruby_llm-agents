@@ -71,7 +71,7 @@ RSpec.describe RubyLLM::Agents::CacheHelper do
     end
 
     it "returns complex objects" do
-      data = { foo: "bar", count: 42 }
+      data = {foo: "bar", count: 42}
       cache_store.write("complex_key", data)
       expect(test_class.cache_read("complex_key")).to eq(data)
     end

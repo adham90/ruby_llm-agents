@@ -176,7 +176,6 @@ RSpec.describe RubyLLM::Agents::Execution, type: :model do
         expect(result).not_to include(old)
       end
     end
-
   end
 
   describe "aggregations" do
@@ -271,8 +270,8 @@ RSpec.describe RubyLLM::Agents::Execution, type: :model do
     describe "tool_calls attribute" do
       it "stores and retrieves as JSON array via detail" do
         tool_calls_data = [
-          { "id" => "call_1", "name" => "search", "arguments" => { "query" => "test" } },
-          { "id" => "call_2", "name" => "format", "arguments" => { "type" => "json" } }
+          {"id" => "call_1", "name" => "search", "arguments" => {"query" => "test"}},
+          {"id" => "call_2", "name" => "format", "arguments" => {"type" => "json"}}
         ]
         execution = create(:execution)
         execution.detail.update!(tool_calls: tool_calls_data)
@@ -301,7 +300,7 @@ RSpec.describe RubyLLM::Agents::Execution, type: :model do
       it "preserves complex nested argument structures" do
         complex_args = {
           "filters" => {
-            "date_range" => { "start" => "2024-01-01", "end" => "2024-12-31" },
+            "date_range" => {"start" => "2024-01-01", "end" => "2024-12-31"},
             "categories" => ["tech", "science", "health"]
           },
           "options" => {
@@ -310,7 +309,7 @@ RSpec.describe RubyLLM::Agents::Execution, type: :model do
           }
         }
         tool_calls_data = [
-          { "id" => "call_complex", "name" => "advanced_search", "arguments" => complex_args }
+          {"id" => "call_complex", "name" => "advanced_search", "arguments" => complex_args}
         ]
         execution = create(:execution)
         execution.detail.update!(tool_calls: tool_calls_data)

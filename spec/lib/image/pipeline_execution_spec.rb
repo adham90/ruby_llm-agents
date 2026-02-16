@@ -142,39 +142,39 @@ RSpec.describe RubyLLM::Agents::ImagePipeline::Execution do
     let(:execution_instance) { execution_test_class.new }
 
     it "returns true when no conditions specified" do
-      step_def = { name: :test, type: :generator, config: {} }
+      step_def = {name: :test, type: :generator, config: {}}
 
       expect(execution_instance.test_should_run_step?(step_def)).to be true
     end
 
     it "returns false when :if condition evaluates to false" do
       # Use a proc that returns false, since literal false would skip the check
-      step_def = { name: :test, type: :generator, config: { if: ->(_ctx) { false } } }
+      step_def = {name: :test, type: :generator, config: {if: ->(_ctx) { false }}}
 
       expect(execution_instance.test_should_run_step?(step_def)).to be false
     end
 
     it "returns true when :if condition evaluates to true" do
-      step_def = { name: :test, type: :generator, config: { if: ->(_ctx) { true } } }
+      step_def = {name: :test, type: :generator, config: {if: ->(_ctx) { true }}}
 
       expect(execution_instance.test_should_run_step?(step_def)).to be true
     end
 
     it "returns false when :unless condition evaluates to true" do
-      step_def = { name: :test, type: :generator, config: { unless: ->(_ctx) { true } } }
+      step_def = {name: :test, type: :generator, config: {unless: ->(_ctx) { true }}}
 
       expect(execution_instance.test_should_run_step?(step_def)).to be false
     end
 
     it "returns true when :unless condition evaluates to false" do
-      step_def = { name: :test, type: :generator, config: { unless: ->(_ctx) { false } } }
+      step_def = {name: :test, type: :generator, config: {unless: ->(_ctx) { false }}}
 
       expect(execution_instance.test_should_run_step?(step_def)).to be true
     end
 
     it "skips check when :if is literal false (truthy check)" do
       # Literal false value means the if block doesn't execute at all
-      step_def = { name: :test, type: :generator, config: { if: false } }
+      step_def = {name: :test, type: :generator, config: {if: false}}
 
       expect(execution_instance.test_should_run_step?(step_def)).to be true
     end
@@ -212,7 +212,7 @@ RSpec.describe RubyLLM::Agents::ImagePipeline::Execution do
 
     it "evaluates Proc conditions" do
       condition = ->(ctx) { ctx[:key] == "value" }
-      execution_instance.test_context = { key: "value" }
+      execution_instance.test_context = {key: "value"}
 
       expect(execution_instance.test_evaluate_condition(condition)).to be true
     end
@@ -222,7 +222,7 @@ RSpec.describe RubyLLM::Agents::ImagePipeline::Execution do
     end
 
     it "evaluates Symbol conditions from context if method not defined" do
-      execution_instance.test_context = { other_key: "context_value" }
+      execution_instance.test_context = {other_key: "context_value"}
 
       expect(execution_instance.test_evaluate_condition(:other_key)).to eq("context_value")
     end
@@ -267,7 +267,7 @@ RSpec.describe RubyLLM::Agents::ImagePipeline::Execution do
       step_def = {
         name: :generate,
         type: :generator,
-        config: { generator: RubyLLM::Agents::ImageGenerator, prompt: "test" }
+        config: {generator: RubyLLM::Agents::ImageGenerator, prompt: "test"}
       }
 
       allow(RubyLLM::Agents::ImageGenerator).to receive(:call).and_return(mock_result)
@@ -282,7 +282,7 @@ RSpec.describe RubyLLM::Agents::ImagePipeline::Execution do
       step_def = {
         name: :generate,
         type: :generator,
-        config: { generator: RubyLLM::Agents::ImageGenerator }
+        config: {generator: RubyLLM::Agents::ImageGenerator}
       }
 
       expect {
@@ -294,12 +294,12 @@ RSpec.describe RubyLLM::Agents::ImagePipeline::Execution do
       step_def = {
         name: :upscale,
         type: :upscaler,
-        config: { upscaler: RubyLLM::Agents::ImageUpscaler }
+        config: {upscaler: RubyLLM::Agents::ImageUpscaler}
       }
 
       allow(RubyLLM::Agents::ImageUpscaler).to receive(:call).and_return(mock_result)
 
-      result = step_instance.test_execute_step(step_def, "http://example.com/image.png")
+      step_instance.test_execute_step(step_def, "http://example.com/image.png")
 
       expect(RubyLLM::Agents::ImageUpscaler).to have_received(:call)
     end
@@ -308,7 +308,7 @@ RSpec.describe RubyLLM::Agents::ImagePipeline::Execution do
       step_def = {
         name: :upscale,
         type: :upscaler,
-        config: { upscaler: RubyLLM::Agents::ImageUpscaler }
+        config: {upscaler: RubyLLM::Agents::ImageUpscaler}
       }
 
       expect {
@@ -320,12 +320,12 @@ RSpec.describe RubyLLM::Agents::ImagePipeline::Execution do
       step_def = {
         name: :analyze,
         type: :analyzer,
-        config: { analyzer: RubyLLM::Agents::ImageAnalyzer }
+        config: {analyzer: RubyLLM::Agents::ImageAnalyzer}
       }
 
       allow(RubyLLM::Agents::ImageAnalyzer).to receive(:call).and_return(mock_result)
 
-      result = step_instance.test_execute_step(step_def, "http://example.com/image.png")
+      step_instance.test_execute_step(step_def, "http://example.com/image.png")
 
       expect(RubyLLM::Agents::ImageAnalyzer).to have_received(:call)
     end
@@ -415,7 +415,7 @@ RSpec.describe RubyLLM::Agents::ImagePipeline::Execution do
 
     it "builds successful result" do
       result_instance.step_results = [
-        { name: :generate, type: :generator, result: double(success?: true) }
+        {name: :generate, type: :generator, result: double(success?: true)}
       ]
 
       result = result_instance.test_build_result
@@ -443,7 +443,7 @@ RSpec.describe RubyLLM::Agents::ImagePipeline::Execution do
         end
 
         def self.steps
-          [{ name: :generate, type: :generator }]
+          [{name: :generate, type: :generator}]
         end
 
         def self.cache_enabled?
@@ -514,8 +514,8 @@ RSpec.describe RubyLLM::Agents::ImagePipeline::Execution do
     it "sums costs from all steps" do
       instance = cost_test_class.new
       instance.step_results = [
-        { result: double(total_cost: 0.02) },
-        { result: double(total_cost: 0.03) }
+        {result: double(total_cost: 0.02)},
+        {result: double(total_cost: 0.03)}
       ]
 
       expect(instance.test_calculate_partial_cost).to eq(0.05)
@@ -524,8 +524,8 @@ RSpec.describe RubyLLM::Agents::ImagePipeline::Execution do
     it "handles nil results" do
       instance = cost_test_class.new
       instance.step_results = [
-        { result: double(total_cost: 0.02) },
-        { result: nil }
+        {result: double(total_cost: 0.02)},
+        {result: nil}
       ]
 
       expect(instance.test_calculate_partial_cost).to eq(0.02)
@@ -542,7 +542,7 @@ RSpec.describe RubyLLM::Agents::ImagePipeline::Execution do
         end
 
         def self.callbacks
-          @callbacks ||= { before: [], after: [] }
+          @callbacks ||= {before: [], after: []}
         end
 
         attr_accessor :callback_calls

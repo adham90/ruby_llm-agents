@@ -71,7 +71,7 @@ module RubyLLM
           image_generators = RubyLLM::Agents::ImageGenerator.descendants.map(&:name).compact
 
           (agents + embedders + speakers + transcribers + image_generators).uniq
-        rescue StandardError => e
+        rescue => e
           Rails.logger.error("[RubyLLM::Agents] Error loading agents from file system: #{e.message}")
           []
         end
@@ -81,7 +81,7 @@ module RubyLLM
         # @return [Array<String>] Agent class names with execution records
         def execution_agents
           Execution.distinct.pluck(:agent_type).compact
-        rescue StandardError => e
+        rescue => e
           Rails.logger.error("[RubyLLM::Agents] Error loading agents from executions: #{e.message}")
           []
         end
@@ -149,7 +149,7 @@ module RubyLLM
           return nil unless klass.respond_to?(method_name)
 
           klass.public_send(method_name)
-        rescue StandardError
+        rescue
           nil
         end
 
@@ -159,8 +159,8 @@ module RubyLLM
         # @return [Hash] Statistics hash
         def fetch_stats(agent_type)
           Execution.stats_for(agent_type, period: :all_time)
-        rescue StandardError
-          { count: 0, total_cost: 0, total_tokens: 0, avg_duration_ms: 0, success_rate: 0, error_rate: 0 }
+        rescue
+          {count: 0, total_cost: 0, total_tokens: 0, avg_duration_ms: 0, success_rate: 0, error_rate: 0}
         end
 
         # Gets the timestamp of the last execution for an agent
@@ -169,7 +169,7 @@ module RubyLLM
         # @return [Time, nil] Last execution time or nil
         def last_execution_time(agent_type)
           Execution.by_agent(agent_type).order(created_at: :desc).first&.created_at
-        rescue StandardError
+        rescue
           nil
         end
 

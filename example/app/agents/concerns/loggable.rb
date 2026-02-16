@@ -28,7 +28,7 @@ module Concerns
       def log_level(level = nil)
         if level
           unless VALID_LEVELS.include?(level)
-            raise ArgumentError, "Invalid log level: #{level}. Valid levels: #{VALID_LEVELS.join(', ')}"
+            raise ArgumentError, "Invalid log level: #{level}. Valid levels: #{VALID_LEVELS.join(", ")}"
           end
 
           @log_level = level
@@ -42,7 +42,7 @@ module Concerns
       def log_format(format = nil)
         if format
           unless VALID_FORMATS.include?(format)
-            raise ArgumentError, "Invalid log format: #{format}. Valid formats: #{VALID_FORMATS.join(', ')}"
+            raise ArgumentError, "Invalid log format: #{format}. Valid formats: #{VALID_FORMATS.join(", ")}"
           end
 
           @log_format = format
@@ -57,7 +57,7 @@ module Concerns
         if fields.any?
           invalid = fields - VALID_FIELDS
           if invalid.any?
-            raise ArgumentError, "Invalid log fields: #{invalid.join(', ')}. Valid fields: #{VALID_FIELDS.join(', ')}"
+            raise ArgumentError, "Invalid log fields: #{invalid.join(", ")}. Valid fields: #{VALID_FIELDS.join(", ")}"
           end
 
           @log_include_fields = fields
@@ -97,7 +97,7 @@ module Concerns
         return nil unless superclass.respond_to?(attribute, true)
 
         superclass.send(attribute)
-      rescue StandardError
+      rescue
         nil
       end
     end
@@ -121,9 +121,9 @@ module Concerns
         return unless logging_enabled?
 
         data = build_log_data(:after,
-                              output: result,
-                              started_at: started_at,
-                              tokens: tokens)
+          output: result,
+          started_at: started_at,
+          tokens: tokens)
         write_log(:after, data)
       end
 
@@ -134,8 +134,8 @@ module Concerns
         return unless logging_enabled?
 
         data = build_log_data(:error,
-                              error: error,
-                              started_at: started_at)
+          error: error,
+          started_at: started_at)
         write_log(:error, data)
       end
 
@@ -162,7 +162,7 @@ module Concerns
         data[:duration] = calculate_duration(started_at) if fields.include?(:duration) && started_at
         data[:tokens] = tokens if fields.include?(:tokens) && tokens
         data[:model] = resolve_log_model if fields.include?(:model)
-        data[:error] = { class: error.class.name, message: error.message } if error
+        data[:error] = {class: error.class.name, message: error.message} if error
 
         data
       end
@@ -170,7 +170,7 @@ module Concerns
       def sanitize_for_log(value)
         case value
         when String
-          value.length > 500 ? "#{value[0, 500]}..." : value
+          (value.length > 500) ? "#{value[0, 500]}..." : value
         when Hash
           value.transform_values { |v| sanitize_for_log(v) }
         when Array
@@ -198,7 +198,7 @@ module Concerns
       def resolve_log_model
         return self.class.model if self.class.respond_to?(:model)
 
-        'unknown'
+        "unknown"
       end
 
       def write_log(_phase, data)
@@ -232,11 +232,11 @@ module Concerns
         parts << "[#{data[:phase]}]"
         parts << "duration=#{data[:duration]}ms" if data[:duration]
         parts << "error=#{data.dig(:error, :class)}" if data[:error]
-        parts.join(' ')
+        parts.join(" ")
       end
 
       def format_detailed(data)
-        lines = ['=' * 60]
+        lines = ["=" * 60]
         lines << "Agent: #{data[:agent]}"
         lines << "Phase: #{data[:phase]}"
         lines << "Timestamp: #{data[:timestamp]}"
@@ -249,7 +249,7 @@ module Concerns
           lines << "Error: #{data[:error][:class]}"
           lines << "Message: #{data[:error][:message]}"
         end
-        lines << '=' * 60
+        lines << "=" * 60
         lines.join("\n")
       end
 
@@ -259,11 +259,11 @@ module Concerns
 
       def logger
         @logger ||= if defined?(Rails) && Rails.respond_to?(:logger)
-                      Rails.logger
-                    else
-                      require 'logger'
-                      Logger.new($stdout)
-                    end
+          Rails.logger
+        else
+          require "logger"
+          Logger.new($stdout)
+        end
       end
     end
   end

@@ -17,7 +17,7 @@ RSpec.describe "Multi-tenancy support" do
         RubyLLM::Agents.configure do |config|
           config.multi_tenancy_enabled = true
           config.tenant_resolver = -> { "default_tenant" }
-          config.budgets = { global_daily: 100.0, enforcement: :hard }
+          config.budgets = {global_daily: 100.0, enforcement: :hard}
         end
       end
 
@@ -33,7 +33,7 @@ RSpec.describe "Multi-tenancy support" do
         RubyLLM::Agents.configure do |config|
           config.multi_tenancy_enabled = true
           config.tenant_resolver = -> { "resolved_tenant" }
-          config.budgets = { global_daily: 100.0 }
+          config.budgets = {global_daily: 100.0}
         end
 
         described_class.record_spend!("TestAgent", 25.0)
@@ -46,7 +46,7 @@ RSpec.describe "Multi-tenancy support" do
         RubyLLM::Agents.configure do |config|
           config.multi_tenancy_enabled = true
           config.tenant_resolver = -> { "tenant_1" }
-          config.budgets = { global_daily: 50.0, enforcement: :hard }
+          config.budgets = {global_daily: 50.0, enforcement: :hard}
         end
 
         # Tenant 1 goes over budget
@@ -90,7 +90,7 @@ RSpec.describe "Multi-tenancy support" do
         RubyLLM::Agents.configure do |config|
           config.multi_tenancy_enabled = true
           config.tenant_resolver = -> { "tenant_1" }
-          config.budgets = { global_daily: 100.0, enforcement: :soft }
+          config.budgets = {global_daily: 100.0, enforcement: :soft}
         end
 
         # Reset memoized table check to ensure fresh lookup
@@ -128,7 +128,7 @@ RSpec.describe "Multi-tenancy support" do
       it "works without multi-tenancy enabled" do
         RubyLLM::Agents.configure do |config|
           config.multi_tenancy_enabled = false
-          config.budgets = { global_daily: 50.0, enforcement: :hard }
+          config.budgets = {global_daily: 50.0, enforcement: :hard}
         end
 
         described_class.record_spend!("TestAgent", 30.0)
@@ -140,7 +140,7 @@ RSpec.describe "Multi-tenancy support" do
       it "ignores tenant_id when multi-tenancy is disabled" do
         RubyLLM::Agents.configure do |config|
           config.multi_tenancy_enabled = false
-          config.budgets = { global_daily: 50.0 }
+          config.budgets = {global_daily: 50.0}
         end
 
         # These should all go to the same global counter
@@ -155,7 +155,7 @@ RSpec.describe "Multi-tenancy support" do
       # Check for new table name (tenants) or old table name (tenant_budgets) for backward compatibility
       ActiveRecord::Base.connection.table_exists?(:ruby_llm_agents_tenants) ||
         ActiveRecord::Base.connection.table_exists?(:ruby_llm_agents_tenant_budgets)
-    rescue StandardError
+    rescue
       false
     end
   end

@@ -44,7 +44,7 @@ RSpec.describe RubyLLM::Agents::Configuration do
     end
 
     it "sets reliability defaults" do
-      expect(config.default_retries).to eq({ max: 0, backoff: :exponential, base: 0.4, max_delay: 3.0, on: [] })
+      expect(config.default_retries).to eq({max: 0, backoff: :exponential, base: 0.4, max_delay: 3.0, on: []})
       expect(config.default_fallback_models).to eq([])
       expect(config.default_total_timeout).to be_nil
     end
@@ -103,22 +103,22 @@ RSpec.describe RubyLLM::Agents::Configuration do
     end
 
     it "returns falsey when enforcement is nil" do
-      config.budgets = { global_daily: 100 }
+      config.budgets = {global_daily: 100}
       expect(config.budgets_enabled?).to be_falsey
     end
 
     it "returns false when enforcement is :none" do
-      config.budgets = { global_daily: 100, enforcement: :none }
+      config.budgets = {global_daily: 100, enforcement: :none}
       expect(config.budgets_enabled?).to be false
     end
 
     it "returns true when enforcement is :soft" do
-      config.budgets = { global_daily: 100, enforcement: :soft }
+      config.budgets = {global_daily: 100, enforcement: :soft}
       expect(config.budgets_enabled?).to be true
     end
 
     it "returns true when enforcement is :hard" do
-      config.budgets = { global_daily: 100, enforcement: :hard }
+      config.budgets = {global_daily: 100, enforcement: :hard}
       expect(config.budgets_enabled?).to be true
     end
   end
@@ -130,19 +130,19 @@ RSpec.describe RubyLLM::Agents::Configuration do
     end
 
     it "returns :none when enforcement is not set" do
-      config.budgets = { global_daily: 100 }
+      config.budgets = {global_daily: 100}
       expect(config.budget_enforcement).to eq(:none)
     end
 
     it "returns the configured enforcement" do
-      config.budgets = { enforcement: :hard }
+      config.budgets = {enforcement: :hard}
       expect(config.budget_enforcement).to eq(:hard)
     end
   end
 
   describe "#on_alert" do
     it "accepts a callable proc" do
-      handler = ->(event, payload) { }
+      handler = ->(event, payload) {}
       config.on_alert = handler
       expect(config.on_alert).to eq(handler)
     end
@@ -184,7 +184,7 @@ RSpec.describe RubyLLM::Agents::Configuration do
 
     it "returns nil when tenant_resolver returns nil" do
       config.multi_tenancy_enabled = true
-      config.tenant_resolver = -> { nil }
+      config.tenant_resolver = -> {}
       expect(config.current_tenant_id).to be_nil
     end
   end
@@ -204,7 +204,7 @@ RSpec.describe RubyLLM::Agents::Configuration do
       config.per_page = 50
       config.recent_executions_limit = 20
       config.job_retry_attempts = 5
-      config.default_retries = { max: 3 }
+      config.default_retries = {max: 3}
       config.default_fallback_models = ["gpt-4o-mini"]
       config.default_total_timeout = 300
       config.default_streaming = true
@@ -229,7 +229,7 @@ RSpec.describe RubyLLM::Agents::Configuration do
       expect(config.per_page).to eq(50)
       expect(config.recent_executions_limit).to eq(20)
       expect(config.job_retry_attempts).to eq(5)
-      expect(config.default_retries).to eq({ max: 3 })
+      expect(config.default_retries).to eq({max: 3})
       expect(config.default_fallback_models).to eq(["gpt-4o-mini"])
       expect(config.default_total_timeout).to eq(300)
       expect(config.default_streaming).to be true
@@ -410,7 +410,7 @@ RSpec.describe RubyLLM::Agents::Configuration do
 
     describe "#tenant_config_resolver=" do
       it "accepts callable objects" do
-        expect { config.tenant_config_resolver = ->(id) { { daily: 100 } } }.not_to raise_error
+        expect { config.tenant_config_resolver = ->(id) { {daily: 100} } }.not_to raise_error
       end
 
       it "accepts nil" do
@@ -426,28 +426,28 @@ RSpec.describe RubyLLM::Agents::Configuration do
 
     describe "#default_retries=" do
       it "accepts valid retry configurations" do
-        expect { config.default_retries = { max: 3, backoff: :exponential, base: 0.5, max_delay: 5.0 } }.not_to raise_error
-        expect { config.default_retries = { max: 3, backoff: :constant, base: 1.0, max_delay: 10.0 } }.not_to raise_error
-        expect { config.default_retries = { max: 0 } }.not_to raise_error
+        expect { config.default_retries = {max: 3, backoff: :exponential, base: 0.5, max_delay: 5.0} }.not_to raise_error
+        expect { config.default_retries = {max: 3, backoff: :constant, base: 1.0, max_delay: 10.0} }.not_to raise_error
+        expect { config.default_retries = {max: 0} }.not_to raise_error
       end
 
       it "raises ArgumentError for invalid backoff" do
-        expect { config.default_retries = { backoff: :invalid } }.to raise_error(
+        expect { config.default_retries = {backoff: :invalid} }.to raise_error(
           ArgumentError, "default_retries[:backoff] must be :exponential or :constant"
         )
       end
 
       it "raises ArgumentError for non-positive base" do
-        expect { config.default_retries = { base: 0 } }.to raise_error(
+        expect { config.default_retries = {base: 0} }.to raise_error(
           ArgumentError, "default_retries[:base] must be greater than 0"
         )
-        expect { config.default_retries = { base: -1 } }.to raise_error(
+        expect { config.default_retries = {base: -1} }.to raise_error(
           ArgumentError, "default_retries[:base] must be greater than 0"
         )
       end
 
       it "raises ArgumentError for non-positive max_delay" do
-        expect { config.default_retries = { max_delay: 0 } }.to raise_error(
+        expect { config.default_retries = {max_delay: 0} }.to raise_error(
           ArgumentError, "default_retries[:max_delay] must be greater than 0"
         )
       end
@@ -459,17 +459,17 @@ RSpec.describe RubyLLM::Agents::Configuration do
       end
 
       it "accepts valid enforcement values" do
-        expect { config.budgets = { enforcement: :none } }.not_to raise_error
-        expect { config.budgets = { enforcement: :soft } }.not_to raise_error
-        expect { config.budgets = { enforcement: :hard } }.not_to raise_error
+        expect { config.budgets = {enforcement: :none} }.not_to raise_error
+        expect { config.budgets = {enforcement: :soft} }.not_to raise_error
+        expect { config.budgets = {enforcement: :hard} }.not_to raise_error
       end
 
       it "accepts budget config without enforcement" do
-        expect { config.budgets = { global_daily: 100 } }.not_to raise_error
+        expect { config.budgets = {global_daily: 100} }.not_to raise_error
       end
 
       it "raises ArgumentError for invalid enforcement" do
-        expect { config.budgets = { enforcement: :invalid } }.to raise_error(
+        expect { config.budgets = {enforcement: :invalid} }.to raise_error(
           ArgumentError, "budgets[:enforcement] must be :none, :soft, or :hard"
         )
       end
@@ -750,8 +750,8 @@ RSpec.describe RubyLLM::Agents::Configuration do
     end
 
     it "can be set with effort and budget" do
-      config.default_thinking = { effort: :high, budget: 10000 }
-      expect(config.default_thinking).to eq({ effort: :high, budget: 10000 })
+      config.default_thinking = {effort: :high, budget: 10000}
+      expect(config.default_thinking).to eq({effort: :high, budget: 10000})
     end
   end
 
