@@ -55,7 +55,7 @@ RSpec.describe SearchIntentAgent do
       expect(result[:dry_run]).to be true
       expect(result[:agent]).to eq("SearchIntentAgent")
       expect(result[:model]).to eq("gpt-4o")
-      expect(result[:user_prompt]).to include("red dress")
+      expect(result[:prompt]).to include("red dress")
     end
 
     it "includes schema in dry run" do
@@ -76,8 +76,8 @@ result[:dry_run]       # => true
 result[:agent]         # => "MyAgent"
 result[:model]         # => "gpt-4o"
 result[:temperature]   # => 0.0
-result[:system_prompt] # => "You are..."
-result[:user_prompt]   # => "Process: ..."
+result[:system]        # => "You are..."
+result[:prompt]        # => "Process: ..."
 result[:schema]        # => #<RubyLLM::Schema...>
 result[:tools]         # => [SearchTool, ...]
 result[:attachments]   # => ["image.png"]

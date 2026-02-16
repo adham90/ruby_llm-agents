@@ -56,11 +56,11 @@ class SearchAgent < ApplicationAgent
   param :limit, default: 10
   param :filters
 
-  def user_prompt
-    prompt = "Search: #{query}"
-    prompt += " (limit: #{limit})" if limit
-    prompt += " with filters: #{filters.join(', ')}" if filters&.any?
-    prompt
+  prompt do
+    text = "Search: #{query}"
+    text += " (limit: #{limit})" if limit
+    text += " with filters: #{filters.join(', ')}" if filters&.any?
+    text
   end
 end
 ```
@@ -105,30 +105,28 @@ MyAgent.call(
 
 ## Using Parameters in Prompts
 
-### Direct Interpolation
+### Simple Placeholders
 
 ```ruby
-def user_prompt
-  "Find #{query} with limit #{limit}"
-end
+prompt "Find {query} with limit {limit}"
 ```
 
 ### Conditional Content
 
 ```ruby
-def user_prompt
-  <<~PROMPT
+prompt do
+  <<~S
     Search query: #{query}
     #{"Maximum results: #{limit}" if limit}
     #{"Filters: #{filters.join(', ')}" if filters&.any?}
-  PROMPT
+  S
 end
 ```
 
 ### Complex Logic
 
 ```ruby
-def user_prompt
+prompt do
   parts = ["Search for: #{query}"]
 
   if advanced_mode

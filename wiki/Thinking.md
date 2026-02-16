@@ -25,15 +25,10 @@ class ReasoningAgent < ApplicationAgent
   model "claude-opus-4-5-20250514"
   thinking effort: :high, budget: 10000
 
+  system "You are a reasoning assistant. Show your work step by step."
+
   param :query, required: true
-
-  def system_prompt
-    "You are a reasoning assistant. Show your work step by step."
-  end
-
-  def user_prompt
-    query
-  end
+  prompt "{query}"
 end
 ```
 
@@ -224,10 +219,8 @@ class ThinkingAgent < ApplicationAgent
   temperature 0.0
   thinking effort: :high, budget: 10000
 
-  param :query, required: true
-
-  def system_prompt
-    <<~PROMPT
+  system do
+    <<~S
       You are a reasoning assistant that excels at step-by-step problem solving.
 
       When given a problem:
@@ -235,12 +228,11 @@ class ThinkingAgent < ApplicationAgent
       2. Work through each step carefully
       3. Verify your work
       4. Provide a clear final answer
-    PROMPT
+    S
   end
 
-  def user_prompt
-    query
-  end
+  param :query, required: true
+  prompt "{query}"
 end
 ```
 

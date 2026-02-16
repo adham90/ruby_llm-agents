@@ -66,10 +66,7 @@ class CustomerSupportAgent < ApplicationAgent
 
   param :conversation_id, required: true
   param :message, required: true
-
-  def user_prompt
-    message
-  end
+  prompt "{message}"
 
   # Template method - override to provide conversation history
   def messages
@@ -155,16 +152,11 @@ class ChatAgent < ApplicationAgent
   model "gpt-4o"
   temperature 0.7
 
+  system "You are a helpful assistant. Be concise and friendly."
+
   param :conversation_id, required: true
   param :user_message, required: true
-
-  def system_prompt
-    "You are a helpful assistant. Be concise and friendly."
-  end
-
-  def user_prompt
-    user_message
-  end
+  prompt "{user_message}"
 
   def messages
     conversation.chat_messages.order(:created_at).map do |msg|
@@ -238,10 +230,7 @@ end
 class SessionChatAgent < ApplicationAgent
   param :session_messages, default: []
   param :query, required: true
-
-  def user_prompt
-    query
-  end
+  prompt "{query}"
 
   def messages
     session_messages.map do |msg|

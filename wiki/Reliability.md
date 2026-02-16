@@ -36,11 +36,7 @@ class ReliableAgent < ApplicationAgent
   # Maximum total time
   total_timeout 30
 
-  param :query, required: true
-
-  def user_prompt
-    query
-  end
+  prompt "{query}"
 end
 ```
 

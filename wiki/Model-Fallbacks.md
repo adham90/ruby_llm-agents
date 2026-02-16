@@ -175,14 +175,10 @@ Avoid provider-specific prompt features:
 
 ```ruby
 # Good: Universal prompt
-def system_prompt
-  "You are a helpful assistant."
-end
+system "You are a helpful assistant."
 
 # Potentially problematic: Provider-specific syntax
-def system_prompt
-  "<|im_start|>system..."  # OpenAI-specific
-end
+system "<|im_start|>system..."  # OpenAI-specific
 ```
 
 ### Feature Differences

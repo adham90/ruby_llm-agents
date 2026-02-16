@@ -11,11 +11,7 @@ class CachedAgent < ApplicationAgent
   model "gpt-4o"
   cache 1.hour  # Cache responses for 1 hour
 
-  param :query, required: true
-
-  def user_prompt
-    query
-  end
+  prompt "{query}"
 end
 ```
 
@@ -159,11 +155,7 @@ High TTL for stable, factual responses:
 class FactAgent < ApplicationAgent
   cache 1.week  # Facts don't change often
 
-  param :topic, required: true
-
-  def user_prompt
-    "Explain: #{topic}"
-  end
+  prompt "Explain: {topic}"
 end
 ```
 

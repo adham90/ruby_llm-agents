@@ -252,14 +252,14 @@ class RAGAgent < ApplicationAgent
   model 'gpt-4o'
   param :question, required: true
 
-  def system_prompt
+  system do
     context = retrieve_context(question)
-    <<~PROMPT
+    <<~S
       Answer based on this context:
       #{context}
 
       If the answer isn't in the context, say "I don't know."
-    PROMPT
+    S
   end
 
   private

@@ -11,11 +11,7 @@ class StreamingAgent < ApplicationAgent
   model "gpt-4o"
   streaming true  # Enable streaming for this agent
 
-  param :prompt, required: true
-
-  def user_prompt
-    prompt
-  end
+  prompt "{prompt}"
 end
 ```
 
@@ -184,11 +180,7 @@ class StructuredStreamingAgent < ApplicationAgent
   model "gpt-4o"
   streaming true
 
-  param :topic, required: true
-
-  def user_prompt
-    "Write about #{topic}"
-  end
+  prompt "Write about {topic}"
 
   def schema
     @schema ||= RubyLLM::Schema.create do

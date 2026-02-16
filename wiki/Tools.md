@@ -89,15 +89,8 @@ Register tools at the class level using the `tools` DSL:
 class ProductAgent < ApplicationAgent
   tools [SearchTool, GetProductTool, CompareTool]
 
-  param :query, required: true
-
-  def system_prompt
-    "You are a helpful shopping assistant."
-  end
-
-  def user_prompt
-    "Help the user with: #{query}"
-  end
+  system "You are a helpful shopping assistant."
+  prompt "Help the user with: {query}"
 end
 ```
 
@@ -110,6 +103,8 @@ class SmartAgent < ApplicationAgent
   param :query, required: true
   param :user_role
 
+  prompt "{query}"
+
   def tools
     base_tools = [SearchTool, GetInfoTool]
 
@@ -119,10 +114,6 @@ class SmartAgent < ApplicationAgent
     else
       base_tools
     end
-  end
-
-  def user_prompt
-    query
   end
 end
 ```
@@ -253,23 +244,20 @@ class ShoppingAgent < ApplicationAgent
   model "gpt-4o"
   tools [Product::SearchTool, Product::GetTool]
 
-  param :query, required: true
   param :user_id
 
-  def system_prompt
-    <<~PROMPT
+  system do
+    <<~S
       You are a helpful shopping assistant. Use the available tools to:
       - Search for products matching user requests
       - Get detailed product information
       - Compare products when asked
 
       Always be helpful and provide specific product recommendations.
-    PROMPT
+    S
   end
 
-  def user_prompt
-    query
-  end
+  prompt "{query}"
 
   def metadata
     { user_id: user_id }

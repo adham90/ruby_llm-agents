@@ -123,10 +123,7 @@ You should see the RubyLLM::Agents dashboard.
 # rails console
 class TestAgent < ApplicationAgent
   model "gpt-4o-mini"
-  param :message, required: true
-  def user_prompt
-    message
-  end
+  prompt "{message}"
 end
 
 result = TestAgent.call(message: "Hello!")

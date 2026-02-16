@@ -446,10 +446,10 @@ Define the agent's role and instructions (alternative to `system` DSL):
 private
 
 def system_prompt
-  <<~PROMPT
+  <<~S
     You are a helpful assistant specializing in #{domain}.
     Always respond in a professional tone.
-  PROMPT
+  S
 end
 ```
 
@@ -459,10 +459,10 @@ Define the main request (alternative to `prompt` DSL):
 
 ```ruby
 def user_prompt
-  <<~PROMPT
+  <<~S
     Process this request: #{query}
     Constraints: #{constraints}
-  PROMPT
+  S
 end
 ```
 
@@ -556,10 +556,12 @@ class ContentGeneratorAgent < ApplicationAgent
   description "Generates SEO-optimized blog articles from topics"
   temperature 0.7
 
-  system <<~PROMPT
-    You are a professional content writer.
-    Write in a {tone} tone with clear structure.
-  PROMPT
+  system do
+    <<~S
+      You are a professional content writer.
+      Write in a {tone} tone with clear structure.
+    S
+  end
 
   prompt "Write a {word_count}-word article about: {topic}"
 
@@ -610,20 +612,20 @@ class ContentGeneratorAgent < ApplicationAgent
   private
 
   def system_prompt
-    <<~PROMPT
+    <<~S
       You are a professional content writer.
       Write in a #{tone} tone with clear structure.
-    PROMPT
+    S
   end
 
   def user_prompt
-    <<~PROMPT
+    <<~S
       Write a #{word_count}-word article about: #{topic}
 
       Requirements:
       - Clear introduction, body, and conclusion
       - Use examples where relevant
-    PROMPT
+    S
   end
 
   def schema

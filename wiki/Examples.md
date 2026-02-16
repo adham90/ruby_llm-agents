@@ -13,10 +13,7 @@ class SearchIntentAgent < ApplicationAgent
   cache 30.minutes
 
   param :query, required: true
-
-  def user_prompt
-    "Extract search intent from: #{query}"
-  end
+  prompt "Extract search intent from: {query}"
 
   def schema
     @schema ||= RubyLLM::Schema.create do
@@ -40,23 +37,23 @@ class EmailClassifierAgent < ApplicationAgent
   model "gpt-4o-mini"
   temperature 0.0
 
+  system do
+    <<~S
+      You are an email classification system. Categorize emails
+      based on content, urgency, and required action.
+    S
+  end
+
   param :subject, required: true
   param :body, required: true
   param :sender
 
-  def system_prompt
-    <<~PROMPT
-      You are an email classification system. Categorize emails
-      based on content, urgency, and required action.
-    PROMPT
-  end
-
-  def user_prompt
-    <<~PROMPT
-      Subject: #{subject}
-      From: #{sender}
-      Body: #{body}
-    PROMPT
+  prompt do
+    <<~S
+      Subject: {subject}
+      From: {sender}
+      Body: {body}
+    S
   end
 
   def schema
@@ -81,29 +78,29 @@ class BlogPostAgent < ApplicationAgent
   temperature 0.7
   timeout 120
 
+  system do
+    <<~S
+      You are an expert content writer. Write engaging, well-structured
+      blog posts that are SEO-friendly and informative.
+    S
+  end
+
   param :topic, required: true
   param :tone, default: "professional"
   param :word_count, default: 800
 
-  def system_prompt
-    <<~PROMPT
-      You are an expert content writer. Write engaging, well-structured
-      blog posts that are SEO-friendly and informative.
-    PROMPT
-  end
+  prompt do
+    <<~S
+      Write a {word_count}-word blog post about: {topic}
 
-  def user_prompt
-    <<~PROMPT
-      Write a #{word_count}-word blog post about: #{topic}
-
-      Tone: #{tone}
+      Tone: {tone}
 
       Requirements:
       - Engaging introduction
       - 3-5 main sections with headers
       - Practical examples or tips
       - Strong conclusion with call-to-action
-    PROMPT
+    S
   end
 
   def schema
@@ -128,14 +125,14 @@ class ProductDescriptionAgent < ApplicationAgent
   param :features, required: true
   param :target_audience, default: "general consumers"
 
-  def user_prompt
-    <<~PROMPT
+  prompt do
+    <<~S
       Create a compelling product description for:
 
       Product: #{product_name}
       Features: #{features.join(", ")}
       Target Audience: #{target_audience}
-    PROMPT
+    S
   end
 
   def schema
@@ -158,10 +155,7 @@ class InvoiceParserAgent < ApplicationAgent
   model "gpt-4o"  # Vision capable
 
   param :invoice_path, required: true
-
-  def user_prompt
-    "Extract all invoice details from this document."
-  end
+  prompt "Extract all invoice details from this document."
 
   def schema
     @schema ||= RubyLLM::Schema.create do
@@ -205,12 +199,12 @@ class ResumeParserAgent < ApplicationAgent
 
   param :resume_text, required: true
 
-  def user_prompt
-    <<~PROMPT
+  prompt do
+    <<~S
       Parse this resume and extract structured information:
 
-      #{resume_text}
-    PROMPT
+      {resume_text}
+    S
   end
 
   def schema
@@ -252,8 +246,8 @@ class SupportAgent < ApplicationAgent
   param :conversation_history, default: []
   param :customer_info, default: {}
 
-  def system_prompt
-    <<~PROMPT
+  system do
+    <<~S
       You are a helpful customer support agent for TechStore.
 
       Key information:
@@ -265,10 +259,10 @@ class SupportAgent < ApplicationAgent
 
       Be helpful, professional, and concise. If you can't help,
       offer to escalate to a human agent.
-    PROMPT
+    S
   end
 
-  def user_prompt
+  prompt do
     history = conversation_history.map do |msg|
       "#{msg[:role].capitalize}: #{msg[:content]}"
     end.join("\n")
@@ -298,10 +292,7 @@ Chain agents sequentially, passing results between them:
 class ResearchAgent < ApplicationAgent
   model "gpt-4o"
   param :topic, required: true
-
-  def user_prompt
-    "Research key points about: #{topic}"
-  end
+  prompt "Research key points about: {topic}"
 
   def schema
     @schema ||= RubyLLM::Schema.create do
@@ -316,7 +307,7 @@ class OutlineAgent < ApplicationAgent
   model "gpt-4o-mini"
   param :key_points, required: true
 
-  def user_prompt
+  prompt do
     "Create an outline from: #{key_points.join(', ')}"
   end
 
@@ -335,7 +326,7 @@ class WriterAgent < ApplicationAgent
   model "gpt-4o"
   param :outline, required: true
 
-  def user_prompt
+  prompt do
     "Write content following this outline: #{outline.to_json}"
   end
 end
@@ -353,10 +344,7 @@ class IntentClassifier < ApplicationAgent
   model "gpt-4o-mini"
   temperature 0.0
   param :message, required: true
-
-  def user_prompt
-    "Classify intent: #{message}"
-  end
+  prompt "Classify intent: {message}"
 
   def schema
     @schema ||= RubyLLM::Schema.create do
@@ -507,10 +495,7 @@ class StreamingChatAgent < ApplicationAgent
 
   param :message, required: true
   param :channel, required: true
-
-  def user_prompt
-    message
-  end
+  prompt "{message}"
 
   def on_chunk(chunk)
     channel.broadcast_chunk(chunk)
@@ -554,10 +539,7 @@ class TenantAwareAgent < ApplicationAgent
   end
 
   param :query, required: true
-
-  def user_prompt
-    query
-  end
+  prompt "{query}"
 
   def metadata
     {

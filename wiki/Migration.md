@@ -105,10 +105,7 @@ In v1.0.0, agents should inherit from `ApplicationAgent` rather than `RubyLLM::A
 # app/agents/support_agent.rb
 class SupportAgent < RubyLLM::Agents::Base
   model "gpt-4o"
-
-  def system_prompt
-    "You are a helpful support agent."
-  end
+  system "You are a helpful support agent."
 end
 ```
 
@@ -118,10 +115,7 @@ end
 # app/agents/support_agent.rb
 class SupportAgent < ApplicationAgent
   model "gpt-4o"
-
-  def system_prompt
-    "You are a helpful support agent."
-  end
+  system "You are a helpful support agent."
 end
 ```
 

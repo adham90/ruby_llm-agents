@@ -8,9 +8,9 @@ RubyLLM::Agents uses these prompt types:
 
 | Prompt | Purpose | When Sent |
 |--------|---------|-----------|
-| `system_prompt` | Sets the agent's role and behavior | First message in conversation |
-| `messages` | Conversation history for context | Before user_prompt |
-| `user_prompt` | The specific request to process | Each call |
+| `system` | Sets the agent's role and behavior | First message in conversation |
+| `messages` | Conversation history for context | Before prompt |
+| `prompt` | The specific request to process | Each call |
 
 For multi-turn conversations, see [Conversation History](Conversation-History).
 
@@ -19,16 +19,14 @@ For multi-turn conversations, see [Conversation History](Conversation-History).
 ### Basic System Prompt
 
 ```ruby
-def system_prompt
-  "You are a helpful assistant."
-end
+system "You are a helpful assistant."
 ```
 
 ### Detailed System Prompt
 
 ```ruby
-def system_prompt
-  <<~PROMPT
+system do
+  <<~S
     You are a professional content analyst specializing in e-commerce.
 
     Your responsibilities:
@@ -42,15 +40,17 @@ def system_prompt
     - Focus on SEO best practices
     - Consider mobile readability
     - Maintain brand voice consistency
-  PROMPT
+  S
 end
 ```
 
 ### Dynamic System Prompts
 
+Use the block form when you need conditionals or method calls:
+
 ```ruby
-def system_prompt
-  <<~PROMPT
+system do
+  <<~S
     You are an assistant for #{company_name}.
 
     Current context:
@@ -59,7 +59,7 @@ def system_prompt
     - Language: #{locale}
 
     #{additional_instructions if admin_mode}
-  PROMPT
+  S
 end
 ```
 
@@ -67,36 +67,36 @@ end
 
 ### Simple User Prompt
 
+Use `{placeholder}` syntax to auto-register params:
+
 ```ruby
-def user_prompt
-  query
-end
+prompt "{query}"
 ```
 
 ### Structured User Prompt
 
 ```ruby
-def user_prompt
-  <<~PROMPT
+prompt do
+  <<~S
     ## Task
     Analyze the following product description.
 
     ## Input
-    #{product_description}
+    {product_description}
 
     ## Requirements
     - Identify at least 3 strengths
     - Identify at least 3 areas for improvement
     - Provide an overall quality score
-  PROMPT
+  S
 end
 ```
 
 ### User Prompt with Examples
 
 ```ruby
-def user_prompt
-  <<~PROMPT
+prompt do
+  <<~S
     Classify the following customer message.
 
     ## Examples
@@ -112,9 +112,9 @@ def user_prompt
 
     ## Your Task
 
-    Message: "#{customer_message}"
+    Message: "{customer_message}"
     Classification:
-  PROMPT
+  S
 end
 ```
 
@@ -290,28 +290,26 @@ end
 
 ```ruby
 # Less effective
-def user_prompt
-  "Summarize this: #{text}"
-end
+prompt "Summarize this: {text}"
 
 # More effective
-def user_prompt
-  <<~PROMPT
+prompt do
+  <<~S
     Create a 2-3 sentence summary of the following text.
     Focus on the main argument and key supporting points.
     Use simple language suitable for a general audience.
 
     Text:
-    #{text}
-  PROMPT
+    {text}
+  S
 end
 ```
 
 ### Provide Context
 
 ```ruby
-def system_prompt
-  <<~PROMPT
+system do
+  <<~S
     You are a customer service assistant for TechStore, an electronics retailer.
 
     Key information:
@@ -320,15 +318,15 @@ def system_prompt
     - Support hours: 9 AM - 9 PM EST
 
     Always be helpful, professional, and accurate.
-  PROMPT
+  S
 end
 ```
 
 ### Use Structured Formats
 
 ```ruby
-def user_prompt
-  <<~PROMPT
+prompt do
+  <<~S
     Analyze this product review and extract:
 
     1. Overall sentiment (positive/negative/neutral)
@@ -337,16 +335,16 @@ def user_prompt
     4. Purchase recommendation
 
     Review:
-    #{review_text}
-  PROMPT
+    {review_text}
+  S
 end
 ```
 
 ### Handle Edge Cases
 
 ```ruby
-def user_prompt
-  <<~PROMPT
+prompt do
+  <<~S
     Parse the following address into components.
 
     If any component is missing or unclear:
@@ -355,8 +353,8 @@ def user_prompt
     - Note the issue in the "parsing_notes" field
 
     Address:
-    #{raw_address}
-  PROMPT
+    {raw_address}
+  S
 end
 ```
 

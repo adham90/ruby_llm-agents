@@ -100,25 +100,12 @@ class SummarizerAgent < ApplicationAgent
   model "gemini-2.0-flash"
   temperature 0.0
 
-  param :text, required: true
   param :max_length, default: 500
 
-  private
+  system "You are a summarization assistant. Create concise summaries
+    that capture the key points while staying under the word limit."
 
-  def system_prompt
-    <<~PROMPT
-      You are a summarization assistant. Create concise summaries
-      that capture the key points while staying under the word limit.
-    PROMPT
-  end
-
-  def user_prompt
-    <<~PROMPT
-      Summarize the following text in under #{max_length} words:
-
-      #{text}
-    PROMPT
-  end
+  prompt "Summarize the following text in under {max_length} words:\n\n{text}"
 end
 ```
 

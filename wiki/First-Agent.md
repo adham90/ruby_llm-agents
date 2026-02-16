@@ -27,30 +27,21 @@ class SearchIntentAgent < ApplicationAgent
   model "gemini-2.0-flash"
   temperature 0.0
 
-  param :query, required: true
   param :limit, default: 10
 
-  private
+  system "You are a SearchIntentAgent."
 
-  def system_prompt
-    <<~PROMPT
-      You are a SearchIntentAgent.
-    PROMPT
-  end
-
-  def user_prompt
-    query
-  end
+  prompt "{query}"
 end
 ```
 
 ## Step 2: Define the System Prompt
 
-The system prompt sets the agent's behavior:
+The system prompt sets the agent's behavior. Use the class-level `system` DSL:
 
 ```ruby
-def system_prompt
-  <<~PROMPT
+system do
+  <<~S
     You are a search assistant that parses user queries and extracts
     structured search filters. Analyze natural language and identify:
 
@@ -60,24 +51,16 @@ def system_prompt
 
     Be precise and extract only what's explicitly or strongly implied
     in the query.
-  PROMPT
+  S
 end
 ```
 
 ## Step 3: Define the User Prompt
 
-The user prompt is what you send with each request:
+The user prompt is what you send with each request. Use the class-level `prompt` DSL with `{placeholder}` syntax -- parameters referenced via `{name}` are auto-registered as required:
 
 ```ruby
-def user_prompt
-  <<~PROMPT
-    Extract search intent from this query:
-
-    "#{query}"
-
-    Return up to #{limit} relevant filters.
-  PROMPT
-end
+prompt "Extract search intent from this query:\n\n\"{query}\"\n\nReturn up to {limit} relevant filters."
 ```
 
 ## Step 4: Add a Schema for Structured Output
@@ -114,13 +97,10 @@ class SearchIntentAgent < ApplicationAgent
   temperature 0.0
   cache 30.minutes
 
-  param :query, required: true
   param :limit, default: 10
 
-  private
-
-  def system_prompt
-    <<~PROMPT
+  system do
+    <<~S
       You are a search assistant that parses user queries and extracts
       structured search filters. Analyze natural language and identify:
 
@@ -129,23 +109,16 @@ class SearchIntentAgent < ApplicationAgent
       3. The most likely product category
 
       Be precise and extract only what's explicitly or strongly implied.
-    PROMPT
+    S
   end
 
-  def user_prompt
-    <<~PROMPT
-      Extract search intent from: "#{query}"
-      Return up to #{limit} filters.
-    PROMPT
-  end
+  prompt "Extract search intent from: \"{query}\"\nReturn up to {limit} filters."
 
-  def schema
-    @schema ||= RubyLLM::Schema.create do
-      string :refined_query, description: "Cleaned search query"
-      array :filters, of: :string, description: "Filters as 'type:value'"
-      integer :category_id, description: "Category ID", nullable: true
-      number :confidence, description: "Confidence 0-1"
-    end
+  returns do
+    string :refined_query, description: "Cleaned search query"
+    array :filters, of: :string, description: "Filters as 'type:value'"
+    integer :category_id, description: "Category ID", nullable: true
+    number :confidence, description: "Confidence 0-1"
   end
 end
 ```

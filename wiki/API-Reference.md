@@ -243,21 +243,29 @@ MyAgent.stream(query: "test") { |chunk| print chunk.content }
 
 Execute the agent (called by `.call`).
 
-#### `#system_prompt` (private)
+#### `#system_prompt` — Traditional (override)
 
-Override to define system prompt.
+Override to define system prompt. **Prefer the class-level `system` DSL instead** (see [Simplified DSL](#class-methods--simplified-dsl-v20) above).
 
 ```ruby
+# Preferred — class-level DSL
+system "You are a helpful assistant."
+
+# Traditional — instance method override
 def system_prompt
   "You are a helpful assistant."
 end
 ```
 
-#### `#user_prompt` (private, required)
+#### `#user_prompt` — Traditional (override)
 
-Override to define user prompt.
+Override to define user prompt. **Prefer the class-level `prompt` DSL instead** (see [Simplified DSL](#class-methods--simplified-dsl-v20) above).
 
 ```ruby
+# Preferred — class-level DSL
+prompt "Process: {query}"
+
+# Traditional — instance method override
 def user_prompt
   "Process: #{query}"
 end
