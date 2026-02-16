@@ -80,7 +80,7 @@ RubyLLM::Agents is a Rails engine that provides:
 
 ## Current Version
 
-**v2.2.0** - See [CHANGELOG](https://github.com/adham90/ruby_llm-agents/blob/main/CHANGELOG.md) for release history.
+**v3.0.0** - See [CHANGELOG](https://github.com/adham90/ruby_llm-agents/blob/main/CHANGELOG.md) for release history.
 
 ## Supported LLM Providers
 

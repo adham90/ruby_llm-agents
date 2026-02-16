@@ -6,15 +6,92 @@ For full upgrade instructions, see [UPGRADE.md](../UPGRADE.md).
 
 ---
 
+## Upgrading to v3.0.0
+
+### From v2.2.0
+
+v3.0.0 is a **major release with breaking changes**. Block-based DSL forms have been removed and `prompt` emits a deprecation warning.
+
+**Breaking: Block forms removed**
+
+`system do...end`, `user do...end`, and `prompt do...end` no longer work. Blocks passed to these methods are silently ignored. Use string arguments or method overrides instead.
+
+```ruby
+# Before (v2.2 — no longer works in v3.0)
+class MyAgent < ApplicationAgent
+  system { "You help with #{context}" }
+  user { "Analyze: #{query}" }
+end
+
+# After (v3.0 — static strings)
+class MyAgent < ApplicationAgent
+  system "You help with {context}"
+  user "Analyze: {query}"
+end
+
+# After (v3.0 — dynamic via method override)
+class MyAgent < ApplicationAgent
+  def system_prompt
+    "You help with #{context}"
+  end
+
+  def user_prompt
+    "Analyze: #{query}"
+  end
+end
+```
+
+**Breaking: `resolve_prompt_from_config` no longer handles Procs**
+
+If you overrode `resolve_prompt_from_config` or relied on it accepting Proc objects, update to use string templates or method overrides.
+
+**Deprecation: `prompt` alias**
+
+`prompt "..."` continues to work but emits a deprecation warning. Use `user "..."` instead:
+
+```ruby
+# Deprecated (still works, emits warning)
+class MyAgent < ApplicationAgent
+  prompt "Analyze: {query}"
+end
+
+# Preferred
+class MyAgent < ApplicationAgent
+  user "Analyze: {query}"
+end
+```
+
+**Migration steps:**
+
+```bash
+bundle update ruby_llm-agents
+```
+
+No database migrations are required for v3.0.0.
+
+**Required:** Replace any block-based DSL usage:
+
+```bash
+grep -rn "system do\|user do\|prompt do" app/agents/ --include="*.rb"
+```
+
+Convert to string arguments or method overrides as shown above.
+
+**Recommended:** Replace `prompt` with `user`:
+
+```bash
+grep -rn "^\s*prompt " app/agents/ --include="*.rb"
+```
+
+---
+
 ## Upgrading to v2.2.0
 
 ### From v2.1.0
 
-v2.2.0 introduces the **three-role DSL** (`system`, `user`, `assistant`) and the `.ask` convenience method. There are no breaking changes -- `prompt` continues to work as a deprecated alias.
+v2.2.0 introduced the **three-role DSL** (`system`, `user`, `assistant`) and the `.ask` convenience method. `prompt` works as a deprecated alias.
 
-**New DSL: `user` replaces `prompt`**
-
-The `prompt` class method is now deprecated in favor of `user`. Both work identically, but `prompt` will emit a deprecation warning.
+**DSL: `user` replaces `prompt`**
 
 ```ruby
 # Before (v2.1 and earlier)
@@ -28,9 +105,9 @@ class MyAgent < ApplicationAgent
 end
 ```
 
-**New DSL: `assistant` prefill**
+**DSL: `assistant` prefill**
 
-Pre-fill the assistant turn to steer output format. This is especially useful for forcing JSON responses:
+Pre-fill the assistant turn to steer output format:
 
 ```ruby
 class JsonAgent < ApplicationAgent
@@ -38,36 +115,16 @@ class JsonAgent < ApplicationAgent
   system "Extract entities as JSON."
   user   "{text}"
   assistant "{"
-
-  returns do
-    array :entities, of: :string
-  end
 end
 ```
 
-**New DSL: `user_config` and `assistant_config`**
+**Method: `.ask`**
 
-Apply options (such as `cache_control`) to the user or assistant messages:
-
-```ruby
-class CachedAgent < ApplicationAgent
-  user "{query}"
-  user_config cache_control: { type: "ephemeral" }
-end
-```
-
-**New method: `.ask`**
-
-One-shot convenience for ad-hoc queries without pre-defining a `user` prompt:
+One-shot convenience for ad-hoc queries:
 
 ```ruby
 result = MyAgent.ask("What is the capital of France?")
-result = MyAgent.ask("Translate {text} to {lang}", text: "Hello", lang: "Spanish")
 ```
-
-**New instance method: `#assistant_prompt`**
-
-Override in subclasses for dynamic assistant prefills (prefer the class-level `assistant` DSL for static prefills).
 
 **Migration steps:**
 
@@ -75,25 +132,7 @@ Override in subclasses for dynamic assistant prefills (prefer the class-level `a
 bundle update ruby_llm-agents
 ```
 
-No database migrations are required for v2.2.0.
-
-**Optional cleanup:** Find and replace `prompt` with `user` in your agent classes:
-
-```bash
-grep -rn "^\s*prompt " app/agents/ --include="*.rb"
-```
-
-Replace each occurrence:
-
-```ruby
-# Before
-prompt "..."
-prompt { ... }
-
-# After
-user "..."
-user { ... }
-```
+No database migrations required.
 
 ---
 

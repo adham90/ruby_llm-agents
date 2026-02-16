@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-02-16
+
+### Breaking Changes
+
+- **Block form removed** — `system do ... end`, `user do ... end`, and `prompt do ... end` are no longer supported. Blocks are silently ignored. Use a string argument for static content or a `def system_prompt` / `def user_prompt` method override for dynamic content.
+- **`resolve_prompt_from_config` no longer handles Procs** — only string templates are supported. Agents that relied on `Proc`-based prompt configs must migrate to method overrides.
+
+### Changed
+
+- `prompt "..."` now emits a deprecation warning — use `user "..."` instead (alias still works)
+- `prompt` kept as permanent deprecated alias for `user`
+- `resolve_prompt_from_config` simplified to delegate directly to `interpolate_template`
+- Removed internal `@prompt_block`, `@system_block`, and `@prompt_template` storage
+
 ## [2.2.0] - 2026-02-16
 
 ### Added
@@ -576,6 +590,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[3.0.0]: https://github.com/adham90/ruby_llm-agents/compare/v2.2.0...v3.0.0
 [2.2.0]: https://github.com/adham90/ruby_llm-agents/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/adham90/ruby_llm-agents/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.4...v2.0.0
