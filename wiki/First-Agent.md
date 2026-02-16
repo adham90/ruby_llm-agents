@@ -31,7 +31,7 @@ class SearchIntentAgent < ApplicationAgent
 
   system "You are a SearchIntentAgent."
 
-  prompt "{query}"
+  user "{query}"
 end
 ```
 
@@ -57,11 +57,13 @@ end
 
 ## Step 3: Define the User Prompt
 
-The user prompt is what you send with each request. Use the class-level `prompt` DSL with `{placeholder}` syntax -- parameters referenced via `{name}` are auto-registered as required:
+The user prompt is what you send with each request. Use the class-level `user` DSL with `{placeholder}` syntax -- parameters referenced via `{name}` are auto-registered as required:
 
 ```ruby
-prompt "Extract search intent from this query:\n\n\"{query}\"\n\nReturn up to {limit} relevant filters."
+user "Extract search intent from this query:\n\n\"{query}\"\n\nReturn up to {limit} relevant filters."
 ```
+
+> **Note:** `prompt` still works as a deprecated alias for `user`, but new code should use `user`.
 
 ## Step 4: Add a Schema for Structured Output
 
@@ -112,7 +114,9 @@ class SearchIntentAgent < ApplicationAgent
     S
   end
 
-  prompt "Extract search intent from: \"{query}\"\nReturn up to {limit} filters."
+  user "Extract search intent from: \"{query}\"\nReturn up to {limit} filters."
+
+  assistant "{"   # Forces JSON output by prefilling the assistant response
 
   returns do
     string :refined_query, description: "Cleaned search query"
@@ -223,6 +227,45 @@ class SearchController < ApplicationController
       @products = Product.search(params[:q])  # Fallback to raw query
       Rails.logger.error("Agent failed: #{result.error}")
     end
+  end
+end
+```
+
+## Conversational Agents with `.ask`
+
+While `.call` is stateless (one-shot), `.ask` maintains conversation history across turns. This is ideal for interactive or exploratory use cases:
+
+```ruby
+agent = SearchIntentAgent.new(limit: 10)
+
+# First turn
+result = agent.ask("red summer dress under $50")
+result.content
+# => { refined_query: "red summer dress", filters: ["color:red", ...], ... }
+
+# Follow-up turn -- the agent remembers the previous exchange
+result = agent.ask("actually, make that under $30 and size medium")
+result.content
+# => { refined_query: "red summer dress", filters: ["color:red", "season:summer", "price:<30", "size:medium"], ... }
+```
+
+`.ask` is also useful in controllers that back a chat-style UI:
+
+```ruby
+class ChatSearchController < ApplicationController
+  def create
+    agent = SearchIntentAgent.new(limit: 10)
+
+    # Replay prior turns from the session
+    session[:search_history]&.each do |turn|
+      agent.ask(turn)
+    end
+
+    result = agent.ask(params[:message])
+    session[:search_history] ||= []
+    session[:search_history] << params[:message]
+
+    render json: result.content
   end
 end
 ```

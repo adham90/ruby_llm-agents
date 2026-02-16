@@ -27,16 +27,15 @@ Build intelligent AI agents in Ruby with a clean DSL, automatic execution tracki
 ## Show Me the Code
 
 ```ruby
-# app/agents/search_intent_agent.rb
+# Template agent — structured input via .call
 class SearchIntentAgent < ApplicationAgent
   model "gpt-4o"
   temperature 0.0
 
-  # Prompts with {placeholder} syntax - params auto-registered
   system "You are a search intent analyzer. Extract structured data from queries."
-  prompt "Extract search intent from: {query}"
+  user "Extract search intent from: {query}"
+  assistant '{"refined_query":'  # Force JSON output
 
-  # Structured output with returns DSL
   returns do
     string :refined_query, description: "Cleaned search query"
     array :filters, of: :string, description: "Extracted filters"
@@ -52,15 +51,17 @@ result.duration_ms    # => 850
 ```
 
 ```ruby
-# Multi-turn conversations
-result = ChatAgent.call(
-  query: "What's my name?",
-  messages: [
-    { role: :user, content: "My name is Alice" },
-    { role: :assistant, content: "Nice to meet you, Alice!" }
-  ]
-)
-# => "Your name is Alice!"
+# Conversational agent — freeform input via .ask
+class RubyExpert < ApplicationAgent
+  model "claude-sonnet-4-5-20250929"
+  system "You are a senior Ruby developer with 20 years of experience."
+end
+
+result = RubyExpert.ask("What's the difference between proc and lambda?")
+puts result.content
+
+# Stream the response
+RubyExpert.ask("Explain metaprogramming") { |chunk| print chunk.content }
 ```
 
 ```ruby
@@ -68,7 +69,7 @@ result = ChatAgent.call(
 class ReliableAgent < ApplicationAgent
   model "gpt-4o"
 
-  prompt "{query}"
+  user "{query}"
 
   on_failure do
     retries times: 3, backoff: :exponential

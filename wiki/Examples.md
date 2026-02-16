@@ -13,7 +13,7 @@ class SearchIntentAgent < ApplicationAgent
   cache 30.minutes
 
   param :query, required: true
-  prompt "Extract search intent from: {query}"
+  user "Extract search intent from: {query}"
 
   def schema
     @schema ||= RubyLLM::Schema.create do
@@ -48,7 +48,7 @@ class EmailClassifierAgent < ApplicationAgent
   param :body, required: true
   param :sender
 
-  prompt do
+  user do
     <<~S
       Subject: {subject}
       From: {sender}
@@ -89,7 +89,7 @@ class BlogPostAgent < ApplicationAgent
   param :tone, default: "professional"
   param :word_count, default: 800
 
-  prompt do
+  user do
     <<~S
       Write a {word_count}-word blog post about: {topic}
 
@@ -125,7 +125,7 @@ class ProductDescriptionAgent < ApplicationAgent
   param :features, required: true
   param :target_audience, default: "general consumers"
 
-  prompt do
+  user do
     <<~S
       Create a compelling product description for:
 
@@ -155,7 +155,7 @@ class InvoiceParserAgent < ApplicationAgent
   model "gpt-4o"  # Vision capable
 
   param :invoice_path, required: true
-  prompt "Extract all invoice details from this document."
+  user "Extract all invoice details from this document."
 
   def schema
     @schema ||= RubyLLM::Schema.create do
@@ -199,7 +199,7 @@ class ResumeParserAgent < ApplicationAgent
 
   param :resume_text, required: true
 
-  prompt do
+  user do
     <<~S
       Parse this resume and extract structured information:
 
@@ -262,7 +262,7 @@ class SupportAgent < ApplicationAgent
     S
   end
 
-  prompt do
+  user do
     history = conversation_history.map do |msg|
       "#{msg[:role].capitalize}: #{msg[:content]}"
     end.join("\n")
@@ -292,7 +292,7 @@ Chain agents sequentially, passing results between them:
 class ResearchAgent < ApplicationAgent
   model "gpt-4o"
   param :topic, required: true
-  prompt "Research key points about: {topic}"
+  user "Research key points about: {topic}"
 
   def schema
     @schema ||= RubyLLM::Schema.create do
@@ -307,7 +307,7 @@ class OutlineAgent < ApplicationAgent
   model "gpt-4o-mini"
   param :key_points, required: true
 
-  prompt do
+  user do
     "Create an outline from: #{key_points.join(', ')}"
   end
 
@@ -326,7 +326,7 @@ class WriterAgent < ApplicationAgent
   model "gpt-4o"
   param :outline, required: true
 
-  prompt do
+  user do
     "Write content following this outline: #{outline.to_json}"
   end
 end
@@ -344,7 +344,7 @@ class IntentClassifier < ApplicationAgent
   model "gpt-4o-mini"
   temperature 0.0
   param :message, required: true
-  prompt "Classify intent: {message}"
+  user "Classify intent: {message}"
 
   def schema
     @schema ||= RubyLLM::Schema.create do
@@ -365,6 +365,67 @@ agent_class = case intent.content[:intent]
               end
 
 result = agent_class.call(message: "How do I reset my password?")
+```
+
+## Assistant Prefill for JSON Output
+
+### Structured Data Extractor
+
+Use `assistant` to force JSON output by pre-filling the opening brace:
+
+```ruby
+class DataExtractor < ApplicationAgent
+  model "claude-sonnet-4-20250514"
+  temperature 0.0
+
+  system "You extract structured data from unstructured text. Always respond with valid JSON."
+  user   "{text}"
+  assistant "{"
+
+  returns do
+    array :people, of: :string, description: "Named people"
+    array :dates, of: :string, description: "Dates mentioned"
+    array :amounts, of: :string, description: "Monetary amounts"
+  end
+end
+
+result = DataExtractor.call(text: "John paid $500 on March 3rd to Jane.")
+# => { people: ["John", "Jane"], dates: ["March 3rd"], amounts: ["$500"] }
+```
+
+### Code Review Agent with Prefill
+
+```ruby
+class CodeReviewAgent < ApplicationAgent
+  model "gpt-4o"
+  temperature 0.2
+
+  system "You are a senior code reviewer. Provide structured feedback."
+  user   "Review this code:\n\n```\n{code}\n```"
+  assistant "## Code Review\n\n### Issues Found\n\n1."
+end
+```
+
+## Quick Queries with `.ask`
+
+Use `.ask` for one-off queries without defining a `user` prompt on the class:
+
+```ruby
+# Define a base agent with model and system prompt
+class ResearchAgent < ApplicationAgent
+  model "gpt-4o"
+  system "You are a research assistant. Be concise and factual."
+end
+
+# Use .ask for ad-hoc questions
+result = ResearchAgent.ask("What are the main causes of the 2008 financial crisis?")
+puts result.content
+
+# With parameters
+result = ResearchAgent.ask("Compare {topic_a} and {topic_b}", topic_a: "REST", topic_b: "GraphQL")
+
+# In a Rails console or script
+SummaryAgent.ask("Summarize: #{Article.last.body}")
 ```
 
 ## Testing Agents
@@ -495,7 +556,7 @@ class StreamingChatAgent < ApplicationAgent
 
   param :message, required: true
   param :channel, required: true
-  prompt "{message}"
+  user "{message}"
 
   def on_chunk(chunk)
     channel.broadcast_chunk(chunk)
@@ -539,7 +600,7 @@ class TenantAwareAgent < ApplicationAgent
   end
 
   param :query, required: true
-  prompt "{query}"
+  user "{query}"
 
   def metadata
     {

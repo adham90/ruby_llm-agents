@@ -36,7 +36,7 @@ class ReliableAgent < ApplicationAgent
   # Maximum total time
   total_timeout 30
 
-  prompt "{query}"
+  user "{query}"
 end
 ```
 

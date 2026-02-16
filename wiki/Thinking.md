@@ -28,7 +28,7 @@ class ReasoningAgent < ApplicationAgent
   system "You are a reasoning assistant. Show your work step by step."
 
   param :query, required: true
-  prompt "{query}"
+  user "{query}"
 end
 ```
 
@@ -232,7 +232,7 @@ class ThinkingAgent < ApplicationAgent
   end
 
   param :query, required: true
-  prompt "{query}"
+  user "{query}"
 end
 ```
 

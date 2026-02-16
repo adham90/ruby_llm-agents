@@ -4,14 +4,14 @@ The Agent DSL provides a clean, declarative way to configure your AI agents.
 
 ## Simplified DSL (Recommended)
 
-The simplified DSL puts prompts front and center - the heart of any agent:
+The simplified DSL uses three roles -- `system`, `user`, and `assistant` -- that map directly to the LLM message format:
 
 ```ruby
 class SearchAgent < ApplicationAgent
   model "gpt-4o"
 
   system "You are a helpful search assistant. Be concise."
-  prompt "Search for: {query} (limit: {limit})"
+  user "Search for: {query} (limit: {limit})"
 
   param :limit, default: 10  # Override auto-detected param with default
 
@@ -38,12 +38,15 @@ end
 
 ### Key Features
 
-- **`prompt`** - Define user prompt with `{placeholder}` syntax (auto-registers required params)
-- **`system`** - System instructions
+- **`system`** - System instructions (sets agent behavior and persona)
+- **`user`** - Define user prompt with `{placeholder}` syntax (auto-registers required params)
+- **`assistant`** - Prefill the assistant response (useful for forcing JSON or specific formats)
 - **`returns`** - Structured output schema (alias for `schema`)
 - **`on_failure`** - Error handling configuration (alias for `reliability`)
 - **`cache for:, key:`** - Caching with cleaner syntax
 - **`before`/`after`** - Simplified callbacks (block-only)
+
+> **Deprecation note:** `prompt` still works as an alias for `user` but is deprecated. New code should use `user`.
 
 ## Class-Level Configuration
 
@@ -67,14 +70,14 @@ end
 | Anthropic | `claude-3-5-sonnet`, `claude-3-opus`, `claude-3-haiku` |
 | Google | `gemini-2.0-flash`, `gemini-1.5-pro`, `gemini-1.5-flash` |
 
-### prompt (Simplified DSL)
+### user (Simplified DSL)
 
 Define the user prompt with automatic parameter detection:
 
 ```ruby
 class SearchAgent < ApplicationAgent
   # Parameters {query} and {category} are auto-registered as required
-  prompt "Search for {query} in {category}"
+  user "Search for {query} in {category}"
 end
 ```
 
@@ -82,7 +85,7 @@ Override auto-detected parameters with defaults:
 
 ```ruby
 class SearchAgent < ApplicationAgent
-  prompt "Search for {query} in {category} (limit: {limit})"
+  user "Search for {query} in {category} (limit: {limit})"
 
   param :limit, default: 10  # Now optional with default
 end
@@ -95,13 +98,58 @@ class SummarizerAgent < ApplicationAgent
   param :text
   param :language, default: "english"
 
-  prompt do
+  user do
     base = "Summarize the following"
     base += " in #{language}" if language != "english"
     "#{base}: #{text}"
   end
 end
 ```
+
+> **Deprecated:** `prompt` is still accepted as an alias for `user` but should not be used in new code.
+
+### assistant (Simplified DSL)
+
+Prefill the beginning of the assistant's response. This is particularly useful with Anthropic models to force JSON output or guide the model's format:
+
+```ruby
+class JsonExtractorAgent < ApplicationAgent
+  model "claude-3-5-sonnet"
+  temperature 0.0
+
+  system "You extract structured data from text. Always respond in valid JSON."
+
+  user "Extract the key entities from:\n\n{text}"
+
+  assistant "{"   # Forces the model to begin its response with "{"
+end
+```
+
+You can also use `assistant` with a block for dynamic prefills:
+
+```ruby
+class TranslatorAgent < ApplicationAgent
+  param :target_language, default: "Spanish"
+
+  system "You are a translator. Return only the translated text."
+
+  user "Translate the following to {target_language}:\n\n{text}"
+
+  assistant do
+    # Guide the model toward the target language's script
+    case target_language
+    when "Japanese" then "\u300C"   # Opening Japanese quote bracket
+    when "French"   then "\u00AB "  # Opening guillemet
+    else ""
+    end
+  end
+end
+```
+
+**When to use `assistant`:**
+- Force JSON output by prefilling `{` or `[`
+- Ensure a specific output prefix or format
+- Steer the model away from preamble text like "Sure, here is..."
 
 ### system (Simplified DSL)
 
@@ -131,7 +179,7 @@ Define structured output (alias for `schema`):
 
 ```ruby
 class AnalysisAgent < ApplicationAgent
-  prompt "Analyze: {data}"
+  user "Analyze: {data}"
 
   returns do
     string :summary, description: "A brief summary"
@@ -306,7 +354,7 @@ class MyAgent < ApplicationAgent
 end
 ```
 
-**Auto-detected parameters:** When using the `prompt` DSL with `{placeholder}` syntax, parameters are automatically registered as required unless you explicitly define them with `param`.
+**Auto-detected parameters:** When using the `user` DSL (or its deprecated alias `prompt`) with `{placeholder}` syntax, parameters are automatically registered as required unless you explicitly define them with `param`.
 
 **Supported Types:**
 
@@ -455,7 +503,7 @@ end
 
 ### user_prompt
 
-Define the main request (alternative to `prompt` DSL):
+Define the main request (alternative to `user` DSL):
 
 ```ruby
 def user_prompt
@@ -505,6 +553,35 @@ agent.with_messages([...]).call
 ```
 
 See [Conversation History](Conversation-History) for details.
+
+## Conversational Usage with `.ask`
+
+While `.call` is stateless (fire-and-forget), `.ask` accumulates conversation history so each turn builds on the last. Use `.ask` when you need a multi-turn, chat-style interaction.
+
+```ruby
+agent = SearchAgent.new(limit: 10)
+
+# First turn
+result = agent.ask("red summer dress under $50")
+result.content  # => { results: [...] }
+
+# The agent remembers the first turn
+result = agent.ask("now only show results with free shipping")
+result.content  # => { results: [...filtered...] }
+```
+
+`.ask` accepts the same parameters as `.call`. You can also pass an ad-hoc user message as the first argument:
+
+```ruby
+agent = ContentGeneratorAgent.new(tone: "casual", word_count: 300, user_id: 1)
+
+result = agent.ask("Write about remote work trends")
+puts result.content[:title]
+
+# Iterate on the output
+result = agent.ask("Make it more upbeat and add a call to action")
+puts result.content[:content]
+```
 
 ### process_response
 
@@ -560,10 +637,13 @@ class ContentGeneratorAgent < ApplicationAgent
     <<~S
       You are a professional content writer.
       Write in a {tone} tone with clear structure.
+      Always return valid JSON with keys: title, content, tags.
     S
   end
 
-  prompt "Write a {word_count}-word article about: {topic}"
+  user "Write a {word_count}-word article about: {topic}"
+
+  assistant "{"   # Force JSON output
 
   param :tone, default: "professional"
   param :word_count, default: 500

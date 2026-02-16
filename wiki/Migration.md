@@ -6,6 +6,97 @@ For full upgrade instructions, see [UPGRADE.md](../UPGRADE.md).
 
 ---
 
+## Upgrading to v2.2.0
+
+### From v2.1.0
+
+v2.2.0 introduces the **three-role DSL** (`system`, `user`, `assistant`) and the `.ask` convenience method. There are no breaking changes -- `prompt` continues to work as a deprecated alias.
+
+**New DSL: `user` replaces `prompt`**
+
+The `prompt` class method is now deprecated in favor of `user`. Both work identically, but `prompt` will emit a deprecation warning.
+
+```ruby
+# Before (v2.1 and earlier)
+class MyAgent < ApplicationAgent
+  prompt "Analyze: {query}"
+end
+
+# After (v2.2+)
+class MyAgent < ApplicationAgent
+  user "Analyze: {query}"
+end
+```
+
+**New DSL: `assistant` prefill**
+
+Pre-fill the assistant turn to steer output format. This is especially useful for forcing JSON responses:
+
+```ruby
+class JsonAgent < ApplicationAgent
+  model "claude-sonnet-4-20250514"
+  system "Extract entities as JSON."
+  user   "{text}"
+  assistant "{"
+
+  returns do
+    array :entities, of: :string
+  end
+end
+```
+
+**New DSL: `user_config` and `assistant_config`**
+
+Apply options (such as `cache_control`) to the user or assistant messages:
+
+```ruby
+class CachedAgent < ApplicationAgent
+  user "{query}"
+  user_config cache_control: { type: "ephemeral" }
+end
+```
+
+**New method: `.ask`**
+
+One-shot convenience for ad-hoc queries without pre-defining a `user` prompt:
+
+```ruby
+result = MyAgent.ask("What is the capital of France?")
+result = MyAgent.ask("Translate {text} to {lang}", text: "Hello", lang: "Spanish")
+```
+
+**New instance method: `#assistant_prompt`**
+
+Override in subclasses for dynamic assistant prefills (prefer the class-level `assistant` DSL for static prefills).
+
+**Migration steps:**
+
+```bash
+bundle update ruby_llm-agents
+```
+
+No database migrations are required for v2.2.0.
+
+**Optional cleanup:** Find and replace `prompt` with `user` in your agent classes:
+
+```bash
+grep -rn "^\s*prompt " app/agents/ --include="*.rb"
+```
+
+Replace each occurrence:
+
+```ruby
+# Before
+prompt "..."
+prompt { ... }
+
+# After
+user "..."
+user { ... }
+```
+
+---
+
 ## Upgrading to v2.1.0
 
 ### From v2.0.0

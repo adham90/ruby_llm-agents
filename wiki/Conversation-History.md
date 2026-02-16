@@ -66,7 +66,7 @@ class CustomerSupportAgent < ApplicationAgent
 
   param :conversation_id, required: true
   param :message, required: true
-  prompt "{message}"
+  user "{message}"
 
   # Template method - override to provide conversation history
   def messages
@@ -156,7 +156,7 @@ class ChatAgent < ApplicationAgent
 
   param :conversation_id, required: true
   param :user_message, required: true
-  prompt "{user_message}"
+  user "{user_message}"
 
   def messages
     conversation.chat_messages.order(:created_at).map do |msg|
@@ -230,7 +230,7 @@ end
 class SessionChatAgent < ApplicationAgent
   param :session_messages, default: []
   param :query, required: true
-  prompt "{query}"
+  user "{query}"
 
   def messages
     session_messages.map do |msg|

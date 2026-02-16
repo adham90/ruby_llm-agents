@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-02-16
+
+### Added
+
+- **Three-role prompt DSL** — `system`, `user`, `assistant` class-level methods mirror LLM API terminology (system/user/assistant)
+- **`user` DSL** — preferred replacement for `prompt`, with `{placeholder}` auto-registration
+- **`assistant` DSL** — define assistant prefill to steer model output format (e.g., `assistant '{"result":'` forces JSON)
+- **`.ask(message)` class method** — new API for conversational agents that accept freeform input without needing a `user` template
+- **Streaming with `.ask`** — `Agent.ask("question") { |chunk| print chunk.content }`
+- **Attachments with `.ask`** — `Agent.ask("describe this", with: "image.jpg")`
+- **System prompt placeholders** — `system "Helping {user_name}"` now auto-registers `{placeholder}` params (same as `user`)
+- **`#assistant_prompt` instance method** — override for dynamic prefill logic
+- **Assistant prefill in LLM calls** — prefill sent as assistant message before completion for response steering
+
+### Changed
+
+- `prompt` is now a backward-compatible alias for `user` (no breaking change)
+- `#user_prompt` resolution order: method override > `.ask` message > class template > inherited > error
+- `.ask` skips required param validation (template params not needed for freeform input)
+- Dry run output now includes `assistant_prompt`
+
+### Deprecated
+
+- `prompt` class-level DSL — use `user` instead (alias still works, will emit warning in v2.3.0)
+
 ## [2.1.0] - 2026-02-15
 
 ### Added
@@ -551,6 +576,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[2.2.0]: https://github.com/adham90/ruby_llm-agents/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/adham90/ruby_llm-agents/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.4...v2.0.0
 [1.3.4]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.3...v1.3.4

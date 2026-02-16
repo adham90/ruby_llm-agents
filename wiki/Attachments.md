@@ -10,7 +10,7 @@ Send images, PDFs, and other files to vision-capable models using the `with:` op
 class VisionAgent < ApplicationAgent
   model "gpt-4o"  # Vision-capable model
   param :question, required: true
-  prompt "{question}"
+  user "{question}"
 end
 
 # Local file
@@ -62,7 +62,7 @@ Not all models support vision. Use these:
 class ImageDescriber < ApplicationAgent
   model "gpt-4o"
   param :detail_level, default: "medium"
-  prompt "Describe this image in {detail_level} detail."
+  user "Describe this image in {detail_level} detail."
 end
 
 result = ImageDescriber.call(
@@ -77,7 +77,7 @@ result = ImageDescriber.call(
 class OCRAgent < ApplicationAgent
   model "gpt-4o"
 
-  prompt do
+  user do
     <<~S
       Extract all text from this image.
       Preserve the original formatting and structure.
@@ -106,7 +106,7 @@ puts result[:extracted_text]
 class ImageComparator < ApplicationAgent
   model "claude-3-5-sonnet"
 
-  prompt do
+  user do
     <<~S
       Compare these two images and identify:
       1. Similarities
@@ -137,7 +137,7 @@ class PDFAnalyzer < ApplicationAgent
   model "gpt-4o"
   param :focus_area, default: "summary"
 
-  prompt do
+  user do
     <<~S
       Analyze this PDF document. Focus on: {focus_area}
 
@@ -160,7 +160,7 @@ result = PDFAnalyzer.call(
 ```ruby
 class InvoiceExtractor < ApplicationAgent
   model "gpt-4o"
-  prompt "Extract invoice details from this document."
+  user "Extract invoice details from this document."
 
   def schema
     @schema ||= RubyLLM::Schema.create do
@@ -264,7 +264,7 @@ Some providers support detail levels:
 
 ```ruby
 # OpenAI specific - in your prompt
-prompt "Using high detail analysis, describe every element in this image."
+user "Using high detail analysis, describe every element in this image."
 ```
 
 ### Batch Related Images
@@ -286,7 +286,7 @@ For large PDFs, consider chunking:
 class LargeDocumentAgent < ApplicationAgent
   model "gpt-4o"
   timeout 180  # Longer timeout for large docs
-  prompt "Analyze this document page by page. Focus on key information."
+  user "Analyze this document page by page. Focus on key information."
 end
 ```
 

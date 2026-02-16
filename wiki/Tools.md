@@ -90,7 +90,7 @@ class ProductAgent < ApplicationAgent
   tools [SearchTool, GetProductTool, CompareTool]
 
   system "You are a helpful shopping assistant."
-  prompt "Help the user with: {query}"
+  user "Help the user with: {query}"
 end
 ```
 
@@ -103,7 +103,7 @@ class SmartAgent < ApplicationAgent
   param :query, required: true
   param :user_role
 
-  prompt "{query}"
+  user "{query}"
 
   def tools
     base_tools = [SearchTool, GetInfoTool]
@@ -257,7 +257,7 @@ class ShoppingAgent < ApplicationAgent
     S
   end
 
-  prompt "{query}"
+  user "{query}"
 
   def metadata
     { user_id: user_id }

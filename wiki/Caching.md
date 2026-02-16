@@ -11,7 +11,7 @@ class CachedAgent < ApplicationAgent
   model "gpt-4o"
   cache 1.hour  # Cache responses for 1 hour
 
-  prompt "{query}"
+  user "{query}"
 end
 ```
 
@@ -155,7 +155,7 @@ High TTL for stable, factual responses:
 class FactAgent < ApplicationAgent
   cache 1.week  # Facts don't change often
 
-  prompt "Explain: {topic}"
+  user "Explain: {topic}"
 end
 ```
 
@@ -202,7 +202,7 @@ class StreamingAgent < ApplicationAgent
 end
 
 # This will always make an API call
-StreamingAgent.call(prompt: "test") do |chunk|
+StreamingAgent.call(user: "test") do |chunk|
   print chunk
 end
 ```

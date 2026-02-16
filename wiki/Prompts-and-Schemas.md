@@ -4,13 +4,16 @@ Learn how to craft effective prompts and structure LLM outputs with schemas.
 
 ## Prompts Overview
 
-RubyLLM::Agents uses these prompt types:
+RubyLLM::Agents uses a three-role DSL for building conversations:
 
-| Prompt | Purpose | When Sent |
-|--------|---------|-----------|
-| `system` | Sets the agent's role and behavior | First message in conversation |
-| `messages` | Conversation history for context | Before prompt |
-| `prompt` | The specific request to process | Each call |
+| Role | DSL | Purpose | When Sent |
+|------|-----|---------|-----------|
+| System | `system` | Sets the agent's role and behavior | First message in conversation |
+| User | `user` | The specific request to process | Each call |
+| Assistant | `assistant` | Pre-fill / steer the response | After user message, before generation |
+| _(context)_ | `messages` | Conversation history for context | Before user message |
+
+> **Note:** In versions prior to v2.2.0, the `prompt` DSL was used instead of `user`. The `prompt` method still works as a deprecated alias but will emit a warning. All new code should use `user`.
 
 For multi-turn conversations, see [Conversation History](Conversation-History).
 
@@ -70,13 +73,13 @@ end
 Use `{placeholder}` syntax to auto-register params:
 
 ```ruby
-prompt "{query}"
+user "{query}"
 ```
 
 ### Structured User Prompt
 
 ```ruby
-prompt do
+user do
   <<~S
     ## Task
     Analyze the following product description.
@@ -95,7 +98,7 @@ end
 ### User Prompt with Examples
 
 ```ruby
-prompt do
+user do
   <<~S
     Classify the following customer message.
 
@@ -116,6 +119,100 @@ prompt do
     Classification:
   S
 end
+```
+
+## Assistant Prefill (v2.2+)
+
+The `assistant` DSL pre-fills the assistant turn so the LLM continues from that text instead of generating from scratch. This is the third role in the three-role DSL.
+
+### Forcing JSON Output
+
+The most common use case is forcing the model to begin its response with `{`, which reliably produces valid JSON:
+
+```ruby
+class EntityExtractor < ApplicationAgent
+  model "claude-sonnet-4-20250514"
+
+  system "You extract named entities from text and return them as JSON."
+  user   "{text}"
+  assistant "{"
+
+  returns do
+    array :people, of: :string
+    array :organizations, of: :string
+    array :locations, of: :string
+  end
+end
+```
+
+### Steering Response Format
+
+You can use longer prefills to steer the structure of the response:
+
+```ruby
+class StepByStepSolver < ApplicationAgent
+  model "gpt-4o"
+
+  system "You are a math tutor."
+  user   "Solve: {problem}"
+  assistant "Let me solve this step by step.\n\nStep 1:"
+end
+```
+
+### Dynamic Assistant Prefill
+
+Use the block form when the prefill depends on runtime data:
+
+```ruby
+class TranslationAgent < ApplicationAgent
+  model "gpt-4o"
+
+  system "You are a translator."
+  user   "Translate to {language}: {text}"
+  assistant { "#{language.capitalize} translation:" }
+end
+```
+
+## The `.ask` Shorthand (v2.2+)
+
+`.ask` is a one-shot convenience method for sending a user message without pre-defining a `user` prompt on the class. It is ideal for ad-hoc queries, REPL exploration, and scripts.
+
+### Basic Usage
+
+```ruby
+result = MyAgent.ask("Summarize this article: #{text}")
+result.content
+```
+
+### With Parameters
+
+```ruby
+result = MyAgent.ask("Translate {text} to {language}", text: article, language: "French")
+```
+
+### Block Form
+
+```ruby
+result = MyAgent.ask { "The time is #{Time.current}. What day is it?" }
+```
+
+### When to Use `.ask` vs `.call`
+
+| Method | Best for |
+|--------|----------|
+| `.call` | Production agents with a `user` prompt defined on the class |
+| `.ask`  | Ad-hoc queries, scripts, REPL sessions, one-off tasks |
+
+```ruby
+# .call -- the user prompt is defined on the class
+class SummaryAgent < ApplicationAgent
+  model "gpt-4o"
+  user "Summarize: {text}"
+end
+SummaryAgent.call(text: article)
+
+# .ask -- no user prompt needed on the class
+SummaryAgent.ask("What is the capital of France?")
 ```
 
 ## Schemas
@@ -290,10 +387,10 @@ end
 
 ```ruby
 # Less effective
-prompt "Summarize this: {text}"
+user "Summarize this: {text}"
 
 # More effective
-prompt do
+user do
   <<~S
     Create a 2-3 sentence summary of the following text.
     Focus on the main argument and key supporting points.
@@ -325,7 +422,7 @@ end
 ### Use Structured Formats
 
 ```ruby
-prompt do
+user do
   <<~S
     Analyze this product review and extract:
 
@@ -343,7 +440,7 @@ end
 ### Handle Edge Cases
 
 ```ruby
-prompt do
+user do
   <<~S
     Parse the following address into components.
 

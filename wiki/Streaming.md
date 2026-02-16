@@ -11,7 +11,7 @@ class StreamingAgent < ApplicationAgent
   model "gpt-4o"
   streaming true  # Enable streaming for this agent
 
-  prompt "{prompt}"
+  user "{prompt}"
 end
 ```
 
@@ -29,7 +29,7 @@ end
 Process chunks as they arrive:
 
 ```ruby
-StreamingAgent.call(prompt: "Write a story") do |chunk|
+StreamingAgent.call(user: "Write a story") do |chunk|
   print chunk.content  # chunk is a RubyLLM::Chunk object
 end
 ```
@@ -44,7 +44,7 @@ Once... upon... a... time...
 For more explicit streaming, use the `.stream()` class method which forces streaming regardless of class settings:
 
 ```ruby
-result = MyAgent.stream(prompt: "Write a story") do |chunk|
+result = MyAgent.stream(user: "Write a story") do |chunk|
   print chunk.content
 end
 
@@ -63,7 +63,7 @@ This method:
 When streaming completes, the returned Result contains streaming-specific metadata:
 
 ```ruby
-result = StreamingAgent.call(prompt: "test") do |chunk|
+result = StreamingAgent.call(user: "test") do |chunk|
   print chunk.content
 end
 
@@ -85,7 +85,7 @@ class StreamingController < ApplicationController
     response.headers['Cache-Control'] = 'no-cache'
     response.headers['X-Accel-Buffering'] = 'no'  # Disable nginx buffering
 
-    StreamingAgent.call(prompt: params[:prompt]) do |chunk|
+    StreamingAgent.call(user: params[:prompt]) do |chunk|
       response.stream.write "data: #{chunk.to_json}\n\n"
     end
 
@@ -127,7 +127,7 @@ class ChatController < ApplicationController
   def create
     respond_to do |format|
       format.turbo_stream do
-        StreamingAgent.call(prompt: params[:message]) do |chunk|
+        StreamingAgent.call(user: params[:message]) do |chunk|
           Turbo::StreamsChannel.broadcast_append_to(
             "chat_#{params[:chat_id]}",
             target: "messages",
@@ -180,7 +180,7 @@ class StructuredStreamingAgent < ApplicationAgent
   model "gpt-4o"
   streaming true
 
-  prompt "Write about {topic}"
+  user "Write about {topic}"
 
   def schema
     @schema ||= RubyLLM::Schema.create do
@@ -217,7 +217,7 @@ If you need caching with streaming-like UX, consider:
 
 ```ruby
 begin
-  StreamingAgent.call(prompt: "test") do |chunk|
+  StreamingAgent.call(user: "test") do |chunk|
     print chunk
   end
 rescue Timeout::Error
@@ -234,7 +234,7 @@ For long-running streams, use ActionCable:
 ```ruby
 class StreamingJob < ApplicationJob
   def perform(prompt, channel_id)
-    StreamingAgent.call(prompt: prompt) do |chunk|
+    StreamingAgent.call(user: prompt) do |chunk|
       ActionCable.server.broadcast(
         channel_id,
         { type: 'chunk', content: chunk }
@@ -262,7 +262,7 @@ Streaming is most beneficial for:
 
 ```ruby
 def stream_response
-  StreamingAgent.call(prompt: params[:prompt]) do |chunk|
+  StreamingAgent.call(user: params[:prompt]) do |chunk|
     break if response.stream.closed?
     response.stream.write "data: #{chunk.to_json}\n\n"
   end

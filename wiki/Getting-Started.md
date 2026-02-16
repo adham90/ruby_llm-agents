@@ -105,7 +105,7 @@ class SummarizerAgent < ApplicationAgent
   system "You are a summarization assistant. Create concise summaries
     that capture the key points while staying under the word limit."
 
-  prompt "Summarize the following text in under {max_length} words:\n\n{text}"
+  user "Summarize the following text in under {max_length} words:\n\n{text}"
 end
 ```
 
@@ -126,6 +126,40 @@ puts result.total_tokens   # => 150
 puts result.total_cost     # => 0.00025
 puts result.duration_ms    # => 850
 puts result.model_id       # => "gemini-2.0-flash"
+```
+
+### Conversational Usage with `.ask`
+
+For multi-turn conversations, use `.ask` instead of `.call`:
+
+```ruby
+agent = SummarizerAgent.new(max_length: 200)
+
+result = agent.ask("Summarize this article about climate change...")
+puts result.content
+
+# Follow up naturally
+result = agent.ask("Now make it shorter, under 50 words.")
+puts result.content
+```
+
+### Force JSON Output with `assistant`
+
+Use `assistant` to prefill the assistant's response, which is especially useful for forcing structured output:
+
+```ruby
+class SummarizerAgent < ApplicationAgent
+  model "gemini-2.0-flash"
+  temperature 0.0
+
+  param :max_length, default: 500
+
+  system "You are a summarization assistant. Return JSON with keys: summary, word_count."
+
+  user "Summarize the following text in under {max_length} words:\n\n{text}"
+
+  assistant "{"   # Forces the model to start its reply with "{", ensuring JSON output
+end
 ```
 
 ### View in Dashboard

@@ -109,7 +109,7 @@ class StreamingAgent < ApplicationAgent
   streaming true
 end
 
-StreamingAgent.call(prompt: "Write a story") do |chunk|
+StreamingAgent.call(user: "Write a story") do |chunk|
   print chunk
 end
 ```

@@ -123,11 +123,19 @@ You should see the RubyLLM::Agents dashboard.
 # rails console
 class TestAgent < ApplicationAgent
   model "gpt-4o-mini"
-  prompt "{message}"
+  user "{message}"
 end
 
 result = TestAgent.call(message: "Hello!")
 puts result.content
+
+# Or use .ask for a conversational back-and-forth:
+agent = TestAgent.new
+result = agent.ask("Hello!")
+puts result.content
+
+result = agent.ask("What was my first message?")
+puts result.content  # The agent remembers "Hello!"
 ```
 
 ## Upgrading

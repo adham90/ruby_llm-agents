@@ -58,13 +58,62 @@ thinking effort: :high, budget: 10000
 
 ### Class Methods — Simplified DSL (v2.0+)
 
-#### `.prompt(template)` / `.prompt(&block)`
+#### `.user(template)` / `.user(&block)` (v2.2+)
 
-Define user prompt with `{placeholder}` syntax. Parameters are auto-registered as required.
+Define the user prompt with `{placeholder}` syntax. Parameters are auto-registered as required.
 
 ```ruby
+user "Search for {query} in {category}"
+user { "Dynamic: #{some_method}" }
+```
+
+#### `.user_config` (v2.2+)
+
+Hash of options applied to the user prompt (e.g. `cache_control`):
+
+```ruby
+user_config cache_control: { type: "ephemeral" }
+```
+
+#### `.prompt(template)` / `.prompt(&block)` (deprecated)
+
+**Deprecated alias for `.user`.** Still works but emits a deprecation warning. Prefer `.user` in new code.
+
+```ruby
+# Deprecated -- use `user` instead
 prompt "Search for {query} in {category}"
-prompt { "Dynamic: #{some_method}" }
+```
+
+#### `.assistant(text)` / `.assistant(&block)` (v2.2+)
+
+Pre-fill the assistant turn. Useful for forcing JSON output or steering the response format.
+
+```ruby
+assistant "{"
+```
+
+When an `assistant` prefill is set, the LLM continues from that text rather than generating from scratch. This is particularly effective for ensuring JSON output:
+
+```ruby
+class JsonExtractor < ApplicationAgent
+  model "claude-sonnet-4-20250514"
+
+  system "Extract entities as JSON."
+  user   "{text}"
+  assistant "{"
+
+  returns do
+    array :entities, of: :string
+  end
+end
+```
+
+#### `.assistant_config` (v2.2+)
+
+Hash of options applied to the assistant prefill (e.g. `cache_control`):
+
+```ruby
+assistant_config cache_control: { type: "ephemeral" }
 ```
 
 #### `.system(text)` / `.system(&block)`
@@ -73,6 +122,29 @@ Define system instructions.
 
 ```ruby
 system "You are a helpful assistant."
+```
+
+#### `.ask(text, **params)` / `.ask(&block)` (v2.2+)
+
+One-shot convenience method. Sends a user message, calls the agent, and returns the result -- all in one step. Ideal for quick, ad-hoc queries without defining a full agent class.
+
+```ruby
+# On any agent class
+result = MyAgent.ask("Summarize this article: #{text}")
+
+# With parameters
+result = MyAgent.ask("Translate {text} to {language}", text: article, language: "French")
+
+# Block form for dynamic prompts
+result = MyAgent.ask { "Current time is #{Time.current}. What day is it?" }
+```
+
+`.ask` is equivalent to temporarily setting the `user` prompt and calling `.call`:
+
+```ruby
+# These are equivalent:
+MyAgent.ask("Hello world")
+MyAgent.call  # when `user "Hello world"` is set on the class
 ```
 
 #### `.returns(&block)`
@@ -259,15 +331,29 @@ end
 
 #### `#user_prompt` — Traditional (override)
 
-Override to define user prompt. **Prefer the class-level `prompt` DSL instead** (see [Simplified DSL](#class-methods--simplified-dsl-v20) above).
+Override to define user prompt. **Prefer the class-level `user` DSL instead** (see [Simplified DSL](#class-methods--simplified-dsl-v20) above).
 
 ```ruby
-# Preferred — class-level DSL
-prompt "Process: {query}"
+# Preferred — class-level DSL (v2.2+)
+user "Process: {query}"
 
 # Traditional — instance method override
 def user_prompt
   "Process: #{query}"
+end
+```
+
+#### `#assistant_prompt` — Traditional (override) (v2.2+)
+
+Override to define assistant prefill. **Prefer the class-level `assistant` DSL instead** (see [Simplified DSL](#class-methods--simplified-dsl-v20) above).
+
+```ruby
+# Preferred — class-level DSL (v2.2+)
+assistant "{"
+
+# Traditional — instance method override
+def assistant_prompt
+  "{"
 end
 ```
 
