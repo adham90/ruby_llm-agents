@@ -42,6 +42,7 @@ module RubyLLM
           # @return [Context] The context with tenant fields populated
           def call(context)
             resolve_tenant!(context)
+            ensure_tenant_record!(context)
             apply_api_configuration!(context)
             @app.call(context)
           end
@@ -82,6 +83,83 @@ module RubyLLM
                       "or be a Hash with :id key, got #{tenant_value.class}"
               end
             end
+          end
+
+          # Ensures a Tenant record exists in the database for the resolved tenant.
+          #
+          # When a host model (e.g., Organization) with LLMTenant is passed as
+          # tenant: to an agent, the after_create callback only fires for new records.
+          # Pre-existing records won't have a Tenant row yet. This method auto-creates
+          # it on first use so budget tracking and the dashboard work correctly.
+          #
+          # @param context [Context] The execution context
+          def ensure_tenant_record!(context)
+            return unless context.tenant_id.present?
+            return unless tenant_table_exists?
+
+            tenant_object = context.tenant_object
+
+            # Only auto-create when the tenant object uses the LLMTenant concern
+            if tenant_object.respond_to?(:llm_tenant_id) && tenant_object.is_a?(::ActiveRecord::Base)
+              ensure_tenant_for_model!(tenant_object)
+            else
+              # For hash-based or string tenants, ensure a minimal record exists
+              RubyLLM::Agents::Tenant.find_or_create_by!(tenant_id: context.tenant_id)
+            end
+          rescue StandardError => e
+            # Don't fail the execution if tenant record creation fails
+            log_tenant_warning("ensure tenant record", e)
+          end
+
+          # Creates a Tenant record linked to the host model if one doesn't exist
+          #
+          # @param tenant_object [ActiveRecord::Base] The host model with LLMTenant
+          def ensure_tenant_for_model!(tenant_object)
+            # Check polymorphic link first, then tenant_id
+            existing = RubyLLM::Agents::Tenant.find_by(tenant_record: tenant_object) ||
+                       RubyLLM::Agents::Tenant.find_by(tenant_id: tenant_object.llm_tenant_id)
+            return if existing
+
+            options = tenant_object.class.try(:llm_tenant_options) || {}
+            limits = options[:limits] || {}
+            name_method = options[:name] || :to_s
+
+            RubyLLM::Agents::Tenant.create!(
+              tenant_id: tenant_object.llm_tenant_id,
+              name: tenant_object.send(name_method).to_s,
+              tenant_record: tenant_object,
+              daily_limit: limits[:daily_cost],
+              monthly_limit: limits[:monthly_cost],
+              daily_token_limit: limits[:daily_tokens],
+              monthly_token_limit: limits[:monthly_tokens],
+              daily_execution_limit: limits[:daily_executions],
+              monthly_execution_limit: limits[:monthly_executions],
+              enforcement: options[:enforcement]&.to_s || "soft",
+              inherit_global_defaults: options.fetch(:inherit_global, true)
+            )
+          end
+
+          # Checks if the tenants table exists (memoized)
+          #
+          # @return [Boolean]
+          def tenant_table_exists?
+            return @tenant_table_exists if defined?(@tenant_table_exists)
+
+            @tenant_table_exists = ::ActiveRecord::Base.connection.table_exists?(:ruby_llm_agents_tenants)
+          rescue StandardError
+            @tenant_table_exists = false
+          end
+
+          # Logs a warning without failing the execution
+          #
+          # @param action [String] What was being attempted
+          # @param error [StandardError] The error
+          def log_tenant_warning(action, error)
+            return unless defined?(Rails) && Rails.respond_to?(:logger)
+
+            Rails.logger.warn(
+              "[RubyLLM::Agents] Failed to #{action}: #{error.message}"
+            )
           end
 
           # Applies API configuration to RubyLLM based on resolved tenant
