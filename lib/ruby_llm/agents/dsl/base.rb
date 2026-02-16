@@ -91,34 +91,27 @@ module RubyLLM
         #     Limit: {limit}
         #   S
         #
-        def user(template = nil, &block)
+        def user(template = nil)
           if template
             @user_template = template
             auto_register_params_from_template(template)
-          elsif block
-            Deprecations.warn(
-              "`user do ... end` is deprecated. Use a string argument or a `def user_prompt` method override instead.",
-              caller
-            )
-            @prompt_block = block
           end
-          @user_template || @prompt_template || @prompt_block || inherited_or_default(:user_config, nil)
+          @user_template || inherited_or_default(:user_config, nil)
         end
 
         # Returns the user prompt configuration
         #
-        # @return [String, Proc, nil] The user template, or nil
+        # @return [String, nil] The user template, or nil
         def user_config
-          @user_template || @prompt_template || @prompt_block || inherited_or_default(:user_config, nil)
+          @user_template || inherited_or_default(:user_config, nil)
         end
 
         # Backward-compatible alias for `user`
         #
-        # @deprecated Use `user` instead. Will be removed in v3.0.
+        # @deprecated Use `user` instead.
         # @param template [String, nil] Prompt template with {placeholder} syntax
-        # @yield Block that returns the prompt string (evaluated at execution time)
-        # @return [String, Proc, nil] The current prompt configuration
-        def prompt(template = nil, &block)
+        # @return [String, nil] The current prompt configuration
+        def prompt(template = nil)
           if template
             Deprecations.warn(
               "`prompt` is deprecated. Use `user` instead (e.g., `user \"#{template.truncate(40)}\"`).",
@@ -126,20 +119,14 @@ module RubyLLM
             )
             @user_template = template
             auto_register_params_from_template(template)
-          elsif block
-            Deprecations.warn(
-              "`prompt do ... end` is deprecated. Use `user do ... end` or a `def user_prompt` method override instead.",
-              caller
-            )
-            @prompt_block = block
           end
-          @user_template || @prompt_template || @prompt_block || inherited_or_default(:user_config, nil)
+          @user_template || inherited_or_default(:user_config, nil)
         end
 
         # Returns the prompt configuration (alias for user_config)
         #
         # @deprecated Use `user_config` instead
-        # @return [String, Proc, nil] The prompt template, block, or nil
+        # @return [String, nil] The prompt template, or nil
         def prompt_config
           user_config
         end
@@ -150,8 +137,7 @@ module RubyLLM
         # parameter interpolation, same as the `user` DSL.
         #
         # @param text [String, nil] System instructions for the LLM
-        # @yield Block that returns the system prompt (evaluated at execution time)
-        # @return [String, Proc, nil] The current system prompt
+        # @return [String, nil] The current system prompt
         #
         # @example Static system prompt
         #   system "You are a helpful assistant. Be concise and accurate."
@@ -164,25 +150,19 @@ module RubyLLM
         #     "You are helping #{user_name}. Today is #{Date.today}."
         #   end
         #
-        def system(text = nil, &block)
+        def system(text = nil)
           if text
             @system_template = text
             auto_register_params_from_template(text)
-          elsif block
-            Deprecations.warn(
-              "`system do ... end` is deprecated. Use a string argument or a `def system_prompt` method override instead.",
-              caller
-            )
-            @system_block = block
           end
-          @system_template || @system_block || inherited_or_default(:system_config, nil)
+          @system_template || inherited_or_default(:system_config, nil)
         end
 
         # Returns the system prompt configuration
         #
-        # @return [String, Proc, nil] The system template, block, or nil
+        # @return [String, nil] The system template, or nil
         def system_config
-          @system_template || @system_block || inherited_or_default(:system_config, nil)
+          @system_template || inherited_or_default(:system_config, nil)
         end
 
         # Sets the assistant prefill string

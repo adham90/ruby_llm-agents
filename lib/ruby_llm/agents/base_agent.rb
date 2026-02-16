@@ -548,22 +548,14 @@ module RubyLLM
         end
       end
 
-      # Resolves a prompt from DSL configuration (template string or block)
+      # Resolves a prompt from DSL configuration (template string)
       #
-      # For string templates, interpolates {placeholder} with parameter values.
-      # For blocks, evaluates in the instance context.
+      # Interpolates {placeholder} patterns with parameter values.
       #
-      # @param config [String, Proc] The prompt configuration
+      # @param config [String] The prompt template
       # @return [String] The resolved prompt
       def resolve_prompt_from_config(config)
-        case config
-        when String
-          interpolate_template(config)
-        when Proc
-          instance_eval(&config)
-        else
-          config.to_s
-        end
+        interpolate_template(config)
       end
 
       # Interpolates {placeholder} patterns in a template string

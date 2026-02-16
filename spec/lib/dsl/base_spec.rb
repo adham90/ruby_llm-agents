@@ -291,33 +291,18 @@ RSpec.describe RubyLLM::Agents::DSL::Base do
       end
     end
 
-    context "with block" do
-      it "sets the prompt block" do
+    context "with block (removed in v3.0)" do
+      it "silently ignores the block" do
         agent_class.prompt { "Dynamic prompt" }
-        expect(agent_class.prompt_config).to be_a(Proc)
+        expect(agent_class.prompt_config).to be_nil
       end
 
-      it "evaluates block in instance context" do
+      it "use def user_prompt method override for dynamic content" do
         agent_class.param :query
-        agent_class.prompt { "Search for: #{query}" }
+        agent_class.define_method(:user_prompt) { "Search for: #{query}" }
 
         instance = agent_class.new(query: "test")
         expect(instance.user_prompt).to eq("Search for: test")
-      end
-
-      it "allows complex logic in blocks" do
-        agent_class.param :query
-        agent_class.param :detailed, default: false
-        agent_class.prompt do
-          base = "Search for: #{query}"
-          detailed ? "#{base} (detailed)" : base
-        end
-
-        simple = agent_class.new(query: "test", detailed: false)
-        detailed = agent_class.new(query: "test", detailed: true)
-
-        expect(simple.user_prompt).to eq("Search for: test")
-        expect(detailed.user_prompt).to eq("Search for: test (detailed)")
       end
     end
 
@@ -366,10 +351,15 @@ RSpec.describe RubyLLM::Agents::DSL::Base do
       end
     end
 
-    context "with block" do
-      it "evaluates block in instance context" do
+    context "with block (removed in v3.0)" do
+      it "silently ignores the block" do
+        agent_class.system { "You are helping someone." }
+        expect(agent_class.system_config).to be_nil
+      end
+
+      it "use def system_prompt method override for dynamic content" do
         agent_class.param :user_name, default: "User"
-        agent_class.system { "You are helping #{user_name}." }
+        agent_class.define_method(:system_prompt) { "You are helping #{user_name}." }
 
         instance = agent_class.new(user_name: "Alice")
         expect(instance.system_prompt).to eq("You are helping Alice.")

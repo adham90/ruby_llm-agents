@@ -89,11 +89,11 @@ RSpec.describe "Three-Role Prompt DSL" do
       expect(agent_class.prompt_config).to eq(agent_class.user_config)
     end
 
-    it "block form still works for backward compat" do
+    it "block form is silently ignored (removed in v3.0)" do
       agent_class = Class.new(RubyLLM::Agents::Base) do
         prompt { "Dynamic #{1 + 1}" }
       end
-      expect(agent_class.user_config).to be_a(Proc)
+      expect(agent_class.user_config).to be_nil
     end
   end
 
@@ -225,10 +225,10 @@ RSpec.describe "Three-Role Prompt DSL" do
       expect(agent.user_prompt).to eq("Hello World")
     end
 
-    it "works with block form (backward compat)" do
+    it "works with def user_prompt method override" do
       agent_class = Class.new(RubyLLM::Agents::Base) do
         param :name, required: true
-        prompt { "Hello #{name}" }
+        define_method(:user_prompt) { "Hello #{name}" }
       end
       agent = agent_class.new(name: "World")
       expect(agent.user_prompt).to eq("Hello World")
@@ -527,87 +527,39 @@ RSpec.describe "Three-Role Prompt DSL" do
       end
     end
 
-    describe "`prompt` with block" do
-      it "emits deprecation warning" do
+    describe "block forms silently ignored (removed in v3.0)" do
+      it "`prompt` block is silently ignored" do
         expect {
           Class.new(RubyLLM::Agents::Base) { prompt { "Dynamic" } }
-        }.to raise_error(
-          RubyLLM::Agents::Deprecations::DeprecationError,
-          /`prompt do \.\.\. end` is deprecated/
-        )
+        }.not_to raise_error
       end
 
-      it "suggests using user or def user_prompt" do
+      it "`system` block is silently ignored" do
         expect {
-          Class.new(RubyLLM::Agents::Base) { prompt { "Dynamic" } }
-        }.to raise_error(
-          RubyLLM::Agents::Deprecations::DeprecationError,
-          /`user do \.\.\. end` or a `def user_prompt` method override/
-        )
+          Class.new(RubyLLM::Agents::Base) { system { "Dynamic system" } }
+        }.not_to raise_error
       end
 
-      it "still sets the block when silenced" do
+      it "`user` block is silently ignored" do
+        expect {
+          Class.new(RubyLLM::Agents::Base) { user { "Dynamic user" } }
+        }.not_to raise_error
+      end
+
+      it "`prompt` block does not set config" do
         RubyLLM::Agents::Deprecations.raise_on_deprecation = false
-        RubyLLM::Agents::Deprecations.silenced = true
-
         agent_class = Class.new(RubyLLM::Agents::Base) { prompt { "Dynamic" } }
-        expect(agent_class.user_config).to be_a(Proc)
-      end
-    end
-
-    describe "`system` with block" do
-      it "emits deprecation warning" do
-        expect {
-          Class.new(RubyLLM::Agents::Base) { system { "Dynamic system" } }
-        }.to raise_error(
-          RubyLLM::Agents::Deprecations::DeprecationError,
-          /`system do \.\.\. end` is deprecated/
-        )
+        expect(agent_class.user_config).to be_nil
       end
 
-      it "suggests using string or def system_prompt" do
-        expect {
-          Class.new(RubyLLM::Agents::Base) { system { "Dynamic system" } }
-        }.to raise_error(
-          RubyLLM::Agents::Deprecations::DeprecationError,
-          /string argument or a `def system_prompt` method override/
-        )
-      end
-
-      it "still sets the block when silenced" do
-        RubyLLM::Agents::Deprecations.raise_on_deprecation = false
-        RubyLLM::Agents::Deprecations.silenced = true
-
+      it "`system` block does not set config" do
         agent_class = Class.new(RubyLLM::Agents::Base) { system { "Dynamic" } }
-        expect(agent_class.system_config).to be_a(Proc)
-      end
-    end
-
-    describe "`user` with block" do
-      it "emits deprecation warning" do
-        expect {
-          Class.new(RubyLLM::Agents::Base) { user { "Dynamic user" } }
-        }.to raise_error(
-          RubyLLM::Agents::Deprecations::DeprecationError,
-          /`user do \.\.\. end` is deprecated/
-        )
+        expect(agent_class.system_config).to be_nil
       end
 
-      it "suggests using string or def user_prompt" do
-        expect {
-          Class.new(RubyLLM::Agents::Base) { user { "Dynamic user" } }
-        }.to raise_error(
-          RubyLLM::Agents::Deprecations::DeprecationError,
-          /string argument or a `def user_prompt` method override/
-        )
-      end
-
-      it "still sets the block when silenced" do
-        RubyLLM::Agents::Deprecations.raise_on_deprecation = false
-        RubyLLM::Agents::Deprecations.silenced = true
-
+      it "`user` block does not set config" do
         agent_class = Class.new(RubyLLM::Agents::Base) { user { "Dynamic" } }
-        expect(agent_class.user_config).to be_a(Proc)
+        expect(agent_class.user_config).to be_nil
       end
     end
 
