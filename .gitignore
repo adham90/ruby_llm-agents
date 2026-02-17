@@ -32,3 +32,6 @@
 
 # Wiki clone (separate git repo)
 ruby_llm-agents.wiki/
+
+# Internal plan files
+/plans/

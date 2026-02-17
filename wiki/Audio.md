@@ -231,7 +231,11 @@ class MyNarrator < ApplicationSpeaker
 
   # Audio settings
   speed 1.0                     # Speech speed (0.25-4.0 for OpenAI)
-  output_format :mp3            # :mp3, :wav, :ogg, :flac
+  output_format :mp3            # :mp3, :wav, :opus, :pcm, :alaw, :ulaw
+  # Or use ElevenLabs native format strings directly:
+  # output_format "mp3_44100_192"  # High-bitrate MP3
+  # output_format "opus_48000_64"  # Low-latency Opus
+  # output_format "pcm_16000"      # Telephony PCM
 
   # Streaming
   streaming true                # Enable streaming mode
@@ -396,7 +400,11 @@ RubyLLM::Agents.configure do |config|
   config.elevenlabs_api_key = ENV["ELEVENLABS_API_KEY"]
   config.elevenlabs_api_base = "https://api.elevenlabs.io"  # optional, default
 
-  # TTS pricing overrides (per 1K characters)
+  # ElevenLabs dynamic pricing (fetches model data from /v1/models API)
+  config.elevenlabs_base_cost_per_1k = 0.30  # Base cost × model multiplier (default: $0.30 Pro overage)
+  config.elevenlabs_models_cache_ttl = 21_600  # Cache TTL in seconds (default: 6 hours)
+
+  # TTS pricing overrides (per 1K characters) — takes priority over API pricing
   config.tts_model_pricing = {
     "eleven_v3" => 0.24,        # custom rate
     "custom-model" => 0.10
@@ -448,23 +456,58 @@ Transcription costs are calculated based on audio duration.
 
 ### TTS Costs
 
-TTS costs use a 3-tier pricing cascade: LiteLLM JSON (auto-updating) → `config.tts_model_pricing` overrides → hardcoded fallbacks.
+TTS costs use a 4-tier pricing cascade:
 
-| Provider | Model | Price / 1K chars |
-|----------|-------|-----------------|
-| OpenAI | tts-1 | $0.015 |
-| OpenAI | tts-1-hd | $0.030 |
-| ElevenLabs | eleven_flash_v2, eleven_flash_v2_5 | $0.15 |
-| ElevenLabs | eleven_turbo_v2, eleven_turbo_v2_5 | $0.15 |
-| ElevenLabs | eleven_multilingual_v2 | $0.30 |
-| ElevenLabs | eleven_v3 | $0.30 |
-| ElevenLabs | v1 models (deprecated) | $0.30 |
+1. **LiteLLM JSON** (auto-updating) — checked first for any model
+2. **`config.tts_model_pricing`** — user overrides per model
+3. **ElevenLabs API** — fetches `character_cost_multiplier` from `/v1/models` × `elevenlabs_base_cost_per_1k`
+4. **Hardcoded fallbacks** — last resort if API is unreachable
 
-Override pricing via configuration:
+| Provider | Model | Price / 1K chars | Multiplier |
+|----------|-------|-----------------|------------|
+| OpenAI | tts-1 | $0.015 | — |
+| OpenAI | tts-1-hd | $0.030 | — |
+| ElevenLabs | eleven_flash_v2, eleven_flash_v2_5 | $0.15 | 0.5× |
+| ElevenLabs | eleven_turbo_v2, eleven_turbo_v2_5 | $0.15 | 0.5× |
+| ElevenLabs | eleven_multilingual_v2 | $0.30 | 1.0× |
+| ElevenLabs | eleven_v3 | $0.30 | 1.0× |
+| ElevenLabs | v1 models (deprecated) | $0.30 | 1.0× |
+
+ElevenLabs prices are dynamically calculated: `elevenlabs_base_cost_per_1k × character_cost_multiplier`. The default base rate ($0.30) matches the Pro plan overage rate. Users on different plans can override:
 
 ```ruby
+# Starter plan
+config.elevenlabs_base_cost_per_1k = 0.30
+
+# Or override specific models directly
 config.tts_model_pricing = { "eleven_v3" => 0.24 }
 ```
+
+### ElevenLabs Output Formats
+
+ElevenLabs supports 28+ native output format strings. Use simple symbols for convenience or native strings for precise control:
+
+```ruby
+# Simple symbols (convenience mapping)
+MyNarrator.call(text: "Hello", format: :mp3)    # → mp3_44100_128
+MyNarrator.call(text: "Hello", format: :wav)    # → wav_44100
+MyNarrator.call(text: "Hello", format: :opus)   # → opus_48000_128
+MyNarrator.call(text: "Hello", format: :pcm)    # → pcm_24000
+
+# Native format strings (precise control)
+MyNarrator.call(text: "Hello", format: "mp3_44100_192")  # High-bitrate MP3
+MyNarrator.call(text: "Hello", format: "pcm_16000")      # Telephony PCM
+MyNarrator.call(text: "Hello", format: "opus_48000_64")   # Low-bitrate Opus
+MyNarrator.call(text: "Hello", format: "wav_22050")       # Low sample rate WAV
+```
+
+### ElevenLabs Model Validation
+
+Speaker automatically validates ElevenLabs models before making API calls:
+
+- **Non-TTS models** (e.g., `eleven_english_sts_v2`) → raises `ConfigurationError`
+- **Text exceeding max characters** → logs a warning (does not block)
+- **Unsupported voice settings** (e.g., `style` on `eleven_v3`) → logs a warning
 
 ---
 

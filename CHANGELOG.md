@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.0] - 2026-02-18
+
+### Added
+
+- **ElevenLabs ModelRegistry** — Fetches and caches model data from ElevenLabs `/v1/models` API using the user's API key. Provides model capability queries: TTS support, voice conversion, cost multiplier, max characters, languages, style/speaker_boost support
+- **Dynamic ElevenLabs pricing** — New Tier 3 in the pricing cascade uses `character_cost_multiplier` from the API × configurable `elevenlabs_base_cost_per_1k` base rate (default: $0.30). Replaces hardcoded per-model prices with live API data
+- **`elevenlabs_base_cost_per_1k` config** — Configurable base cost per 1K characters for ElevenLabs pricing (default: 0.30, Pro plan overage rate). Users on different plans override just this one number
+- **`elevenlabs_models_cache_ttl` config** — Cache TTL in seconds for ElevenLabs model data (default: 21,600 = 6 hours)
+- **28 native ElevenLabs output formats** — Full pass-through support for ElevenLabs-native format strings (e.g., `mp3_44100_192`, `pcm_16000`, `opus_48000_64`, `wav_22050`). Users can now request specific quality levels directly
+- **Expanded format convenience map** — Simple symbols `:wav`, `:opus`, `:alaw` now map to appropriate ElevenLabs native formats. Unsupported formats (`:ogg`, `:flac`, `:aac`) gracefully fall back to MP3
+- **ElevenLabs model validation** — Speaker validates ElevenLabs models before API calls: raises `ConfigurationError` for non-TTS models (speech-to-speech), warns on text exceeding `maximum_text_length_per_request`, warns on unsupported `style` voice settings
+- **Native format MIME types** — `SpeechResult#content_type` now handles ElevenLabs native format strings (e.g., `mp3_44100_128` → `audio/mpeg`, `opus_48000_64` → `audio/opus`, `ulaw_8000` → `audio/basic`)
+
+### Changed
+
+- SpeechPricing cascade expanded from 3 tiers to 4: LiteLLM → user config → **ElevenLabs API** → hardcoded fallbacks
+- `ELEVENLABS_FORMAT_MAP` expanded from 3 entries to 10 convenience mappings
+- Default PCM format mapping changed from `pcm_44100` to `pcm_24000` (more standard for TTS)
+
 ## [3.3.0] - 2026-02-17
 
 ### Added
@@ -643,6 +662,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[3.4.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.3.0...v3.4.0
+[3.3.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.2.0...v3.3.0
+[3.2.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.0.0...v3.1.0
 [3.0.0]: https://github.com/adham90/ruby_llm-agents/compare/v2.2.0...v3.0.0
 [2.2.0]: https://github.com/adham90/ruby_llm-agents/compare/v2.1.0...v2.2.0
