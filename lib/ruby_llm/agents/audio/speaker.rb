@@ -410,6 +410,7 @@ module RubyLLM
 
       # Executes speech synthesis
       def execute_speech(processed_text)
+        validate_elevenlabs_model!(processed_text)
         speak_options = build_speak_options
 
         if streaming_enabled? && @streaming_block
@@ -417,6 +418,42 @@ module RubyLLM
         else
           execute_standard_speech(processed_text, speak_options)
         end
+      end
+
+      # Validates ElevenLabs model capabilities before calling the API.
+      # Raises on hard errors (non-TTS model), warns on soft issues.
+      def validate_elevenlabs_model!(text)
+        return unless resolved_provider == :elevenlabs
+        return unless defined?(Audio::ElevenLabs::ModelRegistry)
+
+        model_id = resolved_model
+        model = Audio::ElevenLabs::ModelRegistry.find(model_id)
+        return unless model # Unknown model — skip validation
+
+        # Hard error: model doesn't support TTS at all
+        unless model["can_do_text_to_speech"] == true
+          raise ConfigurationError,
+            "ElevenLabs model '#{model_id}' does not support text-to-speech. " \
+            "It may be a speech-to-speech model. Use a TTS-capable model like 'eleven_v3'."
+        end
+
+        # Warn: text exceeds model's max character limit
+        max_chars = model["maximum_text_length_per_request"]
+        if max_chars && text.length > max_chars
+          warn "[RubyLLM::Agents] Text length (#{text.length}) exceeds " \
+               "#{model_id} max of #{max_chars} characters. The API may truncate or reject it."
+        end
+
+        # Warn: style used on model that doesn't support it
+        vs = self.class.voice_settings_config
+        if vs && vs.style_value && vs.style_value > 0 && model["can_use_style"] != true
+          warn "[RubyLLM::Agents] Model '#{model_id}' does not support the 'style' voice setting. It will be ignored."
+        end
+      rescue ConfigurationError
+        raise
+      rescue => e
+        # Don't block speech on validation errors
+        warn "[RubyLLM::Agents] ElevenLabs model validation failed: #{e.message}"
       end
 
       # Executes standard (non-streaming) speech synthesis

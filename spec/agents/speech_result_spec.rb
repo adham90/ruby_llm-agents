@@ -265,4 +265,63 @@ RSpec.describe RubyLLM::Agents::SpeechResult do
       expect(hash).not_to have_key(:audio)
     end
   end
+
+  describe "#content_type / #mime_type_for_format" do
+    context "simple symbol formats" do
+      {
+        mp3: "audio/mpeg",
+        wav: "audio/wav",
+        ogg: "audio/ogg",
+        flac: "audio/flac",
+        aac: "audio/aac",
+        opus: "audio/opus",
+        pcm: "audio/pcm"
+      }.each do |fmt, mime|
+        it "returns #{mime} for :#{fmt}" do
+          result = described_class.new(format: fmt)
+          expect(result.content_type).to eq(mime)
+        end
+      end
+
+      it "defaults to audio/mpeg for unknown format" do
+        result = described_class.new(format: :unknown)
+        expect(result.content_type).to eq("audio/mpeg")
+      end
+    end
+
+    context "ElevenLabs native format strings" do
+      {
+        "mp3_44100_128" => "audio/mpeg",
+        "mp3_44100_192" => "audio/mpeg",
+        "mp3_22050_32" => "audio/mpeg",
+        "wav_44100" => "audio/wav",
+        "wav_16000" => "audio/wav",
+        "wav_48000" => "audio/wav",
+        "opus_48000_64" => "audio/opus",
+        "opus_48000_128" => "audio/opus",
+        "pcm_16000" => "audio/pcm",
+        "pcm_24000" => "audio/pcm",
+        "pcm_44100" => "audio/pcm",
+        "alaw_8000" => "audio/alaw",
+        "ulaw_8000" => "audio/basic"
+      }.each do |fmt, mime|
+        it "returns #{mime} for native format '#{fmt}'" do
+          result = described_class.new(format: fmt)
+          expect(result.content_type).to eq(mime)
+        end
+      end
+    end
+
+    context "data URI uses correct MIME type" do
+      it "generates correct data URI for native mp3 format" do
+        result = described_class.new(audio: "test", format: "mp3_44100_192")
+        expect(result.to_data_uri).to start_with("data:audio/mpeg;base64,")
+      end
+
+      it "generates correct data URI for native opus format" do
+        result = described_class.new(audio: "test", format: "opus_48000_64")
+        expect(result.to_data_uri).to start_with("data:audio/opus;base64,")
+      end
+    end
+  end
 end

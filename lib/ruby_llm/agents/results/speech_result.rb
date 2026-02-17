@@ -319,23 +319,26 @@ module RubyLLM
       #
       # @return [String] MIME type
       def mime_type_for_format
+        fmt = format.to_s
+
+        # Handle ElevenLabs native format strings (e.g., "mp3_44100_128")
+        return "audio/mpeg" if fmt.start_with?("mp3")
+        return "audio/wav" if fmt.start_with?("wav")
+        return "audio/opus" if fmt.start_with?("opus")
+        return "audio/pcm" if fmt.start_with?("pcm")
+        return "audio/alaw" if fmt.start_with?("alaw")
+        return "audio/basic" if fmt.start_with?("ulaw")
+
+        # Handle simple symbols (backward compatible)
         case format
-        when :mp3
-          "audio/mpeg"
-        when :wav
-          "audio/wav"
-        when :ogg
-          "audio/ogg"
-        when :flac
-          "audio/flac"
-        when :aac
-          "audio/aac"
-        when :opus
-          "audio/opus"
-        when :pcm
-          "audio/pcm"
-        else
-          "audio/mpeg" # Default to mp3
+        when :mp3 then "audio/mpeg"
+        when :wav then "audio/wav"
+        when :ogg then "audio/ogg"
+        when :flac then "audio/flac"
+        when :aac then "audio/aac"
+        when :opus then "audio/opus"
+        when :pcm then "audio/pcm"
+        else "audio/mpeg"
         end
       end
     end
