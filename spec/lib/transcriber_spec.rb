@@ -572,6 +572,80 @@ RSpec.describe RubyLLM::Agents::Transcriber do
     end
   end
 
+  describe "execution metadata tracking" do
+    let(:test_transcriber) do
+      Class.new(described_class) do
+        def self.name
+          "MetaTranscriber"
+        end
+
+        model "whisper-1"
+        language "en"
+      end
+    end
+
+    let(:audio_file_path) { "/tmp/test_audio.mp3" }
+
+    before do
+      allow(File).to receive(:exist?).and_call_original
+      allow(File).to receive(:exist?).with(audio_file_path).and_return(true)
+      allow(mock_response).to receive(:respond_to?).and_return(false)
+      allow(mock_response).to receive(:respond_to?).with(:text).and_return(true)
+      allow(mock_response).to receive(:respond_to?).with(:language).and_return(true)
+      allow(mock_response).to receive(:respond_to?).with(:duration).and_return(true)
+      allow(mock_response).to receive(:respond_to?).with(:segments).and_return(false)
+      allow(mock_response).to receive(:respond_to?).with(:words).and_return(false)
+      allow(mock_response).to receive(:respond_to?).with(:cost).and_return(false)
+      allow(RubyLLM).to receive(:transcribe).and_return(mock_response)
+    end
+
+    it "stores transcription metadata on context for instrumentation" do
+      captured_context = nil
+      allow(RubyLLM::Agents::Pipeline::Executor).to receive(:execute).and_wrap_original do |m, ctx|
+        result = m.call(ctx)
+        captured_context = result
+        result
+      end
+
+      test_transcriber.call(audio: audio_file_path)
+
+      expect(captured_context[:language]).to eq("en")
+      expect(captured_context[:detected_language]).to eq("en")
+      expect(captured_context[:audio_duration_seconds]).to eq(5.5)
+      expect(captured_context[:audio_minutes]).to be_within(0.001).of(5.5 / 60.0)
+      expect(captured_context[:output_format]).to eq("text")
+      expect(captured_context[:timestamp_granularity]).to eq("segment")
+      expect(captured_context[:word_count]).to eq(6) # "Hello, this is a test transcription."
+    end
+
+    context "with tracking enabled" do
+      before do
+        # Remove the config double so real configuration works
+        allow(RubyLLM::Agents).to receive(:configuration).and_call_original
+        RubyLLM::Agents.reset_configuration!
+        RubyLLM::Agents.configure do |c|
+          c.default_transcription_model = "whisper-1"
+          c.track_audio = true
+          c.async_logging = false
+          c.persist_prompts = true
+        end
+      end
+
+      it "persists transcription metadata in execution record" do
+        test_transcriber.call(audio: audio_file_path)
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution).to be_present
+        expect(execution.metadata["language"]).to eq("en")
+        expect(execution.metadata["detected_language"]).to eq("en")
+        expect(execution.metadata["audio_duration_seconds"]).to eq(5.5)
+        expect(execution.metadata["audio_minutes"]).to be_within(0.001).of(5.5 / 60.0)
+        expect(execution.metadata["output_format"]).to eq("text")
+        expect(execution.metadata["word_count"]).to eq(6)
+      end
+    end
+  end
+
   describe "ChunkingConfig" do
     let(:config) { RubyLLM::Agents::Transcriber::ChunkingConfig.new }
 

@@ -336,6 +336,14 @@ module RubyLLM
         context.output_tokens = 0
         context.total_cost = calculate_cost(result)
 
+        # Store audio-specific metadata for execution tracking
+        context[:provider] = result[:provider].to_s
+        context[:voice_id] = (resolved_voice_id || resolved_voice).to_s
+        context[:characters] = result[:characters]
+        context[:output_format] = result[:format].to_s
+        context[:file_size] = result[:audio]&.bytesize
+        context[:audio_duration_seconds] = result[:duration] if result[:duration]
+
         # Build final result
         context.output = build_result(
           result,

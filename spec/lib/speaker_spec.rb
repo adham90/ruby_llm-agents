@@ -656,6 +656,100 @@ RSpec.describe RubyLLM::Agents::Speaker do
     end
   end
 
+  describe "execution metadata tracking" do
+    let(:test_speaker) do
+      Class.new(described_class) do
+        def self.name
+          "MetaSpeaker"
+        end
+
+        provider :openai
+        model "tts-1"
+        voice "nova"
+      end
+    end
+
+    it "stores audio metadata on context for instrumentation" do
+      # Capture the context after execution by intercepting Pipeline::Executor
+      captured_context = nil
+      allow(RubyLLM::Agents::Pipeline::Executor).to receive(:execute).and_wrap_original do |m, ctx|
+        result = m.call(ctx)
+        captured_context = result
+        result
+      end
+
+      test_speaker.call(text: "Hello world")
+
+      expect(captured_context[:provider]).to eq("openai")
+      expect(captured_context[:voice_id]).to eq("nova")
+      expect(captured_context[:characters]).to eq(11)
+      expect(captured_context[:output_format]).to eq("mp3")
+      expect(captured_context[:file_size]).to eq(fake_audio_data.bytesize)
+    end
+
+    context "with ElevenLabs provider" do
+      let(:voice_id) { "21m00Tcm4TlvDq8ikWAM" }
+
+      let(:el_speaker) do
+        Class.new(described_class) do
+          def self.name
+            "MetaElevenSpeaker"
+          end
+
+          provider :elevenlabs
+          model "eleven_v3"
+          voice "Rachel"
+          voice_id "21m00Tcm4TlvDq8ikWAM"
+        end
+      end
+
+      before do
+        stub_request(:post, "https://api.elevenlabs.io/v1/text-to-speech/#{voice_id}")
+          .with(query: hash_including("output_format"))
+          .to_return(status: 200, body: fake_audio_data)
+      end
+
+      it "stores provider and voice_id on context" do
+        captured_context = nil
+        allow(RubyLLM::Agents::Pipeline::Executor).to receive(:execute).and_wrap_original do |m, ctx|
+          result = m.call(ctx)
+          captured_context = result
+          result
+        end
+
+        el_speaker.call(text: "Test")
+
+        expect(captured_context[:provider]).to eq("elevenlabs")
+        expect(captured_context[:voice_id]).to eq("21m00Tcm4TlvDq8ikWAM")
+        expect(captured_context[:characters]).to eq(4)
+        expect(captured_context[:output_format]).to eq("mp3")
+        expect(captured_context[:file_size]).to be_a(Integer)
+      end
+    end
+
+    context "with tracking enabled" do
+      before do
+        RubyLLM::Agents.configure do |c|
+          c.track_audio = true
+          c.async_logging = false
+          c.persist_prompts = true
+        end
+      end
+
+      it "persists audio metadata in execution record" do
+        result = test_speaker.call(text: "Tracked speech")
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution).to be_present
+        expect(execution.metadata["provider"]).to eq("openai")
+        expect(execution.metadata["voice_id"]).to eq("nova")
+        expect(execution.metadata["characters"]).to eq(14)
+        expect(execution.metadata["output_format"]).to eq("mp3")
+        expect(execution.metadata["file_size"]).to eq(fake_audio_data.bytesize)
+      end
+    end
+  end
+
   describe "VoiceSettings" do
     let(:settings) { RubyLLM::Agents::Speaker::VoiceSettings.new }
 

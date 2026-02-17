@@ -318,6 +318,16 @@ module RubyLLM
         context.output_tokens = 0
         context.total_cost = calculate_cost(raw_result)
 
+        # Store transcription-specific metadata for execution tracking
+        context[:language] = resolved_language if resolved_language
+        context[:detected_language] = raw_result[:language] if raw_result[:language]
+        context[:audio_duration_seconds] = raw_result[:duration] if raw_result[:duration]
+        context[:audio_minutes] = (raw_result[:duration] / 60.0).round(4) if raw_result[:duration]
+        context[:output_format] = self.class.output_format.to_s
+        context[:timestamp_granularity] = self.class.include_timestamps.to_s
+        context[:segment_count] = raw_result[:segments]&.size if raw_result[:segments]
+        context[:word_count] = raw_result[:text]&.split(/\s+/)&.size if raw_result[:text]
+
         # Build final result
         context.output = build_result(
           raw_result,
