@@ -1,0 +1,57 @@
+<%
+  response = @execution.response || {}
+  audio_src = response["audio_url"] || response[:audio_url] ||
+              response["audio_data_uri"] || response[:audio_data_uri]
+  audio_format = response["format"] || response[:format] ||
+                 @execution.metadata&.dig("audio_format")
+  audio_duration = response["duration"] || response[:duration] ||
+                   @execution.metadata&.dig("audio_duration_seconds")
+  audio_file_size = response["file_size"] || response[:file_size] ||
+                    @execution.metadata&.dig("audio_file_size_bytes")
+  audio_voice = response["voice_id"] || response[:voice_id] ||
+                @execution.metadata&.dig("voice_id")
+  audio_provider = response["provider"] || response[:provider] ||
+                   @execution.metadata&.dig("audio_provider")
+  audio_characters = @execution.metadata&.dig("audio_characters")
+%>
+
+<div class="flex items-center gap-3 mt-6 mb-3">
+  <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">audio</span>
+  <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+</div>
+
+<% if audio_src.present? %>
+  <div class="mb-3">
+    <audio controls preload="metadata" class="w-full max-w-lg" style="height: 36px;">
+      <source src="<%= audio_src %>">
+      Your browser does not support the audio element.
+    </audio>
+  </div>
+<% end %>
+
+<div class="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-gray-400 dark:text-gray-500">
+  <% if audio_duration.present? %>
+    <span><span class="text-gray-800 dark:text-gray-200"><%= audio_duration.is_a?(Numeric) ? "#{audio_duration.round(1)}s" : audio_duration %></span> duration</span>
+  <% end %>
+  <% if audio_format.present? %>
+    <span><span class="text-gray-800 dark:text-gray-200"><%= audio_format %></span> format</span>
+  <% end %>
+  <% if audio_file_size.present? %>
+    <span><span class="text-gray-800 dark:text-gray-200"><%= number_to_human_size(audio_file_size) %></span> size</span>
+  <% end %>
+  <% if audio_voice.present? %>
+    <span><span class="text-gray-800 dark:text-gray-200"><%= audio_voice %></span> voice</span>
+  <% end %>
+  <% if audio_provider.present? %>
+    <span><span class="text-gray-800 dark:text-gray-200"><%= audio_provider %></span> provider</span>
+  <% end %>
+  <% if audio_characters.present? %>
+    <span><span class="text-gray-800 dark:text-gray-200"><%= number_to_human_short(audio_characters) %></span> characters</span>
+  <% end %>
+</div>
+
+<% if audio_src.blank? %>
+  <p class="text-xs text-gray-400 dark:text-gray-600 font-mono mt-2 italic">
+    No audio data stored. Enable <code class="text-gray-500 dark:text-gray-400">persist_audio_data</code> in config to play back Speaker audio here.
+  </p>
+<% end %>

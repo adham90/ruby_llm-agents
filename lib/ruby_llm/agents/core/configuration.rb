@@ -452,7 +452,8 @@ module RubyLLM
         :root_directory,
         :root_namespace,
         :tool_result_max_length,
-        :redaction
+        :redaction,
+        :persist_audio_data
 
       # Attributes with validation (readers only, custom setters below)
       attr_reader :default_temperature,
@@ -734,6 +735,9 @@ module RubyLLM
 
         # Redaction defaults (disabled by default)
         @redaction = nil
+
+        # Audio data persistence (disabled by default — base64 audio can be large)
+        @persist_audio_data = false
       end
 
       # Returns the configured cache store, falling back to Rails.cache

@@ -280,6 +280,9 @@ module RubyLLM
               detail_data[:response] = serialize_response(context)
             end
 
+            # Persist audio data for Speaker executions
+            maybe_persist_audio_response(context, detail_data)
+
             has_data = detail_data.values.any? { |v| v.present? && v != {} && v != [] }
             return unless has_data
 
@@ -376,6 +379,10 @@ module RubyLLM
             if global_config.persist_responses && context.output.respond_to?(:content)
               detail_data[:response] = serialize_response(context)
             end
+
+            # Persist audio data for Speaker executions
+            maybe_persist_audio_response(context, detail_data)
+
             data[:_detail_data] = detail_data
 
             data
@@ -461,6 +468,48 @@ module RubyLLM
           rescue => e
             error("Failed to serialize response: #{e.message}")
             nil
+          end
+
+          # Persists audio response data for Speaker executions
+          #
+          # When persist_audio_data is enabled and the output is a SpeechResult with
+          # audio binary data, stores a base64 data URI in the response column.
+          # Always stores audio_url if present (lightweight, no binary).
+          #
+          # @param context [Context] The execution context
+          # @param detail_data [Hash] The detail data hash to modify
+          def maybe_persist_audio_response(context, detail_data)
+            return unless context.output.is_a?(RubyLLM::Agents::SpeechResult)
+
+            # Always persist audio_url if present (it's just a string, no binary)
+            if context.output.audio_url.present?
+              detail_data[:response] ||= {}
+              detail_data[:response][:audio_url] = context.output.audio_url
+            end
+
+            # Persist full audio data URI only when opted in
+            return unless global_config.respond_to?(:persist_audio_data) && global_config.persist_audio_data
+            return unless context.output.audio.present?
+
+            detail_data[:response] = serialize_audio_response(context.output)
+          rescue => e
+            error("Failed to persist audio response: #{e.message}")
+          end
+
+          # Serializes a SpeechResult into a hash for the response column
+          #
+          # @param result [SpeechResult] The speech result to serialize
+          # @return [Hash] Serialized audio response data
+          def serialize_audio_response(result)
+            {
+              audio_data_uri: result.to_data_uri,
+              audio_url: result.audio_url,
+              format: result.format.to_s,
+              duration: result.duration,
+              file_size: result.file_size,
+              voice_id: result.voice_id,
+              provider: result.provider.to_s
+            }.compact
           end
 
           # Queues async logging via background job

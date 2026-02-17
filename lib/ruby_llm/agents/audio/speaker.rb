@@ -567,3 +567,5 @@ module RubyLLM
     end
   end
 end
+
+require_relative "speaker/active_storage_support"

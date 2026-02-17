@@ -29,17 +29,17 @@ module RubyLLM
       #   @return [String, nil] Binary audio data
       attr_reader :audio
 
-      # @!attribute [r] audio_url
+      # @!attribute [rw] audio_url
       #   @return [String, nil] URL if audio was stored remotely
-      attr_reader :audio_url
+      attr_accessor :audio_url
 
-      # @!attribute [r] audio_key
+      # @!attribute [rw] audio_key
       #   @return [String, nil] Storage key if stored
-      attr_reader :audio_key
+      attr_accessor :audio_key
 
-      # @!attribute [r] audio_path
+      # @!attribute [rw] audio_path
       #   @return [String, nil] Local file path if saved
-      attr_reader :audio_path
+      attr_accessor :audio_path
 
       # @!endgroup
 
@@ -308,7 +308,12 @@ module RubyLLM
         }
       end
 
-      private
+      # Returns MIME type for the audio format
+      #
+      # @return [String] MIME type
+      def content_type
+        mime_type_for_format
+      end
 
       # Returns MIME type for the audio format
       #

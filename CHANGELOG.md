@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.0] - 2026-02-17
+
+### Added
+
+- **Dashboard audio player** — Speaker/Narrator execution detail pages now render an HTML5 `<audio>` player when audio data is available, with metadata display (duration, format, file size, voice, provider)
+- **`persist_audio_data` config option** — Opt-in setting (`config.persist_audio_data = true`) to store TTS-generated audio as base64 data URIs in the `execution_details.response` JSON column. Default: `false`
+- **Audio URL auto-persistence** — `audio_url` from SpeechResult is always stored in execution details (lightweight, no binary), enabling playback from ActiveStorage or external URLs without enabling `persist_audio_data`
+- **ActiveStorage support for Speaker** — `Speaker::ActiveStorageSupport` module for attaching generated audio to ActiveStorage
+
+### Changed
+
+- SpeechResult `audio_url`, `audio_key`, `audio_path` changed from `attr_reader` to `attr_accessor` to support post-creation URL assignment (e.g., after ActiveStorage upload)
+- SpeechResult `content_type` and `mime_type_for_format` are now public methods
+
 ## [3.2.0] - 2026-02-17
 
 ### Added

@@ -57,6 +57,14 @@
   <% end %>
 </div>
 
+<!-- ── audio player ──────────────────── -->
+<% if @execution.agent_type.to_s.match?(/Speaker|Narrator|Transcriber/i) ||
+      @execution.metadata&.dig("audio_duration_seconds").present? ||
+      @execution.response&.dig("audio_data_uri").present? ||
+      @execution.response&.dig("audio_url").present? %>
+  <%= render "ruby_llm/agents/executions/audio_player" %>
+<% end %>
+
 <!-- ── tokens ──────────────────────── -->
 <%
   input_tokens = @execution.input_tokens || 0
