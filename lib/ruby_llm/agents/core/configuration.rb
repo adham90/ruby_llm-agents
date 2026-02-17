@@ -420,6 +420,10 @@ module RubyLLM
         :default_tts_model,
         :default_tts_voice,
         :track_speech,
+        :elevenlabs_api_key,
+        :elevenlabs_api_base,
+        :tts_model_pricing,
+        :default_tts_cost,
         :track_executions,
         :track_audio,
         :track_cache_hits,
@@ -673,6 +677,14 @@ module RubyLLM
         @default_tts_model = "tts-1"
         @default_tts_voice = "nova"
         @track_speech = true
+
+        # ElevenLabs defaults
+        @elevenlabs_api_key = nil
+        @elevenlabs_api_base = "https://api.elevenlabs.io"
+
+        # TTS pricing defaults
+        @tts_model_pricing = {}
+        @default_tts_cost = 0.015
 
         # Execution/conversation agent tracking
         @track_executions = true

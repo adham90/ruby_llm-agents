@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-02-17
+
+### Added
+
+- **Direct TTS HTTP client** — Speaker now uses a direct Faraday-based `SpeechClient` instead of the non-existent `RubyLLM.speak()`, making text-to-speech work at runtime
+- **OpenAI TTS support** — Full support for `tts-1` and `tts-1-hd` models via OpenAI's `/v1/audio/speech` endpoint
+- **ElevenLabs TTS support** — Full support for all ElevenLabs model generations: v1 (`eleven_monolingual_v1`, `eleven_multilingual_v1`), v2 (`eleven_multilingual_v2`, `eleven_turbo_v2`, `eleven_flash_v2`), v2.5 (`eleven_turbo_v2_5`, `eleven_flash_v2_5`), and v3 (`eleven_v3`)
+- **ElevenLabs configuration** — New `elevenlabs_api_key` and `elevenlabs_api_base` config options for ElevenLabs API access
+- **TTS pricing cascade** — `SpeechPricing` module with 3-tier pricing resolution: LiteLLM JSON (future-proof), user-configurable `tts_model_pricing` overrides, and hardcoded per-model fallbacks
+- **`tts_model_pricing` config** — Override TTS pricing per model via `config.tts_model_pricing = { "tts-1" => 0.015 }`
+- **`default_tts_cost` config** — Fallback cost per 1K characters for unknown models
+- **`UnsupportedProviderError`** — Raised when a TTS provider is not `:openai` or `:elevenlabs`
+- **`SpeechApiError`** — Raised when a TTS API returns an HTTP error, includes `status` and `response_body` attributes
+
+### Fixed
+
+- **Speaker runtime crash** — `RubyLLM.speak()` does not exist in ruby_llm v1.12.0; replaced with direct HTTP client
+- **ElevenLabs had no backing implementation** — ElevenLabs was referenced in the DSL but had no actual API integration
+
+### Changed
+
+- Speaker specs rewritten to use WebMock HTTP stubs instead of method-level mocks, testing real code paths
+- Removed `MockSpeechResponse` and `RubyLLM.speak` mock from test support
+- `calculate_cost` now delegates to `SpeechPricing` module with differentiated ElevenLabs pricing (flash/turbo at $0.15/1K, premium at $0.30/1K)
+
 ## [3.1.0] - 2026-02-16
 
 ### Added

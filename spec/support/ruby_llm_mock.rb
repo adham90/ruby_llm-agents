@@ -101,27 +101,7 @@ module RubyLLM
     end
   end
 
-  # Mock speech response for text-to-speech
-  class MockSpeechResponse
-    attr_reader :audio, :model_id, :voice, :format
-
-    def initialize(audio: "mock_audio_data", model_id: "tts-1", voice: "nova", format: "mp3")
-      @audio = audio
-      @model_id = model_id
-      @voice = voice
-      @format = format
-    end
-
-    def data
-      @audio
-    end
-
-    def cost
-      0.015
-    end
-  end
-
-  # Mock embedding response
+# Mock embedding response
   class MockEmbeddingResponse
     attr_reader :vectors, :model_id, :input_tokens
 
@@ -210,11 +190,6 @@ module RubyLLM
   class << self
     def chat
       MockClient.new
-    end
-
-    # Text-to-speech
-    def speak(text, model: nil, voice: nil, **options)
-      MockSpeechResponse.new(model_id: model || "tts-1", voice: voice || "nova")
     end
 
     # Embeddings

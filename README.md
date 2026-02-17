@@ -135,6 +135,7 @@ result.save("logo.png")
 | **Attachments** | Images, PDFs, and multimodal support | [Attachments](https://github.com/adham90/ruby_llm-agents/wiki/Attachments) |
 | **Embeddings** | Vector embeddings with batching, caching, and preprocessing | [Embeddings](https://github.com/adham90/ruby_llm-agents/wiki/Embeddings) |
 | **Image Operations** | Generation, analysis, editing, pipelines with cost tracking | [Images](https://github.com/adham90/ruby_llm-agents/wiki/Image-Generation) |
+| **Audio** | Text-to-speech (OpenAI, ElevenLabs) and speech-to-text with cost tracking | [Audio](https://github.com/adham90/ruby_llm-agents/wiki/Audio) |
 | **Alerts** | Slack, webhook, and custom notifications | [Alerts](https://github.com/adham90/ruby_llm-agents/wiki/Alerts) |
 
 ## Quick Start

@@ -2,6 +2,8 @@
 
 require "digest"
 require_relative "../results/speech_result"
+require_relative "speech_client"
+require_relative "speech_pricing"
 
 module RubyLLM
   module Agents
@@ -410,7 +412,15 @@ module RubyLLM
 
       # Executes standard (non-streaming) speech synthesis
       def execute_standard_speech(text, options)
-        response = RubyLLM.speak(text, **options)
+        response = speech_client.speak(
+          text,
+          model: options[:model],
+          voice: options[:voice],
+          voice_id: resolved_voice_id,
+          speed: options[:speed],
+          response_format: options[:response_format] || "mp3",
+          voice_settings: options[:voice_settings]
+        )
 
         {
           audio: response.audio,
@@ -428,7 +438,15 @@ module RubyLLM
       def execute_streaming_speech(text, options)
         audio_chunks = []
 
-        RubyLLM.speak(text, **options.merge(stream: true)) do |chunk|
+        speech_client.speak_streaming(
+          text,
+          model: options[:model],
+          voice: options[:voice],
+          voice_id: resolved_voice_id,
+          speed: options[:speed],
+          response_format: options[:response_format] || "mp3",
+          voice_settings: options[:voice_settings]
+        ) do |chunk|
           audio_chunks << chunk.audio if chunk.respond_to?(:audio)
           @streaming_block&.call(chunk)
         end
@@ -445,7 +463,7 @@ module RubyLLM
         }
       end
 
-      # Builds options for RubyLLM.speak
+      # Builds options for SpeechClient
       def build_speak_options
         options = {
           model: resolved_model,
@@ -456,10 +474,8 @@ module RubyLLM
         options[:speed] = speed if speed && (speed - 1.0).abs > Float::EPSILON
         options[:response_format] = resolved_output_format.to_s
 
-        if resolved_provider == :elevenlabs
-          voice_settings = self.class.voice_settings_config
-          options[:voice_settings] = voice_settings.to_h if voice_settings
-        end
+        voice_settings = self.class.voice_settings_config
+        options[:voice_settings] = voice_settings.to_h if voice_settings
 
         options
       end
@@ -488,29 +504,17 @@ module RubyLLM
 
       # Calculates cost for speech synthesis
       def calculate_cost(raw_result)
-        characters = raw_result[:characters] || 0
-
-        if raw_result[:raw_response].respond_to?(:cost) && raw_result[:raw_response].cost
+        if raw_result[:raw_response].respond_to?(:cost) && raw_result[:raw_response]&.cost
           return raw_result[:raw_response].cost
         end
 
-        provider = raw_result[:provider]
-        model_name = raw_result[:model].to_s
+        characters = raw_result[:characters] || 0
 
-        price_per_1k_chars = case provider
-        when :openai
-          model_name.include?("hd") ? 0.030 : 0.015
-        when :elevenlabs
-          0.30
-        when :google
-          0.016
-        when :polly
-          0.016
-        else
-          0.015
-        end
-
-        (characters / 1000.0) * price_per_1k_chars
+        Audio::SpeechPricing.calculate_cost(
+          provider: raw_result[:provider],
+          model_id: raw_result[:model].to_s,
+          characters: characters
+        )
       end
 
       # Resolves the provider to use
@@ -546,6 +550,11 @@ module RubyLLM
       # Returns whether streaming is enabled
       def streaming_enabled?
         @runtime_streaming || self.class.streaming?
+      end
+
+      # Returns a SpeechClient for the resolved provider
+      def speech_client
+        @speech_client ||= Audio::SpeechClient.new(provider: resolved_provider)
       end
     end
   end

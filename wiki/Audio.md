@@ -391,6 +391,17 @@ RubyLLM::Agents.configure do |config|
   config.default_tts_model = "tts-1"
   config.default_tts_voice = "nova"
   config.track_speech = true
+
+  # ElevenLabs (required for :elevenlabs provider)
+  config.elevenlabs_api_key = ENV["ELEVENLABS_API_KEY"]
+  config.elevenlabs_api_base = "https://api.elevenlabs.io"  # optional, default
+
+  # TTS pricing overrides (per 1K characters)
+  config.tts_model_pricing = {
+    "eleven_v3" => 0.24,        # custom rate
+    "custom-model" => 0.10
+  }
+  config.default_tts_cost = 0.015  # fallback for unknown models
 end
 ```
 
@@ -406,10 +417,20 @@ end
 
 #### TTS Models
 
-| Provider | Models | Voices |
-|----------|--------|--------|
-| OpenAI | `tts-1`, `tts-1-hd` | alloy, echo, fable, nova, onyx, shimmer |
-| ElevenLabs | `eleven_monolingual_v1`, `eleven_multilingual_v2` | Various voice IDs |
+| Provider | Model | Generation | Notes |
+|----------|-------|------------|-------|
+| OpenAI | `tts-1` | — | Standard quality, low latency |
+| OpenAI | `tts-1-hd` | — | HD quality |
+| ElevenLabs | `eleven_monolingual_v1` | v1 | English only (deprecated) |
+| ElevenLabs | `eleven_multilingual_v1` | v1 | Multi-language (deprecated) |
+| ElevenLabs | `eleven_multilingual_v2` | v2 | 29 languages, emotionally-aware |
+| ElevenLabs | `eleven_turbo_v2` | v2 | English, balanced speed/quality |
+| ElevenLabs | `eleven_flash_v2` | v2 | English, ultra-low latency (~75ms) |
+| ElevenLabs | `eleven_turbo_v2_5` | v2.5 | 32 languages, balanced |
+| ElevenLabs | `eleven_flash_v2_5` | v2.5 | 32 languages, low latency |
+| ElevenLabs | `eleven_v3` | v3 | 70+ languages, most expressive |
+
+**OpenAI voices:** alloy, ash, ballad, coral, echo, fable, nova, onyx, sage, shimmer
 
 ---
 
@@ -427,13 +448,23 @@ Transcription costs are calculated based on audio duration.
 
 ### TTS Costs
 
-| Provider | Model | Price |
-|----------|-------|-------|
-| OpenAI | tts-1 | $0.015 / 1K chars |
-| OpenAI | tts-1-hd | $0.030 / 1K chars |
-| ElevenLabs | Standard | $0.30 / 1K chars |
+TTS costs use a 3-tier pricing cascade: LiteLLM JSON (auto-updating) → `config.tts_model_pricing` overrides → hardcoded fallbacks.
 
-TTS costs are calculated based on character count.
+| Provider | Model | Price / 1K chars |
+|----------|-------|-----------------|
+| OpenAI | tts-1 | $0.015 |
+| OpenAI | tts-1-hd | $0.030 |
+| ElevenLabs | eleven_flash_v2, eleven_flash_v2_5 | $0.15 |
+| ElevenLabs | eleven_turbo_v2, eleven_turbo_v2_5 | $0.15 |
+| ElevenLabs | eleven_multilingual_v2 | $0.30 |
+| ElevenLabs | eleven_v3 | $0.30 |
+| ElevenLabs | v1 models (deprecated) | $0.30 |
+
+Override pricing via configuration:
+
+```ruby
+config.tts_model_pricing = { "eleven_v3" => 0.24 }
+```
 
 ---
 

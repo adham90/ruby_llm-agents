@@ -3,33 +3,37 @@
 require "rails_helper"
 
 RSpec.describe RubyLLM::Agents::Speaker do
-  let(:config) { double("config") }
+  let(:fake_audio_data) { "fake_audio_binary_data" }
+  let(:openai_tts_url) { "https://api.openai.com/v1/audio/speech" }
 
   before do
-    allow(RubyLLM::Agents).to receive(:configuration).and_return(config)
-    allow(config).to receive(:default_model).and_return("gpt-4o")
-    allow(config).to receive(:default_tts_provider).and_return(:openai)
-    allow(config).to receive(:default_tts_model).and_return("tts-1")
-    allow(config).to receive(:default_tts_voice).and_return("nova")
-    allow(config).to receive(:default_timeout).and_return(120)
-    allow(config).to receive(:default_temperature).and_return(0.7)
-    allow(config).to receive(:default_streaming).and_return(false)
-    allow(config).to receive(:budgets_enabled?).and_return(false)
-    allow(config).to receive(:track_audio).and_return(false)
-    allow(config).to receive(:track_embeddings).and_return(false)
-    allow(config).to receive(:track_executions).and_return(false)
-    allow(config).to receive(:track_image_generation).and_return(false)
-    allow(config).to receive(:track_moderation).and_return(false)
-  end
+    RubyLLM::Agents.reset_configuration!
+    RubyLLM::Agents.configure do |c|
+      c.default_tts_provider = :openai
+      c.default_tts_model = "tts-1"
+      c.default_tts_voice = "nova"
+      c.track_speech = false
+      c.track_executions = false
+      c.track_audio = false
+      c.track_embeddings = false
+      c.track_image_generation = false
+      c.elevenlabs_api_key = "xi-test"
+      c.elevenlabs_api_base = "https://api.elevenlabs.io"
+    end
 
-  # Mock RubyLLM.speak response
-  let(:mock_response) do
-    double(
-      "SpeechResponse",
-      audio: "fake_audio_data",
-      duration: 1.5,
-      cost: nil
-    )
+    # Stub OpenAI API key
+    allow(RubyLLM.config).to receive(:openai_api_key).and_return("sk-test-key")
+    allow(RubyLLM.config).to receive(:openai_api_base).and_return(nil)
+
+    # Default HTTP stub for OpenAI TTS
+    stub_request(:post, openai_tts_url)
+      .to_return(status: 200, body: fake_audio_data,
+                 headers: {"Content-Type" => "audio/mpeg"})
+
+    # Stub LiteLLM pricing to prevent real HTTP calls
+    stub_request(:get, RubyLLM::Agents::Audio::SpeechPricing::LITELLM_PRICING_URL)
+      .to_return(status: 200, body: "{}",
+                 headers: {"Content-Type" => "application/json"})
   end
 
   describe ".agent_type" do
@@ -58,13 +62,13 @@ RSpec.describe RubyLLM::Agents::Speaker do
       end
 
       it "inherits from parent class" do
-        base_speaker.provider :google
+        base_speaker.provider :elevenlabs
         child = Class.new(base_speaker) do
           def self.name
             "ChildSpeaker"
           end
         end
-        expect(child.provider).to eq(:google)
+        expect(child.provider).to eq(:elevenlabs)
       end
     end
 
@@ -238,45 +242,35 @@ RSpec.describe RubyLLM::Agents::Speaker do
       end
     end
 
-    before do
-      allow(mock_response).to receive(:respond_to?).with(:duration).and_return(true)
-      allow(mock_response).to receive(:respond_to?).with(:cost).and_return(false)
-    end
-
     context "with valid text" do
       it "returns a SpeechResult" do
-        allow(RubyLLM).to receive(:speak).and_return(mock_response)
-
         result = test_speaker.call(text: "Hello world")
-
         expect(result).to be_a(RubyLLM::Agents::SpeechResult)
       end
 
-      it "passes text to RubyLLM.speak" do
-        expect(RubyLLM).to receive(:speak)
-          .with("Hello world", hash_including(model: "tts-1", voice: "nova"))
-          .and_return(mock_response)
-
+      it "sends correct request to OpenAI TTS API" do
         test_speaker.call(text: "Hello world")
+
+        expect(WebMock).to have_requested(:post, openai_tts_url)
+          .with { |req|
+            body = JSON.parse(req.body)
+            body["model"] == "tts-1" &&
+              body["input"] == "Hello world" &&
+              body["voice"] == "nova"
+          }
       end
 
-      it "returns audio data" do
-        allow(RubyLLM).to receive(:speak).and_return(mock_response)
-
+      it "returns audio data from API response" do
         result = test_speaker.call(text: "Hello")
-        expect(result.audio).to eq("fake_audio_data")
+        expect(result.audio).to eq(fake_audio_data)
       end
 
       it "returns correct format" do
-        allow(RubyLLM).to receive(:speak).and_return(mock_response)
-
         result = test_speaker.call(text: "Hello")
         expect(result.format).to eq(:mp3)
       end
 
       it "returns provider info" do
-        allow(RubyLLM).to receive(:speak).and_return(mock_response)
-
         result = test_speaker.call(text: "Hello")
         expect(result.provider).to eq(:openai)
         expect(result.model_id).to eq("tts-1")
@@ -284,10 +278,13 @@ RSpec.describe RubyLLM::Agents::Speaker do
       end
 
       it "tracks character count" do
-        allow(RubyLLM).to receive(:speak).and_return(mock_response)
-
         result = test_speaker.call(text: "Hello world")
         expect(result.characters).to eq(11)
+      end
+
+      it "tracks file size" do
+        result = test_speaker.call(text: "Hello")
+        expect(result.file_size).to eq(fake_audio_data.bytesize)
       end
     end
 
@@ -307,12 +304,11 @@ RSpec.describe RubyLLM::Agents::Speaker do
         end
       end
 
-      it "applies lexicon before synthesis" do
-        expect(RubyLLM).to receive(:speak)
-          .with("The A P I is great", anything)
-          .and_return(mock_response)
-
+      it "applies lexicon before sending to API" do
         speaker_with_lexicon.call(text: "The API is great")
+
+        expect(WebMock).to have_requested(:post, openai_tts_url)
+          .with { |req| JSON.parse(req.body)["input"] == "The A P I is great" }
       end
     end
 
@@ -329,59 +325,128 @@ RSpec.describe RubyLLM::Agents::Speaker do
         end
       end
 
-      it "passes speed to RubyLLM.speak" do
-        expect(RubyLLM).to receive(:speak)
-          .with(anything, hash_including(speed: 1.5))
-          .and_return(mock_response)
-
+      it "passes speed to API" do
         fast_speaker.call(text: "Hello")
-      end
 
-      it "allows runtime speed override" do
-        expect(RubyLLM).to receive(:speak)
-          .with(anything, hash_including(speed: 0.5))
-          .and_return(mock_response)
-
-        test_speaker.call(text: "Hello", speed: 0.5)
+        expect(WebMock).to have_requested(:post, openai_tts_url)
+          .with { |req| JSON.parse(req.body)["speed"] == 1.5 }
       end
     end
 
-    context "with voice_id override" do
-      let(:custom_voice_speaker) do
+    context "with ElevenLabs provider" do
+      let(:voice_id) { "21m00Tcm4TlvDq8ikWAM" }
+      let(:elevenlabs_url) {
+        "https://api.elevenlabs.io/v1/text-to-speech/#{voice_id}"
+      }
+
+      let(:elevenlabs_speaker) do
         Class.new(described_class) do
           def self.name
-            "CustomVoiceSpeaker"
+            "ElevenSpeaker"
           end
 
           provider :elevenlabs
           model "eleven_multilingual_v2"
-          voice_id "custom_voice_abc123"
+          voice_id "21m00Tcm4TlvDq8ikWAM"
+          voice_settings do
+            stability 0.6
+            similarity_boost 0.8
+          end
         end
       end
 
-      it "uses voice_id when set" do
-        expect(RubyLLM).to receive(:speak)
-          .with(anything, hash_including(voice: "custom_voice_abc123"))
-          .and_return(mock_response)
+      before do
+        stub_request(:post, elevenlabs_url)
+          .with(query: hash_including("output_format"))
+          .to_return(status: 200, body: fake_audio_data)
+      end
 
-        custom_voice_speaker.call(text: "Hello")
+      it "calls ElevenLabs API with voice_id in URL" do
+        elevenlabs_speaker.call(text: "Hello from ElevenLabs")
+
+        expect(WebMock).to have_requested(:post, elevenlabs_url)
+          .with(query: hash_including("output_format"))
+      end
+
+      it "sends voice_settings in request body" do
+        elevenlabs_speaker.call(text: "Hello")
+
+        expect(WebMock).to have_requested(:post, elevenlabs_url)
+          .with(query: hash_including("output_format")) { |req|
+            body = JSON.parse(req.body)
+            body.dig("voice_settings", "stability") == 0.6 &&
+              body.dig("voice_settings", "similarity_boost") == 0.8
+          }
+      end
+
+      it "returns SpeechResult with elevenlabs provider" do
+        result = elevenlabs_speaker.call(text: "Hello")
+        expect(result.provider).to eq(:elevenlabs)
+        expect(result.model_id).to eq("eleven_multilingual_v2")
       end
     end
 
-    context "with model override" do
-      it "allows runtime model override" do
-        expect(RubyLLM).to receive(:speak)
-          .with(anything, hash_including(model: "tts-1-hd"))
-          .and_return(mock_response)
+    context "with Eleven v3 model" do
+      let(:voice_id) { "pNInz6obpgDQGcFmaJgB" }
+      let(:v3_url) {
+        "https://api.elevenlabs.io/v1/text-to-speech/#{voice_id}"
+      }
 
-        test_speaker.call(text: "Hello", model: "tts-1-hd")
+      let(:v3_speaker) do
+        Class.new(described_class) do
+          def self.name
+            "V3Speaker"
+          end
+
+          provider :elevenlabs
+          model "eleven_v3"
+          voice_id "pNInz6obpgDQGcFmaJgB"
+        end
+      end
+
+      before do
+        stub_request(:post, v3_url)
+          .with(query: hash_including("output_format"))
+          .to_return(status: 200, body: fake_audio_data)
+      end
+
+      it "works with eleven_v3 model" do
+        result = v3_speaker.call(text: "Hello from v3")
+        expect(result.model_id).to eq("eleven_v3")
+        expect(result.audio).to eq(fake_audio_data)
+      end
+    end
+
+    context "with unsupported provider" do
+      it "raises UnsupportedProviderError" do
+        google_speaker = Class.new(described_class) do
+          def self.name
+            "GoogleSpeaker"
+          end
+
+          provider :google
+          model "some-model"
+        end
+
+        expect {
+          google_speaker.call(text: "Hello")
+        }.to raise_error(RubyLLM::Agents::UnsupportedProviderError, /google/)
+      end
+    end
+
+    context "API error handling" do
+      it "raises SpeechApiError on 400" do
+        stub_request(:post, openai_tts_url)
+          .to_return(status: 400, body: '{"error":{"message":"Bad request"}}')
+
+        expect {
+          test_speaker.call(text: "Hello")
+        }.to raise_error(RubyLLM::Agents::SpeechApiError, /400/)
       end
     end
 
     context "timing" do
       it "tracks duration" do
-        allow(RubyLLM).to receive(:speak).and_return(mock_response)
-
         result = test_speaker.call(text: "Hello")
 
         expect(result.duration_ms).to be >= 0
@@ -429,18 +494,45 @@ RSpec.describe RubyLLM::Agents::Speaker do
       }.to raise_error(ArgumentError, /A block is required for streaming/)
     end
 
-    it "calls RubyLLM.speak with stream option" do
-      chunk = double("chunk", audio: "chunk_data")
-      allow(chunk).to receive(:respond_to?).with(:audio).and_return(true)
-
-      expect(RubyLLM).to receive(:speak)
-        .with(anything, hash_including(stream: true))
-        .and_yield(chunk)
+    it "calls OpenAI TTS API" do
+      stub_request(:post, openai_tts_url)
+        .to_return(status: 200, body: fake_audio_data)
 
       chunks = []
       test_speaker.stream(text: "Hello") { |c| chunks << c }
 
-      expect(chunks).to include(chunk)
+      expect(WebMock).to have_requested(:post, openai_tts_url)
+    end
+
+    context "ElevenLabs streaming" do
+      let(:voice_id) { "21m00Tcm4TlvDq8ikWAM" }
+      let(:elevenlabs_stream_url) {
+        "https://api.elevenlabs.io/v1/text-to-speech/#{voice_id}/stream"
+      }
+
+      let(:stream_speaker) do
+        Class.new(described_class) do
+          def self.name
+            "ElevenStreamSpeaker"
+          end
+
+          provider :elevenlabs
+          model "eleven_flash_v2_5"
+          voice_id "21m00Tcm4TlvDq8ikWAM"
+        end
+      end
+
+      it "uses the /stream endpoint" do
+        stub_request(:post, elevenlabs_stream_url)
+          .with(query: hash_including("output_format"))
+          .to_return(status: 200, body: fake_audio_data)
+
+        chunks = []
+        stream_speaker.stream(text: "Hello") { |c| chunks << c }
+
+        expect(WebMock).to have_requested(:post, elevenlabs_stream_url)
+          .with(query: hash_including("output_format"))
+      end
     end
   end
 
@@ -456,18 +548,9 @@ RSpec.describe RubyLLM::Agents::Speaker do
       end
     end
 
-    before do
-      allow(mock_response).to receive(:respond_to?).with(:duration).and_return(true)
-      allow(mock_response).to receive(:respond_to?).with(:cost).and_return(false)
-    end
-
     it "calculates cost based on characters for OpenAI" do
-      allow(RubyLLM).to receive(:speak).and_return(mock_response)
-
-      # 1000 characters at $0.015/1k = $0.015
       text = "a" * 1000
       result = test_speaker.call(text: text)
-
       expect(result.total_cost).to eq(0.015)
     end
 
@@ -481,29 +564,51 @@ RSpec.describe RubyLLM::Agents::Speaker do
         model "tts-1-hd"
       end
 
-      allow(RubyLLM).to receive(:speak).and_return(mock_response)
-
-      # 1000 characters at $0.030/1k = $0.030
       text = "a" * 1000
       result = hd_speaker.call(text: text)
-
       expect(result.total_cost).to eq(0.030)
     end
 
-    it "uses response cost if available" do
-      response_with_cost = double(
-        "SpeechResponse",
-        audio: "fake_audio_data",
-        duration: 1.5,
-        cost: 0.05
-      )
-      allow(response_with_cost).to receive(:respond_to?).with(:duration).and_return(true)
-      allow(response_with_cost).to receive(:respond_to?).with(:cost).and_return(true)
-      allow(RubyLLM).to receive(:speak).and_return(response_with_cost)
+    it "uses ElevenLabs rate" do
+      voice_id = "21m00Tcm4TlvDq8ikWAM"
+      stub_request(:post, "https://api.elevenlabs.io/v1/text-to-speech/#{voice_id}")
+        .with(query: hash_including("output_format"))
+        .to_return(status: 200, body: fake_audio_data)
 
-      result = test_speaker.call(text: "Hello")
+      el_speaker = Class.new(described_class) do
+        def self.name
+          "ELCostSpeaker"
+        end
 
-      expect(result.total_cost).to eq(0.05)
+        provider :elevenlabs
+        model "eleven_v3"
+        voice_id "21m00Tcm4TlvDq8ikWAM"
+      end
+
+      text = "a" * 1000
+      result = el_speaker.call(text: text)
+      expect(result.total_cost).to eq(0.30)
+    end
+
+    it "uses flash model rate for ElevenLabs" do
+      voice_id = "21m00Tcm4TlvDq8ikWAM"
+      stub_request(:post, "https://api.elevenlabs.io/v1/text-to-speech/#{voice_id}")
+        .with(query: hash_including("output_format"))
+        .to_return(status: 200, body: fake_audio_data)
+
+      flash_speaker = Class.new(described_class) do
+        def self.name
+          "FlashCostSpeaker"
+        end
+
+        provider :elevenlabs
+        model "eleven_flash_v2_5"
+        voice_id "21m00Tcm4TlvDq8ikWAM"
+      end
+
+      text = "a" * 1000
+      result = flash_speaker.call(text: text)
+      expect(result.total_cost).to eq(0.15)
     end
   end
 

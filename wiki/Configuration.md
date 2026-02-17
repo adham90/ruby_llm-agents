@@ -340,6 +340,10 @@ end
 | `default_tts_model` | String | `"tts-1"` | Default TTS model |
 | `default_tts_voice` | String | `"nova"` | Default TTS voice |
 | `track_speech` | Boolean | `true` | Track TTS executions |
+| `elevenlabs_api_key` | String | `nil` | ElevenLabs API key (required for `:elevenlabs` provider) |
+| `elevenlabs_api_base` | String | `"https://api.elevenlabs.io"` | ElevenLabs API base URL |
+| `tts_model_pricing` | Hash | `{}` | Custom TTS pricing overrides per 1K characters |
+| `default_tts_cost` | Float | `0.015` | Fallback cost per 1K characters for unknown models |
 | `async_logging` | Boolean | `true` | Log executions via background job |
 | `retention_period` | Duration | `30.days` | Execution record retention |
 | `cache_store` | Cache | `Rails.cache` | Custom cache store |
