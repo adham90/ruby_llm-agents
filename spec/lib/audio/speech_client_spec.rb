@@ -251,7 +251,7 @@ RSpec.describe RubyLLM::Agents::Audio::SpeechClient do
 
       it "maps pcm format" do
         stub_request(:post, elevenlabs_tts_url)
-          .with(query: hash_including("output_format" => "pcm_44100"))
+          .with(query: hash_including("output_format" => "pcm_24000"))
           .to_return(status: 200, body: fake_audio)
 
         client.speak("Hello", model: "eleven_multilingual_v2",
@@ -259,7 +259,7 @@ RSpec.describe RubyLLM::Agents::Audio::SpeechClient do
                      response_format: "pcm")
 
         expect(WebMock).to have_requested(:post, elevenlabs_tts_url)
-          .with(query: hash_including("output_format" => "pcm_44100"))
+          .with(query: hash_including("output_format" => "pcm_24000"))
       end
 
       it "works with Eleven v3 model" do
@@ -329,6 +329,72 @@ RSpec.describe RubyLLM::Agents::Audio::SpeechClient do
 
         expect(WebMock).to have_requested(:post, elevenlabs_stream_url)
           .with(query: hash_including("output_format"))
+      end
+    end
+
+    describe "output format mapping" do
+      # Stub all requests to allow any output_format param
+      before do
+        stub_request(:post, elevenlabs_tts_url)
+          .with(query: hash_including("output_format"))
+          .to_return(status: 200, body: fake_audio)
+      end
+
+      {
+        "mp3" => "mp3_44100_128",
+        "wav" => "wav_44100",
+        "pcm" => "pcm_24000",
+        "opus" => "opus_48000_128",
+        "alaw" => "alaw_8000",
+        "ulaw" => "ulaw_8000",
+        "ogg" => "mp3_44100_128",
+        "flac" => "mp3_44100_128",
+        "aac" => "mp3_44100_128"
+      }.each do |simple, native|
+        it "maps simple symbol :#{simple} to #{native}" do
+          client.speak("Hello", model: "eleven_v3",
+                       voice: voice_id, voice_id: voice_id,
+                       response_format: simple)
+
+          expect(WebMock).to have_requested(:post, elevenlabs_tts_url)
+            .with(query: hash_including("output_format" => native))
+        end
+      end
+
+      %w[
+        mp3_44100_192 mp3_22050_32 mp3_44100_64
+        pcm_16000 pcm_8000 pcm_48000
+        wav_22050 wav_44100 wav_48000
+        opus_48000_64 opus_48000_32
+        alaw_8000 ulaw_8000
+      ].each do |native_format|
+        it "passes through native format string #{native_format}" do
+          client.speak("Hello", model: "eleven_v3",
+                       voice: voice_id, voice_id: voice_id,
+                       response_format: native_format)
+
+          expect(WebMock).to have_requested(:post, elevenlabs_tts_url)
+            .with(query: hash_including("output_format" => native_format))
+        end
+      end
+
+      it "falls back to mp3_44100_128 for unknown format" do
+        client.speak("Hello", model: "eleven_v3",
+                     voice: voice_id, voice_id: voice_id,
+                     response_format: "wma")
+
+        expect(WebMock).to have_requested(:post, elevenlabs_tts_url)
+          .with(query: hash_including("output_format" => "mp3_44100_128"))
+      end
+
+      it "includes all expected native formats in ELEVENLABS_NATIVE_FORMATS" do
+        native_formats = described_class::ELEVENLABS_NATIVE_FORMATS
+        expect(native_formats).to include("mp3_44100_128", "mp3_44100_192")
+        expect(native_formats).to include("pcm_16000", "pcm_24000", "pcm_44100")
+        expect(native_formats).to include("wav_44100", "wav_48000")
+        expect(native_formats).to include("opus_48000_64", "opus_48000_128")
+        expect(native_formats).to include("alaw_8000", "ulaw_8000")
+        expect(native_formats.size).to eq(28)
       end
     end
   end

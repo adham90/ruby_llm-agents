@@ -2,6 +2,7 @@
 
 require "faraday"
 require "json"
+require "set"
 
 module RubyLLM
   module Agents
@@ -266,14 +267,37 @@ module RubyLLM
           body
         end
 
+        # Convenience mapping: simple symbol → ElevenLabs native format string
         ELEVENLABS_FORMAT_MAP = {
           "mp3" => "mp3_44100_128",
-          "pcm" => "pcm_44100",
+          "wav" => "wav_44100",
+          "ogg" => "mp3_44100_128",   # ElevenLabs doesn't support ogg; fallback to mp3
+          "pcm" => "pcm_24000",
+          "opus" => "opus_48000_128",
+          "flac" => "mp3_44100_128",  # ElevenLabs doesn't support flac; fallback to mp3
+          "aac" => "mp3_44100_128",   # ElevenLabs doesn't support aac; fallback to mp3
+          "alaw" => "alaw_8000",
           "ulaw" => "ulaw_8000"
         }.freeze
 
+        # All valid ElevenLabs native format strings (pass-through)
+        ELEVENLABS_NATIVE_FORMATS = Set.new(%w[
+          mp3_22050_32 mp3_24000_48 mp3_44100_32 mp3_44100_64
+          mp3_44100_96 mp3_44100_128 mp3_44100_192
+          pcm_8000 pcm_16000 pcm_22050 pcm_24000 pcm_32000 pcm_44100 pcm_48000
+          wav_8000 wav_16000 wav_22050 wav_24000 wav_32000 wav_44100 wav_48000
+          opus_48000_32 opus_48000_64 opus_48000_96 opus_48000_128 opus_48000_192
+          alaw_8000 ulaw_8000
+        ]).freeze
+
         def elevenlabs_output_format(format)
-          ELEVENLABS_FORMAT_MAP[format.to_s] || "mp3_44100_128"
+          format_str = format.to_s
+
+          # Pass through native ElevenLabs format strings directly
+          return format_str if ELEVENLABS_NATIVE_FORMATS.include?(format_str)
+
+          # Map simple symbols to native formats
+          ELEVENLABS_FORMAT_MAP[format_str] || "mp3_44100_128"
         end
 
         def elevenlabs_connection
