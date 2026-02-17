@@ -453,7 +453,9 @@ module RubyLLM
         :root_namespace,
         :tool_result_max_length,
         :redaction,
-        :persist_audio_data
+        :persist_audio_data,
+        :elevenlabs_base_cost_per_1k,
+        :elevenlabs_models_cache_ttl
 
       # Attributes with validation (readers only, custom setters below)
       attr_reader :default_temperature,
@@ -738,6 +740,11 @@ module RubyLLM
 
         # Audio data persistence (disabled by default — base64 audio can be large)
         @persist_audio_data = false
+
+        # ElevenLabs dynamic pricing: base cost per 1K characters (Pro plan overage rate)
+        @elevenlabs_base_cost_per_1k = 0.30
+        # ElevenLabs models cache TTL in seconds (6 hours)
+        @elevenlabs_models_cache_ttl = 21_600
       end
 
       # Returns the configured cache store, falling back to Rails.cache

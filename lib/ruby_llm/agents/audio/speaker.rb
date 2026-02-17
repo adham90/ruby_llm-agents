@@ -4,6 +4,7 @@ require "digest"
 require_relative "../results/speech_result"
 require_relative "speech_client"
 require_relative "speech_pricing"
+require_relative "elevenlabs/model_registry"
 
 module RubyLLM
   module Agents
