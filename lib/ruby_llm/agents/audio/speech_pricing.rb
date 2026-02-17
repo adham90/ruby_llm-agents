@@ -8,10 +8,11 @@ module RubyLLM
     module Audio
       # Dynamic pricing resolution for text-to-speech models.
       #
-      # Uses the same three-tier strategy as ImageGenerator::Pricing:
+      # Uses a four-tier pricing cascade:
       # 1. LiteLLM JSON (primary) - future-proof, auto-updating
       # 2. Configurable pricing table - user overrides via config.tts_model_pricing
-      # 3. Hardcoded fallbacks - per-model defaults
+      # 3. ElevenLabs API - dynamic multiplier × base rate from /v1/models
+      # 4. Hardcoded fallbacks - per-model defaults
       #
       # All prices are per 1,000 characters.
       #
@@ -50,14 +51,22 @@ module RubyLLM
         # @param model_id [String] Model identifier
         # @return [Float] Cost per 1K characters in USD
         def cost_per_1k_characters(provider, model_id)
+          # Tier 1: LiteLLM
           if (litellm_price = from_litellm(model_id))
             return litellm_price
           end
 
+          # Tier 2: User config overrides
           if (config_price = from_config(model_id))
             return config_price
           end
 
+          # Tier 3: ElevenLabs API multiplier × base rate
+          if provider == :elevenlabs && (api_price = from_elevenlabs_api(model_id))
+            return api_price
+          end
+
+          # Tier 4: Hardcoded fallbacks
           fallback_price(provider, model_id)
         end
 
@@ -73,6 +82,7 @@ module RubyLLM
           {
             litellm: litellm_tts_models,
             configured: config.tts_model_pricing || {},
+            elevenlabs_api: elevenlabs_api_pricing,
             fallbacks: fallback_pricing_table
           }
         end
@@ -190,6 +200,19 @@ module RubyLLM
           end
         end
 
+        def elevenlabs_api_pricing
+          return {} unless defined?(ElevenLabs::ModelRegistry)
+
+          base = config.elevenlabs_base_cost_per_1k || 0.30
+          ElevenLabs::ModelRegistry.models.each_with_object({}) do |model, hash|
+            multiplier = model.dig("model_rates", "character_cost_multiplier") || 1.0
+            hash[model["model_id"]] = (base * multiplier).round(6)
+          end
+        rescue => e
+          warn "[RubyLLM::Agents] Failed to get ElevenLabs API pricing: #{e.message}"
+          {}
+        end
+
         # ============================================================
         # Tier 2: User configuration
         # ============================================================
@@ -207,7 +230,25 @@ module RubyLLM
         end
 
         # ============================================================
-        # Tier 3: Hardcoded fallbacks
+        # Tier 3: ElevenLabs API (dynamic multiplier × base rate)
+        # ============================================================
+
+        def from_elevenlabs_api(model_id)
+          return nil unless defined?(ElevenLabs::ModelRegistry)
+
+          model = ElevenLabs::ModelRegistry.find(model_id)
+          return nil unless model
+
+          multiplier = model.dig("model_rates", "character_cost_multiplier") || 1.0
+          base = config.elevenlabs_base_cost_per_1k || 0.30
+          (base * multiplier).round(6)
+        rescue => e
+          warn "[RubyLLM::Agents] Failed to get ElevenLabs API pricing: #{e.message}"
+          nil
+        end
+
+        # ============================================================
+        # Tier 4: Hardcoded fallbacks
         # ============================================================
 
         def fallback_price(provider, model_id)

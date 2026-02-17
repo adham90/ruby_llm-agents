@@ -15,6 +15,7 @@ RSpec.describe RubyLLM::Agents::Audio::SpeechPricing do
 
   after do
     described_class.refresh!
+    RubyLLM::Agents::Audio::ElevenLabs::ModelRegistry.clear_cache!
   end
 
   describe ".calculate_cost" do
@@ -209,15 +210,153 @@ RSpec.describe RubyLLM::Agents::Audio::SpeechPricing do
     end
   end
 
+  describe "Tier 3: ElevenLabs API (dynamic multiplier × base rate)" do
+    let(:models_json) { File.read(Rails.root.join("../../spec/fixtures/elevenlabs_models.json")) }
+    let(:models_url) { "https://api.elevenlabs.io/v1/models" }
+
+    before do
+      RubyLLM::Agents.configure do |c|
+        c.elevenlabs_api_key = "xi-test-key"
+        c.elevenlabs_base_cost_per_1k = 0.30
+      end
+
+      stub_request(:get, models_url)
+        .with(headers: {"xi-api-key" => "xi-test-key"})
+        .to_return(status: 200, body: models_json, headers: {"Content-Type" => "application/json"})
+    end
+
+    it "returns 0.30 for eleven_v3 (multiplier 1.0 × base 0.30)" do
+      cost = described_class.calculate_cost(
+        provider: :elevenlabs, model_id: "eleven_v3", characters: 1000
+      )
+      expect(cost).to eq(0.30)
+    end
+
+    it "returns 0.15 for eleven_flash_v2_5 (multiplier 0.5 × base 0.30)" do
+      cost = described_class.calculate_cost(
+        provider: :elevenlabs, model_id: "eleven_flash_v2_5", characters: 1000
+      )
+      expect(cost).to eq(0.15)
+    end
+
+    it "returns 0.15 for eleven_turbo_v2_5 (multiplier 0.5 × base 0.30)" do
+      cost = described_class.calculate_cost(
+        provider: :elevenlabs, model_id: "eleven_turbo_v2_5", characters: 1000
+      )
+      expect(cost).to eq(0.15)
+    end
+
+    it "scales cost with custom elevenlabs_base_cost_per_1k" do
+      RubyLLM::Agents.configure { |c| c.elevenlabs_base_cost_per_1k = 0.24 }
+
+      cost = described_class.calculate_cost(
+        provider: :elevenlabs, model_id: "eleven_v3", characters: 1000
+      )
+      expect(cost).to eq(0.24)
+    end
+
+    it "applies multiplier with custom base rate for flash models" do
+      RubyLLM::Agents.configure { |c| c.elevenlabs_base_cost_per_1k = 0.24 }
+
+      cost = described_class.calculate_cost(
+        provider: :elevenlabs, model_id: "eleven_flash_v2_5", characters: 1000
+      )
+      expect(cost).to eq(0.12)
+    end
+
+    it "calculates multi-thousand character cost correctly" do
+      cost = described_class.calculate_cost(
+        provider: :elevenlabs, model_id: "eleven_v3", characters: 5000
+      )
+      expect(cost).to eq(1.50)
+    end
+
+    it "calculates flash model multi-thousand character cost correctly" do
+      cost = described_class.calculate_cost(
+        provider: :elevenlabs, model_id: "eleven_flash_v2_5", characters: 10000
+      )
+      expect(cost).to eq(1.50)
+    end
+
+    context "priority: user config overrides API tier" do
+      before do
+        RubyLLM::Agents.configure do |c|
+          c.tts_model_pricing = {"eleven_v3" => 0.50}
+        end
+      end
+
+      it "uses config price instead of API tier" do
+        cost = described_class.calculate_cost(
+          provider: :elevenlabs, model_id: "eleven_v3", characters: 1000
+        )
+        expect(cost).to eq(0.50)
+      end
+    end
+
+    context "when ElevenLabs API is unreachable" do
+      before do
+        RubyLLM::Agents::Audio::ElevenLabs::ModelRegistry.clear_cache!
+        stub_request(:get, models_url).to_timeout
+      end
+
+      it "falls through to hardcoded fallback" do
+        cost = described_class.calculate_cost(
+          provider: :elevenlabs, model_id: "eleven_v3", characters: 1000
+        )
+        expect(cost).to eq(0.30)
+      end
+    end
+
+    context "when model is unknown to the API" do
+      it "falls through to hardcoded fallback for unknown model" do
+        cost = described_class.calculate_cost(
+          provider: :elevenlabs, model_id: "eleven_future_v99", characters: 1000
+        )
+        expect(cost).to eq(0.30) # hardcoded default for unknown ElevenLabs
+      end
+    end
+
+    it "does not affect OpenAI pricing" do
+      cost = described_class.calculate_cost(
+        provider: :openai, model_id: "tts-1", characters: 1000
+      )
+      expect(cost).to eq(0.015)
+    end
+  end
+
   describe ".all_pricing" do
     it "returns pricing from all tiers" do
       pricing = described_class.all_pricing
 
       expect(pricing).to have_key(:litellm)
       expect(pricing).to have_key(:configured)
+      expect(pricing).to have_key(:elevenlabs_api)
       expect(pricing).to have_key(:fallbacks)
       expect(pricing[:fallbacks]).to include("tts-1" => 0.015)
       expect(pricing[:fallbacks]).to include("eleven_v3" => 0.30)
+    end
+
+    context "with ElevenLabs API configured" do
+      let(:models_json) { File.read(Rails.root.join("../../spec/fixtures/elevenlabs_models.json")) }
+
+      before do
+        RubyLLM::Agents.configure do |c|
+          c.elevenlabs_api_key = "xi-test-key"
+          c.elevenlabs_base_cost_per_1k = 0.30
+        end
+
+        stub_request(:get, "https://api.elevenlabs.io/v1/models")
+          .to_return(status: 200, body: models_json)
+      end
+
+      it "includes ElevenLabs API pricing for all models" do
+        pricing = described_class.all_pricing
+        api_pricing = pricing[:elevenlabs_api]
+
+        expect(api_pricing["eleven_v3"]).to eq(0.30)
+        expect(api_pricing["eleven_flash_v2_5"]).to eq(0.15)
+        expect(api_pricing["eleven_turbo_v2"]).to eq(0.15)
+      end
     end
   end
 
