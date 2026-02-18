@@ -28,6 +28,7 @@ Welcome to the official documentation for **RubyLLM::Agents**, a production-read
 - **[Execution Tracking](Execution-Tracking)** - Automatic logging and analytics
 
 ### Specialized Capabilities
+- **[Routing](Routing)** - Message classification and routing
 - **[Embeddings](Embeddings)** - Text-to-vector embeddings
 - **[Audio](Audio)** - Transcription (speech-to-text) and TTS (text-to-speech)
 - **[Image Operations](Image-Generation)** - Generation, analysis, editing, pipelines
