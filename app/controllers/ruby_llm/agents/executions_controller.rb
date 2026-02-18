@@ -8,6 +8,9 @@ module RubyLLM
     # agent executions. Supports both HTML and Turbo Stream responses
     # for seamless filtering without full page reloads.
     #
+    # Turbo Stream support is optional — works in API-only apps or
+    # apps without turbo-rails installed.
+    #
     # @see Paginatable For pagination implementation
     # @see Filterable For filter parsing and validation
     # @api private
@@ -28,7 +31,7 @@ module RubyLLM
 
         respond_to do |format|
           format.html
-          format.turbo_stream
+          format.turbo_stream if turbo_stream_available?
         end
       end
 
@@ -51,12 +54,14 @@ module RubyLLM
 
         respond_to do |format|
           format.html { render :index }
-          format.turbo_stream do
-            render turbo_stream: turbo_stream.replace(
-              "executions_list",
-              partial: "ruby_llm/agents/executions/list",
-              locals: {executions: @executions, pagination: @pagination, filter_stats: @filter_stats}
-            )
+          if turbo_stream_available?
+            format.turbo_stream do
+              render turbo_stream: turbo_stream.replace(
+                "executions_list",
+                partial: "ruby_llm/agents/executions/list",
+                locals: {executions: @executions, pagination: @pagination, filter_stats: @filter_stats}
+              )
+            end
           end
         end
       end
@@ -208,6 +213,13 @@ module RubyLLM
 
         # Eager load children for grouping
         scope.includes(:child_executions)
+      end
+
+      # Checks whether turbo-rails is available in the host application
+      #
+      # @return [Boolean]
+      def turbo_stream_available?
+        defined?(Turbo)
       end
     end
   end
