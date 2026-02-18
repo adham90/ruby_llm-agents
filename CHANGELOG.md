@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Per-source configuration** — New config options: `pricing_cache_ttl`, `portkey_pricing_enabled`, `openrouter_pricing_enabled`, `helicone_pricing_enabled`, `llmpricing_enabled`, and URL overrides for each source
 - **Integration test framework** — Tests tagged `:integration` hit real pricing APIs (excluded by default, run with `RUN_INTEGRATION=1`). Covers API availability, schema stability, cross-source price consistency, and caching performance
 - **Pricing wiki page** — New [Pricing](https://github.com/adham90/ruby_llm-agents/wiki/Pricing) documentation covering all sources, caching, configuration, and debugging
+- **Routing concern** — Lightweight `include RubyLLM::Agents::Routing` concern for message classification. Define routes with `route` DSL, classify input with `classify(message)`, and get structured `Routing::Result` objects with destination, confidence, and metadata
+- **Dashboard router support** — Router agent type shown in agent index with dedicated config panel displaying route definitions, default route, and confidence threshold
+- **Dynamic release command** — `/release` command now auto-detects version bump type by analyzing commits, CHANGELOG sections, and file changes since the last tag
 
 ### Changed
 
@@ -679,6 +682,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[3.5.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.4.0...v3.5.0
 [3.4.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.3.0...v3.4.0
 [3.3.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.2.0...v3.3.0
 [3.2.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.1.0...v3.2.0
