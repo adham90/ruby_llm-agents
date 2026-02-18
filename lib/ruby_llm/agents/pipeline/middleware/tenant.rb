@@ -58,8 +58,9 @@ module RubyLLM
 
             case tenant_value
             when nil
-              # No tenant - single-tenant mode
-              context.tenant_id = nil
+              # No explicit tenant - fall back to configured tenant_resolver
+              resolved_id = RubyLLM::Agents.configuration.current_tenant_id
+              context.tenant_id = resolved_id&.to_s
               context.tenant_object = nil
               context.tenant_config = nil
 

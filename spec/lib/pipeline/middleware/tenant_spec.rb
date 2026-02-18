@@ -51,6 +51,80 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Tenant do
       end
     end
 
+    context "with no tenant but tenant_resolver configured" do
+      around do |example|
+        original_multi_tenancy = RubyLLM::Agents.configuration.multi_tenancy_enabled
+        original_resolver = RubyLLM::Agents.configuration.tenant_resolver
+
+        example.run
+      ensure
+        RubyLLM::Agents.configuration.multi_tenancy_enabled = original_multi_tenancy
+        RubyLLM::Agents.configuration.tenant_resolver = original_resolver
+      end
+
+      it "falls back to tenant_resolver when multi-tenancy is enabled" do
+        RubyLLM::Agents.configuration.multi_tenancy_enabled = true
+        RubyLLM::Agents.configuration.tenant_resolver = -> { "resolved_123" }
+
+        context = build_context
+        allow(app).to receive(:call).with(context).and_return(context)
+
+        result = middleware.call(context)
+
+        expect(result.tenant_id).to eq("resolved_123")
+        expect(result.tenant_object).to be_nil
+        expect(result.tenant_config).to be_nil
+      end
+
+      it "returns nil when resolver returns nil" do
+        RubyLLM::Agents.configuration.multi_tenancy_enabled = true
+        RubyLLM::Agents.configuration.tenant_resolver = -> {}
+
+        context = build_context
+        allow(app).to receive(:call).with(context).and_return(context)
+
+        result = middleware.call(context)
+
+        expect(result.tenant_id).to be_nil
+      end
+
+      it "does not use resolver when multi-tenancy is disabled" do
+        RubyLLM::Agents.configuration.multi_tenancy_enabled = false
+        RubyLLM::Agents.configuration.tenant_resolver = -> { "should_not_use" }
+
+        context = build_context
+        allow(app).to receive(:call).with(context).and_return(context)
+
+        result = middleware.call(context)
+
+        expect(result.tenant_id).to be_nil
+      end
+
+      it "converts numeric resolver result to string" do
+        RubyLLM::Agents.configuration.multi_tenancy_enabled = true
+        RubyLLM::Agents.configuration.tenant_resolver = -> { 42 }
+
+        context = build_context
+        allow(app).to receive(:call).with(context).and_return(context)
+
+        result = middleware.call(context)
+
+        expect(result.tenant_id).to eq("42")
+      end
+
+      it "prefers explicit tenant over resolver" do
+        RubyLLM::Agents.configuration.multi_tenancy_enabled = true
+        RubyLLM::Agents.configuration.tenant_resolver = -> { "resolved_123" }
+
+        context = build_context(tenant: {id: "explicit"})
+        allow(app).to receive(:call).with(context).and_return(context)
+
+        result = middleware.call(context)
+
+        expect(result.tenant_id).to eq("explicit")
+      end
+    end
+
     context "with hash tenant" do
       it "extracts tenant_id from hash" do
         context = build_context(tenant: {id: "org_123"})
