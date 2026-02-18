@@ -101,6 +101,26 @@ result.vectors      # => [[...], [...], [...]]
 ```
 
 ```ruby
+# Message classification and routing
+class SupportRouter < ApplicationAgent
+  include RubyLLM::Agents::Routing
+
+  model "gpt-4o-mini"
+  temperature 0.0
+  cache_for 1.hour
+
+  route :billing,   "Billing, charges, refunds, payments"
+  route :technical,  "Bugs, errors, crashes, technical issues"
+  route :sales,      "Pricing, plans, upgrades, discounts"
+  default_route :general
+end
+
+result = SupportRouter.call(message: "I was charged twice")
+result.route          # => :billing
+result.total_cost     # => 0.00008
+```
+
+```ruby
 # Image generation, analysis, and pipelines
 # app/agents/images/logo_generator.rb
 module Images
@@ -135,6 +155,7 @@ result.save("logo.png")
 | **Attachments** | Images, PDFs, and multimodal support | [Attachments](https://github.com/adham90/ruby_llm-agents/wiki/Attachments) |
 | **Embeddings** | Vector embeddings with batching, caching, and preprocessing | [Embeddings](https://github.com/adham90/ruby_llm-agents/wiki/Embeddings) |
 | **Image Operations** | Generation, analysis, editing, pipelines with cost tracking | [Images](https://github.com/adham90/ruby_llm-agents/wiki/Image-Generation) |
+| **Routing** | Message classification and routing with auto-generated prompts, inline classify | [Routing](https://github.com/adham90/ruby_llm-agents/wiki/Routing) |
 | **Audio** | Text-to-speech (OpenAI, ElevenLabs), speech-to-text, dynamic pricing, 28+ output formats, dashboard audio playback | [Audio](https://github.com/adham90/ruby_llm-agents/wiki/Audio) |
 | **Alerts** | Slack, webhook, and custom notifications | [Alerts](https://github.com/adham90/ruby_llm-agents/wiki/Alerts) |
 
@@ -217,6 +238,7 @@ mount RubyLLM::Agents::Engine => "/agents"
 | [Async/Fiber](https://github.com/adham90/ruby_llm-agents/wiki/Async-Fiber) | Concurrent execution with Ruby fibers |
 | [Testing Agents](https://github.com/adham90/ruby_llm-agents/wiki/Testing-Agents) | RSpec patterns, mocking, dry_run mode |
 | [Error Handling](https://github.com/adham90/ruby_llm-agents/wiki/Error-Handling) | Error types, recovery patterns |
+| [Routing](https://github.com/adham90/ruby_llm-agents/wiki/Routing) | Message classification, routing DSL, inline classify |
 | [Embeddings](https://github.com/adham90/ruby_llm-agents/wiki/Embeddings) | Vector embeddings, batching, caching, preprocessing |
 | [Image Generation](https://github.com/adham90/ruby_llm-agents/wiki/Image-Generation) | Text-to-image, templates, pipelines, cost tracking |
 | [Dashboard](https://github.com/adham90/ruby_llm-agents/wiki/Dashboard) | Setup, authentication, analytics |
