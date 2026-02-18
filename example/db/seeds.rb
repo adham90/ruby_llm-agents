@@ -1885,6 +1885,106 @@ create_image_generator_execution(
 puts "  Created 1 image generator error execution"
 
 # =============================================================================
+# ROUTER EXECUTIONS (Message Classification)
+# =============================================================================
+puts "\n#{"=" * 60}"
+puts "Creating Router Executions..."
+puts "=" * 60
+
+# SupportRouter - Acme Corp support triage
+support_messages = [
+  {message: "I was charged twice for my subscription", route: :billing},
+  {message: "The API returns 500 errors since yesterday", route: :technical},
+  {message: "What are your enterprise pricing options?", route: :sales},
+  {message: "How do I change my password?", route: :account},
+  {message: "Can you tell me more about your product?", route: :general},
+  {message: "My invoice is missing a line item", route: :billing},
+  {message: "The dashboard won't load on mobile", route: :technical},
+  {message: "We need a volume discount for 500 seats", route: :sales}
+]
+
+support_messages.each_with_index do |msg, i|
+  create_execution(
+    tenant_id: acme.llm_tenant_id,
+    agent_type: "SupportRouter",
+    model_id: "gpt-4o-mini",
+    temperature: 0.0,
+    input_tokens: rand(60..120),
+    output_tokens: rand(2..5),
+    parameters: {message: msg[:message]},
+    response: msg[:route].to_s,
+    metadata: {route: msg[:route].to_s, raw_response: msg[:route].to_s},
+    created_at: Time.current - (i * 8).minutes
+  )
+end
+puts "  Created #{support_messages.size} SupportRouter executions"
+
+# PriorityRouter - Enterprise priority triage
+priority_messages = [
+  {message: "Production database is down, all services affected!", route: :urgent},
+  {message: "Payment processing failing for 10% of transactions", route: :high},
+  {message: "Can we add dark mode to the dashboard?", route: :medium},
+  {message: "Where can I find the API documentation?", route: :low},
+  {message: "Critical security vulnerability found in auth module", route: :urgent},
+  {message: "Search results are slower than usual", route: :high}
+]
+
+priority_messages.each_with_index do |msg, i|
+  create_execution(
+    tenant_id: enterprise.llm_tenant_id,
+    agent_type: "PriorityRouter",
+    model_id: "gpt-4o-mini",
+    temperature: 0.0,
+    input_tokens: rand(60..120),
+    output_tokens: rand(2..5),
+    parameters: {message: msg[:message]},
+    response: msg[:route].to_s,
+    metadata: {route: msg[:route].to_s, raw_response: msg[:route].to_s},
+    created_at: Time.current - (i * 12).minutes
+  )
+end
+puts "  Created #{priority_messages.size} PriorityRouter executions"
+
+# Router cache hits - Acme
+2.times do |i|
+  create_execution(
+    tenant_id: acme.llm_tenant_id,
+    agent_type: "SupportRouter",
+    model_id: "gpt-4o-mini",
+    temperature: 0.0,
+    cache_hit: true,
+    response_cache_key: "router:support:#{SecureRandom.hex(8)}",
+    cached_at: Time.current - rand(1..24).hours,
+    duration_ms: rand(2..10),
+    input_tokens: 0,
+    output_tokens: 0,
+    parameters: {message: "Cached support message #{i + 1}"},
+    response: "billing",
+    metadata: {cache_hit: true, route: "billing"},
+    created_at: Time.current - (i * 40).minutes
+  )
+end
+puts "  Created 2 router cache hit executions"
+
+# Router error - Demo account
+create_execution(
+  tenant_id: demo.llm_tenant_id,
+  agent_type: "SupportRouter",
+  model_id: "gpt-4o-mini",
+  temperature: 0.0,
+  status: "error",
+  error_class: "RubyLLM::APIError",
+  error_message: "Rate limit exceeded",
+  input_tokens: 0,
+  output_tokens: 0,
+  parameters: {message: ""},
+  response: nil,
+  metadata: {rate_limited: true},
+  created_at: Time.current - 2.hours
+)
+puts "  Created 1 router error execution"
+
+# =============================================================================
 # EMBEDDER DEMONSTRATIONS
 # =============================================================================
 puts "\n#{"=" * 60}"
@@ -2058,6 +2158,19 @@ puts "\nTranscriber Executions:"
   end
 end
 
+puts "\nRouter Executions:"
+%w[SupportRouter PriorityRouter].each do |router|
+  count = RubyLLM::Agents::Execution.where(agent_type: router).count
+  next unless count.positive?
+
+  klass = "Routers::#{router}".safe_constantize
+  if klass
+    puts "  #{router}: #{count} executions (model=#{klass.model}, routes=#{klass.routes.size})"
+  else
+    puts "  #{router}: #{count} executions"
+  end
+end
+
 puts "\nImage Generator Executions:"
 %w[ProductImageGenerator LogoGenerator ThumbnailGenerator AvatarGenerator IllustrationGenerator].each do |generator|
   count = RubyLLM::Agents::Execution.where(agent_type: generator).count
@@ -2099,6 +2212,12 @@ puts "\nTranscribers Available:"
   TechnicalTranscriber].each do |transcriber|
   klass = "Audio::#{transcriber}".safe_constantize
   puts "  #{transcriber}: model=#{klass.model}, format=#{klass.output_format}" if klass
+end
+
+puts "\nRouters Available:"
+%w[SupportRouter PriorityRouter].each do |router|
+  klass = "Routers::#{router}".safe_constantize
+  puts "  #{router}: model=#{klass.model}, routes=#{klass.routes.keys.inspect}" if klass
 end
 
 puts "\nImage Generators Available:"

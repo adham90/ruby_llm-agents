@@ -121,6 +121,30 @@ result.total_cost     # => 0.00008
 ```
 
 ```ruby
+# Text-to-speech and speech-to-text
+# app/agents/audio/podcast_speaker.rb
+module Audio
+  class PodcastSpeaker < ApplicationSpeaker
+    model "tts-1"
+    voice "onyx"
+    speed 0.95
+    output_format :aac
+    streaming true
+  end
+end
+
+result = Audio::PodcastSpeaker.call(text: "Welcome to the show!")
+result.audio        # => Binary audio data
+result.duration     # => 1.5
+result.save_to("episode.aac")
+
+# Speech-to-text transcription
+result = Audio::MeetingTranscriber.call(audio: "standup.mp3")
+result.text         # => "Good morning everyone..."
+result.word_count   # => 5432
+```
+
+```ruby
 # Image generation, analysis, and pipelines
 # app/agents/images/logo_generator.rb
 module Images
