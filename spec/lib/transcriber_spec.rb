@@ -18,6 +18,36 @@ RSpec.describe RubyLLM::Agents::Transcriber do
     allow(global_config).to receive(:track_executions).and_return(false)
     allow(global_config).to receive(:track_image_generation).and_return(false)
     allow(global_config).to receive(:track_moderation).and_return(false)
+    allow(global_config).to receive(:litellm_pricing_url).and_return(nil)
+    allow(global_config).to receive(:litellm_pricing_cache_ttl).and_return(nil)
+    allow(global_config).to receive(:transcription_model_pricing).and_return({})
+    allow(global_config).to receive(:pricing_cache_ttl).and_return(nil)
+    allow(global_config).to receive(:portkey_pricing_enabled).and_return(false)
+    allow(global_config).to receive(:portkey_pricing_url).and_return(nil)
+    allow(global_config).to receive(:openrouter_pricing_enabled).and_return(false)
+    allow(global_config).to receive(:openrouter_pricing_url).and_return(nil)
+    allow(global_config).to receive(:helicone_pricing_enabled).and_return(false)
+    allow(global_config).to receive(:helicone_pricing_url).and_return(nil)
+    allow(global_config).to receive(:llmpricing_enabled).and_return(false)
+    allow(global_config).to receive(:llmpricing_url).and_return(nil)
+
+    # Stub all external pricing URLs to prevent real network calls
+    stub_request(:get, RubyLLM::Agents::Pricing::DataStore::LITELLM_URL)
+      .to_return(status: 200, body: {}.to_json)
+    stub_request(:get, /#{Regexp.escape(RubyLLM::Agents::Pricing::DataStore::PORTKEY_BASE_URL)}/o)
+      .to_return(status: 404, body: {}.to_json)
+    stub_request(:get, RubyLLM::Agents::Pricing::DataStore::OPENROUTER_URL)
+      .to_return(status: 200, body: {"data" => []}.to_json)
+    stub_request(:get, RubyLLM::Agents::Pricing::DataStore::HELICONE_URL)
+      .to_return(status: 200, body: [].to_json)
+    stub_request(:get, /llmpricing\.ai/)
+      .to_return(status: 404, body: {}.to_json)
+    allow(RubyLLM::Agents::Pricing::RubyLLMAdapter).to receive(:find_model).and_return(nil)
+    RubyLLM::Agents::Audio::TranscriptionPricing.refresh!
+  end
+
+  after do
+    RubyLLM::Agents::Audio::TranscriptionPricing.refresh!
   end
 
   # Mock RubyLLM.transcribe response
@@ -483,14 +513,39 @@ RSpec.describe RubyLLM::Agents::Transcriber do
       allow(mock_response).to receive(:respond_to?).with(:cost).and_return(false)
     end
 
-    it "calculates cost based on duration for whisper-1" do
-      # 5.5 seconds = 0.0917 minutes at $0.006/min = ~$0.00055
-      allow(RubyLLM).to receive(:transcribe).and_return(mock_response)
+    context "with configured pricing" do
+      before do
+        allow(RubyLLM::Agents).to receive(:configuration).and_call_original
+        RubyLLM::Agents.reset_configuration!
+        RubyLLM::Agents.configure do |c|
+          c.default_transcription_model = "whisper-1"
+          c.transcription_model_pricing = {"whisper-1" => 0.006}
+        end
+      end
 
-      result = test_transcriber.call(audio: audio_file_path)
+      it "calculates cost based on duration for whisper-1" do
+        # 5.5 seconds = 0.0917 minutes at $0.006/min = ~$0.00055
+        allow(RubyLLM).to receive(:transcribe).and_return(mock_response)
 
-      expect(result.total_cost).to be > 0
-      expect(result.audio_minutes).to be_within(0.01).of(5.5 / 60.0)
+        result = test_transcriber.call(audio: audio_file_path)
+
+        expect(result.total_cost).to be > 0
+        expect(result.audio_minutes).to be_within(0.01).of(5.5 / 60.0)
+      end
+    end
+
+    context "without configured pricing" do
+      before do
+        allow(RubyLLM::Agents::Audio::TranscriptionPricing).to receive(:calculate_cost).and_return(nil)
+      end
+
+      it "returns 0 cost and sets pricing warning" do
+        allow(RubyLLM).to receive(:transcribe).and_return(mock_response)
+
+        result = test_transcriber.call(audio: audio_file_path)
+
+        expect(result.total_cost).to eq(0)
+      end
     end
 
     it "uses response cost if available" do

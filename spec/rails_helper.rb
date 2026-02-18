@@ -77,6 +77,9 @@ RSpec.configure do |config|
     metadata[:type] = :migration
   end
 
+  # Exclude integration tests unless RUN_INTEGRATION=1
+  config.filter_run_excluding integration: true unless ENV["RUN_INTEGRATION"]
+
   # Filter Rails from backtraces
   config.filter_rails_from_backtrace!
 

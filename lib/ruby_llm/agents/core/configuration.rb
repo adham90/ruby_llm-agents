@@ -455,7 +455,18 @@ module RubyLLM
         :redaction,
         :persist_audio_data,
         :elevenlabs_base_cost_per_1k,
-        :elevenlabs_models_cache_ttl
+        :elevenlabs_models_cache_ttl,
+        :transcription_model_pricing,
+        :default_transcription_cost,
+        :pricing_cache_ttl,
+        :portkey_pricing_enabled,
+        :portkey_pricing_url,
+        :openrouter_pricing_enabled,
+        :openrouter_pricing_url,
+        :helicone_pricing_enabled,
+        :helicone_pricing_url,
+        :llmpricing_enabled,
+        :llmpricing_url
 
       # Attributes with validation (readers only, custom setters below)
       attr_reader :default_temperature,
@@ -674,6 +685,19 @@ module RubyLLM
         # Transcription defaults
         @default_transcription_model = "whisper-1"
         @track_transcriptions = true
+        @transcription_model_pricing = {}
+        @default_transcription_cost = nil  # nil = no default, will trigger warning
+
+        # Multi-source pricing defaults
+        @pricing_cache_ttl = nil  # nil = use DataStore default (24h)
+        @portkey_pricing_enabled = true
+        @portkey_pricing_url = nil  # nil = use default
+        @openrouter_pricing_enabled = true
+        @openrouter_pricing_url = nil
+        @helicone_pricing_enabled = true
+        @helicone_pricing_url = nil
+        @llmpricing_enabled = true
+        @llmpricing_url = nil
 
         # TTS/Speech defaults
         @default_tts_provider = :openai

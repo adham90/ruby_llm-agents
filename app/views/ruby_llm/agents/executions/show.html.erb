@@ -21,6 +21,7 @@
     secondary_badges << { label: @execution.finish_reason, css: finish_css }
   end
   secondary_badges << { label: "rate limited", css: "badge-orange" } if @execution.respond_to?(:rate_limited?) && @execution.rate_limited?
+  secondary_badges << { label: "no pricing", css: "badge-orange" } if @execution.metadata&.dig("pricing_warning")
 %>
 <div class="flex flex-wrap items-center gap-3 mb-1.5">
   <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono"><%= @execution.agent_type.gsub(/Agent$/, '') %></span>
@@ -46,6 +47,15 @@
   <span class="text-gray-300 dark:text-gray-700">&middot;</span>
   <%= time_ago_in_words(@execution.created_at) %> ago
 </div>
+
+<!-- Pricing warning -->
+<% if @execution.metadata&.dig("pricing_warning") %>
+  <div class="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded px-3 py-2 mb-2">
+    <span class="text-amber-600 dark:text-amber-400 text-xs font-mono">
+      &#9888; <%= @execution.metadata["pricing_warning"] %>
+    </span>
+  </div>
+<% end %>
 
 <!-- Stats inline row -->
 <div class="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-gray-400 dark:text-gray-500 mb-2">

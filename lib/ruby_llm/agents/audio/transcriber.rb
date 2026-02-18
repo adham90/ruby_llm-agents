@@ -2,6 +2,7 @@
 
 require "digest"
 require_relative "../results/transcription_result"
+require_relative "transcription_pricing"
 
 module RubyLLM
   module Agents
@@ -318,6 +319,12 @@ module RubyLLM
         context.output_tokens = 0
         context.total_cost = calculate_cost(raw_result)
 
+        # Store pricing warning if cost calculation returned nil
+        if @pricing_warning
+          context[:pricing_warning] = @pricing_warning
+          Rails.logger.warn(@pricing_warning) if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+        end
+
         # Store transcription-specific metadata for execution tracking
         context[:language] = resolved_language if resolved_language
         context[:detected_language] = raw_result[:language] if raw_result[:language]
@@ -615,30 +622,34 @@ module RubyLLM
       # Calculates cost for transcription
       #
       # @param raw_result [Hash] Raw transcription result
-      # @return [Float] Cost in USD
+      # @return [Float] Cost in USD (0 if no pricing found)
       def calculate_cost(raw_result)
-        # Get duration in minutes
-        duration_minutes = raw_result[:duration] ? raw_result[:duration] / 60.0 : 0
+        @pricing_warning = nil
 
-        # Check if response has cost info
+        # Check if response has cost info from the API
         if raw_result[:raw_response].respond_to?(:cost) && raw_result[:raw_response].cost
           return raw_result[:raw_response].cost
         end
 
-        # Estimate based on model and duration
+        # Delegate to TranscriptionPricing (2-tier: LiteLLM + user config)
         model = raw_result[:model].to_s
-        price_per_minute = case model
-        when /whisper-1/
-          0.006
-        when /gpt-4o-transcribe/
-          0.01
-        when /gpt-4o-mini-transcribe/
-          0.005
-        else
-          0.006 # Default to whisper pricing
+        duration = raw_result[:duration] || 0
+
+        cost = Audio::TranscriptionPricing.calculate_cost(
+          model_id: model,
+          duration_seconds: duration
+        )
+
+        if cost.nil?
+          @pricing_warning = "[RubyLLM::Agents] No pricing found for transcription model '#{model}'. " \
+            "Cost recorded as $0. Add pricing to your config:\n" \
+            "  RubyLLM::Agents.configure do |c|\n" \
+            "    c.transcription_model_pricing = { \"#{model}\" => 0.006 }  # price per minute\n" \
+            "  end"
+          return 0
         end
 
-        duration_minutes * price_per_minute
+        cost
       end
 
       # Resolves the model to use

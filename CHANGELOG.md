@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.0] - 2026-02-18
+
+### Added
+
+- **Multi-source pricing cascade** — New `Pricing::DataStore` with two-layer cache (in-memory + Rails.cache) fetches pricing from 7 sources: user config, RubyLLM gem, LiteLLM, Portkey AI, OpenRouter, Helicone, and LLM Pricing AI. Lazy cascade stops at first match to minimize HTTP calls
+- **6 pricing adapters** — `LiteLLMAdapter`, `PortkeyAdapter`, `OpenRouterAdapter`, `HeliconeAdapter`, `LLMPricingAdapter`, `RubyLLMAdapter` each normalize source-specific pricing into a common format covering text LLM, transcription, TTS, image, and embedding models
+- **Transcription pricing refactored** — `TranscriptionPricing` now uses shared adapters with 7-tier cascade instead of standalone LiteLLM fetch. Supports `input_cost_per_audio_token` for GPT-4o-transcribe models (in addition to `input_cost_per_second`)
+- **Per-source configuration** — New config options: `pricing_cache_ttl`, `portkey_pricing_enabled`, `openrouter_pricing_enabled`, `helicone_pricing_enabled`, `llmpricing_enabled`, and URL overrides for each source
+- **Integration test framework** — Tests tagged `:integration` hit real pricing APIs (excluded by default, run with `RUN_INTEGRATION=1`). Covers API availability, schema stability, cross-source price consistency, and caching performance
+- **Pricing wiki page** — New [Pricing](https://github.com/adham90/ruby_llm-agents/wiki/Pricing) documentation covering all sources, caching, configuration, and debugging
+
+### Changed
+
+- User config now has **highest priority** in transcription pricing cascade (was #2, now #1)
+- `TranscriptionPricing.refresh!` now clears all pricing source caches via `DataStore.refresh!`
+- `TranscriptionPricing.all_pricing` returns data from all 7 sources
+
 ## [3.4.0] - 2026-02-18
 
 ### Added

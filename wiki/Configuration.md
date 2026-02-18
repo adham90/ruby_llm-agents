@@ -344,6 +344,12 @@ end
 | `elevenlabs_api_base` | String | `"https://api.elevenlabs.io"` | ElevenLabs API base URL |
 | `tts_model_pricing` | Hash | `{}` | Custom TTS pricing overrides per 1K characters |
 | `default_tts_cost` | Float | `0.015` | Fallback cost per 1K characters for unknown models |
+| `transcription_model_pricing` | Hash | `{}` | Custom transcription pricing overrides per minute |
+| `pricing_cache_ttl` | Integer | `86400` | Multi-source pricing cache TTL in seconds (24h) |
+| `portkey_pricing_enabled` | Boolean | `true` | Enable Portkey AI as pricing source |
+| `openrouter_pricing_enabled` | Boolean | `true` | Enable OpenRouter as pricing source |
+| `helicone_pricing_enabled` | Boolean | `true` | Enable Helicone as pricing source |
+| `llmpricing_enabled` | Boolean | `true` | Enable LLM Pricing AI as pricing source |
 | `async_logging` | Boolean | `true` | Log executions via background job |
 | `retention_period` | Duration | `30.days` | Execution record retention |
 | `cache_store` | Cache | `Rails.cache` | Custom cache store |

@@ -46,6 +46,7 @@ Welcome to the official documentation for **RubyLLM::Agents**, a production-read
 
 #### Governance
 - **[Budget Controls](Budget-Controls)** - Spending limits
+- **[Pricing](Pricing)** - Multi-source pricing cascade
 - **[Multi-Tenancy](Multi-Tenancy)** - Per-tenant isolation and budgets
 - **[Alerts](Alerts)** - Notifications and webhooks
 

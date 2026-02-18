@@ -446,13 +446,26 @@ end
 
 ### Transcription Costs
 
-| Model | Price |
+Transcription pricing is resolved automatically via the [multi-source pricing cascade](Pricing). The system checks user config, the RubyLLM gem, LiteLLM, Portkey AI, and other sources to find the best available price.
+
+| Model | Typical Price |
 |-------|-------|
-| whisper-1 | $0.006 / minute |
+| whisper-1 | ~$0.006 / minute |
 | gpt-4o-transcribe | ~$0.01 / minute |
 | gpt-4o-mini-transcribe | ~$0.005 / minute |
 
-Transcription costs are calculated based on audio duration.
+Costs are calculated based on audio duration. Override pricing for any model:
+
+```ruby
+RubyLLM::Agents.configure do |c|
+  c.transcription_model_pricing = {
+    "whisper-1" => 0.006,
+    "custom-model" => 0.05
+  }
+end
+```
+
+See [Pricing](Pricing) for full details on sources, caching, and debugging.
 
 ### TTS Costs
 
