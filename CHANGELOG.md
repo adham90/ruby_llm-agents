@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.3] - 2026-02-19
+
+### Fixed
+
+- **Fix tenant resolver fallback in Tenant middleware** — When `multi_tenancy_enabled = true` and a `tenant_resolver` is configured, calling an agent without an explicit `tenant:` option now correctly falls back to the configured resolver. Previously, the resolver was never consulted, resulting in `tenant_id = nil` on the Execution record ([#12](https://github.com/adham90/ruby_llm-agents/issues/12))
+
 ## [3.5.2] - 2026-02-18
 
 ### Fixed
@@ -694,6 +700,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[3.5.3]: https://github.com/adham90/ruby_llm-agents/compare/v3.5.2...v3.5.3
 [3.5.2]: https://github.com/adham90/ruby_llm-agents/compare/v3.5.1...v3.5.2
 [3.5.1]: https://github.com/adham90/ruby_llm-agents/compare/v3.5.0...v3.5.1
 [3.5.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.4.0...v3.5.0
