@@ -593,8 +593,7 @@ module RubyLLM
       # @return [RubyLLM::Chat] Configured chat client
       def build_client(context = nil)
         effective_model = context&.model || model
-        client = RubyLLM.chat
-          .with_model(effective_model)
+        client = RubyLLM.chat(model: effective_model)
           .with_temperature(temperature)
 
         client = client.with_instructions(system_prompt) if system_prompt

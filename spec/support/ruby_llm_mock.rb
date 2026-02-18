@@ -188,8 +188,10 @@ module RubyLLM
   end
 
   class << self
-    def chat
-      MockClient.new
+    def chat(model: nil)
+      client = MockClient.new
+      client.with_model(model) if model
+      client
     end
 
     # Embeddings

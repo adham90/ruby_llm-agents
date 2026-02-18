@@ -13,7 +13,6 @@ module ChatMockHelpers
     mock_client = double("RubyLLM::Chat")
 
     # Configure all chainable methods to return self
-    allow(mock_client).to receive(:with_model).and_return(mock_client)
     allow(mock_client).to receive(:with_temperature).and_return(mock_client)
     allow(mock_client).to receive(:with_instructions).and_return(mock_client)
     allow(mock_client).to receive(:with_schema).and_return(mock_client)
@@ -148,12 +147,12 @@ module ChatMockHelpers
   # @param capture_key_block [Proc, nil] Block to capture the config at execution time
   def stub_ruby_llm_chat(mock, &capture_key_block)
     if capture_key_block
-      allow(RubyLLM).to receive(:chat) do
+      allow(RubyLLM).to receive(:chat).with(any_args) do
         capture_key_block.call(RubyLLM.config)
         mock
       end
     else
-      allow(RubyLLM).to receive(:chat).and_return(mock)
+      allow(RubyLLM).to receive(:chat).with(any_args).and_return(mock)
     end
   end
 

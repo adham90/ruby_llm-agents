@@ -603,23 +603,19 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
       end
     end
 
-    let(:mock_chat) { instance_double(RubyLLM::Chat) }
+    let(:mock_chat) { build_mock_chat_client }
 
     before do
-      allow(RubyLLM).to receive(:chat).and_return(mock_chat)
-      allow(mock_chat).to receive(:with_model).and_return(mock_chat)
-      allow(mock_chat).to receive(:with_temperature).and_return(mock_chat)
+      stub_ruby_llm_chat(mock_chat)
     end
 
-    it "uses agent's configured model by default" do
+    it "passes model directly to RubyLLM.chat" do
       agent = agent_class.new
-
-      expect(mock_chat).to receive(:with_model).with("primary-model").and_return(mock_chat)
-
       agent.send(:build_client)
+      expect(RubyLLM).to have_received(:chat).with(model: "primary-model")
     end
 
-    it "uses context.model when provided (for fallback support)" do
+    it "passes context.model to RubyLLM.chat when provided (for fallback support)" do
       agent = agent_class.new
       context = RubyLLM::Agents::Pipeline::Context.new(
         input: "test",
@@ -627,9 +623,8 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
         model: "fallback-model"
       )
 
-      expect(mock_chat).to receive(:with_model).with("fallback-model").and_return(mock_chat)
-
       agent.send(:build_client, context)
+      expect(RubyLLM).to have_received(:chat).with(model: "fallback-model")
     end
 
     it "falls back to agent model when context.model is nil" do
@@ -640,17 +635,14 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
         model: nil
       )
 
-      expect(mock_chat).to receive(:with_model).with("primary-model").and_return(mock_chat)
-
       agent.send(:build_client, context)
+      expect(RubyLLM).to have_received(:chat).with(model: "primary-model")
     end
 
     it "works with nil context (backward compatibility)" do
       agent = agent_class.new
-
-      expect(mock_chat).to receive(:with_model).with("primary-model").and_return(mock_chat)
-
       agent.send(:build_client, nil)
+      expect(RubyLLM).to have_received(:chat).with(model: "primary-model")
     end
   end
 
@@ -675,15 +667,11 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
         model: "gpt-4.1-mini"
       )
 
-      mock_chat = instance_double(RubyLLM::Chat)
-      allow(RubyLLM).to receive(:chat).and_return(mock_chat)
-      allow(mock_chat).to receive(:with_model).and_return(mock_chat)
-      allow(mock_chat).to receive(:with_temperature).and_return(mock_chat)
+      mock_chat = build_mock_chat_client
+      stub_ruby_llm_chat(mock_chat)
 
       # The critical assertion: build_client must receive the context
       expect(agent).to receive(:build_client).with(context).and_call_original
-      # And it must use the context's model, not the class-level model
-      expect(mock_chat).to receive(:with_model).with("gpt-4.1-mini").and_return(mock_chat)
 
       allow(agent).to receive(:execute_llm_call).and_return(
         double("response", content: "ok", tool_calls: nil, tool_call: nil, input_tokens: 10, output_tokens: 5)
@@ -692,6 +680,9 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
       allow(agent).to receive(:process_response).and_return("ok")
 
       agent.send(:execute, context)
+
+      # And it must pass the context's model directly to RubyLLM.chat
+      expect(RubyLLM).to have_received(:chat).with(model: "gpt-4.1-mini")
     end
   end
 end

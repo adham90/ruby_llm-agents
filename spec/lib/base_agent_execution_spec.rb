@@ -95,9 +95,9 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
       stub_ruby_llm_chat(mock_chat)
     end
 
-    it "configures client with model" do
+    it "passes model directly to RubyLLM.chat" do
       agent.send(:build_client)
-      expect(mock_chat).to have_received(:with_model).with("gpt-4o")
+      expect(RubyLLM).to have_received(:chat).with(model: "gpt-4o")
     end
 
     it "configures client with temperature" do
