@@ -17,6 +17,7 @@
     embedder: <%= @agents_by_type[:embedder].size %>,
     audio: <%= audio_count %>,
     image_generator: <%= @agents_by_type[:image_generator].size %>,
+    router: <%= @agents_by_type[:router].size %>,
     deleted: <%= @deleted_count %>
   },
   get currentCount() {
@@ -61,6 +62,11 @@
         <button type="button" @click="activeSubTab = 'image_generator'; updateUrl()"
                 :class="activeSubTab === 'image_generator' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
                 class="px-2 py-0.5">image</button>
+      <% end %>
+      <% if @agents_by_type[:router].size > 0 %>
+        <button type="button" @click="activeSubTab = 'router'; updateUrl()"
+                :class="activeSubTab === 'router' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+                class="px-2 py-0.5">routers</button>
       <% end %>
       <% if @deleted_count > 0 %>
         <button type="button" @click="activeSubTab = 'deleted'; updateUrl()"

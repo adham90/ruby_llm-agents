@@ -50,7 +50,8 @@ module RubyLLM
           embedder: @agents.select { |a| a[:agent_type] == "embedder" },
           speaker: @agents.select { |a| a[:agent_type] == "speaker" },
           transcriber: @agents.select { |a| a[:agent_type] == "transcriber" },
-          image_generator: @agents.select { |a| a[:agent_type] == "image_generator" }
+          image_generator: @agents.select { |a| a[:agent_type] == "image_generator" },
+          router: @agents.select { |a| a[:agent_type] == "router" }
         }
 
         @agent_count = @agents.size
@@ -59,7 +60,7 @@ module RubyLLM
         Rails.logger.error("[RubyLLM::Agents] Error loading agents: #{e.message}")
         @agents = []
         @deleted_agents = []
-        @agents_by_type = {agent: [], embedder: [], speaker: [], transcriber: [], image_generator: []}
+        @agents_by_type = {agent: [], embedder: [], speaker: [], transcriber: [], image_generator: [], router: []}
         @agent_count = 0
         @deleted_count = 0
         @sort_params = {column: DEFAULT_AGENT_SORT_COLUMN, direction: DEFAULT_AGENT_SORT_DIRECTION}
@@ -85,8 +86,8 @@ module RubyLLM
 
         if @agent_class
           load_agent_config
-          # Only load circuit breaker status for base agents
-          load_circuit_breaker_status if @agent_type_kind == "agent"
+          # Load circuit breaker status for agents that support reliability
+          load_circuit_breaker_status if @agent_type_kind.in?(%w[agent router])
         end
       rescue => e
         Rails.logger.error("[RubyLLM::Agents] Error loading agent #{@agent_type}: #{e.message}")
@@ -207,6 +208,8 @@ module RubyLLM
           load_transcriber_config
         when "image_generator"
           load_image_generator_config
+        when "router"
+          load_router_config
         else
           load_base_agent_config
         end
@@ -288,6 +291,26 @@ module RubyLLM
           steps: safe_config_call(:steps),
           cache_enabled: safe_config_call(:cache_enabled?) || false,
           cache_ttl: safe_config_call(:cache_ttl)
+        )
+      end
+
+      # Loads configuration specific to Router agents
+      #
+      # @return [void]
+      def load_router_config
+        routes = safe_config_call(:routes) || {}
+        @config.merge!(
+          temperature: safe_config_call(:temperature),
+          timeout: safe_config_call(:timeout),
+          cache_enabled: safe_config_call(:cache_enabled?) || false,
+          cache_ttl: safe_config_call(:cache_ttl),
+          default_route: safe_config_call(:default_route_name),
+          routes: routes.transform_values { |v| v[:description] },
+          route_count: routes.size,
+          retries: safe_config_call(:retries),
+          fallback_models: safe_config_call(:fallback_models),
+          total_timeout: safe_config_call(:total_timeout),
+          circuit_breaker: safe_config_call(:circuit_breaker_config)
         )
       end
 

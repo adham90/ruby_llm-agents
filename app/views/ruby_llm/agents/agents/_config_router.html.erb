@@ -1,0 +1,110 @@
+<%# Configuration partial for Router agent types - grid layout %>
+<%
+  routes = config[:routes] || {}
+  default_route = config[:default_route] || :general
+  retries_config = config[:retries] || {}
+  fallback_models = Array(config[:fallback_models]).compact
+  has_retries = (retries_config[:max] || 0) > 0
+  has_fallbacks = fallback_models.any?
+  has_total_timeout = config[:total_timeout].present?
+  has_circuit_breaker = config[:circuit_breaker].present?
+  has_any_reliability = has_retries || has_fallbacks || has_total_timeout || has_circuit_breaker
+%>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 font-mono text-xs">
+  <!-- Basic -->
+  <div>
+    <span class="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider">basic</span>
+    <div class="mt-1.5 space-y-0.5">
+      <div class="flex items-center gap-3 py-1">
+        <span class="w-20 text-gray-400 dark:text-gray-600">model</span>
+        <span class="text-gray-900 dark:text-gray-200"><%= config[:model] %></span>
+      </div>
+      <div class="flex items-center gap-3 py-1">
+        <span class="w-20 text-gray-400 dark:text-gray-600">temperature</span>
+        <span class="text-gray-900 dark:text-gray-200"><%= config[:temperature] %></span>
+      </div>
+      <div class="flex items-center gap-3 py-1">
+        <span class="w-20 text-gray-400 dark:text-gray-600">timeout</span>
+        <span class="text-gray-900 dark:text-gray-200"><%= config[:timeout] %>s</span>
+      </div>
+      <div class="flex items-center gap-3 py-1">
+        <span class="w-20 text-gray-400 dark:text-gray-600">cache</span>
+        <% if config[:cache_enabled] %>
+          <span class="text-green-500">enabled</span>
+          <span class="text-gray-400 dark:text-gray-600">(<%= config[:cache_ttl].inspect %>)</span>
+        <% else %>
+          <span class="text-gray-400 dark:text-gray-600">disabled</span>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Routes -->
+  <div>
+    <span class="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider">routes (<%= routes.size %>)</span>
+    <% if routes.any? %>
+      <div class="mt-1.5 space-y-0.5">
+        <% routes.each do |name, description| %>
+          <div class="flex items-center gap-2 py-1">
+            <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= name.to_sym == default_route ? 'bg-cyan-500' : 'bg-gray-400' %>"></span>
+            <span class="w-24 text-gray-900 dark:text-gray-200 truncate"><%= name %></span>
+            <span class="text-gray-400 dark:text-gray-600 truncate"><%= description %></span>
+          </div>
+        <% end %>
+        <div class="flex items-center gap-2 py-1 mt-0.5">
+          <span class="w-1.5 flex-shrink-0"></span>
+          <span class="text-[10px] text-gray-400 dark:text-gray-600">default: <span class="text-cyan-600 dark:text-cyan-400"><%= default_route %></span></span>
+        </div>
+      </div>
+    <% else %>
+      <div class="mt-1 py-1 text-gray-400 dark:text-gray-600">no routes defined</div>
+    <% end %>
+  </div>
+
+  <% if has_any_reliability %>
+    <!-- Reliability -->
+    <div class="md:col-span-2">
+      <span class="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider">reliability</span>
+      <div class="mt-1.5 flex flex-wrap gap-x-8 gap-y-0.5">
+        <div class="flex items-center gap-2 py-1">
+          <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= has_retries ? 'bg-green-500' : 'bg-gray-400' %>"></span>
+          <span class="w-16 text-gray-400 dark:text-gray-600">retries</span>
+          <% if has_retries %>
+            <span class="text-gray-900 dark:text-gray-200"><%= retries_config[:max] %> max</span>
+          <% else %>
+            <span class="text-gray-400 dark:text-gray-600">&mdash;</span>
+          <% end %>
+        </div>
+        <div class="flex items-center gap-2 py-1">
+          <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= has_fallbacks ? 'bg-green-500' : 'bg-gray-400' %>"></span>
+          <span class="w-16 text-gray-400 dark:text-gray-600">fallbacks</span>
+          <% if has_fallbacks %>
+            <span class="text-gray-900 dark:text-gray-200 truncate"><%= fallback_models.join(" → ") %></span>
+          <% else %>
+            <span class="text-gray-400 dark:text-gray-600">&mdash;</span>
+          <% end %>
+        </div>
+        <div class="flex items-center gap-2 py-1">
+          <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= has_total_timeout ? 'bg-green-500' : 'bg-gray-400' %>"></span>
+          <span class="w-16 text-gray-400 dark:text-gray-600">timeout</span>
+          <% if has_total_timeout %>
+            <span class="text-gray-900 dark:text-gray-200"><%= config[:total_timeout] %>s total</span>
+          <% else %>
+            <span class="text-gray-400 dark:text-gray-600">&mdash;</span>
+          <% end %>
+        </div>
+        <div class="flex items-center gap-2 py-1">
+          <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= has_circuit_breaker ? 'bg-green-500' : 'bg-gray-400' %>"></span>
+          <span class="w-16 text-gray-400 dark:text-gray-600">breaker</span>
+          <% if has_circuit_breaker %>
+            <% cb = config[:circuit_breaker] %>
+            <span class="text-gray-900 dark:text-gray-200"><%= cb[:errors] %>/<%= cb[:within] %>s</span>
+          <% else %>
+            <span class="text-gray-400 dark:text-gray-600">&mdash;</span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

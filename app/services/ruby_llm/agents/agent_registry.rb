@@ -176,7 +176,7 @@ module RubyLLM
         # Detects the agent type from class hierarchy
         #
         # @param agent_class [Class, nil] The agent class
-        # @return [String] "agent", "embedder", "speaker", "transcriber", or "image_generator"
+        # @return [String] "agent", "embedder", "speaker", "transcriber", "image_generator", or "router"
         def detect_agent_type(agent_class)
           return "agent" unless agent_class
 
@@ -190,6 +190,8 @@ module RubyLLM
             "transcriber"
           elsif ancestors.include?("RubyLLM::Agents::ImageGenerator")
             "image_generator"
+          elsif agent_class.respond_to?(:routes) && agent_class.ancestors.any? { |a| a.name.to_s == "RubyLLM::Agents::Routing" }
+            "router"
           else
             "agent"
           end
