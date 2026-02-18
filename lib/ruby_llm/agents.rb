@@ -57,6 +57,9 @@ require_relative "agents/results/image_pipeline_result"
 require_relative "agents/image/concerns/image_operation_dsl"
 require_relative "agents/image/concerns/image_operation_execution"
 
+# Routing concern (classification & routing)
+require_relative "agents/routing"
+
 # Text agents
 require_relative "agents/text/embedder"
 
