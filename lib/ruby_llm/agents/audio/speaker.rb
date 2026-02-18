@@ -446,7 +446,7 @@ module RubyLLM
 
         # Warn: style used on model that doesn't support it
         vs = self.class.voice_settings_config
-        if vs && vs.style_value && vs.style_value > 0 && model["can_use_style"] != true
+        if vs&.style_value && vs.style_value > 0 && model["can_use_style"] != true
           warn "[RubyLLM::Agents] Model '#{model_id}' does not support the 'style' voice setting. It will be ignored."
         end
       rescue ConfigurationError

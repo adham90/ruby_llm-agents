@@ -101,7 +101,7 @@ module RubyLLM
     end
   end
 
-# Mock embedding response
+  # Mock embedding response
   class MockEmbeddingResponse
     attr_reader :vectors, :model_id, :input_tokens
 

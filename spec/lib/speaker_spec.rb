@@ -28,12 +28,12 @@ RSpec.describe RubyLLM::Agents::Speaker do
     # Default HTTP stub for OpenAI TTS
     stub_request(:post, openai_tts_url)
       .to_return(status: 200, body: fake_audio_data,
-                 headers: {"Content-Type" => "audio/mpeg"})
+        headers: {"Content-Type" => "audio/mpeg"})
 
     # Stub LiteLLM pricing to prevent real HTTP calls
     stub_request(:get, RubyLLM::Agents::Audio::SpeechPricing::LITELLM_PRICING_URL)
       .to_return(status: 200, body: "{}",
-                 headers: {"Content-Type" => "application/json"})
+        headers: {"Content-Type" => "application/json"})
   end
 
   describe ".agent_type" do
@@ -329,7 +329,7 @@ RSpec.describe RubyLLM::Agents::Speaker do
         fast_speaker.call(text: "Hello")
 
         expect(WebMock).to have_requested(:post, openai_tts_url)
-          .with { |req| JSON.parse(req.body)["speed"] == 1.5 }
+          .with { |req| (JSON.parse(req.body)["speed"] - 1.5).abs < 0.001 }
       end
     end
 
@@ -374,8 +374,8 @@ RSpec.describe RubyLLM::Agents::Speaker do
         expect(WebMock).to have_requested(:post, elevenlabs_url)
           .with(query: hash_including("output_format")) { |req|
             body = JSON.parse(req.body)
-            body.dig("voice_settings", "stability") == 0.6 &&
-              body.dig("voice_settings", "similarity_boost") == 0.8
+            (body.dig("voice_settings", "stability") - 0.6).abs < 0.001 &&
+              (body.dig("voice_settings", "similarity_boost") - 0.8).abs < 0.001
           }
       end
 
@@ -737,7 +737,7 @@ RSpec.describe RubyLLM::Agents::Speaker do
       end
 
       it "persists audio metadata in execution record" do
-        result = test_speaker.call(text: "Tracked speech")
+        test_speaker.call(text: "Tracked speech")
 
         execution = RubyLLM::Agents::Execution.last
         expect(execution).to be_present
