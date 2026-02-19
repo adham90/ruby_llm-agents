@@ -21,7 +21,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
   let(:app) { double("app") }
   let(:middleware) { described_class.new(app, agent_class) }
-  let(:config) { double("config") }
 
   def build_context(options = {})
     RubyLLM::Agents::Pipeline::Context.new(
@@ -32,15 +31,20 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
   end
 
   before do
-    allow(RubyLLM::Agents).to receive(:configuration).and_return(config)
-    allow(config).to receive(:track_embeddings).and_return(true)
-    allow(config).to receive(:track_executions).and_return(true)
-    allow(config).to receive(:track_moderation).and_return(true)
-    allow(config).to receive(:track_image_generation).and_return(true)
-    allow(config).to receive(:track_audio).and_return(true)
-    allow(config).to receive(:async_logging).and_return(false)
-    allow(config).to receive(:persist_prompts).and_return(true)
-    allow(config).to receive(:persist_responses).and_return(false)
+    RubyLLM::Agents.reset_configuration!
+    RubyLLM::Agents.configure do |c|
+      c.track_embeddings = true
+      c.track_executions = true
+      c.track_image_generation = true
+      c.track_audio = true
+      c.async_logging = false
+      c.persist_prompts = true
+      c.persist_responses = false
+    end
+  end
+
+  after do
+    RubyLLM::Agents.reset_configuration!
   end
 
   describe "#call" do
@@ -50,7 +54,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         ctx.output = "result"
         ctx
       }
-      allow(config).to receive(:track_embeddings).and_return(false)
+      RubyLLM::Agents.configuration.track_embeddings = false
 
       result = middleware.call(context)
 
@@ -63,7 +67,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         ctx.output = "result"
         ctx
       }
-      allow(config).to receive(:track_embeddings).and_return(false)
+      RubyLLM::Agents.configuration.track_embeddings = false
 
       result = middleware.call(context)
 
@@ -74,7 +78,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     it "sets completed_at timestamp on failure" do
       context = build_context
       allow(app).to receive(:call).and_raise(StandardError, "Test error")
-      allow(config).to receive(:track_embeddings).and_return(false)
+      RubyLLM::Agents.configuration.track_embeddings = false
 
       expect { middleware.call(context) }.to raise_error(StandardError)
 
@@ -84,7 +88,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     it "re-raises errors from the execution" do
       context = build_context
       allow(app).to receive(:call).and_raise(StandardError, "Test error")
-      allow(config).to receive(:track_embeddings).and_return(false)
+      RubyLLM::Agents.configuration.track_embeddings = false
 
       expect { middleware.call(context) }.to raise_error(StandardError, "Test error")
     end
@@ -93,7 +97,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       context = build_context
       error = StandardError.new("Test error")
       allow(app).to receive(:call).and_raise(error)
-      allow(config).to receive(:track_embeddings).and_return(false)
+      RubyLLM::Agents.configuration.track_embeddings = false
 
       expect { middleware.call(context) }.to raise_error(StandardError)
 
@@ -110,8 +114,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       end
 
       before do
-        allow(config).to receive(:track_embeddings).and_return(true)
-        allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
+        RubyLLM::Agents.configuration.track_embeddings = true
+        RubyLLM::Agents.configuration.multi_tenancy_enabled = false
         # Allow detail creation for prompt persistence
         allow(mock_execution).to receive(:create_detail!)
       end
@@ -325,8 +329,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
     context "when tracking is disabled" do
       before do
-        allow(config).to receive(:track_embeddings).and_return(false)
-        allow(config).to receive(:track_executions).and_return(false)
+        RubyLLM::Agents.configuration.track_embeddings = false
+        RubyLLM::Agents.configuration.track_executions = false
       end
 
       it "does not create execution records" do
@@ -356,10 +360,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       end
 
       before do
-        allow(config).to receive(:track_embeddings).and_return(true)
-        allow(config).to receive(:respond_to?).with(:track_cache_hits).and_return(true)
-        allow(config).to receive(:track_cache_hits).and_return(false)
-        allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
+        RubyLLM::Agents.configuration.track_embeddings = true
+        RubyLLM::Agents.configuration.track_cache_hits = false
+        RubyLLM::Agents.configuration.multi_tenancy_enabled = false
         allow(mock_execution).to receive(:create_detail!)
       end
 
@@ -378,7 +381,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       end
 
       it "records cache hits when track_cache_hits is true" do
-        allow(config).to receive(:track_cache_hits).and_return(true)
+        RubyLLM::Agents.configuration.track_cache_hits = true
 
         context = build_context
         context.cached = true
@@ -410,13 +413,13 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       end
 
       before do
-        allow(config).to receive(:track_embeddings).and_return(true)
-        allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
+        RubyLLM::Agents.configuration.track_embeddings = true
+        RubyLLM::Agents.configuration.multi_tenancy_enabled = false
         allow(mock_execution).to receive(:create_detail!)
       end
 
       it "creates running record synchronously even when async_logging is enabled" do
-        allow(config).to receive(:async_logging).and_return(true)
+        RubyLLM::Agents.configuration.async_logging = true
 
         context = build_context
         context.input_tokens = 100
@@ -444,7 +447,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       end
 
       it "falls back to sync when async_logging is disabled" do
-        allow(config).to receive(:async_logging).and_return(false)
+        RubyLLM::Agents.configuration.async_logging = false
 
         context = build_context
         context.input_tokens = 100
@@ -470,7 +473,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       end
 
       it "falls back to legacy create when running record creation fails" do
-        allow(config).to receive(:async_logging).and_return(false)
+        RubyLLM::Agents.configuration.async_logging = false
 
         context = build_context
         context.input_tokens = 100
@@ -493,17 +496,15 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
   end
 
   describe "tracking per agent type" do
-    let(:config) { double("config") }
-
     before do
-      allow(RubyLLM::Agents).to receive(:configuration).and_return(config)
-      allow(config).to receive(:async_logging).and_return(false)
-      allow(config).to receive(:track_embeddings).and_return(true)
-      allow(config).to receive(:track_executions).and_return(true)
-      allow(config).to receive(:track_moderation).and_return(true)
-      allow(config).to receive(:track_image_generation).and_return(true)
-      allow(config).to receive(:track_audio).and_return(true)
-      allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
+      RubyLLM::Agents.configure do |c|
+        c.async_logging = false
+        c.track_embeddings = true
+        c.track_executions = true
+        c.track_image_generation = true
+        c.track_audio = true
+        c.multi_tenancy_enabled = false
+      end
     end
 
     it "checks track_embeddings for embedding agents" do
@@ -524,12 +525,13 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       middleware = described_class.new(app, agent_class)
       context = RubyLLM::Agents::Pipeline::Context.new(input: "test", agent_class: agent_class)
 
-      expect(config).to receive(:track_embeddings).and_return(false)
+      RubyLLM::Agents.configuration.track_embeddings = false
       allow(app).to receive(:call) { |ctx|
         ctx.output = "result"
         ctx
       }
 
+      expect(RubyLLM::Agents::Execution).not_to receive(:create!)
       middleware.call(context)
     end
 
@@ -551,12 +553,13 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       middleware = described_class.new(app, agent_class)
       context = RubyLLM::Agents::Pipeline::Context.new(input: "test", agent_class: agent_class)
 
-      expect(config).to receive(:track_image_generation).and_return(false)
+      RubyLLM::Agents.configuration.track_image_generation = false
       allow(app).to receive(:call) { |ctx|
         ctx.output = "result"
         ctx
       }
 
+      expect(RubyLLM::Agents::Execution).not_to receive(:create!)
       middleware.call(context)
     end
 
@@ -578,12 +581,13 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       middleware = described_class.new(app, agent_class)
       context = RubyLLM::Agents::Pipeline::Context.new(input: "test", agent_class: agent_class)
 
-      expect(config).to receive(:track_audio).and_return(false)
+      RubyLLM::Agents.configuration.track_audio = false
       allow(app).to receive(:call) { |ctx|
         ctx.output = "result"
         ctx
       }
 
+      expect(RubyLLM::Agents::Execution).not_to receive(:create!)
       middleware.call(context)
     end
 
@@ -605,12 +609,13 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       middleware = described_class.new(app, agent_class)
       context = RubyLLM::Agents::Pipeline::Context.new(input: "test", agent_class: agent_class)
 
-      expect(config).to receive(:track_executions).and_return(false)
+      RubyLLM::Agents.configuration.track_executions = false
       allow(app).to receive(:call) { |ctx|
         ctx.output = "result"
         ctx
       }
 
+      expect(RubyLLM::Agents::Execution).not_to receive(:create!)
       middleware.call(context)
     end
 
@@ -654,12 +659,12 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     end
 
     before do
-      allow(config).to receive(:track_embeddings).and_return(true)
+      RubyLLM::Agents.configuration.track_embeddings = true
       allow(mock_execution).to receive(:create_detail!)
     end
 
     it "includes tenant_id when multi-tenancy is enabled" do
-      allow(config).to receive(:multi_tenancy_enabled?).and_return(true)
+      RubyLLM::Agents.configuration.multi_tenancy_enabled = true
 
       context = build_context
       context.tenant_id = "tenant-123"
@@ -679,7 +684,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     end
 
     it "omits tenant_id when multi-tenancy is disabled" do
-      allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
+      RubyLLM::Agents.configuration.multi_tenancy_enabled = false
 
       context = build_context
       context.tenant_id = "tenant-123"
@@ -709,10 +714,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     end
 
     before do
-      allow(config).to receive(:track_embeddings).and_return(true)
-      allow(config).to receive(:respond_to?).with(:track_cache_hits).and_return(true)
-      allow(config).to receive(:track_cache_hits).and_return(true)
-      allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
+      RubyLLM::Agents.configuration.track_embeddings = true
+      RubyLLM::Agents.configuration.track_cache_hits = true
+      RubyLLM::Agents.configuration.multi_tenancy_enabled = false
       allow(mock_execution).to receive(:create_detail!)
     end
 
@@ -745,8 +749,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     end
 
     before do
-      allow(config).to receive(:track_embeddings).and_return(true)
-      allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
+      RubyLLM::Agents.configuration.track_embeddings = true
+      RubyLLM::Agents.configuration.multi_tenancy_enabled = false
       allow(mock_execution).to receive(:create_detail!)
     end
 
@@ -797,11 +801,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
   end
 
   describe "agent metadata merging" do
-    # Use real configuration instead of config doubles
     before do
-      # Undo outer before's stub so real configuration is used
-      allow(RubyLLM::Agents).to receive(:configuration).and_call_original
-
       RubyLLM::Agents.reset_configuration!
       RubyLLM::Agents.configure do |c|
         c.track_embeddings = true
@@ -809,10 +809,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         c.persist_prompts = false
         c.persist_responses = false
       end
-    end
-
-    after do
-      RubyLLM::Agents.reset_configuration!
     end
 
     # Real agent classes with real metadata methods
@@ -1012,8 +1008,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     end
 
     before do
-      allow(config).to receive(:track_embeddings).and_return(true)
-      allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
+      RubyLLM::Agents.configuration.track_embeddings = true
+      RubyLLM::Agents.configuration.multi_tenancy_enabled = false
       allow(mock_execution).to receive(:create_detail!)
     end
 
@@ -1076,20 +1072,21 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     end
 
     before do
-      allow(config).to receive(:track_embeddings).and_return(true)
-      allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
+      RubyLLM::Agents.configuration.track_embeddings = true
+      RubyLLM::Agents.configuration.multi_tenancy_enabled = false
       allow(mock_execution).to receive(:create_detail!)
     end
 
     context "when persist_responses is enabled" do
       before do
-        allow(config).to receive(:persist_responses).and_return(true)
-        # Mock redaction config for Redactor
+        RubyLLM::Agents.configuration.persist_responses = true
+        # Set redaction config for Redactor
         # Note: Use specific field names that won't match input_tokens/output_tokens
-        allow(config).to receive(:redaction_fields).and_return(%w[password api_key secret credential])
-        allow(config).to receive(:redaction_patterns).and_return([])
-        allow(config).to receive(:redaction_placeholder).and_return("[REDACTED]")
-        allow(config).to receive(:redaction_max_value_length).and_return(nil)
+        RubyLLM::Agents.configuration.redaction = {
+          fields: %w[password api_key secret credential],
+          patterns: [],
+          placeholder: "[REDACTED]"
+        }
       end
 
       it "stores response when output has content" do
@@ -1205,7 +1202,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
     context "when persist_responses is disabled" do
       before do
-        allow(config).to receive(:persist_responses).and_return(false)
+        RubyLLM::Agents.configuration.persist_responses = false
       end
 
       it "does not store response even when output has content" do
@@ -1236,7 +1233,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       end
 
       before do
-        allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
+        RubyLLM::Agents.configuration.multi_tenancy_enabled = false
         allow(mock_execution).to receive(:create_detail!)
       end
 

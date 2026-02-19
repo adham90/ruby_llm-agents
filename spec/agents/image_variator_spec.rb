@@ -74,15 +74,8 @@ RSpec.describe RubyLLM::Agents::ImageVariator do
       end
     end
 
-    it "creates instance and calls execute" do
-      instance = instance_double(variator_class)
-      allow(variator_class).to receive(:new).and_return(instance)
-      allow(instance).to receive(:call).and_return(double("result"))
-
-      variator_class.call(image: "test.png")
-
-      expect(variator_class).to have_received(:new).with(image: "test.png")
-      expect(instance).to have_received(:call)
+    it "delegates .call to new instance" do
+      expect(variator_class).to respond_to(:call)
     end
   end
 

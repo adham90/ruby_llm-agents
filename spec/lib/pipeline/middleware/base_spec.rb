@@ -21,10 +21,13 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Base do
 
   let(:app) { double("app") }
   let(:middleware) { described_class.new(app, agent_class) }
-  let(:config) { instance_double(RubyLLM::Agents::Configuration) }
 
   before do
-    allow(RubyLLM::Agents).to receive(:configuration).and_return(config)
+    RubyLLM::Agents.reset_configuration!
+  end
+
+  after do
+    RubyLLM::Agents.reset_configuration!
   end
 
   describe "#initialize" do
@@ -142,7 +145,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Base do
 
     it "returns the RubyLLM::Agents configuration" do
       middleware_instance = test_middleware.new(app, agent_class)
-      expect(middleware_instance.test_global_config).to eq(config)
+      expect(middleware_instance.test_global_config).to eq(RubyLLM::Agents.configuration)
     end
   end
 
@@ -227,14 +230,16 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Base do
     end
 
     it "can extend base functionality" do
-      context = double("context", output: nil)
-      allow(context).to receive(:output=)
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: agent_class
+      )
       allow(app).to receive(:call) { |ctx| ctx }
 
       middleware_instance = custom_middleware.new(app, agent_class)
       middleware_instance.call(context)
 
-      expect(context).to have_received(:output=).with("processed by middleware")
+      expect(context.output).to eq("processed by middleware")
       expect(app).to have_received(:call).with(context)
     end
   end

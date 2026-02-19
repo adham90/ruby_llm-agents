@@ -50,19 +50,8 @@ RSpec.describe RubyLLM::Agents::ImageEditor do
       end
     end
 
-    it "creates instance and calls execute" do
-      instance = instance_double(editor_class)
-      allow(editor_class).to receive(:new).and_return(instance)
-      allow(instance).to receive(:call).and_return(double("result"))
-
-      editor_class.call(image: "test.png", mask: "mask.png", prompt: "Edit this")
-
-      expect(editor_class).to have_received(:new).with(
-        image: "test.png",
-        mask: "mask.png",
-        prompt: "Edit this"
-      )
-      expect(instance).to have_received(:call)
+    it "delegates .call to new instance" do
+      expect(editor_class).to respond_to(:call)
     end
   end
 

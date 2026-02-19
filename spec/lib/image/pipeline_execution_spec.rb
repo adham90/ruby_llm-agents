@@ -50,22 +50,8 @@ RSpec.describe RubyLLM::Agents::ImagePipeline::Execution do
   end
 
   describe "#execute" do
-    let(:mock_generator_result) do
-      double("GeneratorResult",
-        success?: true,
-        error?: false,
-        url: "https://example.com/image.png",
-        data: nil,
-        total_cost: 0.04,
-        duration_ms: 1000,
-        model_id: "dall-e-3")
-    end
-
-    before do
-      allow_any_instance_of(RubyLLM::Agents::ImageGenerator).to receive(:call).and_return(mock_generator_result)
-      # Stub execution tracking
-      allow(RubyLLM::Agents::Execution).to receive(:create!)
-    end
+    # RubyLLM.paint is already mocked via spec/support/ruby_llm_mock.rb
+    # so the real ImageGenerator can run without hitting the API
 
     it "executes pipeline steps in order" do
       result = test_pipeline_class.call(prompt: "A test image")
@@ -80,16 +66,7 @@ RSpec.describe RubyLLM::Agents::ImagePipeline::Execution do
     end
 
     it "handles step errors" do
-      error_result = double("ErrorResult",
-        success?: false,
-        error?: true,
-        url: nil,
-        data: nil,
-        total_cost: 0,
-        duration_ms: 100,
-        model_id: "dall-e-3")
-
-      allow_any_instance_of(RubyLLM::Agents::ImageGenerator).to receive(:call).and_return(error_result)
+      allow(RubyLLM).to receive(:paint).and_raise(StandardError.new("API error"))
 
       result = test_pipeline_class.call(prompt: "A test image")
 

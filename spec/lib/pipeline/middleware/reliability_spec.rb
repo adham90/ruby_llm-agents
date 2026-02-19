@@ -29,7 +29,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
   let(:app) { double("app") }
   let(:middleware) { described_class.new(app, agent_class) }
-  let(:config) { instance_double(RubyLLM::Agents::Configuration) }
 
   def build_context(options = {})
     RubyLLM::Agents::Pipeline::Context.new(
@@ -41,11 +40,13 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
   end
 
   before do
-    allow(RubyLLM::Agents).to receive(:configuration).and_return(config)
-    allow(config).to receive(:all_retryable_patterns).and_return(["rate limit", "overloaded"])
-    allow(config).to receive(:respond_to?).with(:async_context?).and_return(false)
+    RubyLLM::Agents.reset_configuration!
     # Speed up tests by stubbing sleep
     allow(middleware).to receive(:sleep)
+  end
+
+  after do
+    RubyLLM::Agents.reset_configuration!
   end
 
   describe "#call" do
@@ -213,10 +214,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
     end
 
     context "quota errors (Gemini rate limiting)" do
-      before do
-        # Update patterns to include quota for these tests
-        allow(config).to receive(:all_retryable_patterns).and_return(["rate limit", "overloaded", "quota"])
-      end
+      # Default retryable patterns already include "quota" via the rate_limiting category
 
       it "retries on quota exceeded errors" do
         context = build_context

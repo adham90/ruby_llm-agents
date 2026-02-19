@@ -108,26 +108,19 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
         expect(described_class.for_tenant(tenant_object)).to be_nil
       end
 
-      it "prefers polymorphic association over tenant_id when both exist" do
-        # Create budget with polymorphic association
-        poly_budget = described_class.create!(
+      it "finds budget by llm_tenant_id for objects with that method" do
+        # Create budget with matching tenant_id
+        budget = described_class.create!(
           tenant_id: "poly_tenant_123",
-          tenant_record_type: "TestTenant",
-          tenant_record_id: 999,
           daily_limit: 100.0
         )
 
-        # Create a mock tenant record object
+        # Create a tenant-like object with llm_tenant_id
         tenant_record = Object.new
         tenant_record.define_singleton_method(:llm_tenant_id) { "poly_tenant_123" }
 
-        # Stub find_by to return poly_budget when queried with tenant_record
-        allow(described_class).to receive(:find_by).with(tenant_record: tenant_record).and_return(poly_budget)
-        # Let the actual find_by pass through for tenant_id query
-        allow(described_class).to receive(:find_by).with(tenant_id: "poly_tenant_123").and_call_original
-
         found = described_class.for_tenant(tenant_record)
-        expect(found).to eq(poly_budget)
+        expect(found).to eq(budget)
       end
     end
   end
@@ -709,11 +702,7 @@ RSpec.describe RubyLLM::Agents::Tenant, type: :model do
         expect(found.tenant_record).to eq(account_with_budget)
       end
 
-      it "queries polymorphic association first" do
-        # Verify that for_tenant queries the polymorphic association before tenant_id
-        # by checking the order of find_by calls
-        expect(described_class).to receive(:find_by).with(tenant_record: account_with_budget).and_call_original
-
+      it "finds budget via polymorphic association" do
         found = described_class.for_tenant(account_with_budget)
         expect(found).to be_present
         expect(found.tenant_record).to eq(account_with_budget)

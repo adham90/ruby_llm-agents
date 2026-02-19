@@ -243,15 +243,13 @@ RSpec.describe RubyLLM::Agents::Base do
     end
 
     it "creates instance and calls #call" do
-      agent_instance = instance_double(agent_class)
-      allow(agent_class).to receive(:new).and_return(agent_instance)
-      allow(agent_instance).to receive(:call).and_return("result")
+      mock_response = build_mock_response(content: "result")
+      mock_chat = build_mock_chat_client(response: mock_response)
+      stub_ruby_llm_chat(mock_chat)
 
       result = agent_class.call(query: "test")
 
-      expect(agent_class).to have_received(:new).with(query: "test")
-      expect(agent_instance).to have_received(:call)
-      expect(result).to eq("result")
+      expect(result).to be_a(RubyLLM::Agents::Result)
     end
   end
 
@@ -760,23 +758,20 @@ RSpec.describe RubyLLM::Agents::Base do
       end
     end
 
-    it "returns nil when no tenant is resolved" do
+    it "returns nil when no tenant is provided" do
       agent = agent_class.new(query: "test")
-      allow(agent).to receive(:resolve_tenant).and_return(nil)
 
       expect(agent.resolved_tenant_id).to be_nil
     end
 
     it "returns id from hash tenant" do
-      agent = agent_class.new(query: "test")
-      allow(agent).to receive(:resolve_tenant).and_return({id: 123})
+      agent = agent_class.new(query: "test", tenant: {id: 123})
 
       expect(agent.resolved_tenant_id).to eq("123")
     end
 
     it "returns nil when tenant hash has no id" do
-      agent = agent_class.new(query: "test")
-      allow(agent).to receive(:resolve_tenant).and_return({name: "Test Tenant"})
+      agent = agent_class.new(query: "test", tenant: {name: "Test Tenant"})
 
       expect(agent.resolved_tenant_id).to be_nil
     end

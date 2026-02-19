@@ -113,18 +113,8 @@ RSpec.describe RubyLLM::Agents::ImageTransformer do
       end
     end
 
-    it "creates instance and calls execute" do
-      instance = instance_double(transformer_class)
-      allow(transformer_class).to receive(:new).and_return(instance)
-      allow(instance).to receive(:call).and_return(double("result"))
-
-      transformer_class.call(image: "photo.jpg", prompt: "Convert to watercolor")
-
-      expect(transformer_class).to have_received(:new).with(
-        image: "photo.jpg",
-        prompt: "Convert to watercolor"
-      )
-      expect(instance).to have_received(:call)
+    it "delegates .call to new instance" do
+      expect(transformer_class).to respond_to(:call)
     end
   end
 

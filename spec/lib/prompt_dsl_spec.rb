@@ -454,16 +454,19 @@ RSpec.describe "Three-Role Prompt DSL" do
   # ── dry_run includes assistant_prompt ─────────────────────────
 
   describe "dry_run with three roles" do
-    let(:config) { double("config") }
-
     before do
-      allow(RubyLLM::Agents).to receive(:configuration).and_return(config)
-      allow(config).to receive(:default_model).and_return("gpt-4o")
-      allow(config).to receive(:default_timeout).and_return(120)
-      allow(config).to receive(:default_temperature).and_return(0.7)
-      allow(config).to receive(:default_streaming).and_return(false)
-      allow(config).to receive(:budgets_enabled?).and_return(false)
-      allow(config).to receive(:default_thinking).and_return(nil)
+      RubyLLM::Agents.reset_configuration!
+      RubyLLM::Agents.configure do |c|
+        c.default_model = "gpt-4o"
+        c.default_timeout = 120
+        c.default_temperature = 0.7
+        c.default_streaming = false
+        c.default_thinking = nil
+      end
+    end
+
+    after do
+      RubyLLM::Agents.reset_configuration!
     end
 
     it "includes assistant_prompt in dry run output" do

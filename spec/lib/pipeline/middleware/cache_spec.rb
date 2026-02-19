@@ -29,7 +29,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
 
   let(:app) { double("app") }
   let(:middleware) { described_class.new(app, agent_class) }
-  let(:config) { instance_double(RubyLLM::Agents::Configuration) }
   let(:cache_store) { ActiveSupport::Cache::MemoryStore.new }
 
   def build_context(options = {})
@@ -41,8 +40,14 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
   end
 
   before do
-    allow(RubyLLM::Agents).to receive(:configuration).and_return(config)
-    allow(config).to receive(:cache_store).and_return(cache_store)
+    RubyLLM::Agents.reset_configuration!
+    RubyLLM::Agents.configure do |c|
+      c.cache_store = cache_store
+    end
+  end
+
+  after do
+    RubyLLM::Agents.reset_configuration!
   end
 
   describe "#call" do
@@ -75,7 +80,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
 
     context "when cache store is not configured" do
       before do
-        allow(config).to receive(:cache_store).and_return(nil)
+        RubyLLM::Agents.configure { |c| c.cache_store = nil }
+        # Also stub Rails.cache to return nil to simulate no cache
+        allow(Rails).to receive(:cache).and_return(nil)
       end
 
       it "passes through to the next middleware" do
@@ -288,7 +295,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
         context = build_context
 
         # Make configuration fail when accessing cache_store
-        allow(config).to receive(:cache_store).and_raise(StandardError.new("Config error"))
+        allow(RubyLLM::Agents.configuration).to receive(:cache_store).and_raise(StandardError.new("Config error"))
 
         expect(app).to receive(:call).with(context).and_return(context)
 

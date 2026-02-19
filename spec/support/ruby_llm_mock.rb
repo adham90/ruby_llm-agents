@@ -87,6 +87,21 @@ module RubyLLM
       self
     end
 
+    def with_thinking(**options)
+      @thinking_options = options
+      self
+    end
+
+    def on_tool_call(&block)
+      @on_tool_call = block
+      self
+    end
+
+    def on_tool_result(&block)
+      @on_tool_result = block
+      self
+    end
+
     def add_message(role:, content:)
       @messages << {role: role, content: content}
       self

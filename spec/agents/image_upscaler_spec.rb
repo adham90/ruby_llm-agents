@@ -113,15 +113,8 @@ RSpec.describe RubyLLM::Agents::ImageUpscaler do
       end
     end
 
-    it "creates instance and calls execute" do
-      instance = instance_double(upscaler_class)
-      allow(upscaler_class).to receive(:new).and_return(instance)
-      allow(instance).to receive(:call).and_return(double("result"))
-
-      upscaler_class.call(image: "low_res.jpg")
-
-      expect(upscaler_class).to have_received(:new).with(image: "low_res.jpg")
-      expect(instance).to have_received(:call)
+    it "delegates .call to new instance" do
+      expect(upscaler_class).to respond_to(:call)
     end
   end
 

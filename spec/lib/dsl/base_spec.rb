@@ -13,12 +13,16 @@ RSpec.describe RubyLLM::Agents::DSL::Base do
     end
   end
 
-  let(:config) { double("config") }
-
   before do
-    allow(RubyLLM::Agents).to receive(:configuration).and_return(config)
-    allow(config).to receive(:default_model).and_return("gpt-4o")
-    allow(config).to receive(:default_timeout).and_return(120)
+    RubyLLM::Agents.reset_configuration!
+    RubyLLM::Agents.configure do |c|
+      c.default_model = "gpt-4o"
+      c.default_timeout = 120
+    end
+  end
+
+  after do
+    RubyLLM::Agents.reset_configuration!
   end
 
   describe "#model" do
@@ -248,8 +252,10 @@ RSpec.describe RubyLLM::Agents::DSL::Base do
     end
 
     before do
-      allow(config).to receive(:default_temperature).and_return(0.7)
-      allow(config).to receive(:default_streaming).and_return(false)
+      RubyLLM::Agents.configure do |c|
+        c.default_temperature = 0.7
+        c.default_streaming = false
+      end
     end
 
     context "with template string" do
@@ -339,8 +345,10 @@ RSpec.describe RubyLLM::Agents::DSL::Base do
     end
 
     before do
-      allow(config).to receive(:default_temperature).and_return(0.7)
-      allow(config).to receive(:default_streaming).and_return(false)
+      RubyLLM::Agents.configure do |c|
+        c.default_temperature = 0.7
+        c.default_streaming = false
+      end
     end
 
     context "with string" do

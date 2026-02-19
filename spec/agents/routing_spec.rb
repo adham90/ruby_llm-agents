@@ -400,27 +400,15 @@ RSpec.describe RubyLLM::Agents::Routing do
     end
 
     it "returns a RoutingResult through the call chain" do
-      # Build a RoutingResult as if the pipeline ran
-      routing_result = RubyLLM::Agents::Routing::RoutingResult.new(
-        base_result: RubyLLM::Agents::Result.new(
-          content: {route: :billing, agent_class: nil, raw_response: "billing"},
-          input_tokens: 85,
-          output_tokens: 3,
-          model_id: "gpt-4o-mini",
-          chosen_model_id: "gpt-4o-mini",
-          temperature: 0.0,
-          finish_reason: "stop",
-          streaming: false,
-          attempts_count: 1
-        ),
-        route_data: {route: :billing, agent_class: nil, raw_response: "billing"}
+      # Mock at the LLM boundary — let the real pipeline & process_response run
+      mock_response = build_mock_response(
+        content: "billing",
+        input_tokens: 85,
+        output_tokens: 3,
+        model_id: "gpt-4o-mini"
       )
-
-      # Stub Pipeline::Executor to return our pre-built result
-      allow(RubyLLM::Agents::Pipeline::Executor).to receive(:execute) do |context|
-        context.output = routing_result
-        context
-      end
+      mock_chat = build_mock_chat_client(response: mock_response)
+      stub_ruby_llm_chat(mock_chat)
 
       result = router_class.call(message: "I was charged twice")
 
@@ -497,16 +485,10 @@ RSpec.describe RubyLLM::Agents::Routing do
 
   describe ".classify" do
     it "returns a symbol route" do
-      # Stub the call on any BaseAgent subclass to avoid real LLM calls
-      fake_routing_result = RubyLLM::Agents::Routing::RoutingResult.new(
-        base_result: RubyLLM::Agents::Result.new(
-          content: "billing",
-          model_id: "gpt-4o-mini"
-        ),
-        route_data: {route: :billing, agent_class: nil, raw_response: "billing"}
-      )
-
-      allow_any_instance_of(RubyLLM::Agents::BaseAgent).to receive(:call).and_return(fake_routing_result)
+      # Mock at the LLM boundary — let the real routing code process the response
+      mock_response = build_mock_response(content: "billing", model_id: "gpt-4o-mini")
+      mock_chat = build_mock_chat_client(response: mock_response)
+      stub_ruby_llm_chat(mock_chat)
 
       result = RubyLLM::Agents::Routing.classify(
         message: "I was charged twice",
@@ -521,9 +503,13 @@ RSpec.describe RubyLLM::Agents::Routing do
     end
 
     it "creates router with correct routes" do
-      # Capture the anonymous class to inspect its routes
-      created_class = nil
+      # Mock at the LLM boundary — let the real routing code build the anonymous class
+      mock_response = build_mock_response(content: "billing", model_id: "gpt-4o-mini")
+      mock_chat = build_mock_chat_client(response: mock_response)
+      stub_ruby_llm_chat(mock_chat)
 
+      # Capture the anonymous class by wrapping Class.new
+      created_class = nil
       allow(Class).to receive(:new).and_wrap_original do |method, *args, &block|
         result = method.call(*args, &block)
         if result < RubyLLM::Agents::BaseAgent && result.respond_to?(:routes) && result.routes.any?
@@ -531,14 +517,6 @@ RSpec.describe RubyLLM::Agents::Routing do
         end
         result
       end
-
-      # Stub to avoid LLM call
-      allow_any_instance_of(RubyLLM::Agents::BaseAgent).to receive(:call).and_return(
-        RubyLLM::Agents::Routing::RoutingResult.new(
-          base_result: RubyLLM::Agents::Result.new(content: "billing", model_id: "gpt-4o-mini"),
-          route_data: {route: :billing, agent_class: nil, raw_response: "billing"}
-        )
-      )
 
       RubyLLM::Agents::Routing.classify(
         message: "test",

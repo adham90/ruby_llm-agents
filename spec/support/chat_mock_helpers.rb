@@ -156,7 +156,7 @@ module ChatMockHelpers
     end
   end
 
-  # Setup common agent configuration mocks
+  # Setup common agent configuration
   #
   # @param track_executions [Boolean] Whether to track executions
   # @param async_logging [Boolean] Whether to use async logging
@@ -169,17 +169,14 @@ module ChatMockHelpers
     cache_store: nil
   )
     RubyLLM::Agents.reset_configuration!
-    config = RubyLLM::Agents.configuration
-
-    allow(config).to receive(:track_executions).and_return(track_executions)
-    allow(config).to receive(:async_logging).and_return(async_logging)
-    allow(config).to receive(:track_cache_hits).and_return(track_cache_hits)
-
-    if cache_store
-      allow(config).to receive(:cache_store).and_return(cache_store)
+    RubyLLM::Agents.configure do |c|
+      c.track_executions = track_executions
+      c.async_logging = async_logging
+      c.track_cache_hits = track_cache_hits
+      c.cache_store = cache_store if cache_store
     end
 
-    config
+    RubyLLM::Agents.configuration
   end
 
   # Create a complete mock setup for a basic agent test

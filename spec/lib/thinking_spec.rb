@@ -203,10 +203,7 @@ RSpec.describe "Thinking Support" do
         end
       end
 
-      # Stub the client building to avoid calling with_thinking on mock
-      before do
-        allow_any_instance_of(RubyLLM::Agents::Base).to receive(:build_client).and_return(double)
-      end
+      # MockClient now supports with_thinking natively, no stub needed
 
       it "returns class-level thinking configuration" do
         agent = agent_class.new
@@ -253,11 +250,7 @@ RSpec.describe "Thinking Support" do
         end
       end
 
-      let(:agent) do
-        # Stub build_client to avoid MockClient issues
-        allow_any_instance_of(RubyLLM::Agents::Base).to receive(:build_client).and_return(double)
-        agent_class.new
-      end
+      let(:agent) { agent_class.new }
 
       it "extracts thinking from response with object methods" do
         thinking = OpenStruct.new(
@@ -331,11 +324,7 @@ RSpec.describe "Thinking Support" do
         end
       end
 
-      let(:agent) do
-        # Stub build_client to avoid MockClient issues
-        allow_any_instance_of(RubyLLM::Agents::Base).to receive(:build_client).and_return(double)
-        agent_class.new
-      end
+      let(:agent) { agent_class.new }
 
       it "extracts thinking data from response" do
         thinking = OpenStruct.new(

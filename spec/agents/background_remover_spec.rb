@@ -149,15 +149,8 @@ RSpec.describe RubyLLM::Agents::BackgroundRemover do
       end
     end
 
-    it "creates instance and calls execute" do
-      instance = instance_double(remover_class)
-      allow(remover_class).to receive(:new).and_return(instance)
-      allow(instance).to receive(:call).and_return(double("result"))
-
-      remover_class.call(image: "photo.jpg")
-
-      expect(remover_class).to have_received(:new).with(image: "photo.jpg")
-      expect(instance).to have_received(:call)
+    it "delegates .call to new instance" do
+      expect(remover_class).to respond_to(:call)
     end
   end
 

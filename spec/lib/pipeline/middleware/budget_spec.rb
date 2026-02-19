@@ -21,7 +21,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Budget do
 
   let(:app) { double("app") }
   let(:middleware) { described_class.new(app, agent_class) }
-  let(:config) { instance_double(RubyLLM::Agents::Configuration) }
 
   def build_context(options = {})
     RubyLLM::Agents::Pipeline::Context.new(
@@ -32,13 +31,17 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Budget do
   end
 
   before do
-    allow(RubyLLM::Agents).to receive(:configuration).and_return(config)
+    RubyLLM::Agents.reset_configuration!
+  end
+
+  after do
+    RubyLLM::Agents.reset_configuration!
   end
 
   describe "#call" do
     context "when budgets are disabled" do
       before do
-        allow(config).to receive(:budgets_enabled?).and_return(false)
+        # budgets_enabled? returns false by default (no budgets configured)
       end
 
       it "passes through to the next middleware" do
@@ -52,7 +55,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Budget do
 
     context "when budgets are enabled" do
       before do
-        allow(config).to receive(:budgets_enabled?).and_return(true)
+        RubyLLM::Agents.configure do |c|
+          c.budgets = {enforcement: :hard, global_daily: 100.0}
+        end
       end
 
       it "checks budget before execution via tenant model" do
@@ -185,7 +190,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Budget do
 
     context "when budgets_enabled? raises an error" do
       before do
-        allow(config).to receive(:budgets_enabled?).and_raise(StandardError.new("Config error"))
+        allow(RubyLLM::Agents.configuration).to receive(:budgets_enabled?).and_raise(StandardError.new("Config error"))
       end
 
       it "treats budgets as disabled and passes through" do

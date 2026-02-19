@@ -416,9 +416,9 @@ RSpec.describe RubyLLM::Agents::ImageGenerator do
   end
 
   describe "middleware pipeline integration" do
-    it "executes through pipeline" do
-      expect(RubyLLM::Agents::Pipeline::Executor).to receive(:execute).and_call_original
-      described_class.call(prompt: test_prompt)
+    it "executes through pipeline and returns a result" do
+      result = described_class.call(prompt: test_prompt)
+      expect(result).to be_a(RubyLLM::Agents::ImageGenerationResult)
     end
   end
 end

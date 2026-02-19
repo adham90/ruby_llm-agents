@@ -21,7 +21,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation, "audio pe
 
   let(:app) { double("app") }
   let(:middleware) { described_class.new(app, agent_class) }
-  let(:config) { double("config") }
 
   let(:mock_execution) do
     double("RubyLLM::Agents::Execution",
@@ -40,19 +39,25 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation, "audio pe
   end
 
   before do
-    allow(RubyLLM::Agents).to receive(:configuration).and_return(config)
-    allow(config).to receive(:track_audio).and_return(true)
-    allow(config).to receive(:track_executions).and_return(true)
-    allow(config).to receive(:track_embeddings).and_return(true)
-    allow(config).to receive(:track_image_generation).and_return(true)
-    allow(config).to receive(:async_logging).and_return(false)
-    allow(config).to receive(:persist_prompts).and_return(false)
-    allow(config).to receive(:persist_responses).and_return(false)
-    allow(config).to receive(:multi_tenancy_enabled?).and_return(false)
+    RubyLLM::Agents.reset_configuration!
+    RubyLLM::Agents.configure do |c|
+      c.track_audio = true
+      c.track_executions = true
+      c.track_embeddings = true
+      c.track_image_generation = true
+      c.async_logging = false
+      c.persist_prompts = false
+      c.persist_responses = false
+      c.multi_tenancy_enabled = false
+    end
 
     allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
     allow(mock_execution).to receive(:update!)
     allow(mock_execution).to receive(:create_detail!)
+  end
+
+  after do
+    RubyLLM::Agents.reset_configuration!
   end
 
   describe "persist_audio_data enabled with SpeechResult output" do
@@ -69,8 +74,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation, "audio pe
     end
 
     before do
-      allow(config).to receive(:respond_to?).with(:persist_audio_data).and_return(true)
-      allow(config).to receive(:persist_audio_data).and_return(true)
+      RubyLLM::Agents.configuration.persist_audio_data = true
     end
 
     it "stores audio_data_uri in the response detail" do
@@ -125,8 +129,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation, "audio pe
 
   describe "persist_audio_data disabled (default)" do
     before do
-      allow(config).to receive(:respond_to?).with(:persist_audio_data).and_return(true)
-      allow(config).to receive(:persist_audio_data).and_return(false)
+      RubyLLM::Agents.configuration.persist_audio_data = false
     end
 
     it "does NOT store audio_data_uri in response" do
@@ -230,8 +233,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation, "audio pe
     let(:text_middleware) { described_class.new(app, text_agent_class) }
 
     before do
-      allow(config).to receive(:respond_to?).with(:persist_audio_data).and_return(true)
-      allow(config).to receive(:persist_audio_data).and_return(true)
+      RubyLLM::Agents.configuration.persist_audio_data = true
     end
 
     it "does not add audio fields to non-SpeechResult output" do
@@ -258,8 +260,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation, "audio pe
   end
 
   describe "config without persist_audio_data (backward compatibility)" do
+    # With real configuration, persist_audio_data always exists but defaults to false.
+    # The behavior is equivalent: audio data is not persisted.
     before do
-      allow(config).to receive(:respond_to?).with(:persist_audio_data).and_return(false)
+      RubyLLM::Agents.configuration.persist_audio_data = false
     end
 
     it "does not error when config lacks persist_audio_data" do

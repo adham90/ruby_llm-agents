@@ -51,7 +51,7 @@ module RubyLLM
         # @param context [Context] The execution context
         # @return [Context] The context with output set
         def call(context)
-          @agent.execute(context)
+          @agent.send(:execute, context)
           context
         end
       end
