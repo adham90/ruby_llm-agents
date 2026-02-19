@@ -602,14 +602,14 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
       expect(result).to eq("plain text")
     end
 
-    it "symbolizes hash keys" do
+    it "deep symbolizes hash keys" do
       hash_response = build_real_response(content: "placeholder")
       hash_response.content = {"key" => "value", "nested" => {"inner" => "data"}}
 
       result = agent.send(:process_response, hash_response)
 
       expect(result[:key]).to eq("value")
-      expect(result[:nested]).to eq({"inner" => "data"}) # Only top-level keys symbolized
+      expect(result[:nested]).to eq({inner: "data"}) # All keys deeply symbolized
     end
   end
 

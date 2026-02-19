@@ -347,7 +347,7 @@ module RubyLLM
         content = response.content
         return content unless content.is_a?(Hash)
 
-        content.transform_keys(&:to_sym)
+        content.deep_symbolize_keys
       end
 
       # @!endgroup
