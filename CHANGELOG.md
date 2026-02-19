@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.5] - 2026-02-19
+
+### Changed
+
+- **Include agent metadata in instrumentation middleware** — The instrumentation middleware now merges agent-defined `metadata` (from the agent's `metadata` method) into execution records. Agent metadata serves as a base layer, with middleware metadata overlaid on top. This makes custom agent metadata visible on the dashboard immediately, without requiring a separate `process_response` override
+
 ## [3.5.4] - 2026-02-19
 
 ### Fixed
@@ -706,6 +712,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[3.5.5]: https://github.com/adham90/ruby_llm-agents/compare/v3.5.4...v3.5.5
 [3.5.4]: https://github.com/adham90/ruby_llm-agents/compare/v3.5.3...v3.5.4
 [3.5.3]: https://github.com/adham90/ruby_llm-agents/compare/v3.5.2...v3.5.3
 [3.5.2]: https://github.com/adham90/ruby_llm-agents/compare/v3.5.1...v3.5.2
