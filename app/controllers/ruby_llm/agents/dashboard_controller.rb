@@ -28,6 +28,8 @@ module RubyLLM
         @top_errors = build_top_errors(base_scope)
         @tenant_budget = load_tenant_budget(base_scope)
         @model_stats = build_model_stats(base_scope)
+        @cache_savings = build_cache_savings(base_scope)
+        @top_tenants = build_top_tenants
       end
 
       # Returns chart data as JSON for live updates
@@ -345,6 +347,63 @@ module RubyLLM
         end
 
         alerts.take(3)
+      end
+
+      # Builds cache savings statistics for the dashboard
+      #
+      # @param base_scope [ActiveRecord::Relation] Base scope to filter from
+      # @return [Hash] Cache savings data with count, estimated savings, and hit rate
+      def build_cache_savings(base_scope)
+        scope = base_scope.last_n_days(@days)
+        total_count = scope.count
+        return {count: 0, estimated_savings: 0, hit_rate: 0, total_executions: 0} if total_count.zero?
+
+        cached_scope = scope.cached
+        cache_count = cached_scope.count
+        estimated_savings = cached_scope.sum(:total_cost)
+
+        {
+          count: cache_count,
+          estimated_savings: estimated_savings,
+          hit_rate: (cache_count.to_f / total_count * 100).round(1),
+          total_executions: total_count
+        }
+      end
+
+      # Builds top tenants list for the dashboard overview
+      #
+      # @return [Array<Hash>, nil] Top 5 tenants by monthly spend, or nil if none
+      def build_top_tenants
+        return nil unless Tenant.table_exists?
+
+        tenants = Tenant.active
+          .where("monthly_cost_spent > 0 OR monthly_executions_count > 0")
+          .order(monthly_cost_spent: :desc)
+          .limit(5)
+
+        return nil if tenants.empty?
+
+        tenants.map do |tenant|
+          tenant.ensure_daily_reset!
+          tenant.ensure_monthly_reset!
+
+          monthly_limit = tenant.effective_monthly_limit
+          daily_limit = tenant.effective_daily_limit
+
+          {
+            id: tenant.id,
+            tenant_id: tenant.tenant_id,
+            name: tenant.display_name,
+            enforcement: tenant.effective_enforcement,
+            monthly_spend: tenant.monthly_cost_spent,
+            monthly_limit: monthly_limit,
+            monthly_percentage: (monthly_limit.to_f > 0) ? (tenant.monthly_cost_spent / monthly_limit * 100).round(1) : 0,
+            daily_spend: tenant.daily_cost_spent,
+            daily_limit: daily_limit,
+            daily_percentage: (daily_limit.to_f > 0) ? (tenant.daily_cost_spent / daily_limit * 100).round(1) : 0,
+            monthly_executions: tenant.monthly_executions_count
+          }
+        end
       end
 
       # Batch fetches execution stats for all agents in a time period

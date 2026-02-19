@@ -152,8 +152,9 @@
       }
     </script>
 
-    <!-- Highcharts for charts -->
-    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <!-- Highcharts for charts (primary CDN, fallback to jsDelivr) -->
+    <script src="https://code.highcharts.com/highcharts.js"
+            onerror="var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/highcharts@11.4.0/highcharts.min.js';s.onload=window.__initHighchartsDefaults;document.head.appendChild(s);"></script>
 
     <!-- Chart color helpers + Highcharts defaults -->
     <script>
@@ -164,32 +165,36 @@
         return document.documentElement.classList.contains('dark')
           ? 'rgba(' + darkR + ',' + darkG + ',' + darkB + ',' + alpha + ')' : lightRgba;
       }
-      Highcharts.setOptions({
-        credits: { enabled: false },
-        chart: {
-          backgroundColor: 'transparent',
-          style: { fontFamily: 'ui-monospace, monospace' }
-        },
-        title: { text: null },
-        xAxis: {
-          labels: { style: { color: chartColor('#6B7280', '#928374') } },
-          lineColor: chartColorAlpha('rgba(107, 114, 128, 0.1)', 146, 131, 116, 0.1),
-          tickColor: chartColorAlpha('rgba(107, 114, 128, 0.1)', 146, 131, 116, 0.1)
-        },
-        yAxis: {
-          labels: { style: { color: chartColor('#6B7280', '#928374') } },
-          gridLineColor: chartColorAlpha('rgba(107, 114, 128, 0.1)', 146, 131, 116, 0.1)
-        },
-        legend: {
-          itemStyle: { color: chartColor('#6B7280', '#928374') },
-          itemHoverStyle: { color: chartColor('#9CA3AF', '#bdae93') }
-        },
-        tooltip: {
-          backgroundColor: chartColorAlpha('rgba(0, 0, 0, 0.85)', 40, 40, 40, 0.95),
-          borderColor: 'transparent',
-          style: { color: chartColor('#E5E7EB', '#ebdbb2'), fontFamily: 'ui-monospace, monospace' }
-        }
-      });
+      window.__initHighchartsDefaults = function() {
+        if (typeof Highcharts === 'undefined') return;
+        Highcharts.setOptions({
+          credits: { enabled: false },
+          chart: {
+            backgroundColor: 'transparent',
+            style: { fontFamily: 'ui-monospace, monospace' }
+          },
+          title: { text: null },
+          xAxis: {
+            labels: { style: { color: chartColor('#6B7280', '#928374') } },
+            lineColor: chartColorAlpha('rgba(107, 114, 128, 0.1)', 146, 131, 116, 0.1),
+            tickColor: chartColorAlpha('rgba(107, 114, 128, 0.1)', 146, 131, 116, 0.1)
+          },
+          yAxis: {
+            labels: { style: { color: chartColor('#6B7280', '#928374') } },
+            gridLineColor: chartColorAlpha('rgba(107, 114, 128, 0.1)', 146, 131, 116, 0.1)
+          },
+          legend: {
+            itemStyle: { color: chartColor('#6B7280', '#928374') },
+            itemHoverStyle: { color: chartColor('#9CA3AF', '#bdae93') }
+          },
+          tooltip: {
+            backgroundColor: chartColorAlpha('rgba(0, 0, 0, 0.85)', 40, 40, 40, 0.95),
+            borderColor: 'transparent',
+            style: { color: chartColor('#E5E7EB', '#ebdbb2'), fontFamily: 'ui-monospace, monospace' }
+          }
+        });
+      };
+      window.__initHighchartsDefaults();
     </script>
 
     <!-- Alpine.js -->

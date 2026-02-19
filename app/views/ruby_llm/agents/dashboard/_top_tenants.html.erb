@@ -1,0 +1,47 @@
+<%# Top Tenants Widget - shows top tenants by monthly spend %>
+<%# @param top_tenants [Array<Hash>, nil] Tenant data from controller %>
+
+<% if top_tenants.present? %>
+  <div class="mt-8">
+    <div class="flex items-center gap-3 mb-3">
+      <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">tenants</span>
+      <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+      <%= link_to "all →", ruby_llm_agents.tenants_path, class: "text-[10px] font-mono text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400" %>
+    </div>
+
+    <div class="font-mono text-xs space-y-px">
+      <% top_tenants.each do |tenant| %>
+        <div class="group flex items-center gap-3 py-1.5 px-2 -mx-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer"
+             onclick="window.location='<%= ruby_llm_agents.tenant_path(tenant[:id]) %>'">
+          <span class="w-32 truncate text-gray-900 dark:text-gray-200"><%= tenant[:name] %></span>
+          <span class="text-gray-500 dark:text-gray-400">$<%= number_with_precision(tenant[:monthly_spend], precision: 2) %></span>
+          <% if tenant[:monthly_limit] && tenant[:monthly_limit] > 0 %>
+            <%
+              pct = [tenant[:monthly_percentage], 100].min
+              bar_color = if pct >= 100 then "bg-red-500"
+                          elsif pct >= 80 then "bg-yellow-500"
+                          else "bg-blue-500"
+                          end
+            %>
+            <div class="w-20 bg-gray-200 dark:bg-gray-800 rounded-full h-1 hidden sm:block">
+              <div class="<%= bar_color %> h-1 rounded-full transition-all" style="width: <%= pct %>%"></div>
+            </div>
+            <span class="w-10 text-right text-gray-400 dark:text-gray-600 hidden sm:inline"><%= tenant[:monthly_percentage] %>%</span>
+          <% else %>
+            <span class="text-gray-400 dark:text-gray-600 hidden sm:inline">(no limit)</span>
+          <% end %>
+          <%
+            enforcement = tenant[:enforcement].to_s
+            badge_class = case enforcement
+              when "hard" then "text-red-400 dark:text-red-500/70"
+              when "soft" then "text-yellow-400 dark:text-yellow-500/70"
+              else "text-gray-400 dark:text-gray-600"
+            end
+          %>
+          <span class="<%= badge_class %> hidden md:inline"><%= enforcement %></span>
+          <span class="ml-auto text-gray-400 dark:text-gray-600"><%= number_with_delimiter(tenant[:monthly_executions]) %><span class="text-gray-400 dark:text-gray-600">r</span></span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>

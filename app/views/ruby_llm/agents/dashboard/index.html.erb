@@ -27,97 +27,6 @@
 <!-- Activity Chart -->
 <div id="activity-chart" style="width: 100%; height: 180px;"></div>
 
-<script>
-  (function() {
-    const range = '<%= @selected_range %>';
-    const chartUrl = '<%= ruby_llm_agents.chart_data_path %>?range=' + range;
-    const hourMs = 3600000;
-    const dayMs = 24 * hourMs;
-
-    function getTimeRangeMs(r) {
-      if (r === 'today') return dayMs;
-      if (r === '7d') return 7 * dayMs;
-      return 30 * dayMs;
-    }
-
-    function toDatetimePoints(data, r) {
-      const now = Date.now();
-      const step = r === 'today' ? hourMs : dayMs;
-      return data.map((val, i) => [now - (data.length - 1 - i) * step, val]);
-    }
-
-    function initChart() {
-      fetch(chartUrl)
-        .then(res => res.json())
-        .then(data => {
-          const now = Date.now();
-          const fmt = range === 'today' ? '%H:%M' : '%b %d';
-
-          Highcharts.chart('activity-chart', {
-            chart: { type: 'areaspline', backgroundColor: 'transparent', spacing: [5, 0, 0, 0] },
-            title: { text: null },
-            xAxis: {
-              type: 'datetime',
-              min: now - getTimeRangeMs(range),
-              max: now,
-              labels: { style: { color: chartColor('#6B7280', '#928374'), fontSize: '9px', fontFamily: 'ui-monospace, monospace' }, format: '{value:' + fmt + '}' },
-              lineColor: 'transparent',
-              tickLength: 0,
-              gridLineWidth: 0
-            },
-            yAxis: {
-              title: { text: null },
-              min: 0,
-              allowDecimals: false,
-              labels: { style: { color: chartColor('#6B7280', '#928374'), fontSize: '9px', fontFamily: 'ui-monospace, monospace' } },
-              gridLineColor: chartColorAlpha('rgba(107, 114, 128, 0.08)', 146, 131, 116, 0.08)
-            },
-            legend: { enabled: false },
-            credits: { enabled: false },
-            tooltip: {
-              backgroundColor: chartColorAlpha('rgba(0, 0, 0, 0.85)', 40, 40, 40, 0.95),
-              borderColor: 'transparent',
-              borderRadius: 3,
-              style: { color: chartColor('#E5E7EB', '#ebdbb2'), fontSize: '10px', fontFamily: 'ui-monospace, monospace' },
-              shared: true,
-              formatter: function() {
-                let html = '<span style="color:' + chartColor('#9CA3AF', '#bdae93') + '">' + Highcharts.dateFormat(fmt, this.x) + '</span>';
-                this.points.forEach(p => html += '<br/>' + p.series.name + ': <b>' + p.y + '</b>');
-                return html;
-              }
-            },
-            plotOptions: {
-              areaspline: {
-                stacking: 'normal',
-                lineWidth: 1.5,
-                marker: { enabled: false, states: { hover: { enabled: true, radius: 2 } } }
-              }
-            },
-            series: [
-              {
-                name: 'errors',
-                data: toDatetimePoints(data.series[1].data, range),
-                color: chartColor('#EF4444', '#fb4934'),
-                fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, chartColorAlpha('rgba(239, 68, 68, 0.08)', 251, 73, 52, 0.08)], [1, chartColorAlpha('rgba(239, 68, 68, 0)', 251, 73, 52, 0)]] }
-              },
-              {
-                name: 'success',
-                data: toDatetimePoints(data.series[0].data, range),
-                color: chartColor('#10B981', '#b8bb26'),
-                fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, chartColorAlpha('rgba(16, 185, 129, 0.08)', 184, 187, 38, 0.08)], [1, chartColorAlpha('rgba(16, 185, 129, 0)', 184, 187, 38, 0)]] }
-              }
-            ]
-          });
-        })
-        .catch(err => console.log('[RubyLLM::Agents] Chart error:', err));
-    }
-
-    document.readyState === 'loading'
-      ? document.addEventListener('DOMContentLoaded', initChart)
-      : initChart();
-  })();
-</script>
-
 <!-- Tenant Budget (when viewing specific tenant) -->
 <%= render partial: "ruby_llm/agents/dashboard/tenant_budget", locals: { tenant_budget: @tenant_budget } %>
 
@@ -249,3 +158,337 @@
     <div class="font-mono text-xs text-gray-400 dark:text-gray-600 py-2 px-2">&mdash;</div>
   <% end %>
 </div>
+
+<!-- ── cost & usage ────────────────────────── -->
+<div class="flex items-center gap-3 mt-8 mb-3">
+  <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">cost & usage</span>
+  <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+</div>
+
+<%# Cache savings stat strip %>
+<% if @cache_savings[:count] > 0 %>
+  <div class="font-mono text-xs text-gray-400 dark:text-gray-500 mb-4 px-2">
+    <span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@cache_savings[:count]) %></span> cache hits
+    <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+    <span class="text-green-500">$<%= number_with_precision(@cache_savings[:estimated_savings], precision: 2) %></span> saved
+    <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+    <span class="text-gray-800 dark:text-gray-200"><%= @cache_savings[:hit_rate] %>%</span> hit rate
+  </div>
+<% end %>
+
+<%# Time-series charts: Cost + Tokens %>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+  <div id="cost-over-time-chart" style="width: 100%; height: 140px;"></div>
+  <div id="tokens-over-time-chart" style="width: 100%; height: 140px;"></div>
+</div>
+
+<%# Breakdown charts: Cost by Agent + Cost by Model %>
+<%
+  # Prepare cost-by-agent data (top 8 by cost, all agent types merged)
+  cost_by_agent_data = [@agent_stats, @embedder_stats, @transcriber_stats, @speaker_stats, @image_generator_stats]
+    .flatten.compact
+    .select { |a| a[:total_cost].to_f > 0 }
+    .sort_by { |a| -a[:total_cost].to_f }
+    .first(8)
+
+  # Prepare cost-by-model data (top 6)
+  cost_by_model_data = @model_stats
+    .select { |m| m[:total_cost].to_f > 0 }
+    .first(6)
+%>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+  <div id="cost-by-agent-chart" style="width: 100%; height: 160px;"></div>
+  <div id="cost-by-model-chart" style="width: 100%; height: 160px;"></div>
+</div>
+
+<%# Top tenants overview %>
+<%= render partial: "ruby_llm/agents/dashboard/top_tenants", locals: { top_tenants: @top_tenants } %>
+
+<script>
+  (function() {
+    const range = '<%= @selected_range %>';
+    const chartUrl = '<%= ruby_llm_agents.chart_data_path %>?range=' + range;
+    const hourMs = 3600000;
+    const dayMs = 24 * hourMs;
+
+    function getTimeRangeMs(r) {
+      if (r === 'today') return dayMs;
+      if (r === '7d') return 7 * dayMs;
+      return 30 * dayMs;
+    }
+
+    function toDatetimePoints(data, r) {
+      const now = Date.now();
+      const step = r === 'today' ? hourMs : dayMs;
+      return data.map((val, i) => [now - (data.length - 1 - i) * step, val]);
+    }
+
+    // Shared chart options
+    function baseXAxis(now, fmt) {
+      return {
+        type: 'datetime',
+        min: now - getTimeRangeMs(range),
+        max: now,
+        labels: { style: { color: chartColor('#6B7280', '#928374'), fontSize: '9px', fontFamily: 'ui-monospace, monospace' }, format: '{value:' + fmt + '}' },
+        lineColor: 'transparent',
+        tickLength: 0,
+        gridLineWidth: 0
+      };
+    }
+
+    function baseTooltip(fmt, valueFormatter) {
+      return {
+        backgroundColor: chartColorAlpha('rgba(0, 0, 0, 0.85)', 40, 40, 40, 0.95),
+        borderColor: 'transparent',
+        borderRadius: 3,
+        style: { color: chartColor('#E5E7EB', '#ebdbb2'), fontSize: '10px', fontFamily: 'ui-monospace, monospace' },
+        shared: true,
+        formatter: function() {
+          var html = '<span style="color:' + chartColor('#9CA3AF', '#bdae93') + '">' + Highcharts.dateFormat(fmt, this.x) + '</span>';
+          this.points.forEach(function(p) { html += '<br/>' + p.series.name + ': <b>' + valueFormatter(p.y) + '</b>'; });
+          return html;
+        }
+      };
+    }
+
+    function humanTokens(n) {
+      if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+      if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+      return n.toString();
+    }
+
+    // Activity chart
+    function renderActivityChart(data) {
+      var now = Date.now();
+      var fmt = range === 'today' ? '%H:%M' : '%b %d';
+
+      Highcharts.chart('activity-chart', {
+        chart: { type: 'areaspline', backgroundColor: 'transparent', spacing: [5, 0, 0, 0] },
+        title: { text: null },
+        xAxis: baseXAxis(now, fmt),
+        yAxis: {
+          title: { text: null },
+          min: 0,
+          allowDecimals: false,
+          labels: { style: { color: chartColor('#6B7280', '#928374'), fontSize: '9px', fontFamily: 'ui-monospace, monospace' } },
+          gridLineColor: chartColorAlpha('rgba(107, 114, 128, 0.08)', 146, 131, 116, 0.08)
+        },
+        legend: { enabled: false },
+        credits: { enabled: false },
+        tooltip: baseTooltip(fmt, function(v) { return v; }),
+        plotOptions: {
+          areaspline: {
+            stacking: 'normal',
+            lineWidth: 1.5,
+            marker: { enabled: false, states: { hover: { enabled: true, radius: 2 } } }
+          }
+        },
+        series: [
+          {
+            name: 'errors',
+            data: toDatetimePoints(data.series[1].data, range),
+            color: chartColor('#EF4444', '#fb4934'),
+            fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, chartColorAlpha('rgba(239, 68, 68, 0.08)', 251, 73, 52, 0.08)], [1, chartColorAlpha('rgba(239, 68, 68, 0)', 251, 73, 52, 0)]] }
+          },
+          {
+            name: 'success',
+            data: toDatetimePoints(data.series[0].data, range),
+            color: chartColor('#10B981', '#b8bb26'),
+            fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, chartColorAlpha('rgba(16, 185, 129, 0.08)', 184, 187, 38, 0.08)], [1, chartColorAlpha('rgba(16, 185, 129, 0)', 184, 187, 38, 0)]] }
+          }
+        ]
+      });
+    }
+
+    // Cost over time chart
+    function renderCostChart(data) {
+      if (!data.series[2]) return;
+      var now = Date.now();
+      var fmt = range === 'today' ? '%H:%M' : '%b %d';
+
+      Highcharts.chart('cost-over-time-chart', {
+        chart: { type: 'areaspline', backgroundColor: 'transparent', spacing: [5, 0, 0, 0] },
+        title: { text: 'cost', align: 'left', style: { color: chartColor('#9CA3AF', '#928374'), fontSize: '9px', fontFamily: 'ui-monospace, monospace', fontWeight: 'normal', textTransform: 'uppercase', letterSpacing: '0.05em' } },
+        xAxis: baseXAxis(now, fmt),
+        yAxis: {
+          title: { text: null },
+          min: 0,
+          labels: {
+            style: { color: chartColor('#6B7280', '#928374'), fontSize: '9px', fontFamily: 'ui-monospace, monospace' },
+            formatter: function() { return '$' + this.value.toFixed(2); }
+          },
+          gridLineColor: chartColorAlpha('rgba(107, 114, 128, 0.08)', 146, 131, 116, 0.08)
+        },
+        legend: { enabled: false },
+        credits: { enabled: false },
+        tooltip: baseTooltip(fmt, function(v) { return '$' + v.toFixed(4); }),
+        plotOptions: {
+          areaspline: {
+            lineWidth: 1.5,
+            marker: { enabled: false, states: { hover: { enabled: true, radius: 2 } } }
+          }
+        },
+        series: [{
+          name: 'cost',
+          data: toDatetimePoints(data.series[2].data, range),
+          color: chartColor('#8B5CF6', '#d3869b'),
+          fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, chartColorAlpha('rgba(139, 92, 246, 0.12)', 211, 134, 155, 0.12)], [1, chartColorAlpha('rgba(139, 92, 246, 0)', 211, 134, 155, 0)]] }
+        }]
+      });
+    }
+
+    // Tokens over time chart
+    function renderTokensChart(data) {
+      if (!data.series[4]) return;
+      var now = Date.now();
+      var fmt = range === 'today' ? '%H:%M' : '%b %d';
+
+      Highcharts.chart('tokens-over-time-chart', {
+        chart: { type: 'areaspline', backgroundColor: 'transparent', spacing: [5, 0, 0, 0] },
+        title: { text: 'tokens', align: 'left', style: { color: chartColor('#9CA3AF', '#928374'), fontSize: '9px', fontFamily: 'ui-monospace, monospace', fontWeight: 'normal', textTransform: 'uppercase', letterSpacing: '0.05em' } },
+        xAxis: baseXAxis(now, fmt),
+        yAxis: {
+          title: { text: null },
+          min: 0,
+          labels: {
+            style: { color: chartColor('#6B7280', '#928374'), fontSize: '9px', fontFamily: 'ui-monospace, monospace' },
+            formatter: function() { return humanTokens(this.value); }
+          },
+          gridLineColor: chartColorAlpha('rgba(107, 114, 128, 0.08)', 146, 131, 116, 0.08)
+        },
+        legend: { enabled: false },
+        credits: { enabled: false },
+        tooltip: baseTooltip(fmt, function(v) { return humanTokens(v); }),
+        plotOptions: {
+          areaspline: {
+            lineWidth: 1.5,
+            marker: { enabled: false, states: { hover: { enabled: true, radius: 2 } } }
+          }
+        },
+        series: [{
+          name: 'tokens',
+          data: toDatetimePoints(data.series[4].data, range),
+          color: chartColor('#06B6D4', '#8ec07c'),
+          fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, chartColorAlpha('rgba(6, 182, 212, 0.12)', 142, 192, 124, 0.12)], [1, chartColorAlpha('rgba(6, 182, 212, 0)', 142, 192, 124, 0)]] }
+        }]
+      });
+    }
+
+    // Cost by Agent chart (horizontal bar, data embedded via ERB)
+    function renderCostByAgentChart() {
+      var agentData = <%= raw cost_by_agent_data.map { |a| { name: a[:agent_type].to_s.demodulize, y: a[:total_cost].to_f.round(4) } }.to_json %>;
+      if (agentData.length === 0) {
+        document.getElementById('cost-by-agent-chart').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:ui-monospace,monospace;font-size:11px;color:' + chartColor('#9CA3AF', '#928374') + '">&mdash;</div>';
+        return;
+      }
+      var categories = agentData.map(function(d) { return d.name; });
+      var values = agentData.map(function(d) { return d.y; });
+
+      Highcharts.chart('cost-by-agent-chart', {
+        chart: { type: 'bar', backgroundColor: 'transparent', spacing: [5, 10, 5, 0] },
+        title: { text: 'cost by agent', align: 'left', style: { color: chartColor('#9CA3AF', '#928374'), fontSize: '9px', fontFamily: 'ui-monospace, monospace', fontWeight: 'normal', textTransform: 'uppercase', letterSpacing: '0.05em' } },
+        xAxis: {
+          categories: categories,
+          labels: { style: { color: chartColor('#6B7280', '#928374'), fontSize: '9px', fontFamily: 'ui-monospace, monospace' } },
+          lineColor: 'transparent',
+          tickLength: 0
+        },
+        yAxis: {
+          title: { text: null },
+          min: 0,
+          labels: {
+            style: { color: chartColor('#6B7280', '#928374'), fontSize: '9px', fontFamily: 'ui-monospace, monospace' },
+            formatter: function() { return '$' + this.value.toFixed(2); }
+          },
+          gridLineColor: chartColorAlpha('rgba(107, 114, 128, 0.08)', 146, 131, 116, 0.08)
+        },
+        legend: { enabled: false },
+        credits: { enabled: false },
+        tooltip: {
+          backgroundColor: chartColorAlpha('rgba(0, 0, 0, 0.85)', 40, 40, 40, 0.95),
+          borderColor: 'transparent',
+          borderRadius: 3,
+          style: { color: chartColor('#E5E7EB', '#ebdbb2'), fontSize: '10px', fontFamily: 'ui-monospace, monospace' },
+          pointFormat: '<b>${point.y:.4f}</b>'
+        },
+        plotOptions: {
+          bar: {
+            borderWidth: 0,
+            borderRadius: 2,
+            color: chartColor('#8B5CF6', '#d3869b')
+          }
+        },
+        series: [{ name: 'cost', data: values }]
+      });
+    }
+
+    // Cost by Model chart (donut/pie, data embedded via ERB)
+    function renderCostByModelChart() {
+      var modelData = <%= raw cost_by_model_data.map { |m| { name: m[:model_id].to_s.split("/").last.truncate(28), y: m[:total_cost].to_f.round(4), pct: m[:cost_percentage] } }.to_json %>;
+      if (modelData.length === 0) {
+        document.getElementById('cost-by-model-chart').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:ui-monospace,monospace;font-size:11px;color:' + chartColor('#9CA3AF', '#928374') + '">&mdash;</div>';
+        return;
+      }
+      var colors = [
+        chartColor('#8B5CF6', '#d3869b'),
+        chartColor('#06B6D4', '#8ec07c'),
+        chartColor('#F59E0B', '#fabd2f'),
+        chartColor('#10B981', '#b8bb26'),
+        chartColor('#EF4444', '#fb4934'),
+        chartColor('#6366F1', '#83a598')
+      ];
+
+      Highcharts.chart('cost-by-model-chart', {
+        chart: { type: 'pie', backgroundColor: 'transparent', spacing: [5, 0, 5, 0] },
+        title: { text: 'cost by model', align: 'left', style: { color: chartColor('#9CA3AF', '#928374'), fontSize: '9px', fontFamily: 'ui-monospace, monospace', fontWeight: 'normal', textTransform: 'uppercase', letterSpacing: '0.05em' } },
+        legend: { enabled: false },
+        credits: { enabled: false },
+        tooltip: {
+          backgroundColor: chartColorAlpha('rgba(0, 0, 0, 0.85)', 40, 40, 40, 0.95),
+          borderColor: 'transparent',
+          borderRadius: 3,
+          style: { color: chartColor('#E5E7EB', '#ebdbb2'), fontSize: '10px', fontFamily: 'ui-monospace, monospace' },
+          pointFormat: '<b>${point.y:.4f}</b> ({point.pct}%)'
+        },
+        plotOptions: {
+          pie: {
+            innerSize: '50%',
+            borderWidth: 0,
+            colors: colors,
+            dataLabels: {
+              enabled: true,
+              format: '{point.name}',
+              style: { color: chartColor('#6B7280', '#928374'), fontSize: '9px', fontFamily: 'ui-monospace, monospace', fontWeight: 'normal', textOutline: 'none' },
+              distance: 10
+            }
+          }
+        },
+        series: [{ name: 'cost', data: modelData }]
+      });
+    }
+
+    function initCharts() {
+      if (typeof Highcharts === 'undefined') {
+        console.log('[RubyLLM::Agents] Highcharts not loaded — charts disabled');
+        return;
+      }
+      window.__initHighchartsDefaults && window.__initHighchartsDefaults();
+
+      fetch(chartUrl)
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          renderActivityChart(data);
+          renderCostChart(data);
+          renderTokensChart(data);
+        })
+        .catch(function(err) { console.log('[RubyLLM::Agents] Chart error:', err); });
+
+      renderCostByAgentChart();
+      renderCostByModelChart();
+    }
+
+    document.readyState === 'loading'
+      ? document.addEventListener('DOMContentLoaded', initCharts)
+      : initCharts();
+  })();
+</script>
