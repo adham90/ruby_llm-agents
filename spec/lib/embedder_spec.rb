@@ -3,23 +3,17 @@
 require "rails_helper"
 
 RSpec.describe RubyLLM::Agents::Embedder do
-  let(:config) { double("config") }
-
   before do
-    allow(RubyLLM::Agents).to receive(:configuration).and_return(config)
-    allow(config).to receive(:default_model).and_return("gpt-4o")
-    allow(config).to receive(:default_embedding_model).and_return("text-embedding-3-small")
-    allow(config).to receive(:default_embedding_dimensions).and_return(nil)
-    allow(config).to receive(:default_embedding_batch_size).and_return(100)
-    allow(config).to receive(:default_timeout).and_return(120)
-    allow(config).to receive(:default_temperature).and_return(0.7)
-    allow(config).to receive(:default_streaming).and_return(false)
-    allow(config).to receive(:budgets_enabled?).and_return(false)
-    allow(config).to receive(:track_embeddings).and_return(false)
-    allow(config).to receive(:track_executions).and_return(false)
-    allow(config).to receive(:track_image_generation).and_return(false)
-    allow(config).to receive(:track_audio).and_return(false)
-    allow(config).to receive(:track_moderation).and_return(false)
+    RubyLLM::Agents.reset_configuration!
+    RubyLLM::Agents.configure do |c|
+      c.default_embedding_model = "text-embedding-3-small"
+      c.default_embedding_dimensions = nil
+      c.default_embedding_batch_size = 100
+      c.track_embeddings = false
+      c.track_executions = false
+      c.track_image_generation = false
+      c.track_audio = false
+    end
   end
 
   # Mock RubyLLM.embed response

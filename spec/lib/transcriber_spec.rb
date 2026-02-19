@@ -3,33 +3,16 @@
 require "rails_helper"
 
 RSpec.describe RubyLLM::Agents::Transcriber do
-  let(:global_config) { double("global_config") }
-
   before do
-    allow(RubyLLM::Agents).to receive(:configuration).and_return(global_config)
-    allow(global_config).to receive(:default_model).and_return("gpt-4o")
-    allow(global_config).to receive(:default_transcription_model).and_return("whisper-1")
-    allow(global_config).to receive(:default_timeout).and_return(120)
-    allow(global_config).to receive(:default_temperature).and_return(0.7)
-    allow(global_config).to receive(:default_streaming).and_return(false)
-    allow(global_config).to receive(:budgets_enabled?).and_return(false)
-    allow(global_config).to receive(:track_audio).and_return(false)
-    allow(global_config).to receive(:track_embeddings).and_return(false)
-    allow(global_config).to receive(:track_executions).and_return(false)
-    allow(global_config).to receive(:track_image_generation).and_return(false)
-    allow(global_config).to receive(:track_moderation).and_return(false)
-    allow(global_config).to receive(:litellm_pricing_url).and_return(nil)
-    allow(global_config).to receive(:litellm_pricing_cache_ttl).and_return(nil)
-    allow(global_config).to receive(:transcription_model_pricing).and_return({})
-    allow(global_config).to receive(:pricing_cache_ttl).and_return(nil)
-    allow(global_config).to receive(:portkey_pricing_enabled).and_return(false)
-    allow(global_config).to receive(:portkey_pricing_url).and_return(nil)
-    allow(global_config).to receive(:openrouter_pricing_enabled).and_return(false)
-    allow(global_config).to receive(:openrouter_pricing_url).and_return(nil)
-    allow(global_config).to receive(:helicone_pricing_enabled).and_return(false)
-    allow(global_config).to receive(:helicone_pricing_url).and_return(nil)
-    allow(global_config).to receive(:llmpricing_enabled).and_return(false)
-    allow(global_config).to receive(:llmpricing_url).and_return(nil)
+    RubyLLM::Agents.reset_configuration!
+    RubyLLM::Agents.configure do |c|
+      c.default_transcription_model = "whisper-1"
+      c.track_audio = false
+      c.track_embeddings = false
+      c.track_executions = false
+      c.track_image_generation = false
+      c.transcription_model_pricing = {}
+    end
 
     # Stub all external pricing URLs to prevent real network calls
     stub_request(:get, RubyLLM::Agents::Pricing::DataStore::LITELLM_URL)
@@ -515,10 +498,7 @@ RSpec.describe RubyLLM::Agents::Transcriber do
 
     context "with configured pricing" do
       before do
-        allow(RubyLLM::Agents).to receive(:configuration).and_call_original
-        RubyLLM::Agents.reset_configuration!
         RubyLLM::Agents.configure do |c|
-          c.default_transcription_model = "whisper-1"
           c.transcription_model_pricing = {"whisper-1" => 0.006}
         end
       end
@@ -675,11 +655,7 @@ RSpec.describe RubyLLM::Agents::Transcriber do
 
     context "with tracking enabled" do
       before do
-        # Remove the config double so real configuration works
-        allow(RubyLLM::Agents).to receive(:configuration).and_call_original
-        RubyLLM::Agents.reset_configuration!
         RubyLLM::Agents.configure do |c|
-          c.default_transcription_model = "whisper-1"
           c.track_audio = true
           c.async_logging = false
           c.persist_prompts = true
