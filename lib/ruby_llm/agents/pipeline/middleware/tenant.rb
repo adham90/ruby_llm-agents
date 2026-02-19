@@ -59,10 +59,17 @@ module RubyLLM
             case tenant_value
             when nil
               # No explicit tenant - fall back to configured tenant_resolver
-              resolved_id = RubyLLM::Agents.configuration.current_tenant_id
-              context.tenant_id = resolved_id&.to_s
-              context.tenant_object = nil
-              context.tenant_config = nil
+              resolved_value = RubyLLM::Agents.configuration.current_tenant_id
+
+              if resolved_value.respond_to?(:llm_tenant_id)
+                context.tenant_id = resolved_value.llm_tenant_id&.to_s
+                context.tenant_object = resolved_value
+                context.tenant_config = extract_tenant_config(resolved_value)
+              else
+                context.tenant_id = resolved_value&.to_s
+                context.tenant_object = nil
+                context.tenant_config = nil
+              end
 
             when Hash
               # Hash format: { id: "tenant_id", object: tenant, ... }

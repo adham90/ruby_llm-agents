@@ -123,6 +123,105 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Tenant do
 
         expect(result.tenant_id).to eq("explicit")
       end
+
+      context "when resolver returns an object with llm_tenant_id" do
+        let(:tenant_object_class) do
+          Class.new do
+            def llm_tenant_id
+              "org_resolved"
+            end
+
+            def llm_config
+              {model_override: "gpt-4o"}
+            end
+          end
+        end
+
+        it "extracts tenant_id from the resolved object" do
+          resolved_obj = tenant_object_class.new
+          RubyLLM::Agents.configuration.multi_tenancy_enabled = true
+          RubyLLM::Agents.configuration.tenant_resolver = -> { resolved_obj }
+
+          context = build_context
+          allow(app).to receive(:call).with(context).and_return(context)
+
+          result = middleware.call(context)
+
+          expect(result.tenant_id).to eq("org_resolved")
+        end
+
+        it "sets tenant_object to the resolved object" do
+          resolved_obj = tenant_object_class.new
+          RubyLLM::Agents.configuration.multi_tenancy_enabled = true
+          RubyLLM::Agents.configuration.tenant_resolver = -> { resolved_obj }
+
+          context = build_context
+          allow(app).to receive(:call).with(context).and_return(context)
+
+          result = middleware.call(context)
+
+          expect(result.tenant_object).to eq(resolved_obj)
+        end
+
+        it "extracts tenant_config via llm_config" do
+          resolved_obj = tenant_object_class.new
+          RubyLLM::Agents.configuration.multi_tenancy_enabled = true
+          RubyLLM::Agents.configuration.tenant_resolver = -> { resolved_obj }
+
+          context = build_context
+          allow(app).to receive(:call).with(context).and_return(context)
+
+          result = middleware.call(context)
+
+          expect(result.tenant_config).to eq({model_override: "gpt-4o"})
+        end
+
+        it "handles resolved objects without llm_config" do
+          simple_obj = Class.new do
+            def llm_tenant_id
+              "simple_resolved"
+            end
+          end.new
+
+          RubyLLM::Agents.configuration.multi_tenancy_enabled = true
+          RubyLLM::Agents.configuration.tenant_resolver = -> { simple_obj }
+
+          context = build_context
+          allow(app).to receive(:call).with(context).and_return(context)
+
+          result = middleware.call(context)
+
+          expect(result.tenant_id).to eq("simple_resolved")
+          expect(result.tenant_object).to eq(simple_obj)
+          expect(result.tenant_config).to be_nil
+        end
+
+        it "applies API keys from the resolved tenant object" do
+          tenant_with_keys = Class.new do
+            def llm_tenant_id
+              "keys_resolved"
+            end
+
+            def llm_api_keys
+              {openai: "sk-resolved-key"}
+            end
+          end.new
+
+          saved_openai = RubyLLM.config.openai_api_key
+
+          RubyLLM::Agents.configuration.multi_tenancy_enabled = true
+          RubyLLM::Agents.configuration.tenant_resolver = -> { tenant_with_keys }
+
+          context = build_context
+          allow(app).to receive(:call).with(context).and_return(context)
+
+          middleware.call(context)
+
+          expect(RubyLLM.config.openai_api_key).to eq("sk-resolved-key")
+        ensure
+          RubyLLM.configure { |c| c.openai_api_key = saved_openai }
+        end
+      end
     end
 
     context "with hash tenant" do
