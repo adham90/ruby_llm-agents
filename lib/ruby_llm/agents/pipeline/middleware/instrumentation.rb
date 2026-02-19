@@ -202,6 +202,12 @@ module RubyLLM
               data[:tenant_id] = context.tenant_id
             end
 
+            # Include agent-defined metadata so it appears on the dashboard immediately
+            agent_meta = safe_agent_metadata(context)
+            if agent_meta.any?
+              data[:metadata] = agent_meta.transform_keys(&:to_s)
+            end
+
             data
           end
 
@@ -222,12 +228,18 @@ module RubyLLM
               attempts_count: context.attempts_made
             }
 
-            # Store niche cache key in metadata
-            merged_metadata = begin
+            # Merge metadata: agent metadata (base) < middleware metadata (overlay)
+            agent_meta = safe_agent_metadata(context)
+            merged_metadata = agent_meta.transform_keys(&:to_s)
+
+            context_meta = begin
               context.metadata.dup
             rescue
               {}
             end
+            context_meta.transform_keys!(&:to_s)
+            merged_metadata.merge!(context_meta)
+
             if context.cached? && context[:cache_key]
               merged_metadata["response_cache_key"] = context[:cache_key]
             end
@@ -321,11 +333,18 @@ module RubyLLM
           # @param status [String] "success" or "error"
           # @return [Hash] Execution data
           def build_execution_data(context, status)
-            merged_metadata = begin
+            # Merge metadata: agent metadata (base) < middleware metadata (overlay)
+            agent_meta = safe_agent_metadata(context)
+            merged_metadata = agent_meta.transform_keys(&:to_s)
+
+            context_meta = begin
               context.metadata.dup
             rescue
               {}
             end
+            context_meta.transform_keys!(&:to_s)
+            merged_metadata.merge!(context_meta)
+
             if context.cached? && context[:cache_key]
               merged_metadata["response_cache_key"] = context[:cache_key]
             end
@@ -424,6 +443,24 @@ module RubyLLM
             end
 
             params
+          end
+
+          # Safely retrieves custom metadata from the agent instance
+          #
+          # Returns an empty hash if the agent doesn't define metadata,
+          # the method raises, or the result isn't a Hash.
+          #
+          # @param context [Context] The execution context
+          # @return [Hash] Agent-defined metadata, or empty hash
+          def safe_agent_metadata(context)
+            return {} unless context.agent_instance
+            return {} unless context.agent_instance.respond_to?(:metadata)
+
+            result = context.agent_instance.metadata
+            result.is_a?(Hash) ? result : {}
+          rescue => e
+            debug("Failed to retrieve agent metadata: #{e.message}")
+            {}
           end
 
           # Sensitive parameter keys that should be redacted

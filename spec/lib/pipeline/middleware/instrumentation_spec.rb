@@ -796,6 +796,196 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     end
   end
 
+  describe "agent metadata merging" do
+    # Use real configuration instead of config doubles
+    before do
+      # Undo outer before's stub so real configuration is used
+      allow(RubyLLM::Agents).to receive(:configuration).and_call_original
+
+      RubyLLM::Agents.reset_configuration!
+      RubyLLM::Agents.configure do |c|
+        c.track_embeddings = true
+        c.track_executions = true
+        c.persist_prompts = false
+        c.persist_responses = false
+      end
+    end
+
+    after do
+      RubyLLM::Agents.reset_configuration!
+    end
+
+    # Real agent classes with real metadata methods
+    let(:agent_class_with_metadata) do
+      Class.new do
+        def self.name = "MetadataAgent"
+        def self.agent_type = :embedding
+        def self.model = "test-model"
+
+        attr_reader :options
+
+        def initialize
+          @options = {}
+        end
+
+        def metadata
+          {user_id: 42, experiment: "v2"}
+        end
+      end
+    end
+
+    let(:agent_class_without_metadata) do
+      Class.new do
+        def self.name = "NoMetadataAgent"
+        def self.agent_type = :embedding
+        def self.model = "test-model"
+
+        attr_reader :options
+
+        def initialize
+          @options = {}
+        end
+      end
+    end
+
+    let(:agent_class_with_broken_metadata) do
+      Class.new do
+        def self.name = "BrokenMetadataAgent"
+        def self.agent_type = :embedding
+        def self.model = "test-model"
+
+        attr_reader :options
+
+        def initialize
+          @options = {}
+        end
+
+        def metadata
+          raise "broken metadata"
+        end
+      end
+    end
+
+    # A real pass-through app that sets output on the context
+    let(:passthrough_app) do
+      proc { |ctx|
+        ctx.output = "result"
+        ctx
+      }
+    end
+
+    it "includes agent metadata in the running record" do
+      agent_instance = agent_class_with_metadata.new
+      mw = described_class.new(passthrough_app, agent_class_with_metadata)
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: agent_class_with_metadata,
+        agent_instance: agent_instance
+      )
+
+      mw.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.metadata).to include("user_id" => 42, "experiment" => "v2")
+    end
+
+    it "includes agent metadata in the completion record" do
+      agent_instance = agent_class_with_metadata.new
+      mw = described_class.new(passthrough_app, agent_class_with_metadata)
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: agent_class_with_metadata,
+        agent_instance: agent_instance
+      )
+
+      mw.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.status).to eq("success")
+      expect(execution.metadata).to include("user_id" => 42, "experiment" => "v2")
+    end
+
+    it "gives middleware metadata priority over agent metadata on key collision" do
+      colliding_agent_class = Class.new do
+        def self.name = "CollidingAgent"
+        def self.agent_type = :embedding
+        def self.model = "test-model"
+
+        attr_reader :options
+
+        def initialize
+          @options = {}
+        end
+
+        def metadata
+          {source: "agent_value", user_id: 42}
+        end
+      end
+
+      agent_instance = colliding_agent_class.new
+      mw = described_class.new(passthrough_app, colliding_agent_class)
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: colliding_agent_class,
+        agent_instance: agent_instance
+      )
+      # Middleware sets a key that collides with agent metadata
+      context[:source] = "middleware_value"
+
+      mw.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.metadata["source"]).to eq("middleware_value")
+      expect(execution.metadata["user_id"]).to eq(42)
+    end
+
+    it "works when agent does not define metadata" do
+      agent_instance = agent_class_without_metadata.new
+      mw = described_class.new(passthrough_app, agent_class_without_metadata)
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: agent_class_without_metadata,
+        agent_instance: agent_instance
+      )
+
+      mw.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.metadata).to be_blank
+    end
+
+    it "handles gracefully when agent metadata raises an error" do
+      agent_instance = agent_class_with_broken_metadata.new
+      mw = described_class.new(passthrough_app, agent_class_with_broken_metadata)
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: agent_class_with_broken_metadata,
+        agent_instance: agent_instance
+      )
+
+      # Should not raise - metadata error is swallowed
+      expect { mw.call(context) }.not_to raise_error
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.status).to eq("success")
+    end
+
+    it "handles gracefully when agent_instance is nil" do
+      mw = described_class.new(passthrough_app, agent_class_with_metadata)
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: agent_class_with_metadata,
+        agent_instance: nil
+      )
+
+      expect { mw.call(context) }.not_to raise_error
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.status).to eq("success")
+      expect(execution.metadata).to be_blank
+    end
+  end
+
   describe "parameter sanitization" do
     let(:mock_execution) do
       double("RubyLLM::Agents::Execution",

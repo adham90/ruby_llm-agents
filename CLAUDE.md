@@ -117,6 +117,7 @@ Located at `example/` — a full Rails app demonstrating all agent types. Uses `
 
 - **Do NOT mock** internal classes like `Pipeline::Executor`, middleware, `Result`, DSL methods, or ActiveRecord models. Instantiate real objects and call real methods.
 - **Do NOT stub** methods on the class under test. If you need to control inputs, pass them as arguments or set up proper test state.
+- **Do NOT replace `RubyLLM::Agents.configuration` with a test double.** Use `RubyLLM::Agents.reset_configuration!` + `RubyLLM::Agents.configure { |c| ... }` to set real config values. Config doubles become stale whenever a new config attribute is added, causing hard-to-diagnose CI failures.
 - **DO mock** the external LLM API boundary (`RubyLLM::Chat`, `RubyLLM::Embedding`, etc.) to avoid real network calls. Use the existing helpers in `spec/support/ruby_llm_mock.rb` and `spec/support/chat_mock_helpers.rb`.
 - When testing `process_response`, pass a real or simple struct response object directly — don't mock the entire call chain to get there.
 - When testing DSL behavior (routes, params, schema), define a real test class with the DSL and assert against its class-level state. No mocks needed.

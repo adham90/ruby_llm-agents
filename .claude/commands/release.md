@@ -196,7 +196,15 @@ EOF
 
 This ensures the GitHub release always has meaningful, structured release notes matching the changelog.
 
-## Step 12: Summary
+## Step 12: Cleanup
+
+Remove built `.gem` files to keep the working directory clean:
+
+```bash
+rm -f /Users/adhameldeeb/dev/ruby_llm-agents/*.gem /Users/adhameldeeb/dev/ruby_llm-agents/pkg/*.gem
+```
+
+## Step 13: Summary
 
 Display a success summary:
 
