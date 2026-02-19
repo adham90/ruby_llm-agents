@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.4] - 2026-02-19
+
+### Fixed
+
+- **Fix CI failures in embedder/transcriber specs** — Replaced config test doubles with real `RubyLLM::Agents.configuration` objects. The doubles were missing `current_tenant_id` (added in v3.5.3), causing 38 test failures across all Ruby versions
+
 ## [3.5.3] - 2026-02-19
 
 ### Fixed
@@ -700,6 +706,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[3.5.4]: https://github.com/adham90/ruby_llm-agents/compare/v3.5.3...v3.5.4
 [3.5.3]: https://github.com/adham90/ruby_llm-agents/compare/v3.5.2...v3.5.3
 [3.5.2]: https://github.com/adham90/ruby_llm-agents/compare/v3.5.1...v3.5.2
 [3.5.1]: https://github.com/adham90/ruby_llm-agents/compare/v3.5.0...v3.5.1
