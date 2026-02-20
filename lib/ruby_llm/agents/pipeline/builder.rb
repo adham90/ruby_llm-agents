@@ -144,6 +144,12 @@ module RubyLLM
 
               # Reliability (if agent has retries or fallbacks configured)
               builder.use(Middleware::Reliability) if reliability_enabled?(agent_class)
+
+              # Global custom middleware
+              apply_custom_middleware!(builder, global_middleware_entries)
+
+              # Per-agent custom middleware
+              apply_custom_middleware!(builder, agent_middleware_entries(agent_class))
             end
           end
 
@@ -158,6 +164,43 @@ module RubyLLM
           end
 
           private
+
+          # Returns global custom middleware entries from configuration
+          #
+          # @return [Array<Hash>] Middleware entries
+          def global_middleware_entries
+            RubyLLM::Agents.configuration.middleware_stack
+          rescue
+            []
+          end
+
+          # Returns per-agent custom middleware entries
+          #
+          # @param agent_class [Class] The agent class
+          # @return [Array<Hash>] Middleware entries
+          def agent_middleware_entries(agent_class)
+            return [] unless agent_class&.respond_to?(:agent_middleware)
+
+            agent_class.agent_middleware
+          rescue
+            []
+          end
+
+          # Applies custom middleware entries to a builder
+          #
+          # @param builder [Builder] The builder to modify
+          # @param entries [Array<Hash>] Middleware entries with :klass, :before, :after
+          def apply_custom_middleware!(builder, entries)
+            entries.each do |entry|
+              if entry[:before]
+                builder.insert_before(entry[:before], entry[:klass])
+              elsif entry[:after]
+                builder.insert_after(entry[:after], entry[:klass])
+              else
+                builder.use(entry[:klass])
+              end
+            end
+          end
 
           # Check if budgets are enabled globally
           #

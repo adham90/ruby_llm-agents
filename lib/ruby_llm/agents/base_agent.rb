@@ -175,6 +175,28 @@ module RubyLLM
           }.compact
         end
 
+        # @!group Custom Middleware DSL
+
+        # Registers a custom middleware for this agent class
+        #
+        # @param middleware_class [Class] Must inherit from Pipeline::Middleware::Base
+        # @param before [Class, nil] Insert before this built-in middleware
+        # @param after [Class, nil] Insert after this built-in middleware
+        # @return [void]
+        def use_middleware(middleware_class, before: nil, after: nil)
+          @agent_middleware ||= []
+          @agent_middleware << {klass: middleware_class, before: before, after: after}
+        end
+
+        # Returns custom middleware registered on this agent (including inherited)
+        #
+        # @return [Array<Hash>] Middleware entries with :klass, :before, :after keys
+        def agent_middleware
+          @agent_middleware || (superclass.respond_to?(:agent_middleware) ? superclass.agent_middleware : []) || []
+        end
+
+        # @!endgroup
+
         # @!group Parameter DSL
 
         # Defines a parameter for the agent

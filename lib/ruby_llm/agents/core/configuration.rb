@@ -372,7 +372,8 @@ module RubyLLM
       end
 
       # Attributes with custom setters (validation) — only readers here
-      attr_reader :default_embedding_dimensions, :default_embedding_batch_size
+      attr_reader :default_embedding_dimensions, :default_embedding_batch_size,
+        :middleware_stack
 
       # Attributes without validation (simple accessors)
       attr_accessor :default_model,
@@ -734,6 +735,9 @@ module RubyLLM
         @root_directory = "agents"  # Root directory under app/
         @root_namespace = nil  # No namespace (top-level classes)
 
+        # Custom middleware stack
+        @middleware_stack = []
+
         # Tool tracking defaults
         @tool_result_max_length = 10_000
 
@@ -775,6 +779,27 @@ module RubyLLM
       # @return [Array<String>] All patterns from all categories
       def all_retryable_patterns
         default_retryable_patterns.values.flatten.uniq
+      end
+
+      # Registers a custom middleware class for all agents
+      #
+      # @param middleware_class [Class] Must inherit from Pipeline::Middleware::Base
+      # @param before [Class, nil] Insert before this built-in middleware
+      # @param after [Class, nil] Insert after this built-in middleware
+      # @return [self] For method chaining
+      # @raise [ArgumentError] If middleware_class is invalid
+      def use_middleware(middleware_class, before: nil, after: nil)
+        validate_middleware_class!(middleware_class)
+        @middleware_stack << {klass: middleware_class, before: before, after: after}
+        self
+      end
+
+      # Removes all custom middleware
+      #
+      # @return [self] For method chaining
+      def clear_middleware!
+        @middleware_stack = []
+        self
       end
 
       # Returns whether multi-tenancy is enabled
@@ -1023,6 +1048,16 @@ module RubyLLM
           elevenlabs_api_key: elevenlabs_api_key,
           basic_auth_password: basic_auth_password
         )
+      end
+
+      # Validates that a middleware class inherits from Pipeline::Middleware::Base
+      #
+      # @param klass [Class] The class to validate
+      # @raise [ArgumentError] If the class is invalid
+      def validate_middleware_class!(klass)
+        unless klass.is_a?(Class) && klass <= RubyLLM::Agents::Pipeline::Middleware::Base
+          raise ArgumentError, "#{klass} must inherit from RubyLLM::Agents::Pipeline::Middleware::Base"
+        end
       end
 
       # Validates that a value is within a range
