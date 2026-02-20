@@ -131,9 +131,9 @@ module RubyLLM
         # @param default [Object, nil] Default value if not provided
         # @param type [Class, nil] Optional type for validation
         # @return [void]
-        def param(name, required: false, default: nil, type: nil)
+        def param(name, required: false, default: nil, type: nil, desc: nil, description: nil)
           @params ||= {}
-          @params[name] = {required: required, default: default, type: type}
+          @params[name] = {required: required, default: default, type: type, desc: desc || description}
           define_method(name) do
             @options[name] || @options[name.to_s] || self.class.params.dig(name, :default)
           end

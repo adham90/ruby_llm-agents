@@ -42,6 +42,34 @@ RSpec.describe RubyLLM::Agents::Base do
         end
         expect(klass.params[:limit]).to include(default: 10)
       end
+
+      it "stores desc: keyword" do
+        klass = Class.new(described_class) do
+          param :query, required: true, desc: "The search query"
+        end
+        expect(klass.params[:query][:desc]).to eq("The search query")
+      end
+
+      it "accepts description: as alias for desc:" do
+        klass = Class.new(described_class) do
+          param :query, description: "The search query"
+        end
+        expect(klass.params[:query][:desc]).to eq("The search query")
+      end
+
+      it "prefers desc: over description: when both given" do
+        klass = Class.new(described_class) do
+          param :query, desc: "short", description: "long"
+        end
+        expect(klass.params[:query][:desc]).to eq("short")
+      end
+
+      it "defaults desc to nil when not provided" do
+        klass = Class.new(described_class) do
+          param :query, required: true
+        end
+        expect(klass.params[:query][:desc]).to be_nil
+      end
     end
 
     describe ".cache" do
