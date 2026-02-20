@@ -28,6 +28,9 @@ require_relative "agents/dsl"
 # BaseAgent - new middleware-based agent architecture
 require_relative "agents/base_agent"
 
+# Agent-as-Tool adapter
+require_relative "agents/agent_tool"
+
 # Infrastructure - Budget & Utilities
 require_relative "agents/infrastructure/circuit_breaker"
 require_relative "agents/infrastructure/budget_tracker"
