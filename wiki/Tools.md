@@ -357,8 +357,108 @@ param :active, desc: "Only active items", type: :boolean
 param :count, desc: "Number of items", type: :integer
 ```
 
+## Agent as Tool
+
+Any agent can be used as a tool in another agent's `tools` list. The orchestrating agent's LLM sees the sub-agent as a callable tool and can invoke it with the sub-agent's declared params.
+
+### Basic Usage
+
+```ruby
+class ResearchAgent < ApplicationAgent
+  description "Researches a topic and returns key findings"
+  model "gpt-4o"
+
+  param :query, required: true, desc: "Topic to research"
+
+  user "Research the following topic thoroughly: {query}"
+end
+
+class WriterAgent < ApplicationAgent
+  description "Writes articles using research from specialist agents"
+  model "gpt-4o"
+
+  # Pass agent classes directly — they're automatically wrapped as tools
+  tools [ResearchAgent]
+
+  param :topic, required: true
+  system "You are a content writer. Use the research tool to gather information, then write an article."
+  user "Write an article about: {topic}"
+end
+
+result = WriterAgent.call(topic: "quantum computing")
+```
+
+When `WriterAgent` runs, the LLM sees `ResearchAgent` as a tool named `"research"` (derived from the class name by removing the `Agent` suffix and snake_casing). It can call the tool with a `query` parameter, which triggers a full `ResearchAgent.call(query: ...)` under the hood.
+
+### How It Works
+
+1. **Name derivation** — `ResearchAgent` becomes `"research"`, `CodeReviewAgent` becomes `"code_review"`
+2. **Param mapping** — The sub-agent's `param` declarations become the tool's parameter schema
+3. **Description** — The sub-agent's `description` becomes the tool's description shown to the LLM
+4. **Execution** — When the LLM calls the tool, `AgentTool` calls the sub-agent class via `.call()` and returns its content as a string
+
+### Mixing Agents and Regular Tools
+
+You can mix agent classes and regular `RubyLLM::Tool` subclasses in the same `tools` list:
+
+```ruby
+class OrchestratorAgent < ApplicationAgent
+  tools [ResearchAgent, CalculatorTool, SummarizerAgent]
+end
+```
+
+### Dynamic Tool Selection
+
+Use an instance method to select tools at runtime:
+
+```ruby
+class SmartOrchestratorAgent < ApplicationAgent
+  param :mode, default: "full"
+
+  def tools
+    base = [ResearchAgent]
+    mode == "full" ? base + [FactCheckerAgent, EditorAgent] : base
+  end
+end
+```
+
+### Execution Hierarchy
+
+When an agent is invoked as a tool, the execution is automatically linked to the parent:
+
+- `parent_execution_id` — points to the calling agent's execution
+- `root_execution_id` — points to the top-level execution in the chain
+
+This lets you trace the full call tree in the dashboard and in queries:
+
+```ruby
+# Find all child executions of a parent
+RubyLLM::Agents::Execution.where(parent_execution_id: parent.id)
+
+# Find the full execution tree from the root
+RubyLLM::Agents::Execution.where(root_execution_id: root.id)
+```
+
+See [Execution Tracking](Execution-Tracking) for more on hierarchy queries.
+
+### Depth Guard
+
+To prevent infinite recursion (e.g., Agent A calls Agent B which calls Agent A), there is a maximum nesting depth of **5 levels**. If exceeded, the tool returns an error message to the LLM instead of executing.
+
+### Tenant Propagation
+
+When the parent agent runs in a multi-tenant context, the tenant is automatically propagated to the sub-agent. The sub-agent inherits the parent's tenant for budget tracking and isolation.
+
+### Best Practices
+
+1. **Write clear descriptions** — The LLM uses the agent's `description` to decide when to call it
+2. **Use `desc:` on params** — Param descriptions help the LLM provide correct arguments
+3. **Keep sub-agents focused** — Each sub-agent should do one thing well
+4. **Watch the depth** — Deep nesting increases latency and token usage; prefer flat composition when possible
+
 ## Related Pages
 
 - [Agent DSL](Agent-DSL) - Full agent configuration reference
 - [Result Object](Result-Object) - Accessing tool call data
 - [Execution Tracking](Execution-Tracking) - Tool calls in execution logs
+- [Examples](Examples) - Agent composition examples

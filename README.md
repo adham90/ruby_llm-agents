@@ -182,6 +182,7 @@ result.save("logo.png")
 | **Image Operations** | Generation, analysis, editing, pipelines with cost tracking | [Images](https://github.com/adham90/ruby_llm-agents/wiki/Image-Generation) |
 | **Routing** | Message classification and routing with auto-generated prompts, inline classify | [Routing](https://github.com/adham90/ruby_llm-agents/wiki/Routing) |
 | **Audio** | Text-to-speech (OpenAI, ElevenLabs), speech-to-text, dynamic pricing, 28+ output formats, dashboard audio playback | [Audio](https://github.com/adham90/ruby_llm-agents/wiki/Audio) |
+| **Agent Composition** | Use agents as tools in other agents with automatic hierarchy tracking | [Tools](https://github.com/adham90/ruby_llm-agents/wiki/Tools) |
 | **Alerts** | Slack, webhook, and custom notifications | [Alerts](https://github.com/adham90/ruby_llm-agents/wiki/Alerts) |
 
 ## Quick Start

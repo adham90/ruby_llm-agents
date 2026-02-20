@@ -74,6 +74,36 @@ These fields are stored in the `metadata` JSON column with getter/setter methods
 | `span_id` | Span ID for tracing |
 | `response_cache_key` | Cache key used |
 
+## Execution Hierarchy (Agent-as-Tool)
+
+When agents invoke other agents as tools, the execution hierarchy is automatically tracked via `parent_execution_id` and `root_execution_id`.
+
+### Querying the Hierarchy
+
+```ruby
+# Find direct children of an execution
+parent = RubyLLM::Agents::Execution.find(42)
+children = RubyLLM::Agents::Execution.where(parent_execution_id: parent.id)
+
+# Find the entire execution tree from a root
+root = RubyLLM::Agents::Execution.find(1)
+tree = RubyLLM::Agents::Execution.where(root_execution_id: root.id)
+
+# Find root executions only (no parent)
+roots = RubyLLM::Agents::Execution.where(parent_execution_id: nil)
+
+# Total cost of an execution tree
+tree_cost = RubyLLM::Agents::Execution
+  .where(root_execution_id: root.id)
+  .sum(:total_cost)
+```
+
+### How It Works
+
+- **Root execution**: When an agent runs at the top level, `root_execution_id` is set to its own `id` and `parent_execution_id` is `nil`.
+- **Child execution**: When a sub-agent is invoked as a tool, `parent_execution_id` points to the calling agent's execution and `root_execution_id` points to the top-level execution.
+- **Depth**: There is no limit on the number of children, but nesting depth is capped at 5 levels to prevent runaway recursion.
+
 ## Viewing Executions
 
 ### Dashboard

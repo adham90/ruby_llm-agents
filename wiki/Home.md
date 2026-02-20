@@ -20,7 +20,7 @@ Welcome to the official documentation for **RubyLLM::Agents**, a production-read
 - **[Result Object](Result-Object)** - Access execution metadata
 
 ### Features
-- **[Tools](Tools)** - Enable agents to call external functions
+- **[Tools](Tools)** - Enable agents to call external functions and use other agents as tools
 - **[Streaming](Streaming)** - Real-time response streaming
 - **[Thinking](Thinking)** - Extended reasoning and chain-of-thought
 - **[Attachments](Attachments)** - Vision and multimodal support

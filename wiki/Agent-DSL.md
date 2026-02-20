@@ -306,11 +306,16 @@ See [Thinking](Thinking) for details on supported providers and best practices.
 
 ### tools
 
-Register tools for the agent to use:
+Register tools for the agent to use. You can pass `RubyLLM::Tool` subclasses, agent classes (which are automatically wrapped as tools), or a mix of both:
 
 ```ruby
 class MyAgent < ApplicationAgent
   tools [SearchTool, CalculatorTool, WeatherTool]
+end
+
+# Use other agents as tools
+class OrchestratorAgent < ApplicationAgent
+  tools [ResearchAgent, SummarizerAgent, CalculatorTool]
 end
 ```
 
@@ -327,7 +332,7 @@ class SmartAgent < ApplicationAgent
 end
 ```
 
-See [Tools](Tools) for details.
+See [Tools](Tools) for details on tool definition and agent-as-tool composition.
 
 ## Parameters
 
@@ -339,6 +344,9 @@ Define agent parameters:
 class MyAgent < ApplicationAgent
   # Required parameter - raises ArgumentError if missing
   param :query, required: true
+
+  # With description (shown to LLM when agent is used as a tool)
+  param :query, required: true, desc: "Search query text"
 
   # Optional parameter with default
   param :limit, default: 10
