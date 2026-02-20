@@ -222,12 +222,30 @@ Monitor fallback patterns using ActiveSupport::Notifications:
 
 ```ruby
 # config/initializers/ruby_llm_agents.rb
+
+# Option 1: Track via the dedicated fallback event
+ActiveSupport::Notifications.subscribe("ruby_llm_agents.reliability.fallback_used") do |*, payload|
+  StatsD.increment("llm.fallback", tags: [
+    "agent:#{payload[:agent_type]}",
+    "primary:#{payload[:primary_model]}",
+    "used:#{payload[:used_model]}"
+  ])
+end
+
+# Option 2: Alert when all models are exhausted
+ActiveSupport::Notifications.subscribe("ruby_llm_agents.reliability.all_models_exhausted") do |*, payload|
+  Slack::Notifier.new(ENV['SLACK_WEBHOOK']).ping(
+    ":rotating_light: All models exhausted for #{payload[:agent_type]}: #{payload[:models_tried].join(', ')}"
+  )
+end
+
+# Option 3: Track fallback ratio from execution events
 fallback_count = 0
 total_count = 0
 
 ActiveSupport::Notifications.subscribe("ruby_llm_agents.execution.complete") do |*, payload|
   total_count += 1
-  fallback_count += 1 if payload[:attempts] > 1
+  fallback_count += 1 if payload[:attempts_made].to_i > 1
 
   if total_count >= 100 && (fallback_count.to_f / total_count) > 0.1
     Slack::Notifier.new(ENV['SLACK_WEBHOOK']).ping(

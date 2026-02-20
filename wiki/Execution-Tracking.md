@@ -496,8 +496,25 @@ SearchAgent.with_params(user_id: "u123")
 
 See [Querying Executions](Querying-Executions) for full documentation.
 
+## ActiveSupport Notifications
+
+In addition to database tracking, every middleware layer emits `ActiveSupport::Notifications` events. This gives you real-time observability via standard Rails instrumentation — even when database tracking is disabled.
+
+Events cover four domains: **execution** (start/complete/error), **cache** (hit/miss/write), **budget** (check/exceeded/record), and **reliability** (fallback_used/all_models_exhausted).
+
+```ruby
+# Quick example: track execution metrics
+ActiveSupport::Notifications.subscribe("ruby_llm_agents.execution.complete") do |*, payload|
+  StatsD.timing("llm.duration", payload[:duration_ms])
+  StatsD.gauge("llm.cost", payload[:total_cost])
+end
+```
+
+See the **[ActiveSupport Notifications](ActiveSupport-Notifications)** page for the full event taxonomy, payload schemas, and production integration examples.
+
 ## Related Pages
 
+- [ActiveSupport Notifications](ActiveSupport-Notifications) - Real-time instrumentation events
 - [Querying Executions](Querying-Executions) - Agent-centric queries and replay
 - [Dashboard](Dashboard) - Visual monitoring
 - [Budget Controls](Budget-Controls) - Cost management

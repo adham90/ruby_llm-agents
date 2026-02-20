@@ -210,10 +210,15 @@ end
 
 ```ruby
 # Track key metrics
-ActiveSupport::Notifications.subscribe("ruby_llm_agents.execution") do |*, payload|
+ActiveSupport::Notifications.subscribe("ruby_llm_agents.execution.complete") do |*, payload|
   StatsD.timing("llm.duration", payload[:duration_ms])
-  StatsD.increment("llm.executions", tags: ["agent:#{payload[:agent]}"])
-  StatsD.gauge("llm.cost", payload[:cost])
+  StatsD.increment("llm.executions", tags: ["agent:#{payload[:agent_type]}", "model:#{payload[:model_used]}"])
+  StatsD.gauge("llm.cost", payload[:total_cost])
+  StatsD.histogram("llm.tokens", payload[:total_tokens])
+end
+
+ActiveSupport::Notifications.subscribe("ruby_llm_agents.execution.error") do |*, payload|
+  StatsD.increment("llm.errors", tags: ["agent:#{payload[:agent_type]}", "error:#{payload[:error_class]}"])
 end
 ```
 

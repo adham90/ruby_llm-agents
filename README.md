@@ -183,7 +183,9 @@ result.save("logo.png")
 | **Routing** | Message classification and routing with auto-generated prompts, inline classify | [Routing](https://github.com/adham90/ruby_llm-agents/wiki/Routing) |
 | **Audio** | Text-to-speech (OpenAI, ElevenLabs), speech-to-text, dynamic pricing, 28+ output formats, dashboard audio playback | [Audio](https://github.com/adham90/ruby_llm-agents/wiki/Audio) |
 | **Agent Composition** | Use agents as tools in other agents with automatic hierarchy tracking | [Tools](https://github.com/adham90/ruby_llm-agents/wiki/Tools) |
+| **Queryable Agents** | Query execution history from agent classes with stats, replay, and cost breakdown | [Querying](https://github.com/adham90/ruby_llm-agents/wiki/Querying-Executions) |
 | **Alerts** | Slack, webhook, and custom notifications | [Alerts](https://github.com/adham90/ruby_llm-agents/wiki/Alerts) |
+| **AS::Notifications** | 11 instrumentation events across execution, cache, budget, and reliability | [Events](https://github.com/adham90/ruby_llm-agents/wiki/ActiveSupport-Notifications) |
 
 ## Quick Start
 

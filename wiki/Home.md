@@ -26,6 +26,8 @@ Welcome to the official documentation for **RubyLLM::Agents**, a production-read
 - **[Attachments](Attachments)** - Vision and multimodal support
 - **[Caching](Caching)** - Response caching with TTL
 - **[Execution Tracking](Execution-Tracking)** - Automatic logging and analytics
+- **[Querying Executions](Querying-Executions)** - Query execution history from agent classes
+- **[ActiveSupport Notifications](ActiveSupport-Notifications)** - Real-time instrumentation events
 
 ### Specialized Capabilities
 - **[Routing](Routing)** - Message classification and routing
