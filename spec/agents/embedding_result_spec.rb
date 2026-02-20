@@ -248,5 +248,35 @@ RSpec.describe RubyLLM::Agents::EmbeddingResult do
       expect(hash[:completed_at]).to eq(completed)
       expect(hash[:tenant_id]).to eq("tenant-123")
     end
+
+    it "includes execution_id" do
+      result = described_class.new(vectors: [[0.1]], execution_id: 42)
+      expect(result.to_h[:execution_id]).to eq(42)
+    end
+  end
+
+  describe "#execution_id" do
+    it "stores execution_id when provided" do
+      result = described_class.new(execution_id: 42)
+      expect(result.execution_id).to eq(42)
+    end
+
+    it "defaults to nil" do
+      result = described_class.new
+      expect(result.execution_id).to be_nil
+    end
+  end
+
+  describe "#execution" do
+    it "returns nil when execution_id is nil" do
+      result = described_class.new
+      expect(result.execution).to be_nil
+    end
+
+    it "loads the execution record from the database" do
+      execution = create(:execution)
+      result = described_class.new(execution_id: execution.id)
+      expect(result.execution).to eq(execution)
+    end
   end
 end

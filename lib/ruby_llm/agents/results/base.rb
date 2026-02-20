@@ -102,6 +102,11 @@ module RubyLLM
       #   @return [Integer, nil] Number of tokens used for thinking
       attr_reader :thinking_text, :thinking_signature, :thinking_tokens
 
+      # @!group Execution Record
+      # @!attribute [r] execution_id
+      #   @return [Integer, nil] Database ID of the associated Execution record
+      attr_reader :execution_id
+
       # Creates a new Result instance
       #
       # @param content [Hash, String] The processed response content
@@ -151,6 +156,22 @@ module RubyLLM
         @thinking_text = options[:thinking_text]
         @thinking_signature = options[:thinking_signature]
         @thinking_tokens = options[:thinking_tokens]
+
+        # Execution record
+        @execution_id = options[:execution_id]
+      end
+
+      # Loads the associated Execution record from the database
+      #
+      # Useful for debugging in the Rails console to inspect the full
+      # execution record after an agent call.
+      #
+      # @return [RubyLLM::Agents::Execution, nil] The execution record, or nil
+      # @example
+      #   result = MyAgent.call(query: "test")
+      #   result.execution  # => #<RubyLLM::Agents::Execution id: 42, ...>
+      def execution
+        @execution ||= Execution.find_by(id: execution_id) if execution_id
       end
 
       # Returns total tokens (input + output)
@@ -240,7 +261,8 @@ module RubyLLM
           tool_calls_count: tool_calls_count,
           thinking_text: thinking_text,
           thinking_signature: thinking_signature,
-          thinking_tokens: thinking_tokens
+          thinking_tokens: thinking_tokens,
+          execution_id: execution_id
         }
       end
 

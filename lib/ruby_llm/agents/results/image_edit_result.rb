@@ -20,6 +20,7 @@ module RubyLLM
       attr_reader :images, :source_image, :mask, :prompt, :model_id, :size,
         :started_at, :completed_at, :tenant_id, :editor_class,
         :error_class, :error_message
+      attr_accessor :execution_id
 
       # Initialize a new result
       #
@@ -50,6 +51,14 @@ module RubyLLM
         @editor_class = editor_class
         @error_class = error_class
         @error_message = error_message
+        @execution_id = nil
+      end
+
+      # Loads the associated Execution record from the database
+      #
+      # @return [RubyLLM::Agents::Execution, nil] The execution record, or nil
+      def execution
+        @execution ||= RubyLLM::Agents::Execution.find_by(id: execution_id) if execution_id
       end
 
       # Status helpers
@@ -175,7 +184,8 @@ module RubyLLM
           tenant_id: tenant_id,
           editor_class: editor_class,
           error_class: error_class,
-          error_message: error_message
+          error_message: error_message,
+          execution_id: execution_id
         }
       end
 

@@ -73,6 +73,10 @@ module RubyLLM
       #   @return [String, nil] Exception message if failed
       attr_reader :error_message
 
+      # @!attribute [r] execution_id
+      #   @return [Integer, nil] Database ID of the associated Execution record
+      attr_reader :execution_id
+
       # Creates a new EmbeddingResult instance
       #
       # @param attributes [Hash] Result attributes
@@ -101,6 +105,14 @@ module RubyLLM
         @tenant_id = attributes[:tenant_id]
         @error_class = attributes[:error_class]
         @error_message = attributes[:error_message]
+        @execution_id = attributes[:execution_id]
+      end
+
+      # Loads the associated Execution record from the database
+      #
+      # @return [RubyLLM::Agents::Execution, nil] The execution record, or nil
+      def execution
+        @execution ||= RubyLLM::Agents::Execution.find_by(id: execution_id) if execution_id
       end
 
       # Returns whether this result contains a single embedding
@@ -215,7 +227,8 @@ module RubyLLM
           completed_at: completed_at,
           tenant_id: tenant_id,
           error_class: error_class,
-          error_message: error_message
+          error_message: error_message,
+          execution_id: execution_id
         }
       end
 

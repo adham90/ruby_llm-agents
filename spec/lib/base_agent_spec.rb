@@ -675,4 +675,104 @@ RSpec.describe RubyLLM::Agents::BaseAgent do
       expect(RubyLLM).to have_received(:chat).with(model: "gpt-4.1-mini")
     end
   end
+
+  describe ".config_summary" do
+    let(:agent_class) do
+      Class.new(described_class) do
+        def self.name
+          "SummaryTestAgent"
+        end
+
+        model "claude-3-sonnet"
+        description "A test agent for config summary"
+        temperature 0.5
+        timeout 30
+        streaming true
+
+        system "You are a helpful assistant."
+        user "Process: {query}"
+
+        cache_for 1.hour
+
+        reliability do
+          retries max: 2
+          fallback_models "claude-3-haiku"
+        end
+      end
+    end
+
+    it "returns a hash with agent configuration" do
+      summary = agent_class.config_summary
+      expect(summary).to be_a(Hash)
+    end
+
+    it "includes basic agent info" do
+      summary = agent_class.config_summary
+      expect(summary[:agent_type]).to eq(:conversation)
+      expect(summary[:model]).to eq("claude-3-sonnet")
+      expect(summary[:temperature]).to eq(0.5)
+      expect(summary[:timeout]).to eq(30)
+      expect(summary[:streaming]).to be true
+    end
+
+    it "includes prompt configuration" do
+      summary = agent_class.config_summary
+      expect(summary[:system_prompt]).to eq("You are a helpful assistant.")
+      expect(summary[:user_prompt]).to eq("Process: {query}")
+      expect(summary[:description]).to eq("A test agent for config summary")
+    end
+
+    it "includes parameters" do
+      summary = agent_class.config_summary
+      expect(summary[:parameters]).to have_key(:query)
+      expect(summary[:parameters][:query][:required]).to be true
+    end
+
+    it "includes caching configuration" do
+      summary = agent_class.config_summary
+      expect(summary[:caching]).to be_a(Hash)
+      expect(summary[:caching][:enabled]).to be true
+      expect(summary[:caching][:ttl]).to eq(1.hour)
+    end
+
+    it "includes reliability configuration when configured" do
+      summary = agent_class.config_summary
+      expect(summary[:reliability]).to be_a(Hash)
+      expect(summary[:reliability][:retries][:max]).to eq(2)
+      expect(summary[:reliability][:fallback_models]).to eq(["claude-3-haiku"])
+    end
+
+    it "excludes nil values via compact" do
+      simple_class = Class.new(described_class) do
+        def self.name
+          "SimpleAgent"
+        end
+
+        model "gpt-4o"
+      end
+
+      summary = simple_class.config_summary
+      expect(summary).not_to have_key(:reliability)
+      expect(summary).not_to have_key(:thinking)
+    end
+
+    it "includes tools as names" do
+      tool_class = Class.new do
+        def self.name
+          "TestTool"
+        end
+      end
+
+      agent_with_tools = Class.new(described_class) do
+        def self.name
+          "ToolAgent"
+        end
+
+        tools [tool_class]
+      end
+
+      summary = agent_with_tools.config_summary
+      expect(summary[:tools]).to eq(["TestTool"])
+    end
+  end
 end

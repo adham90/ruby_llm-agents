@@ -860,4 +860,93 @@ RSpec.describe RubyLLM::Agents::Configuration do
       expect(attrs).to include(:ollama_api_base)
     end
   end
+
+  describe "#to_h" do
+    it "returns a hash grouped by category" do
+      hash = config.to_h
+      expect(hash).to be_a(Hash)
+      expect(hash.keys).to include(
+        :model, :reliability, :governance, :multi_tenancy,
+        :dashboard, :logging, :anomaly, :tools, :embedding,
+        :transcription, :speech, :image, :pricing, :directory, :api_keys
+      )
+    end
+
+    it "includes model configuration" do
+      hash = config.to_h
+      expect(hash[:model][:default_model]).to eq("gemini-2.0-flash")
+      expect(hash[:model][:default_temperature]).to eq(0.0)
+      expect(hash[:model][:default_timeout]).to eq(60)
+      expect(hash[:model][:default_streaming]).to be false
+      expect(hash[:model][:default_thinking]).to be_nil
+    end
+
+    it "includes reliability configuration" do
+      hash = config.to_h
+      expect(hash[:reliability][:default_retries]).to be_a(Hash)
+      expect(hash[:reliability][:default_fallback_models]).to eq([])
+    end
+
+    it "includes governance configuration" do
+      hash = config.to_h
+      expect(hash[:governance][:persist_prompts]).to be true
+      expect(hash[:governance][:persist_responses]).to be true
+    end
+
+    it "includes embedding configuration" do
+      hash = config.to_h
+      expect(hash[:embedding][:default_embedding_model]).to eq("text-embedding-3-small")
+      expect(hash[:embedding][:track_embeddings]).to be true
+    end
+
+    it "hides sensitive API keys by default" do
+      hash = config.to_h
+      expect(hash[:api_keys]).to eq("(hidden, pass include_sensitive: true)")
+    end
+
+    it "includes API keys when include_sensitive is true" do
+      hash = config.to_h(include_sensitive: true)
+      expect(hash[:api_keys]).to be_a(Hash)
+      expect(hash[:api_keys]).to have_key(:openai_api_key)
+      expect(hash[:api_keys]).to have_key(:anthropic_api_key)
+      expect(hash[:api_keys]).to have_key(:basic_auth_password)
+    end
+
+    it "represents callable objects by class name" do
+      hash = config.to_h
+      expect(hash[:multi_tenancy][:tenant_resolver]).to eq("Proc")
+      expect(hash[:dashboard][:dashboard_auth]).to eq("Proc")
+    end
+
+    it "handles nil callable objects" do
+      hash = config.to_h
+      expect(hash[:governance][:on_alert]).to be_nil
+      expect(hash[:multi_tenancy][:tenant_config_resolver]).to be_nil
+    end
+  end
+
+  describe "SENSITIVE_ATTRIBUTES" do
+    it "includes API key attributes from FORWARDED_RUBY_LLM_ATTRIBUTES" do
+      sensitive = described_class::SENSITIVE_ATTRIBUTES
+      expect(sensitive).to include(:openai_api_key)
+      expect(sensitive).to include(:anthropic_api_key)
+      expect(sensitive).to include(:bedrock_secret_key)
+      expect(sensitive).to include(:bedrock_session_token)
+    end
+
+    it "includes basic_auth_password" do
+      expect(described_class::SENSITIVE_ATTRIBUTES).to include(:basic_auth_password)
+    end
+
+    it "includes elevenlabs_api_key" do
+      expect(described_class::SENSITIVE_ATTRIBUTES).to include(:elevenlabs_api_key)
+    end
+
+    it "does not include non-sensitive attributes" do
+      sensitive = described_class::SENSITIVE_ATTRIBUTES
+      expect(sensitive).not_to include(:openai_api_base)
+      expect(sensitive).not_to include(:bedrock_region)
+      expect(sensitive).not_to include(:request_timeout)
+    end
+  end
 end

@@ -151,6 +151,14 @@ module RubyLLM
 
       # @!endgroup
 
+      # @!group Execution Record
+
+      # @!attribute [r] execution_id
+      #   @return [Integer, nil] Database ID of the associated Execution record
+      attr_reader :execution_id
+
+      # @!endgroup
+
       # Creates a new SpeechResult instance
       #
       # @param attributes [Hash] Result attributes
@@ -218,6 +226,16 @@ module RubyLLM
         # Error
         @error_class = attributes[:error_class]
         @error_message = attributes[:error_message]
+
+        # Execution record
+        @execution_id = attributes[:execution_id]
+      end
+
+      # Loads the associated Execution record from the database
+      #
+      # @return [RubyLLM::Agents::Execution, nil] The execution record, or nil
+      def execution
+        @execution ||= RubyLLM::Agents::Execution.find_by(id: execution_id) if execution_id
       end
 
       # Returns whether the speech generation succeeded
@@ -303,7 +321,8 @@ module RubyLLM
           status: status,
           tenant_id: tenant_id,
           error_class: error_class,
-          error_message: error_message
+          error_message: error_message,
+          execution_id: execution_id
           # Note: audio binary data excluded for serialization safety
         }
       end

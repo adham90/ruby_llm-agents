@@ -245,7 +245,8 @@ module RubyLLM
           started_at: context.started_at || execution_started_at,
           completed_at: execution_completed_at,
           duration_ms: duration_ms,
-          tenant_id: context.tenant_id
+          tenant_id: context.tenant_id,
+          execution_id: context.execution_id
         )
       end
 
@@ -377,7 +378,7 @@ module RubyLLM
       # @param duration_ms [Integer] Execution duration in ms
       # @param tenant_id [String, nil] Tenant identifier
       # @return [EmbeddingResult] The final result
-      def build_result(vectors:, input_tokens:, total_cost:, count:, started_at:, completed_at:, duration_ms:, tenant_id:)
+      def build_result(vectors:, input_tokens:, total_cost:, count:, started_at:, completed_at:, duration_ms:, tenant_id:, execution_id: nil)
         EmbeddingResult.new(
           vectors: vectors,
           model_id: resolved_model,
@@ -388,7 +389,8 @@ module RubyLLM
           count: count,
           started_at: started_at,
           completed_at: completed_at,
-          tenant_id: tenant_id
+          tenant_id: tenant_id,
+          execution_id: execution_id
         )
       end
 

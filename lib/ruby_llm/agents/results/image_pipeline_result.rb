@@ -23,6 +23,7 @@ module RubyLLM
     class ImagePipelineResult
       attr_reader :step_results, :started_at, :completed_at, :tenant_id,
         :pipeline_class, :context, :error_class, :error_message
+      attr_accessor :execution_id
 
       # Initialize a new pipeline result
       #
@@ -44,6 +45,14 @@ module RubyLLM
         @context = context
         @error_class = error_class
         @error_message = error_message
+        @execution_id = nil
+      end
+
+      # Loads the associated Execution record from the database
+      #
+      # @return [RubyLLM::Agents::Execution, nil] The execution record, or nil
+      def execution
+        @execution ||= RubyLLM::Agents::Execution.find_by(id: execution_id) if execution_id
       end
 
       # Status helpers
@@ -315,7 +324,8 @@ module RubyLLM
           tenant_id: tenant_id,
           pipeline_class: pipeline_class,
           error_class: error_class,
-          error_message: error_message
+          error_message: error_message,
+          execution_id: execution_id
         }
       end
 

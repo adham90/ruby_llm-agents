@@ -22,7 +22,7 @@ module RubyLLM
     class ImageGenerationResult
       attr_reader :images, :prompt, :model_id, :size, :quality, :style,
         :started_at, :completed_at, :tenant_id, :generator_class,
-        :error_class, :error_message
+        :error_class, :error_message, :execution_id
 
       # Initialize a new result
       #
@@ -40,7 +40,7 @@ module RubyLLM
       # @param error_message [String, nil] Error message if failed
       def initialize(images:, prompt:, model_id:, size:, quality:, style:,
         started_at:, completed_at:, tenant_id:, generator_class:,
-        error_class: nil, error_message: nil)
+        error_class: nil, error_message: nil, execution_id: nil)
         @images = images
         @prompt = prompt
         @model_id = model_id
@@ -53,6 +53,14 @@ module RubyLLM
         @generator_class = generator_class
         @error_class = error_class
         @error_message = error_message
+        @execution_id = execution_id
+      end
+
+      # Loads the associated Execution record from the database
+      #
+      # @return [RubyLLM::Agents::Execution, nil] The execution record, or nil
+      def execution
+        @execution ||= RubyLLM::Agents::Execution.find_by(id: execution_id) if execution_id
       end
 
       # Status helpers
@@ -257,7 +265,8 @@ module RubyLLM
           tenant_id: tenant_id,
           generator_class: generator_class,
           error_class: error_class,
-          error_message: error_message
+          error_message: error_message,
+          execution_id: execution_id
         }
       end
 

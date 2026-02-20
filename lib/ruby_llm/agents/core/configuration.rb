@@ -865,6 +865,136 @@ module RubyLLM
         end
       end
 
+      # Attribute names that contain sensitive values (API keys, passwords)
+      SENSITIVE_ATTRIBUTES = (
+        FORWARDED_RUBY_LLM_ATTRIBUTES.select { |a| a.to_s.match?(/api_key|secret_key|session_token/) } +
+        %i[basic_auth_password elevenlabs_api_key]
+      ).freeze
+
+      # Returns all configuration as a hash grouped by category
+      #
+      # Useful for debugging in the Rails console. Sensitive values
+      # (API keys, passwords) are hidden by default.
+      #
+      # @param include_sensitive [Boolean] Whether to include API keys and passwords
+      # @return [Hash] Configuration grouped by category
+      # @example
+      #   RubyLLM::Agents.configuration.to_h
+      #   RubyLLM::Agents.configuration.to_h(include_sensitive: true)
+      def to_h(include_sensitive: false)
+        {
+          model: {
+            default_model: default_model,
+            default_temperature: default_temperature,
+            default_timeout: default_timeout,
+            default_streaming: default_streaming,
+            default_thinking: default_thinking
+          },
+          reliability: {
+            default_retries: default_retries,
+            default_fallback_models: default_fallback_models,
+            default_total_timeout: default_total_timeout,
+            default_retryable_patterns: default_retryable_patterns
+          },
+          governance: {
+            budgets: budgets,
+            on_alert: on_alert&.class&.name,
+            persist_prompts: persist_prompts,
+            persist_responses: persist_responses,
+            persist_messages_summary: persist_messages_summary,
+            messages_summary_max_length: messages_summary_max_length
+          },
+          multi_tenancy: {
+            enabled: multi_tenancy_enabled,
+            tenant_resolver: tenant_resolver&.class&.name,
+            tenant_config_resolver: tenant_config_resolver&.class&.name
+          },
+          dashboard: {
+            per_page: per_page,
+            recent_executions_limit: recent_executions_limit,
+            dashboard_parent_controller: dashboard_parent_controller,
+            basic_auth_username: basic_auth_username,
+            dashboard_auth: dashboard_auth&.class&.name
+          },
+          logging: {
+            async_logging: async_logging,
+            retention_period: retention_period,
+            job_retry_attempts: job_retry_attempts,
+            track_executions: track_executions,
+            track_cache_hits: track_cache_hits,
+            track_audio: track_audio
+          },
+          anomaly: {
+            anomaly_cost_threshold: anomaly_cost_threshold,
+            anomaly_duration_threshold: anomaly_duration_threshold
+          },
+          tools: {
+            default_tools: default_tools,
+            tool_result_max_length: tool_result_max_length
+          },
+          embedding: {
+            default_embedding_model: default_embedding_model,
+            default_embedding_dimensions: default_embedding_dimensions,
+            default_embedding_batch_size: default_embedding_batch_size,
+            track_embeddings: track_embeddings
+          },
+          transcription: {
+            default_transcription_model: default_transcription_model,
+            track_transcriptions: track_transcriptions,
+            transcription_model_pricing: transcription_model_pricing,
+            default_transcription_cost: default_transcription_cost
+          },
+          speech: {
+            default_tts_provider: default_tts_provider,
+            default_tts_model: default_tts_model,
+            default_tts_voice: default_tts_voice,
+            track_speech: track_speech,
+            tts_model_pricing: tts_model_pricing,
+            default_tts_cost: default_tts_cost,
+            persist_audio_data: persist_audio_data,
+            elevenlabs_api_base: elevenlabs_api_base,
+            elevenlabs_base_cost_per_1k: elevenlabs_base_cost_per_1k,
+            elevenlabs_models_cache_ttl: elevenlabs_models_cache_ttl
+          },
+          image: {
+            default_image_model: default_image_model,
+            default_image_size: default_image_size,
+            default_image_quality: default_image_quality,
+            default_image_style: default_image_style,
+            max_image_prompt_length: max_image_prompt_length,
+            track_image_generation: track_image_generation,
+            image_model_aliases: image_model_aliases,
+            default_image_cost: default_image_cost,
+            image_model_pricing: image_model_pricing,
+            default_variator_model: default_variator_model,
+            default_editor_model: default_editor_model,
+            default_transformer_model: default_transformer_model,
+            default_upscaler_model: default_upscaler_model,
+            default_variation_strength: default_variation_strength,
+            default_transform_strength: default_transform_strength,
+            default_analyzer_model: default_analyzer_model,
+            default_analysis_type: default_analysis_type,
+            default_analyzer_max_tags: default_analyzer_max_tags,
+            default_background_remover_model: default_background_remover_model,
+            default_background_output_format: default_background_output_format
+          },
+          pricing: {
+            pricing_cache_ttl: pricing_cache_ttl,
+            portkey_pricing_enabled: portkey_pricing_enabled,
+            openrouter_pricing_enabled: openrouter_pricing_enabled,
+            helicone_pricing_enabled: helicone_pricing_enabled,
+            llmpricing_enabled: llmpricing_enabled,
+            litellm_pricing_url: litellm_pricing_url,
+            litellm_pricing_cache_ttl: litellm_pricing_cache_ttl
+          },
+          directory: {
+            root_directory: root_directory,
+            root_namespace: root_namespace
+          },
+          api_keys: include_sensitive ? sensitive_api_keys : "(hidden, pass include_sensitive: true)"
+        }
+      end
+
       # Returns all autoload paths for LLM components
       #
       # @return [Array<String>] List of paths relative to Rails.root
@@ -882,6 +1012,18 @@ module RubyLLM
       end
 
       private
+
+      # Returns all sensitive API key values as a hash
+      #
+      # @return [Hash] API key attributes and their values
+      def sensitive_api_keys
+        FORWARDED_RUBY_LLM_ATTRIBUTES.each_with_object({}) do |attr, h|
+          h[attr] = public_send(attr)
+        end.merge(
+          elevenlabs_api_key: elevenlabs_api_key,
+          basic_auth_password: basic_auth_password
+        )
+      end
 
       # Validates that a value is within a range
       #

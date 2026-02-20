@@ -341,7 +341,8 @@ module RubyLLM
           started_at: context.started_at || execution_started_at,
           completed_at: execution_completed_at,
           duration_ms: duration_ms,
-          tenant_id: context.tenant_id
+          tenant_id: context.tenant_id,
+          execution_id: context.execution_id
         )
       end
 
@@ -597,7 +598,7 @@ module RubyLLM
       end
 
       # Builds the final result object
-      def build_result(raw_result, started_at:, completed_at:, duration_ms:, tenant_id:)
+      def build_result(raw_result, started_at:, completed_at:, duration_ms:, tenant_id:, execution_id: nil)
         # Apply post-processing
         text = raw_result[:text] ? postprocess_text(raw_result[:text]) : nil
 
@@ -615,7 +616,8 @@ module RubyLLM
           total_cost: calculate_cost(raw_result),
           audio_minutes: raw_result[:duration] ? raw_result[:duration] / 60.0 : nil,
           status: :success,
-          tenant_id: tenant_id
+          tenant_id: tenant_id,
+          execution_id: execution_id
         )
       end
 

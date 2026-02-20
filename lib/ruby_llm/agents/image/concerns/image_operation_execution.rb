@@ -85,7 +85,8 @@ module RubyLLM
           if config.async_logging && defined?(ExecutionLoggerJob)
             ExecutionLoggerJob.perform_later(execution_data)
           else
-            RubyLLM::Agents::Execution.create!(execution_data)
+            execution = RubyLLM::Agents::Execution.create!(execution_data)
+            result.execution_id = execution.id if result.respond_to?(:execution_id=)
           end
         rescue => e
           Rails.logger.error("[RubyLLM::Agents] Failed to record #{execution_type} execution: #{e.message}") if defined?(Rails)

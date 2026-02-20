@@ -425,5 +425,50 @@ RSpec.describe RubyLLM::Agents::Result do
       expect(hash[:thinking_signature]).to eq("sig_123")
       expect(hash[:thinking_tokens]).to eq(200)
     end
+
+    it "includes execution_id in to_h" do
+      result = described_class.new(content: "test", execution_id: 42)
+      expect(result.to_h[:execution_id]).to eq(42)
+    end
+  end
+
+  describe "#execution_id" do
+    it "stores execution_id when provided" do
+      result = described_class.new(content: "test", execution_id: 42)
+      expect(result.execution_id).to eq(42)
+    end
+
+    it "defaults to nil when not provided" do
+      result = described_class.new(content: "test")
+      expect(result.execution_id).to be_nil
+    end
+  end
+
+  describe "#execution" do
+    it "returns nil when execution_id is nil" do
+      result = described_class.new(content: "test")
+      expect(result.execution).to be_nil
+    end
+
+    it "loads the execution record from the database" do
+      execution = create(:execution)
+      result = described_class.new(content: "test", execution_id: execution.id)
+      expect(result.execution).to eq(execution)
+    end
+
+    it "returns nil when execution_id does not match a record" do
+      result = described_class.new(content: "test", execution_id: 999_999)
+      expect(result.execution).to be_nil
+    end
+
+    it "memoizes the execution record" do
+      execution = create(:execution)
+      result = described_class.new(content: "test", execution_id: execution.id)
+
+      result.execution
+      result.execution
+      # find_by is called only once due to memoization
+      expect(result.instance_variable_get(:@execution)).to eq(execution)
+    end
   end
 end

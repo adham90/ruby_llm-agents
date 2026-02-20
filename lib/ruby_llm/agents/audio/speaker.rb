@@ -352,7 +352,8 @@ module RubyLLM
           started_at: context.started_at || execution_started_at,
           completed_at: execution_completed_at,
           duration_ms: duration_ms,
-          tenant_id: context.tenant_id
+          tenant_id: context.tenant_id,
+          execution_id: context.execution_id
         )
       end
 
@@ -527,7 +528,7 @@ module RubyLLM
       end
 
       # Builds the final result object
-      def build_result(raw_result, original_text, started_at:, completed_at:, duration_ms:, tenant_id:)
+      def build_result(raw_result, original_text, started_at:, completed_at:, duration_ms:, tenant_id:, execution_id: nil)
         SpeechResult.new(
           audio: raw_result[:audio],
           duration: raw_result[:duration],
@@ -544,7 +545,8 @@ module RubyLLM
           completed_at: completed_at,
           total_cost: calculate_cost(raw_result),
           status: :success,
-          tenant_id: tenant_id
+          tenant_id: tenant_id,
+          execution_id: execution_id
         )
       end
 

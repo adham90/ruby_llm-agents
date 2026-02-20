@@ -119,6 +119,34 @@ module RubyLLM
           :conversation
         end
 
+        # Returns a summary of the agent's DSL configuration
+        #
+        # Useful for debugging in the Rails console to see how an agent
+        # is configured without instantiating it.
+        #
+        # @return [Hash] Agent configuration summary
+        # @example
+        #   MyAgent.config_summary
+        def config_summary
+          {
+            agent_type: agent_type,
+            model: model,
+            temperature: temperature,
+            timeout: timeout,
+            streaming: streaming,
+            system_prompt: system_config,
+            user_prompt: user_config,
+            assistant_prompt: assistant_config,
+            description: description,
+            schema: schema&.respond_to?(:name) ? schema.name : schema&.class&.name,
+            tools: tools.map { |t| t.respond_to?(:name) ? t.name : t.to_s },
+            parameters: params.transform_values { |v| v.slice(:type, :required, :default, :desc) },
+            thinking: thinking_config,
+            caching: caching_config,
+            reliability: reliability_configured? ? reliability_config : nil
+          }.compact
+        end
+
         # @!group Parameter DSL
 
         # Defines a parameter for the agent
@@ -821,7 +849,8 @@ module RubyLLM
           time_to_first_token_ms: context.time_to_first_token_ms,
           finish_reason: context.finish_reason,
           streaming: streaming_enabled?,
-          attempts_count: context.attempts_made || 1
+          attempts_count: context.attempts_made || 1,
+          execution_id: context.execution_id
         )
       end
 

@@ -248,7 +248,8 @@ module RubyLLM
           images: images,
           started_at: context.started_at || execution_started_at,
           completed_at: execution_completed_at,
-          tenant_id: context.tenant_id
+          tenant_id: context.tenant_id,
+          execution_id: context.execution_id
         )
 
         # Update context with cost info
@@ -348,7 +349,7 @@ module RubyLLM
       end
 
       # Build successful result
-      def build_result(images:, started_at:, completed_at:, tenant_id:)
+      def build_result(images:, started_at:, completed_at:, tenant_id:, execution_id: nil)
         ImageGenerationResult.new(
           images: images,
           prompt: prompt,
@@ -359,7 +360,8 @@ module RubyLLM
           started_at: started_at,
           completed_at: completed_at,
           tenant_id: tenant_id,
-          generator_class: self.class.name
+          generator_class: self.class.name,
+          execution_id: execution_id
         )
       end
 
