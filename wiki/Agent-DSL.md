@@ -334,6 +334,31 @@ end
 
 See [Tools](Tools) for details on tool definition and agent-as-tool composition.
 
+### aliases
+
+Declare previous class names so execution tracking, analytics, and budget checks automatically include records from old names:
+
+```ruby
+class SupportBot < ApplicationAgent
+  aliases "CustomerSupportAgent", "HelpDeskAgent"
+
+  model "gpt-4o"
+  system "You are a support bot."
+end
+```
+
+When you rename an agent class, old execution records still have the previous name in `agent_type`. With `aliases`, scopes like `by_agent`, `stats_for`, and per-agent budget limits automatically resolve all names:
+
+```ruby
+# Finds executions for SupportBot, CustomerSupportAgent, AND HelpDeskAgent
+RubyLLM::Agents::Execution.by_agent("SupportBot")
+
+# Stats include all aliased names
+RubyLLM::Agents::Execution.stats_for("SupportBot", period: :this_month)
+```
+
+For a permanent rename (rewriting old records), see [Renaming Agents](Migration#renaming-agents).
+
 ## Parameters
 
 ### param
@@ -736,6 +761,92 @@ class ContentGeneratorAgent < ApplicationAgent
 end
 ```
 
+## Querying Execution History
+
+Every agent class has built-in methods for querying its execution history. These are provided by `DSL::Queryable` (automatically available on all agents).
+
+### `.executions`
+
+Returns an `ActiveRecord::Relation` scoped to this agent's executions:
+
+```ruby
+SearchAgent.executions                    # All executions for SearchAgent
+SearchAgent.executions.successful         # Chain with any scope
+SearchAgent.executions.today.expensive(1.00)
+SearchAgent.executions.by_tenant("acme")
+```
+
+### `.last_run`
+
+Returns the most recent execution:
+
+```ruby
+SearchAgent.last_run
+# => #<RubyLLM::Agents::Execution id: 42, status: "success", ...>
+```
+
+### `.failures(since:)`
+
+Returns recent failed executions:
+
+```ruby
+SearchAgent.failures                    # Last 24 hours (default)
+SearchAgent.failures(since: 7.days)    # Last 7 days
+```
+
+### `.total_spent(since:)`
+
+Returns total cost for this agent:
+
+```ruby
+SearchAgent.total_spent                 # All time
+SearchAgent.total_spent(since: 1.month) # Last month
+```
+
+### `.stats(since:)`
+
+Returns a summary hash with counts, rates, costs, and token usage:
+
+```ruby
+SearchAgent.stats
+# => {
+#   total: 150,
+#   successful: 145,
+#   failed: 5,
+#   success_rate: 96.7,
+#   avg_duration_ms: 850,
+#   avg_cost: 0.012,
+#   total_cost: 1.80,
+#   total_tokens: 75000,
+#   avg_tokens: 500
+# }
+
+SearchAgent.stats(since: 24.hours)   # Filter by time window
+```
+
+### `.cost_by_model(since:)`
+
+Returns cost breakdown grouped by model:
+
+```ruby
+SearchAgent.cost_by_model
+# => {
+#   "gpt-4o" => { count: 100, total_cost: 5.00, avg_cost: 0.05 },
+#   "gpt-4o-mini" => { count: 50, total_cost: 0.25, avg_cost: 0.005 }
+# }
+```
+
+### `.with_params(**params)`
+
+Filters executions by parameter values stored in execution details:
+
+```ruby
+SearchAgent.with_params(user_id: "u123")
+SearchAgent.with_params(user_id: "u123", category: "billing")
+```
+
+See [Querying Executions](Querying-Executions) for full documentation including replay.
+
 ## Related Pages
 
 - [Parameters](Parameters) - Parameter definition details
@@ -745,3 +856,4 @@ end
 - [Thinking](Thinking) - Extended reasoning support
 - [Reliability](Reliability) - Fault tolerance configuration
 - [Caching](Caching) - Cache configuration
+- [Querying Executions](Querying-Executions) - Query history and replay

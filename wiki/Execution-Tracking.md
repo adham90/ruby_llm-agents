@@ -264,9 +264,12 @@ RubyLLM::Agents::Execution.trend_analysis(
 ### Agent/Model
 
 ```ruby
-.by_agent("AgentName")
+.by_agent("AgentName")       # Also includes aliased names (see aliases DSL)
+.by_agent(SupportBot)         # Pass the class directly
 .by_model("gpt-4o")
 ```
+
+> **Tip:** If an agent has `aliases "OldName"` declared, `by_agent("AgentName")` automatically includes executions from all aliased names. See [Agent DSL - aliases](Agent-DSL#aliases).
 
 ### Performance
 
@@ -419,8 +422,83 @@ end
 File.write("executions.json", data.to_json)
 ```
 
+## Replay
+
+Re-execute a previous run with the same (or overridden) inputs. Useful for A/B testing models, debugging, and reproducing issues.
+
+### Basic Replay
+
+```ruby
+run = RubyLLM::Agents::Execution.find(42)
+new_result = run.replay
+```
+
+### Replay with Overrides
+
+```ruby
+# Different model
+run.replay(model: "gpt-4o-mini")
+
+# Different temperature
+run.replay(temperature: 0.2)
+
+# Override parameters
+run.replay(query: "updated search term", limit: 5)
+```
+
+### Replay Checks
+
+```ruby
+run.replayable?     # Can this execution be replayed?
+run.replay?         # Is this execution itself a replay?
+run.replay_source   # The original execution (if this is a replay)
+run.replays         # All executions replayed from this one
+```
+
+### Querying Replays
+
+```ruby
+# Find all replays of a given execution
+RubyLLM::Agents::Execution.replays_of(42)
+
+# Compare cost between original and replays
+original = RubyLLM::Agents::Execution.find(42)
+original.replays.each do |replay|
+  puts "Model: #{replay.model_id}, Cost: $#{replay.total_cost}"
+end
+```
+
+### How Replay Works
+
+1. Loads the original agent class from `agent_type`
+2. Reconstructs parameters from the execution detail record
+3. Merges any overrides (model, temperature, param values)
+4. Executes through the full pipeline
+5. Links the new execution via `replay_source_id` in metadata
+
+### Errors
+
+- `RubyLLM::Agents::ReplayError` - raised if the agent class is missing, the detail record is absent, or `agent_type` is blank
+
+## Agent-Centric Queries
+
+Instead of querying `Execution` directly, you can query from any agent class:
+
+```ruby
+SearchAgent.executions.successful.today
+SearchAgent.last_run
+SearchAgent.stats
+SearchAgent.total_spent(since: 1.month)
+SearchAgent.failures(since: 7.days)
+SearchAgent.cost_by_model
+SearchAgent.with_params(user_id: "u123")
+```
+
+See [Querying Executions](Querying-Executions) for full documentation.
+
 ## Related Pages
 
+- [Querying Executions](Querying-Executions) - Agent-centric queries and replay
 - [Dashboard](Dashboard) - Visual monitoring
 - [Budget Controls](Budget-Controls) - Cost management
 - [Configuration](Configuration) - Logging settings

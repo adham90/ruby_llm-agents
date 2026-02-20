@@ -54,7 +54,7 @@ Agent execution flows through a middleware stack assembled by `Pipeline::Builder
 
 Two layers — both can be mixed:
 
-**Declarative (recommended):** `model`, `temperature`, `system`, `user`/`prompt` (with `{placeholder}` auto-registering params), `assistant` (prefill), `returns` (structured output), `cache for:`, `on_failure { retries/fallback/circuit_breaker }`, `tools`, `streaming`, `before`/`after` callbacks.
+**Declarative (recommended):** `model`, `temperature`, `system`, `user`/`prompt` (with `{placeholder}` auto-registering params), `assistant` (prefill), `returns` (structured output), `cache for:`, `on_failure { retries/fallback/circuit_breaker }`, `tools`, `streaming`, `before`/`after` callbacks, `aliases` (previous class names for rename tracking).
 
 **Method overrides:** `system_prompt`, `user_prompt`, `process_response(response)`, `messages`, `schema`, `metadata`.
 

@@ -425,6 +425,63 @@ rails generate ruby_llm_agents:image_pipeline full --steps generate,upscale,tran
 - `app/agents/images/application_image_pipeline.rb` (if not exists)
 - `app/agents/images/[name]_pipeline.rb`
 
+## Rename Agent Generator
+
+Create a reversible migration to rename an agent in execution records:
+
+```bash
+rails generate ruby_llm_agents:rename_agent CustomerSupportAgent SupportBot
+rails db:migrate
+```
+
+This generates a migration that updates the `agent_type` column in `ruby_llm_agents_executions`:
+
+```ruby
+class RenameCustomerSupportAgentToSupportBot < ActiveRecord::Migration[7.0]
+  def up
+    execute <<~SQL.squish
+      UPDATE ruby_llm_agents_executions
+      SET agent_type = 'SupportBot'
+      WHERE agent_type = 'CustomerSupportAgent'
+    SQL
+  end
+
+  def down
+    execute <<~SQL.squish
+      UPDATE ruby_llm_agents_executions
+      SET agent_type = 'CustomerSupportAgent'
+      WHERE agent_type = 'SupportBot'
+    SQL
+  end
+end
+```
+
+**When to use this vs. aliases:** Use the generator for a permanent, one-time rename. Use `aliases` on the agent class if you want to keep old records with their original names but still query them together. See [Agent DSL - aliases](Agent-DSL#aliases).
+
+**Alternative: Rake task**
+
+For a quick rename without a migration file:
+
+```bash
+# Dry run first
+rake ruby_llm_agents:rename_agent FROM=CustomerSupportAgent TO=SupportBot DRY_RUN=1
+
+# Apply
+rake ruby_llm_agents:rename_agent FROM=CustomerSupportAgent TO=SupportBot
+```
+
+**Alternative: Programmatic**
+
+```ruby
+# In a console or script
+RubyLLM::Agents.rename_agent("CustomerSupportAgent", to: "SupportBot")
+# => { executions_updated: 1432, tenants_updated: 3 }
+
+# Dry run
+RubyLLM::Agents.rename_agent("CustomerSupportAgent", to: "SupportBot", dry_run: true)
+# => { executions_affected: 1432, tenants_affected: 3 }
+```
+
 ## Upgrade Generator
 
 Add new migrations when upgrading RubyLLM::Agents:

@@ -40,6 +40,23 @@ Document agent purpose (displayed in dashboard).
 description "Extracts search intent from user queries"
 ```
 
+#### `.aliases(*names)`
+
+Declare previous class names for execution tracking continuity.
+
+```ruby
+aliases "OldAgentName", "AncientAgentName"
+```
+
+#### `.all_agent_names`
+
+Returns all known names (current + aliases).
+
+```ruby
+SupportBot.all_agent_names
+# => ["SupportBot", "CustomerSupportAgent", "HelpDeskAgent"]
+```
+
 #### `.streaming(boolean)`
 
 Enable/disable streaming.
@@ -670,11 +687,152 @@ See [Configuration](Configuration) for the full list of options including all 22
 
 ---
 
+## RubyLLM::Agents.rename_agent
+
+Rename an agent in the database, updating execution records and tenant budget keys.
+
+```ruby
+# Rename permanently
+RubyLLM::Agents.rename_agent("OldAgent", to: "NewAgent")
+# => { executions_updated: 1432, tenants_updated: 3 }
+
+# Dry run (no changes)
+RubyLLM::Agents.rename_agent("OldAgent", to: "NewAgent", dry_run: true)
+# => { executions_affected: 1432, tenants_affected: 3 }
+```
+
+Parameters:
+- `old_name` (String) — The previous agent class name
+- `to:` (String) — The new agent class name
+- `dry_run:` (Boolean, default: false) — If true, returns counts without modifying data
+
+---
+
+## RubyLLM::Agents::DSL::Queryable
+
+Module extended into all agent classes via `BaseAgent`. Provides class methods for querying execution history.
+
+### `.executions`
+
+Returns an `ActiveRecord::Relation` scoped to this agent's executions.
+
+```ruby
+SearchAgent.executions
+SearchAgent.executions.successful.today
+```
+
+### `.last_run`
+
+Returns the most recent execution.
+
+```ruby
+SearchAgent.last_run
+# => #<RubyLLM::Agents::Execution ...>
+```
+
+### `.failures(since: 24.hours)`
+
+Returns recent failed executions within the time window.
+
+```ruby
+SearchAgent.failures
+SearchAgent.failures(since: 7.days)
+```
+
+### `.total_spent(since: nil)`
+
+Returns total cost for this agent, optionally within a time window.
+
+```ruby
+SearchAgent.total_spent                 # => 12.50
+SearchAgent.total_spent(since: 1.month) # => 3.25
+```
+
+### `.stats(since: nil)`
+
+Returns a summary hash.
+
+```ruby
+SearchAgent.stats
+# => { total:, successful:, failed:, success_rate:, avg_duration_ms:,
+#      avg_cost:, total_cost:, total_tokens:, avg_tokens: }
+```
+
+### `.cost_by_model(since: nil)`
+
+Returns cost breakdown grouped by model.
+
+```ruby
+SearchAgent.cost_by_model
+# => { "gpt-4o" => { count: 100, total_cost: 5.00, avg_cost: 0.05 } }
+```
+
+### `.with_params(**params)`
+
+Filters executions by parameter values in execution details.
+
+```ruby
+SearchAgent.with_params(user_id: "u123", category: "billing")
+```
+
+---
+
+## RubyLLM::Agents::Execution::Replayable
+
+Concern included in `Execution`. Adds replay capabilities.
+
+### `#replay(model: nil, temperature: nil, **overrides)`
+
+Re-executes the agent with original parameters. Accepts model/temperature overrides and parameter overrides.
+
+```ruby
+execution.replay
+execution.replay(model: "gpt-4o-mini")
+execution.replay(query: "new search term")
+```
+
+**Raises:** `RubyLLM::Agents::ReplayError` if the agent class is missing, detail record is absent, or `agent_type` is blank.
+
+### `#replayable?`
+
+Returns `true` if the execution has a valid agent class and detail record.
+
+```ruby
+execution.replayable?  # => true
+```
+
+### `#replay?`
+
+Returns `true` if this execution is a replay of another.
+
+```ruby
+execution.replay?  # => false
+```
+
+### `#replay_source`
+
+Returns the original execution this was replayed from, or `nil`.
+
+```ruby
+execution.replay_source  # => #<Execution ...> or nil
+```
+
+### `#replays`
+
+Returns all executions that are replays of this one.
+
+```ruby
+execution.replays  # => ActiveRecord::Relation
+```
+
+---
+
 ## Exceptions
 
 ```ruby
 RubyLLM::Agents::BudgetExceededError  # Budget limit exceeded
 RubyLLM::Agents::CircuitOpenError     # Circuit breaker is open
+RubyLLM::Agents::ReplayError          # Replay validation failed
 ```
 
 ## Related Pages
@@ -682,3 +840,4 @@ RubyLLM::Agents::CircuitOpenError     # Circuit breaker is open
 - [Agent DSL](Agent-DSL) - DSL reference
 - [Configuration](Configuration) - Configuration guide
 - [Result Object](Result-Object) - Result details
+- [Querying Executions](Querying-Executions) - Agent-centric queries and replay

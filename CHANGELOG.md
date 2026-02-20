@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Agent rename support** — Three complementary approaches for handling agent class renames:
+  - **Aliases DSL** — `aliases "OldName", "AnotherOldName"` on agent classes makes `by_agent` scopes, analytics, and budget checks automatically include records from all previous names
+  - **Programmatic helper** — `RubyLLM::Agents.rename_agent("Old", to: "New")` updates execution records and tenant budget keys in-place, with `dry_run: true` support
+  - **Migration generator** — `rails generate ruby_llm_agents:rename_agent OldName NewName` creates a reversible migration
+  - **Rake task** — `rake ruby_llm_agents:rename_agent FROM=Old TO=New [DRY_RUN=1]` as a CLI alternative
+
 ## [3.5.5] - 2026-02-19
 
 ### Changed

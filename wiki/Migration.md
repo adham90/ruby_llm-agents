@@ -6,6 +6,60 @@ For full upgrade instructions, see [UPGRADE.md](../UPGRADE.md).
 
 ---
 
+## Renaming Agents
+
+When you rename an agent class, old execution records still reference the previous name. There are three approaches:
+
+### Option 1: Aliases DSL (no data migration)
+
+Declare previous names on the agent class. Queries and analytics automatically include all names:
+
+```ruby
+class SupportBot < ApplicationAgent
+  aliases "CustomerSupportAgent", "HelpDeskAgent"
+end
+```
+
+**Pros:** No data migration needed, reversible, preserves history.
+**Cons:** Aliases must stay in the code permanently.
+
+### Option 2: Migration generator (permanent rename)
+
+Generate a reversible migration to rewrite execution records:
+
+```bash
+rails generate ruby_llm_agents:rename_agent CustomerSupportAgent SupportBot
+rails db:migrate
+```
+
+**Pros:** Clean data, no runtime overhead.
+**Cons:** Irreversible without the down migration.
+
+### Option 3: Programmatic helper (quick rename)
+
+For ad-hoc renames in console or scripts:
+
+```ruby
+# Dry run first
+RubyLLM::Agents.rename_agent("CustomerSupportAgent", to: "SupportBot", dry_run: true)
+# => { executions_affected: 1432, tenants_affected: 3 }
+
+# Apply
+RubyLLM::Agents.rename_agent("CustomerSupportAgent", to: "SupportBot")
+# => { executions_updated: 1432, tenants_updated: 3 }
+```
+
+Or via Rake:
+
+```bash
+rake ruby_llm_agents:rename_agent FROM=CustomerSupportAgent TO=SupportBot DRY_RUN=1
+rake ruby_llm_agents:rename_agent FROM=CustomerSupportAgent TO=SupportBot
+```
+
+This updates both execution records and per-agent budget keys in tenant configuration.
+
+---
+
 ## Upgrading to v3.0.0
 
 ### From v2.2.0

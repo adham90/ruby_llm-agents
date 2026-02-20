@@ -115,9 +115,12 @@ Execution.completed          # Not running
 ### Agent/Model Filtering
 
 ```ruby
-Execution.by_agent("SearchAgent")
+Execution.by_agent("SearchAgent")   # Also includes aliased names
+Execution.by_agent(SearchAgent)      # Pass the class directly
 Execution.by_model("gpt-4o")
 ```
+
+> **Note:** `by_agent` is alias-aware. If `SearchAgent` declares `aliases "OldSearchAgent"`, the scope automatically includes executions from both names. See [Agent DSL - aliases](Agent-DSL#aliases).
 
 ### Performance Filtering
 
@@ -434,8 +437,82 @@ puts "Cache hit: #{e.cache_hit}"
 puts "Tool calls: #{e.tool_calls_count}"
 ```
 
+## Agent-Centric Queries
+
+Instead of querying `Execution` directly, you can query from the agent class itself. Every agent class includes `DSL::Queryable`, which provides scoped queries and convenience methods.
+
+### Scoped Queries via `.executions`
+
+```ruby
+# Returns ActiveRecord::Relation scoped to this agent
+SearchAgent.executions
+SearchAgent.executions.successful.today
+SearchAgent.executions.expensive(0.50)
+SearchAgent.executions.by_tenant("acme").this_week
+```
+
+### Convenience Methods
+
+```ruby
+# Most recent execution
+SearchAgent.last_run
+
+# Recent failures (default: last 24 hours)
+SearchAgent.failures
+SearchAgent.failures(since: 7.days)
+
+# Total cost
+SearchAgent.total_spent
+SearchAgent.total_spent(since: 1.month)
+
+# Stats summary
+SearchAgent.stats
+# => { total: 150, successful: 145, failed: 5, success_rate: 96.7,
+#      avg_duration_ms: 850, total_cost: 1.80, total_tokens: 75000, ... }
+
+SearchAgent.stats(since: 24.hours)
+
+# Cost breakdown by model
+SearchAgent.cost_by_model
+# => { "gpt-4o" => { count: 100, total_cost: 5.00, avg_cost: 0.05 }, ... }
+
+# Filter by parameter values
+SearchAgent.with_params(user_id: "u123")
+SearchAgent.with_params(user_id: "u123", category: "billing")
+```
+
+### Replay Executions
+
+Re-execute a previous run with the same or overridden inputs:
+
+```ruby
+run = SearchAgent.last_run
+
+# Replay with same settings
+new_run = run.replay
+
+# Replay with different model
+new_run = run.replay(model: "gpt-4o-mini")
+
+# Replay with parameter overrides
+new_run = run.replay(query: "updated search term")
+
+# Check if an execution can be replayed
+run.replayable?  # => true
+
+# Check if this execution is itself a replay
+run.replay?          # => false
+run.replay_source    # => nil (not a replay)
+
+# Find all replays of a given execution
+run.replays          # => ActiveRecord::Relation
+```
+
+See [Querying Executions](Querying-Executions) for full documentation.
+
 ## Related Pages
 
 - [Execution Tracking](Execution-Tracking) - What gets logged
+- [Querying Executions](Querying-Executions) - Agent-centric queries and replay
 - [Dashboard](Dashboard) - Visual monitoring
 - [Budget Controls](Budget-Controls) - Cost management
