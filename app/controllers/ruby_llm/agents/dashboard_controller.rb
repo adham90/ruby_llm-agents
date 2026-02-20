@@ -18,10 +18,11 @@ module RubyLLM
       #
       # @return [void]
       def index
-        @selected_range = params[:range].presence || "today"
+        @selected_range = sanitize_range(params[:range])
         @days = range_to_days(@selected_range)
+        parse_custom_dates if @selected_range == "custom"
         base_scope = tenant_scoped_executions
-        @now_strip = base_scope.now_strip_data(range: @selected_range)
+        @now_strip = build_now_strip(base_scope)
         @critical_alerts = load_critical_alerts(base_scope)
         @recent_executions = base_scope.recent(10)
         @agent_stats = build_agent_comparison(base_scope)
@@ -34,26 +35,111 @@ module RubyLLM
 
       # Returns chart data as JSON for live updates
       #
-      # @param range [String] Time range: "today", "7d", or "30d"
+      # @param range [String] Time range: "today", "7d", "30d", "90d", or "custom"
       # @return [JSON] Chart data with series
       def chart_data
-        range = params[:range].presence || "today"
-        data = tenant_scoped_executions.activity_chart_json(range: range)
+        range = sanitize_range(params[:range])
+        scope = tenant_scoped_executions
+
+        data = if range == "custom"
+          from = parse_date(params[:from])
+          to = parse_date(params[:to])
+          if from && to
+            from, to = [from, to].sort
+            to = [to, Date.current].min
+            scope.activity_chart_json_for_dates(from: from, to: to)
+          else
+            scope.activity_chart_json(range: "today")
+          end
+        else
+          scope.activity_chart_json(range: range)
+        end
+
         render json: data
       end
 
       private
 
+      # Whitelists valid range values, defaulting to "today"
+      #
+      # @param range [String, nil] Raw range parameter
+      # @return [String] Sanitized range value
+      def sanitize_range(range)
+        %w[today 7d 30d 90d custom].include?(range) ? range : "today"
+      end
+
       # Converts range parameter to number of days
       #
-      # @param range [String] Range parameter (today, 7d, 30d)
-      # @return [Integer] Number of days
+      # @param range [String] Range parameter (today, 7d, 30d, 90d, custom)
+      # @return [Integer, nil] Number of days, or nil for custom
       def range_to_days(range)
         case range
         when "today" then 1
         when "7d" then 7
         when "30d" then 30
+        when "90d" then 90
+        when "custom" then nil
         else 1
+        end
+      end
+
+      # Safely parses a date string with validation
+      #
+      # Rejects future dates and dates more than 1 year ago.
+      #
+      # @param value [String, nil] Date string (YYYY-MM-DD)
+      # @return [Date, nil] Parsed date or nil if invalid
+      def parse_date(value)
+        return nil if value.blank?
+        date = Date.parse(value)
+        return nil if date > Date.current
+        return nil if date < 1.year.ago.to_date
+        date
+      rescue ArgumentError
+        nil
+      end
+
+      # Parses custom date range params and sets instance variables
+      #
+      # Falls back to "today" if dates are missing or invalid.
+      #
+      # @return [void]
+      def parse_custom_dates
+        from = parse_date(params[:from])
+        to = parse_date(params[:to])
+
+        if from && to
+          from, to = [from, to].sort
+          @custom_from = from
+          @custom_to = [to, Date.current].min
+          @days = (@custom_to - @custom_from).to_i + 1
+        else
+          @selected_range = "today"
+          @days = 1
+        end
+      end
+
+      # Returns the correct time scope for the current range
+      #
+      # @param base_scope [ActiveRecord::Relation] Base scope to filter
+      # @return [ActiveRecord::Relation] Time-scoped relation
+      def time_scoped(base_scope)
+        if @selected_range == "custom" && @custom_from && @custom_to
+          base_scope.where(created_at: @custom_from.beginning_of_day..@custom_to.end_of_day)
+        else
+          base_scope.last_n_days(@days)
+        end
+      end
+
+      # Routes to the correct now_strip_data method based on range
+      #
+      # @param base_scope [ActiveRecord::Relation] Base scope
+      # @return [Hash] Now strip metrics
+      def build_now_strip(base_scope)
+        if @selected_range == "custom" && @custom_from && @custom_to
+          base_scope.now_strip_data_for_dates(from: @custom_from, to: @custom_to)
+        else
+          base_scope.now_strip_data(range: @selected_range)
         end
       end
 
@@ -69,7 +155,7 @@ module RubyLLM
       # @param base_scope [ActiveRecord::Relation] Base scope to filter from
       # @return [Array<Hash>] Array of base agent stats (for backward compatibility)
       def build_agent_comparison(base_scope = Execution)
-        scope = base_scope.last_n_days(@days)
+        scope = time_scoped(base_scope)
 
         # Get ALL agents from registry (file system + execution history)
         all_agent_types = AgentRegistry.all
@@ -113,7 +199,7 @@ module RubyLLM
       # @param base_scope [ActiveRecord::Relation] Base scope to filter from
       # @return [Array<Hash>] Array of model stats sorted by total cost descending
       def build_model_stats(base_scope = Execution)
-        scope = base_scope.last_n_days(@days).where.not(model_id: nil)
+        scope = time_scoped(base_scope).where.not(model_id: nil)
 
         # Batch fetch stats grouped by model
         counts = scope.group(:model_id).count
@@ -149,7 +235,7 @@ module RubyLLM
       # @param base_scope [ActiveRecord::Relation] Base scope to filter from
       # @return [Array<Hash>] Top 5 error classes with counts
       def build_top_errors(base_scope = Execution)
-        scope = base_scope.last_n_days(@days).where(status: "error")
+        scope = time_scoped(base_scope).where(status: "error")
         total_errors = scope.count
 
         scope.group(:error_class)
@@ -354,7 +440,7 @@ module RubyLLM
       # @param base_scope [ActiveRecord::Relation] Base scope to filter from
       # @return [Hash] Cache savings data with count, estimated savings, and hit rate
       def build_cache_savings(base_scope)
-        scope = base_scope.last_n_days(@days)
+        scope = time_scoped(base_scope)
         total_count = scope.count
         return {count: 0, estimated_savings: 0, hit_rate: 0, total_executions: 0} if total_count.zero?
 

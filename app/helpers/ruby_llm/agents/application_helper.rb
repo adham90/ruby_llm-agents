@@ -286,7 +286,7 @@ module RubyLLM
 
       # Returns human-readable display name for time range
       #
-      # @param range [String] Range parameter (today, 7d, 30d)
+      # @param range [String] Range parameter (today, 7d, 30d, 90d, custom)
       # @return [String] Human-readable range name
       # @example
       #   range_display_name("7d") #=> "7 Days"
@@ -295,8 +295,22 @@ module RubyLLM
         when "today" then "Today"
         when "7d" then "7 Days"
         when "30d" then "30 Days"
+        when "90d" then "90 Days"
+        when "custom" then "Custom"
         else "Today"
         end
+      end
+
+      # Returns preset range options for the time range dropdown
+      #
+      # @return [Array<Hash>] Array of {value:, label:} pairs
+      def range_presets
+        [
+          {value: "today", label: "Today"},
+          {value: "7d", label: "7 Days"},
+          {value: "30d", label: "30 Days"},
+          {value: "90d", label: "90 Days"}
+        ]
       end
 
       # Formats milliseconds to human-readable duration

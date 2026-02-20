@@ -274,20 +274,68 @@ module RubyLLM
 
       # Returns real-time dashboard data for the Now Strip
       #
-      # @param range [String] Time range: "today", "7d", or "30d"
+      # @param range [String] Time range: "today", "7d", "30d", or "90d"
       # @return [Hash] Now strip metrics with period-over-period comparisons
       def self.now_strip_data(range: "today")
         current_scope = case range
         when "7d" then last_n_days(7)
         when "30d" then last_n_days(30)
+        when "90d" then last_n_days(90)
         else today
         end
 
         previous_scope = case range
         when "7d" then where(created_at: 14.days.ago.beginning_of_day..7.days.ago.beginning_of_day)
         when "30d" then where(created_at: 60.days.ago.beginning_of_day..30.days.ago.beginning_of_day)
+        when "90d" then where(created_at: 180.days.ago.beginning_of_day..90.days.ago.beginning_of_day)
         else yesterday
         end
+
+        current = {
+          running: running.count,
+          success_today: current_scope.status_success.count,
+          errors_today: current_scope.status_error.count,
+          timeouts_today: current_scope.status_timeout.count,
+          cost_today: current_scope.sum(:total_cost) || 0,
+          executions_today: current_scope.count,
+          success_rate: calculate_period_success_rate(current_scope),
+          avg_duration_ms: current_scope.avg_duration&.round || 0,
+          total_tokens: current_scope.total_tokens_sum || 0
+        }
+
+        previous = {
+          success: previous_scope.status_success.count,
+          errors: previous_scope.status_error.count,
+          cost: previous_scope.sum(:total_cost) || 0,
+          avg_duration_ms: previous_scope.avg_duration&.round || 0,
+          total_tokens: previous_scope.total_tokens_sum || 0
+        }
+
+        current.merge(
+          comparisons: {
+            success_change: pct_change(previous[:success], current[:success_today]),
+            errors_change: pct_change(previous[:errors], current[:errors_today]),
+            cost_change: pct_change(previous[:cost], current[:cost_today]),
+            duration_change: pct_change(previous[:avg_duration_ms], current[:avg_duration_ms]),
+            tokens_change: pct_change(previous[:total_tokens], current[:total_tokens])
+          }
+        )
+      end
+
+      # Returns Now Strip data for a custom date range
+      #
+      # Compares the selected range against the same-length window
+      # immediately preceding it.
+      #
+      # @param from [Date] Start date (inclusive)
+      # @param to [Date] End date (inclusive)
+      # @return [Hash] Now strip metrics with period-over-period comparisons
+      def self.now_strip_data_for_dates(from:, to:)
+        span_days = (to - from).to_i + 1
+        current_scope = where(created_at: from.beginning_of_day..to.end_of_day)
+        previous_from = from - span_days.days
+        previous_to = from - 1.day
+        previous_scope = where(created_at: previous_from.beginning_of_day..previous_to.end_of_day)
 
         current = {
           running: running.count,

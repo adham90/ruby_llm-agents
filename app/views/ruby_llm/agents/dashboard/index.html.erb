@@ -22,13 +22,40 @@
       <% end %>
     </div>
   </div>
-  <div class="flex font-mono text-xs gap-0.5">
-    <%= link_to "today", ruby_llm_agents.root_path(range: "today"),
-        class: "px-2 py-0.5 #{@selected_range == 'today' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}" %>
-    <%= link_to "7d", ruby_llm_agents.root_path(range: "7d"),
-        class: "px-2 py-0.5 #{@selected_range == '7d' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}" %>
-    <%= link_to "30d", ruby_llm_agents.root_path(range: "30d"),
-        class: "px-2 py-0.5 #{@selected_range == '30d' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}" %>
+  <div class="relative font-mono text-xs" x-data="{ open: false, showCustom: false }" @click.outside="open = false; showCustom = false">
+    <button @click="open = !open" class="flex items-center gap-1 px-2 py-0.5 text-gray-900 dark:text-gray-100 hover:text-gray-600 dark:hover:text-gray-300">
+      <% if @selected_range == "custom" && @custom_from && @custom_to %>
+        <%= @custom_from.strftime("%b %-d") %> – <%= @custom_to.strftime("%b %-d") %>
+      <% else %>
+        <%= range_display_name(@selected_range) %>
+      <% end %>
+      <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+    <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+         class="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded shadow-lg z-50 py-1">
+      <% range_presets.each do |preset| %>
+        <%= link_to preset[:label], ruby_llm_agents.root_path(range: preset[:value]),
+            class: "block px-3 py-1.5 #{@selected_range == preset[:value] ? 'text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800/50'}" %>
+      <% end %>
+      <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+      <button @click.stop="showCustom = !showCustom" class="w-full text-left px-3 py-1.5 <%= @selected_range == 'custom' ? 'text-gray-900 dark:text-gray-100 bg-gray-100 dark:bg-gray-800' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800/50' %>">
+        Custom range&hellip;
+      </button>
+      <div x-show="showCustom" x-cloak class="px-3 py-2 border-t border-gray-200 dark:border-gray-700">
+        <form action="<%= ruby_llm_agents.root_path %>" method="get" class="space-y-2">
+          <input type="hidden" name="range" value="custom">
+          <label class="block text-[10px] text-gray-400 dark:text-gray-500 uppercase">From</label>
+          <input type="date" name="from" value="<%= @custom_from %>" max="<%= Date.current %>"
+                 class="w-full px-2 py-1 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-gray-900 dark:text-gray-100 font-mono">
+          <label class="block text-[10px] text-gray-400 dark:text-gray-500 uppercase">To</label>
+          <input type="date" name="to" value="<%= @custom_to %>" max="<%= Date.current %>"
+                 class="w-full px-2 py-1 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-gray-900 dark:text-gray-100 font-mono">
+          <button type="submit" class="w-full px-2 py-1 text-xs bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded hover:bg-gray-700 dark:hover:bg-gray-300">
+            Apply
+          </button>
+        </form>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -201,28 +228,54 @@
 <script>
   (function() {
     const range = '<%= @selected_range %>';
-    const chartUrl = '<%= ruby_llm_agents.chart_data_path %>?range=' + range;
+    const customFrom = '<%= @custom_from %>';
+    const customTo = '<%= @custom_to %>';
+    var chartUrl = '<%= ruby_llm_agents.chart_data_path %>?range=' + range;
+    if (range === 'custom' && customFrom && customTo) {
+      chartUrl += '&from=' + customFrom + '&to=' + customTo;
+    }
     const hourMs = 3600000;
     const dayMs = 24 * hourMs;
 
     function getTimeRangeMs(r) {
       if (r === 'today') return dayMs;
       if (r === '7d') return 7 * dayMs;
+      if (r === '90d') return 90 * dayMs;
+      if (r === 'custom' && customFrom && customTo) {
+        return (new Date(customTo).getTime() - new Date(customFrom).getTime()) + dayMs;
+      }
       return 30 * dayMs;
     }
 
     function toDatetimePoints(data, r) {
-      const now = Date.now();
-      const step = r === 'today' ? hourMs : dayMs;
-      return data.map((val, i) => [now - (data.length - 1 - i) * step, val]);
+      var baseTime, step;
+      if (r === 'today') {
+        step = hourMs;
+        baseTime = Date.now();
+      } else if (r === 'custom' && customFrom) {
+        step = dayMs;
+        baseTime = new Date(customTo || customFrom).getTime() + dayMs;
+      } else {
+        step = dayMs;
+        baseTime = Date.now();
+      }
+      return data.map((val, i) => [baseTime - (data.length - 1 - i) * step, val]);
     }
 
     // Shared chart options
     function baseXAxis(now, fmt) {
+      var xMin, xMax;
+      if (range === 'custom' && customFrom && customTo) {
+        xMin = new Date(customFrom).getTime();
+        xMax = new Date(customTo).getTime() + dayMs;
+      } else {
+        xMin = now - getTimeRangeMs(range);
+        xMax = now;
+      }
       return {
         type: 'datetime',
-        min: now - getTimeRangeMs(range),
-        max: now,
+        min: xMin,
+        max: xMax,
         labels: { style: { color: chartColor('#6B7280', '#928374'), fontSize: '9px', fontFamily: 'ui-monospace, monospace' }, format: '{value:' + fmt + '}' },
         lineColor: 'transparent',
         tickLength: 0,
