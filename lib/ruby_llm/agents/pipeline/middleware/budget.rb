@@ -39,12 +39,34 @@ module RubyLLM
             @app.call(context)
 
             # Record spend after successful execution (if not cached)
-            record_spend!(context) if context.success? && !context.cached?
+            if context.success? && !context.cached?
+              record_spend!(context)
+              emit_budget_notification("ruby_llm_agents.budget.record", context,
+                total_cost: context.total_cost,
+                total_tokens: context.total_tokens)
+            end
 
             context
           end
 
           private
+
+          # Emits an AS::Notification for budget events
+          #
+          # @param event [String] The notification event name
+          # @param context [Context] The execution context
+          # @param extras [Hash] Additional payload fields
+          def emit_budget_notification(event, context, **extras)
+            ActiveSupport::Notifications.instrument(
+              event,
+              {
+                agent_type: context.agent_class&.name,
+                tenant_id: context.tenant_id
+              }.merge(extras)
+            )
+          rescue
+            # Never let notifications break execution
+          end
 
           # Returns whether budgets are enabled globally
           #
@@ -63,6 +85,8 @@ module RubyLLM
           # @param context [Context] The execution context
           # @raise [BudgetExceededError] If budget exceeded with hard enforcement
           def check_budget!(context)
+            emit_budget_notification("ruby_llm_agents.budget.check", context)
+
             if context.tenant_id.present?
               tenant = RubyLLM::Agents::Tenant.find_by(tenant_id: context.tenant_id)
               if tenant
@@ -77,6 +101,7 @@ module RubyLLM
               tenant_id: context.tenant_id
             )
           rescue RubyLLM::Agents::Reliability::BudgetExceededError
+            emit_budget_notification("ruby_llm_agents.budget.exceeded", context)
             raise
           rescue => e
             error("Budget check failed: #{e.message}")
