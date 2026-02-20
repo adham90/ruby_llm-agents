@@ -214,6 +214,16 @@ module RubyLLM
               data[:metadata] = agent_meta.transform_keys(&:to_s)
             end
 
+            # Track replay source if this is a replayed execution
+            replay_source_id = begin
+              context.agent_instance&.send(:options)&.dig(:_replay_source_id)
+            rescue
+              nil
+            end
+            if replay_source_id
+              data[:metadata] = (data[:metadata] || {}).merge("replay_source_id" => replay_source_id.to_s)
+            end
+
             # Execution hierarchy (agent-as-tool)
             if context.parent_execution_id.present?
               data[:parent_execution_id] = context.parent_execution_id
@@ -454,6 +464,10 @@ module RubyLLM
               params[key] = "[REDACTED]" if params.key?(key)
             end
 
+            INTERNAL_KEYS.each do |key|
+              params.delete(key)
+            end
+
             params
           end
 
@@ -479,6 +493,11 @@ module RubyLLM
           SENSITIVE_KEYS = %w[
             password token api_key secret credential auth key
             access_token refresh_token private_key secret_key
+          ].freeze
+
+          # Internal keys that should be stripped from persisted parameters
+          INTERNAL_KEYS = %w[
+            _replay_source_id _ask_message _parent_execution_id _root_execution_id
           ].freeze
 
           # Truncates error message to prevent database issues

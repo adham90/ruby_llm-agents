@@ -46,6 +46,7 @@ module RubyLLM
       extend DSL::Base
       extend DSL::Reliability
       extend DSL::Caching
+      extend DSL::Queryable
       include CacheHelper
 
       class << self

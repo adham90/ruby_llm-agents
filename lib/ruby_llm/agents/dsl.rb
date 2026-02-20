@@ -3,6 +3,7 @@
 require_relative "dsl/base"
 require_relative "dsl/reliability"
 require_relative "dsl/caching"
+require_relative "dsl/queryable"
 
 module RubyLLM
   module Agents

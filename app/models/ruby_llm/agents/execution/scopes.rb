@@ -268,6 +268,18 @@ module RubyLLM
           scope :without_tool_calls, -> { where(tool_calls_count: 0) }
 
           # @!endgroup
+
+          # @!group Replay Scopes
+
+          # @!method replays_of(execution_id)
+          #   Returns executions that are replays of the given execution
+          #   @param execution_id [Integer, String] The source execution ID
+          #   @return [ActiveRecord::Relation]
+          scope :replays_of, ->(execution_id) {
+            metadata_value("replay_source_id", execution_id.to_s)
+          }
+
+          # @!endgroup
         end
 
         # @!group Aggregation Methods

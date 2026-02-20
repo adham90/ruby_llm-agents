@@ -26,6 +26,9 @@ module RubyLLM
       end
     end
 
+    # Raised when an execution cannot be replayed
+    class ReplayError < Error; end
+
     # Raised when the TTS API returns an error response
     class SpeechApiError < Error
       attr_reader :status, :response_body
