@@ -318,44 +318,4 @@ RSpec.describe RubyLLM::Agents::Audio::SpeechPricing do
       expect(cost).to eq(0.0)
     end
   end
-
-  describe ".all_pricing" do
-    it "returns pricing from all tiers" do
-      pricing = described_class.all_pricing
-
-      expect(pricing).to have_key(:litellm)
-      expect(pricing).to have_key(:configured)
-      expect(pricing).to have_key(:elevenlabs_api)
-    end
-
-    context "with ElevenLabs API configured" do
-      let(:models_json) { File.read(Rails.root.join("../../spec/fixtures/elevenlabs_models.json")) }
-
-      before do
-        RubyLLM::Agents.configure do |c|
-          c.elevenlabs_api_key = "xi-test-key"
-          c.elevenlabs_base_cost_per_1k = 0.30
-        end
-
-        stub_request(:get, "https://api.elevenlabs.io/v1/models")
-          .to_return(status: 200, body: models_json)
-      end
-
-      it "includes ElevenLabs API pricing for all models" do
-        pricing = described_class.all_pricing
-        api_pricing = pricing[:elevenlabs_api]
-
-        expect(api_pricing["eleven_v3"]).to eq(0.30)
-        expect(api_pricing["eleven_flash_v2_5"]).to eq(0.15)
-        expect(api_pricing["eleven_turbo_v2"]).to eq(0.15)
-      end
-    end
-
-    context "when elevenlabs_base_cost_per_1k is nil" do
-      it "returns empty hash for elevenlabs_api" do
-        pricing = described_class.all_pricing
-        expect(pricing[:elevenlabs_api]).to eq({})
-      end
-    end
-  end
 end

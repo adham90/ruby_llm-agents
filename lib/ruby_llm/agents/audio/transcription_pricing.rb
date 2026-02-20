@@ -39,8 +39,6 @@ module RubyLLM
       module TranscriptionPricing
         extend self
 
-        LITELLM_PRICING_URL = Pricing::DataStore::LITELLM_URL
-
         SOURCES = [:config, :ruby_llm, :litellm, :portkey, :openrouter, :helicone, :llmpricing].freeze
 
         # Calculate total cost for a transcription operation
@@ -68,31 +66,9 @@ module RubyLLM
           nil
         end
 
-        # Check whether pricing is available for a model
-        #
-        # @param model_id [String] Model identifier
-        # @return [Boolean] true if pricing is available
-        def pricing_found?(model_id)
-          !cost_per_minute(model_id).nil?
-        end
-
         # Force refresh of cached pricing data
         def refresh!
           Pricing::DataStore.refresh!
-        end
-
-        # Expose all known pricing for debugging/dashboard
-        #
-        # @return [Hash] Pricing from all tiers
-        def all_pricing
-          {
-            ruby_llm: {},  # local gem, per-model lookup
-            litellm: litellm_transcription_models,
-            portkey: {},  # per-model, populated on demand
-            openrouter: {},  # no dedicated transcription models
-            helicone: {},  # no transcription models
-            configured: config.transcription_model_pricing || {}
-          }
         end
 
         private

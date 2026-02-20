@@ -109,30 +109,6 @@ RSpec.describe RubyLLM::Agents::Audio::TranscriptionPricing do
     end
   end
 
-  describe ".pricing_found?" do
-    context "when no pricing is available" do
-      it "returns false" do
-        expect(described_class.pricing_found?("whisper-1")).to be false
-      end
-    end
-
-    context "with user config pricing" do
-      before do
-        RubyLLM::Agents.configure do |c|
-          c.transcription_model_pricing = {"whisper-1" => 0.006}
-        end
-      end
-
-      it "returns true for configured models" do
-        expect(described_class.pricing_found?("whisper-1")).to be true
-      end
-
-      it "returns false for unconfigured models" do
-        expect(described_class.pricing_found?("unknown-model")).to be false
-      end
-    end
-  end
-
   describe "LiteLLM source" do
     context "when LiteLLM has transcription pricing with input_cost_per_second" do
       let(:litellm_response) do
@@ -162,10 +138,6 @@ RSpec.describe RubyLLM::Agents::Audio::TranscriptionPricing do
         # 120 seconds = 2 minutes at $0.006/min = $0.012
         cost = described_class.calculate_cost(model_id: "whisper-1", duration_seconds: 120)
         expect(cost).to eq(0.012)
-      end
-
-      it "reports pricing_found? as true" do
-        expect(described_class.pricing_found?("whisper-1")).to be true
       end
     end
 
@@ -354,7 +326,7 @@ RSpec.describe RubyLLM::Agents::Audio::TranscriptionPricing do
 
     it "clears and re-fetches data" do
       # First call loads data
-      expect(described_class.pricing_found?("whisper-1")).to be true
+      expect(described_class.cost_per_minute("whisper-1")).to be_present
 
       # Stub new response with no transcription data
       stub_request(:get, RubyLLM::Agents::Pricing::DataStore::LITELLM_URL)
@@ -363,44 +335,7 @@ RSpec.describe RubyLLM::Agents::Audio::TranscriptionPricing do
       described_class.refresh!
 
       # After refresh, old data should be gone
-      expect(described_class.pricing_found?("whisper-1")).to be false
-    end
-  end
-
-  describe ".all_pricing" do
-    let(:litellm_response) do
-      {
-        "whisper-1" => {"mode" => "audio_transcription", "input_cost_per_second" => 0.0001},
-        "gpt-4o" => {"input_cost_per_token" => 0.0025}
-      }
-    end
-
-    before do
-      RubyLLM::Agents.configure do |c|
-        c.transcription_model_pricing = {"custom-model" => 0.05}
-      end
-    end
-
-    it "returns pricing from all tiers" do
-      pricing = described_class.all_pricing
-
-      expect(pricing).to have_key(:litellm)
-      expect(pricing).to have_key(:configured)
-      expect(pricing).to have_key(:ruby_llm)
-      expect(pricing).to have_key(:portkey)
-      expect(pricing).to have_key(:openrouter)
-      expect(pricing).to have_key(:helicone)
-    end
-
-    it "includes LiteLLM transcription models" do
-      pricing = described_class.all_pricing
-      expect(pricing[:litellm]).to have_key("whisper-1")
-      expect(pricing[:litellm]).not_to have_key("gpt-4o")
-    end
-
-    it "includes configured models" do
-      pricing = described_class.all_pricing
-      expect(pricing[:configured]).to eq({"custom-model" => 0.05})
+      expect(described_class.cost_per_minute("whisper-1")).to be_nil
     end
   end
 

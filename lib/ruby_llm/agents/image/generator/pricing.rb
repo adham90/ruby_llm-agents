@@ -72,16 +72,6 @@ module RubyLLM
           Agents::Pricing::DataStore.refresh!
         end
 
-        # Get all known pricing for debugging/display
-        #
-        # @return [Hash] Merged pricing from all sources
-        def all_pricing
-          {
-            litellm: litellm_image_models,
-            configured: config.image_model_pricing || {}
-          }
-        end
-
         private
 
         # ============================================================

@@ -74,15 +74,6 @@ module RubyLLM
           Pricing::DataStore.refresh!
         end
 
-        # Expose all known pricing for debugging/dashboard
-        def all_pricing
-          {
-            litellm: litellm_tts_models,
-            configured: config.tts_model_pricing || {},
-            elevenlabs_api: elevenlabs_api_pricing
-          }
-        end
-
         private
 
         # ============================================================
