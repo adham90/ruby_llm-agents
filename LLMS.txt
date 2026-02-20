@@ -2,7 +2,7 @@
 
 > A production-ready Rails engine for building, managing, and monitoring LLM-powered AI agents. Provides a declarative DSL for creating intelligent agents with built-in execution tracking, cost analytics, budget controls, multi-tenancy, reliability patterns, and a real-time dashboard. Built on RubyLLM for provider abstraction. Requires Ruby >= 3.1.0, Rails >= 7.0, and RubyLLM >= 1.12.0. MIT License. Current version: 3.0.0.
 
-ruby_llm-agents brings structure, observability, and control to LLM-based Rails applications. Define agents using a class-based DSL with model selection, temperature, parameters, prompts, and response schemas. The three-role prompt DSL (v2.2+) supports `system`, `user`, and `assistant` class-level methods mirroring LLM API terminology. Use `.ask(message)` for conversational agents without a fixed user template. Supports two DSL styles: a simplified prompt-centric syntax (recommended) and a traditional method-override approach. Every execution is automatically tracked with token usage, costs, and duration in a split schema (executions + execution_details tables). Set daily and monthly budget limits per tenant with alerts. Handle failures gracefully with automatic retries, model fallbacks, and circuit breakers. Configure all LLM provider API keys in a single unified configuration block (v2.1+). Process images with generation, analysis, editing, upscaling, and background removal. Handle audio with transcription and text-to-speech.
+ruby_llm-agents brings structure, observability, and control to LLM-based Rails applications. Define agents using a class-based DSL with model selection, temperature, parameters, prompts, and response schemas. The three-role prompt DSL (v2.2+) supports `system`, `user`, and `assistant` class-level methods mirroring LLM API terminology. Use `.ask(message)` for conversational agents without a fixed user template. Supports two DSL styles: a simplified prompt-centric syntax (recommended) and a traditional method-override approach. Compose agents by passing agent classes in the `tools` list — they are automatically wrapped as LLM-callable tools with execution hierarchy tracking (`parent_execution_id`/`root_execution_id`). Every execution is automatically tracked with token usage, costs, and duration in a split schema (executions + execution_details tables). Set daily and monthly budget limits per tenant with alerts. Handle failures gracefully with automatic retries, model fallbacks, and circuit breakers. Configure all LLM provider API keys in a single unified configuration block (v2.1+). Process images with generation, analysis, editing, upscaling, and background removal. Handle audio with transcription and text-to-speech.
 
 ## Documentation
 
@@ -156,9 +156,10 @@ ruby_llm-agents brings structure, observability, and control to LLM-based Rails 
 - [Image Operation DSL](lib/ruby_llm/agents/concerns/image_operation_dsl.rb): Shared DSL for image operations
 - [Image Operation Execution](lib/ruby_llm/agents/concerns/image_operation_execution.rb): Shared execution logic
 
-## Tools
+## Tools and Agent Composition
 
-- [Tools Guide](wiki/Tools.md): Adding tools/functions to agents
+- [Tools Guide](wiki/Tools.md): Adding tools/functions to agents, including agent-as-tool composition
+- [AgentTool](lib/ruby_llm/agents/agent_tool.rb): Wraps agent classes as RubyLLM::Tool subclasses for use in other agents' tools lists
 - [Tool Tracking](lib/ruby_llm/agents/base/tool_tracking.rb): Tracking tool calls in executions
 - [Attachments](wiki/Attachments.md): Sending files and images to agents
 
