@@ -132,6 +132,15 @@ RSpec.describe "Performance and Timeout Constraints" do
 
         expect(breaker.failure_count).to eq(0)
       end
+
+      it "returns status information" do
+        status = breaker.status
+
+        expect(status[:agent_type]).to eq("TestAgent")
+        expect(status[:model_id]).to eq("gpt-4o")
+        expect(status[:errors_threshold]).to eq(3)
+        expect(status[:open]).to be false
+      end
     end
   end
 

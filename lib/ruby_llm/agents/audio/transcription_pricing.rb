@@ -66,9 +66,31 @@ module RubyLLM
           nil
         end
 
+        # Check whether pricing is available for a model
+        #
+        # @param model_id [String] Model identifier
+        # @return [Boolean] true if pricing is available
+        def pricing_found?(model_id)
+          !cost_per_minute(model_id).nil?
+        end
+
         # Force refresh of cached pricing data
         def refresh!
           Pricing::DataStore.refresh!
+        end
+
+        # Expose all known pricing for debugging/console inspection
+        #
+        # @return [Hash] Pricing from all tiers
+        def all_pricing
+          {
+            ruby_llm: {},
+            litellm: litellm_transcription_models,
+            portkey: {},
+            openrouter: {},
+            helicone: {},
+            configured: config.transcription_model_pricing || {}
+          }
         end
 
         private

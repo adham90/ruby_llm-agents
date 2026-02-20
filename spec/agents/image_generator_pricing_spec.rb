@@ -174,6 +174,15 @@ RSpec.describe RubyLLM::Agents::ImageGenerator::Pricing do
     end
   end
 
+  describe ".all_pricing" do
+    it "returns pricing from all sources" do
+      pricing = described_class.all_pricing
+
+      expect(pricing).to have_key(:litellm)
+      expect(pricing).to have_key(:configured)
+    end
+  end
+
   describe ".refresh!" do
     it "delegates to DataStore" do
       expect(RubyLLM::Agents::Pricing::DataStore).to receive(:refresh!).at_least(:once)

@@ -339,6 +339,84 @@ RSpec.describe RubyLLM::Agents::Audio::TranscriptionPricing do
     end
   end
 
+  describe ".pricing_found?" do
+    context "when no pricing is found" do
+      it "returns false for unknown models" do
+        expect(described_class.pricing_found?("fake-model-xyz")).to be false
+      end
+    end
+
+    context "with LiteLLM pricing" do
+      let(:litellm_response) do
+        {
+          "whisper-1" => {
+            "mode" => "audio_transcription",
+            "input_cost_per_second" => 0.0001
+          }
+        }
+      end
+
+      it "returns true for known models" do
+        expect(described_class.pricing_found?("whisper-1")).to be true
+      end
+
+      it "returns false for unknown models" do
+        expect(described_class.pricing_found?("fake-model-xyz")).to be false
+      end
+    end
+
+    context "with user config pricing" do
+      before do
+        RubyLLM::Agents.configure do |c|
+          c.transcription_model_pricing = {"custom-model" => 0.05}
+        end
+      end
+
+      it "returns true for configured models" do
+        expect(described_class.pricing_found?("custom-model")).to be true
+      end
+    end
+  end
+
+  describe ".all_pricing" do
+    it "returns pricing from all tiers" do
+      pricing = described_class.all_pricing
+
+      expect(pricing).to have_key(:litellm)
+      expect(pricing).to have_key(:configured)
+    end
+
+    context "with LiteLLM data" do
+      let(:litellm_response) do
+        {
+          "whisper-1" => {
+            "mode" => "audio_transcription",
+            "input_cost_per_second" => 0.0001
+          }
+        }
+      end
+
+      it "includes LiteLLM pricing" do
+        pricing = described_class.all_pricing
+        expect(pricing[:litellm]).to be_a(Hash)
+        expect(pricing[:litellm]).to have_key("whisper-1")
+      end
+    end
+
+    context "with user config" do
+      before do
+        RubyLLM::Agents.configure do |c|
+          c.transcription_model_pricing = {"whisper-1" => 0.006}
+        end
+      end
+
+      it "includes configured pricing" do
+        pricing = described_class.all_pricing
+        expect(pricing[:configured]).to eq({"whisper-1" => 0.006})
+      end
+    end
+  end
+
   describe "multi-source cascade" do
     context "when LiteLLM misses but Portkey has pricing" do
       let(:litellm_response) { {} }

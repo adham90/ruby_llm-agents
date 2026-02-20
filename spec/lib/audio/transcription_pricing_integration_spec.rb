@@ -65,4 +65,22 @@ RSpec.describe RubyLLM::Agents::Audio::TranscriptionPricing, :integration do
       expect(described_class.cost_per_minute("whisper-1")).to be > 0
     end
   end
+
+  describe ".pricing_found?" do
+    it "returns true for known models" do
+      expect(described_class.pricing_found?("whisper-1")).to be true
+    end
+
+    it "returns false for unknown models" do
+      expect(described_class.pricing_found?("fake-model-xyz")).to be false
+    end
+  end
+
+  describe ".all_pricing" do
+    it "returns data from multiple tiers" do
+      pricing = described_class.all_pricing
+      expect(pricing.keys).to include(:litellm, :configured)
+      expect(pricing[:litellm]).to be_a(Hash)
+    end
+  end
 end

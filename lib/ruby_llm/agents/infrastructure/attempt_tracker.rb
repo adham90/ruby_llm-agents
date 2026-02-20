@@ -119,6 +119,15 @@ module RubyLLM
         @attempts.find { |a| a[:error_class].nil? && !a[:short_circuited] }
       end
 
+      # Finds the last failed attempt
+      #
+      # Useful for debugging in rails console.
+      #
+      # @return [Hash, nil] The last failed attempt or nil
+      def last_failed_attempt
+        @attempts.reverse.find { |a| a[:error_class].present? }
+      end
+
       # Returns all failed attempts
       #
       # @return [Array<Hash>] Failed attempt data
@@ -180,11 +189,38 @@ module RubyLLM
         @attempts.sum { |a| a[:cached_tokens] || 0 }
       end
 
+      # Calculates total duration across all attempts
+      #
+      # Useful for debugging in rails console.
+      #
+      # @return [Integer] Total duration in milliseconds
+      def total_duration_ms
+        @attempts.sum { |a| a[:duration_ms] || 0 }
+      end
+
       # Returns the number of attempts made
       #
       # @return [Integer] Number of attempts
       def attempts_count
         @attempts.length
+      end
+
+      # Returns the number of failed attempts
+      #
+      # Useful for debugging in rails console.
+      #
+      # @return [Integer] Number of failed attempts
+      def failed_attempts_count
+        @attempts.count { |a| a[:error_class].present? }
+      end
+
+      # Returns the number of short-circuited attempts
+      #
+      # Useful for debugging in rails console.
+      #
+      # @return [Integer] Number of short-circuited attempts
+      def short_circuited_count
+        @attempts.count { |a| a[:short_circuited] }
       end
 
       # Returns attempts as JSON-compatible array
