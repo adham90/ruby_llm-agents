@@ -179,19 +179,4 @@ RubyLLM::Agents.configure do |config|
 
   # Whether to persist LLM responses in execution records
   # config.persist_responses = true
-
-  # Redaction configuration for PII and sensitive data
-  # - fields: Parameter names to redact (extends defaults: password, token, api_key, secret, etc.)
-  # - patterns: Regex patterns to match and redact in string values
-  # - placeholder: String to replace redacted values with
-  # - max_value_length: Truncate values longer than this (nil = no limit)
-  # config.redaction = {
-  #   fields: %w[ssn credit_card phone_number email],
-  #   patterns: [
-  #     /\b\d{3}-\d{2}-\d{4}\b/,           # SSN
-  #     /\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b/  # Credit card
-  #   ],
-  #   placeholder: "[REDACTED]",
-  #   max_value_length: 5000
-  # }
 end

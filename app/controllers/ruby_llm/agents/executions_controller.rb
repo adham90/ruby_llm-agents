@@ -96,9 +96,7 @@ module RubyLLM
       # @param execution [Execution] The execution record
       # @return [String] CSV row string
       def generate_csv_row(execution)
-        redacted_error_message = if execution.error_message.present?
-          Redactor.redact_string(execution.error_message)
-        end
+        redacted_error_message = execution.error_message
 
         CSV.generate_line([
           execution.id,

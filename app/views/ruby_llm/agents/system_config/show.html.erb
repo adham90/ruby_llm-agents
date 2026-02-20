@@ -6,8 +6,6 @@
   budgets = @config.budgets || {}
   budgets_enabled = @config.budgets_enabled?
   alerts_enabled = @config.on_alert.respond_to?(:call)
-  redaction = @config.redaction || {}
-  redaction_enabled = redaction.present?
 %>
 
 <!-- ── system config ──────────────── -->
@@ -241,17 +239,6 @@
   <div class="flex items-center gap-3 py-0.5">
     <span class="w-36 flex-shrink-0 text-gray-500 dark:text-gray-400">persist responses</span>
     <span class="badge badge-sm <%= @config.persist_responses ? 'badge-success' : 'badge-timeout' %>"><%= @config.persist_responses ? 'on' : 'off' %></span>
-  </div>
-  <div class="flex items-center gap-3 py-0.5">
-    <span class="w-36 flex-shrink-0 text-gray-500 dark:text-gray-400">pii redaction</span>
-    <% if redaction_enabled %>
-      <span class="badge badge-sm badge-success">on</span>
-      <span class="text-gray-400 dark:text-gray-600"><%= @config.redaction_fields.count %> fields</span>
-      <span class="text-gray-300 dark:text-gray-700">&middot;</span>
-      <span class="text-gray-400 dark:text-gray-600"><%= @config.redaction_patterns.count %> patterns</span>
-    <% else %>
-      <span class="text-gray-300 dark:text-gray-700">—</span>
-    <% end %>
   </div>
 </div>
 

@@ -401,15 +401,6 @@ end
 | Option | Default | Description |
 |--------|---------|-------------|
 | `tool_result_max_length` | `10_000` | Max chars for tool results |
-| `redaction` | `nil` | PII redaction config |
-
-```ruby
-config.redaction = {
-  fields: %w[ssn credit_card email],
-  patterns: [/\b\d{3}-\d{2}-\d{4}\b/],
-  placeholder: "[REDACTED]"
-}
-```
 
 ### Directory Structure
 
