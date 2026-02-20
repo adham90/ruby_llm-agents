@@ -140,6 +140,73 @@ module RubyLLM
       def reset_configuration!
         @configuration = Configuration.new
       end
+
+      # Renames an agent in the database, updating execution records and
+      # tenant budget configuration keys
+      #
+      # @param old_name [String] The previous agent class name
+      # @param to [String] The new agent class name
+      # @param dry_run [Boolean] If true, returns counts without modifying data
+      # @return [Hash] Summary of affected records
+      #
+      # @example Rename an agent
+      #   RubyLLM::Agents.rename_agent("CustomerSupportAgent", to: "SupportBot")
+      #   # => { executions_updated: 1432, tenants_updated: 3 }
+      #
+      # @example Dry run first
+      #   RubyLLM::Agents.rename_agent("CustomerSupportAgent", to: "SupportBot", dry_run: true)
+      #   # => { executions_affected: 1432, tenants_affected: 3 }
+      def rename_agent(old_name, to:, dry_run: false)
+        old_name = old_name.to_s
+        new_name = to.to_s
+
+        raise ArgumentError, "old_name and new name must be different" if old_name == new_name
+        raise ArgumentError, "old_name cannot be blank" if old_name.blank?
+        raise ArgumentError, "new name cannot be blank" if new_name.blank?
+
+        execution_scope = Execution.where(agent_type: old_name)
+        execution_count = execution_scope.count
+
+        tenant_count = 0
+        if defined?(Tenant) && Tenant.table_exists?
+          Tenant.find_each do |tenant|
+            changed = false
+            %w[per_agent_daily per_agent_monthly].each do |field|
+              hash = tenant.send(field)
+              next unless hash.is_a?(Hash) && hash.key?(old_name)
+              changed = true
+              break
+            end
+            tenant_count += 1 if changed
+          end
+        end
+
+        if dry_run
+          {executions_affected: execution_count, tenants_affected: tenant_count}
+        else
+          executions_updated = execution_scope.update_all(agent_type: new_name)
+
+          tenants_updated = 0
+          if defined?(Tenant) && Tenant.table_exists?
+            Tenant.find_each do |tenant|
+              changed = false
+              %w[per_agent_daily per_agent_monthly].each do |field|
+                hash = tenant.send(field)
+                next unless hash.is_a?(Hash) && hash.key?(old_name)
+                hash[new_name] = hash.delete(old_name)
+                tenant.send(:"#{field}=", hash)
+                changed = true
+              end
+              if changed
+                tenant.save!
+                tenants_updated += 1
+              end
+            end
+          end
+
+          {executions_updated: executions_updated, tenants_updated: tenants_updated}
+        end
+      end
     end
   end
 end

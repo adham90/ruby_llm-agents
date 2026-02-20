@@ -1,0 +1,19 @@
+# frozen_string_literal: true
+
+class Rename<%= old_name.gsub("::", "") %>To<%= new_name.gsub("::", "") %> < ActiveRecord::Migration<%= migration_version %>
+  def up
+    execute <<~SQL.squish
+      UPDATE ruby_llm_agents_executions
+      SET agent_type = '<%= new_name %>'
+      WHERE agent_type = '<%= old_name %>'
+    SQL
+  end
+
+  def down
+    execute <<~SQL.squish
+      UPDATE ruby_llm_agents_executions
+      SET agent_type = '<%= old_name %>'
+      WHERE agent_type = '<%= new_name %>'
+    SQL
+  end
+end

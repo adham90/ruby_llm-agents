@@ -1,6 +1,27 @@
 # frozen_string_literal: true
 
 namespace :ruby_llm_agents do
+  desc "Rename an agent type in execution records. Usage: rake ruby_llm_agents:rename_agent FROM=OldName TO=NewName [DRY_RUN=1]"
+  task rename_agent: :environment do
+    from = ENV["FROM"]
+    to = ENV["TO"]
+    dry_run = ENV["DRY_RUN"] == "1"
+
+    abort "Usage: rake ruby_llm_agents:rename_agent FROM=OldAgentName TO=NewAgentName [DRY_RUN=1]" unless from && to
+
+    result = RubyLLM::Agents.rename_agent(from, to: to, dry_run: dry_run)
+
+    if dry_run
+      puts "Dry run results:"
+      puts "  Executions affected: #{result[:executions_affected]}"
+      puts "  Tenants affected:    #{result[:tenants_affected]}"
+    else
+      puts "Rename complete:"
+      puts "  Executions updated: #{result[:executions_updated]}"
+      puts "  Tenants updated:    #{result[:tenants_updated]}"
+    end
+  end
+
   namespace :tenants do
     desc "Refresh all tenant counters from executions table"
     task refresh: :environment do

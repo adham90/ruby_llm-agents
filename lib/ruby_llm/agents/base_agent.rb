@@ -119,6 +119,33 @@ module RubyLLM
           :conversation
         end
 
+        # Declares previous class names for this agent
+        #
+        # When an agent is renamed, old execution records still reference the
+        # previous class name. Declaring aliases allows scopes, analytics, and
+        # budget checks to automatically include records from all previous names.
+        #
+        # @param names [Array<String>] Previous class names
+        # @return [Array<String>] All declared aliases
+        #
+        # @example
+        #   class SupportBot < ApplicationAgent
+        #     aliases "CustomerSupportAgent", "HelpDeskAgent"
+        #   end
+        def aliases(*names)
+          if names.any?
+            @agent_aliases = names.map(&:to_s)
+          end
+          @agent_aliases || []
+        end
+
+        # Returns all known names for this agent (current + aliases)
+        #
+        # @return [Array<String>] Current name followed by any aliases
+        def all_agent_names
+          [name, *aliases].compact.uniq
+        end
+
         # Returns a summary of the agent's DSL configuration
         #
         # Useful for debugging in the Rails console to see how an agent

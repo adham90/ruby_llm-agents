@@ -83,7 +83,10 @@ module RubyLLM
           #   Filters to a specific LLM model
           #   @param model_id [String] The model identifier
           #   @return [ActiveRecord::Relation]
-          scope :by_agent, ->(agent_type) { where(agent_type: agent_type.to_s) }
+          scope :by_agent, ->(agent_type) {
+            names = resolve_agent_names(agent_type)
+            where(agent_type: names)
+          }
           scope :by_model, ->(model_id) { where(model_id: model_id.to_s) }
 
           # @!endgroup
@@ -273,6 +276,32 @@ module RubyLLM
         # They can be called on scoped relations.
 
         class_methods do
+          # Resolves all known names for an agent, including aliases
+          #
+          # Accepts a class (uses all_agent_names), or a string (looks up
+          # the class in ObjectSpace to check for aliases, falls back to
+          # the string itself).
+          #
+          # @param agent_type [Class, String] Agent class or class name
+          # @return [Array<String>] All names to query
+          def resolve_agent_names(agent_type)
+            if agent_type.is_a?(Class) && agent_type.respond_to?(:all_agent_names)
+              agent_type.all_agent_names
+            else
+              name = agent_type.to_s
+              klass = begin
+                name.constantize
+              rescue NameError
+                nil
+              end
+              if klass&.respond_to?(:all_agent_names)
+                klass.all_agent_names
+              else
+                [name]
+              end
+            end
+          end
+
           # Database-agnostic JSON metadata queries
           # These fields (fallback_reason, retryable, rate_limited, etc.) are stored
           # in the metadata JSON column rather than as direct columns.

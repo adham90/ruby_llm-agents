@@ -125,26 +125,32 @@ module RubyLLM
 
         # Returns the effective per-agent daily limit
         #
+        # Checks the current name and all aliases for matching limits.
+        #
         # @param agent_type [String] The agent class name
         # @return [Float, nil] The limit or nil if not set
         def effective_per_agent_daily(agent_type)
-          limit = per_agent_daily&.dig(agent_type)
+          names = resolve_agent_names(agent_type)
+          limit = names.lazy.filter_map { |n| per_agent_daily&.dig(n) }.first
           return limit if limit.present?
           return nil unless inherit_global_defaults
 
-          global_config&.dig(:per_agent_daily, agent_type)
+          names.lazy.filter_map { |n| global_config&.dig(:per_agent_daily, n) }.first
         end
 
         # Returns the effective per-agent monthly limit
         #
+        # Checks the current name and all aliases for matching limits.
+        #
         # @param agent_type [String] The agent class name
         # @return [Float, nil] The limit or nil if not set
         def effective_per_agent_monthly(agent_type)
-          limit = per_agent_monthly&.dig(agent_type)
+          names = resolve_agent_names(agent_type)
+          limit = names.lazy.filter_map { |n| per_agent_monthly&.dig(n) }.first
           return limit if limit.present?
           return nil unless inherit_global_defaults
 
-          global_config&.dig(:per_agent_monthly, agent_type)
+          names.lazy.filter_map { |n| global_config&.dig(:per_agent_monthly, n) }.first
         end
 
         # Budget status checks
@@ -350,6 +356,24 @@ module RubyLLM
         # @return [Hash, nil]
         def global_config
           RubyLLM::Agents.configuration.budgets
+        end
+
+        # Resolves all known names for an agent (current name + aliases)
+        #
+        # @param agent_type [String] The agent class name
+        # @return [Array<String>] All names to check
+        def resolve_agent_names(agent_type)
+          name = agent_type.to_s
+          klass = begin
+            name.constantize
+          rescue NameError
+            nil
+          end
+          if klass&.respond_to?(:all_agent_names)
+            klass.all_agent_names
+          else
+            [name]
+          end
         end
 
         # Merges per-agent daily limits with global defaults
