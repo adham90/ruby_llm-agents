@@ -774,6 +774,116 @@ RSpec.describe RubyLLM::Agents::Base do
     end
   end
 
+  describe "#resolved_tools" do
+    let(:regular_tool) do
+      Class.new(RubyLLM::Tool) do
+        description "A regular tool"
+        param :input, desc: "Input text"
+
+        def execute(input:)
+          "result: #{input}"
+        end
+      end
+    end
+
+    let(:sub_agent) do
+      Class.new(described_class) do
+        def self.name
+          "SubAgent"
+        end
+
+        description "A sub-agent used as a tool"
+        param :query, required: true, desc: "Query text"
+      end
+    end
+
+    it "passes regular tools through unchanged" do
+      tool = regular_tool
+      klass = Class.new(described_class) do
+        tools [tool]
+        param :query, required: true
+
+        def user_prompt
+          query
+        end
+      end
+
+      agent = klass.new(query: "test")
+      resolved = agent.send(:resolved_tools)
+      expect(resolved).to eq([tool])
+    end
+
+    it "wraps agent classes with AgentTool" do
+      agent_cls = sub_agent
+      klass = Class.new(described_class) do
+        tools [agent_cls]
+        param :query, required: true
+
+        def user_prompt
+          query
+        end
+      end
+
+      agent = klass.new(query: "test")
+      resolved = agent.send(:resolved_tools)
+      expect(resolved.length).to eq(1)
+      expect(resolved.first).to be < RubyLLM::Tool
+      expect(resolved.first.agent_class).to eq(agent_cls)
+    end
+
+    it "mixes regular tools and agent tools" do
+      tool = regular_tool
+      agent_cls = sub_agent
+      klass = Class.new(described_class) do
+        tools [tool, agent_cls]
+        param :query, required: true
+
+        def user_prompt
+          query
+        end
+      end
+
+      agent = klass.new(query: "test")
+      resolved = agent.send(:resolved_tools)
+      expect(resolved.length).to eq(2)
+      expect(resolved.first).to eq(tool)
+      expect(resolved.last).to be < RubyLLM::Tool
+      expect(resolved.last.agent_class).to eq(agent_cls)
+    end
+
+    it "raises on duplicate tool names" do
+      agent1 = Class.new(described_class) do
+        def self.name
+          "SearchAgent"
+        end
+
+        description "First search"
+        param :query, required: true, desc: "Query"
+      end
+
+      agent2 = Class.new(described_class) do
+        def self.name
+          "Agents::SearchAgent"
+        end
+
+        description "Second search"
+        param :query, required: true, desc: "Query"
+      end
+
+      klass = Class.new(described_class) do
+        tools [agent1, agent2]
+        param :input, required: true
+
+        def user_prompt
+          input
+        end
+      end
+
+      agent = klass.new(input: "test")
+      expect { agent.send(:resolved_tools) }.to raise_error(ArgumentError, /Duplicate tool names/)
+    end
+  end
+
   describe "#resolved_tenant_id" do
     let(:agent_class) do
       Class.new(described_class) do

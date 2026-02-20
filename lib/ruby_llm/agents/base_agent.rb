@@ -463,13 +463,51 @@ module RubyLLM
 
       # Resolves tools for this execution
       #
+      # Agent classes in the tools list are automatically wrapped as
+      # RubyLLM::Tool subclasses via AgentTool.for. Regular tool classes
+      # pass through unchanged.
+      #
       # @return [Array<Class>] Tool classes to use
+      # @raise [ArgumentError] If duplicate tool names are detected
       def resolved_tools
-        if self.class.method_defined?(:tools, false)
+        raw = if self.class.method_defined?(:tools, false)
           tools
         else
           self.class.tools
         end
+
+        wrapped = raw.map { |tool_class| wrap_if_agent(tool_class) }
+        detect_duplicate_tool_names!(wrapped)
+        wrapped
+      end
+
+      # Wraps an agent class as a tool, or returns the tool class as-is.
+      #
+      # @param tool_class [Class] A tool or agent class
+      # @return [Class] The original or wrapped class
+      def wrap_if_agent(tool_class)
+        if tool_class.respond_to?(:ancestors) && tool_class.ancestors.include?(RubyLLM::Agents::BaseAgent)
+          AgentTool.for(tool_class)
+        else
+          tool_class
+        end
+      end
+
+      # Raises if two tools resolve to the same name.
+      #
+      # @param tools [Array<Class>] Resolved tool classes
+      # @raise [ArgumentError] On duplicate names
+      def detect_duplicate_tool_names!(tools)
+        names = tools.map { |t|
+          if t.respond_to?(:tool_name)
+            t.tool_name
+          else
+            inst = t.new
+            inst.respond_to?(:name) ? inst.name : t.to_s
+          end
+        }
+        duplicates = names.group_by(&:itself).select { |_, v| v.size > 1 }.keys
+        raise ArgumentError, "Duplicate tool names: #{duplicates.join(", ")}" if duplicates.any?
       end
 
       # Resolves messages for this execution
