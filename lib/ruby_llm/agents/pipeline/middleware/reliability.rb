@@ -120,6 +120,17 @@ module RubyLLM
 
               if result
                 context[:reliability_attempts] = tracker.to_json_array
+
+                # Emit fallback_used if a non-primary model succeeded
+                if current_model != models_to_try.first
+                  emit_reliability_notification(
+                    "ruby_llm_agents.reliability.fallback_used",
+                    primary_model: models_to_try.first,
+                    used_model: current_model,
+                    attempts_made: context.attempts_made
+                  )
+                end
+
                 return result
               end
 
@@ -131,6 +142,11 @@ module RubyLLM
             context[:reliability_attempts] = tracker.to_json_array
 
             # All models exhausted
+            emit_reliability_notification(
+              "ruby_llm_agents.reliability.all_models_exhausted",
+              models_tried: models_to_try
+            )
+
             raise Agents::Reliability::AllModelsExhaustedError.new(
               models_to_try, last_error,
               attempts: tracker.to_json_array
@@ -290,6 +306,19 @@ module RubyLLM
               cb_config,
               tenant_id: context.tenant_id
             )
+          end
+
+          # Emits an AS::Notification for reliability events
+          #
+          # @param event [String] The notification event name
+          # @param extras [Hash] Additional payload fields
+          def emit_reliability_notification(event, **extras)
+            ActiveSupport::Notifications.instrument(
+              event,
+              {agent_type: @agent_class&.name}.merge(extras)
+            )
+          rescue
+            # Never let notifications break execution
           end
 
           # Sleeps without blocking other fibers when in async context
