@@ -427,19 +427,39 @@ RSpec.describe RubyLLM::Agents::Embedder do
       expect(result.total_cost).to eq(0.05)
     end
 
-    it "estimates cost based on tokens and model" do
+    it "looks up cost from model registry when response has no cost" do
       mock_response = double(
         vectors: [[0.1]],
-        input_tokens: 5,
+        input_tokens: 1_000_000,
         model: "text-embedding-3-small"
       )
       allow(mock_response).to receive(:respond_to?).with(:input_cost).and_return(false)
       allow(RubyLLM).to receive(:embed).and_return(mock_response)
 
+      pricing = double(input: 0.02, output: 0)
+      model_pricing = double(text_tokens: pricing)
+      model_info = double(pricing: model_pricing)
+      allow(RubyLLM::Models).to receive(:find).with("text-embedding-3-small").and_return(model_info)
+
       result = test_embedder.call(text: "Hello")
 
-      # 5 tokens * $0.02/million = $0.0000001
-      expect(result.total_cost).to be > 0
+      # 1M tokens * $0.02/million = $0.02
+      expect(result.total_cost).to eq(0.02)
+    end
+
+    it "returns zero cost when model registry has no pricing" do
+      mock_response = double(
+        vectors: [[0.1]],
+        input_tokens: 1_000_000,
+        model: "unknown-embedding-model"
+      )
+      allow(mock_response).to receive(:respond_to?).with(:input_cost).and_return(false)
+      allow(RubyLLM).to receive(:embed).and_return(mock_response)
+      allow(RubyLLM::Models).to receive(:find).and_return(nil)
+
+      result = test_embedder.call(text: "Hello")
+
+      expect(result.total_cost).to eq(0.0)
     end
   end
 

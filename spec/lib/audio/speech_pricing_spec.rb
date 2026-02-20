@@ -5,33 +5,81 @@ require "rails_helper"
 RSpec.describe RubyLLM::Agents::Audio::SpeechPricing do
   before do
     RubyLLM::Agents.reset_configuration!
-    # Stub LiteLLM URL to prevent real HTTP calls
-    stub_request(:get, described_class::LITELLM_PRICING_URL)
+    # Stub all external pricing URLs to prevent real HTTP calls
+    stub_request(:get, RubyLLM::Agents::Pricing::DataStore::LITELLM_URL)
       .to_return(status: 200, body: litellm_response.to_json)
+    stub_request(:get, RubyLLM::Agents::Pricing::DataStore::OPENROUTER_URL)
+      .to_return(status: 200, body: {"data" => []}.to_json)
+    stub_request(:get, RubyLLM::Agents::Pricing::DataStore::HELICONE_URL)
+      .to_return(status: 200, body: [].to_json)
+    stub_request(:get, /#{Regexp.escape(RubyLLM::Agents::Pricing::DataStore::PORTKEY_BASE_URL)}/o)
+      .to_return(status: 404, body: {}.to_json)
+    stub_request(:get, /llmpricing\.ai/)
+      .to_return(status: 404, body: {}.to_json)
+    described_class.refresh!
   end
-
-  # Simulate LiteLLM having no TTS entries (current reality)
-  let(:litellm_response) { {"gpt-4o" => {"input_cost_per_token" => 0.0025}} }
 
   after do
     described_class.refresh!
     RubyLLM::Agents::Audio::ElevenLabs::ModelRegistry.clear_cache!
   end
 
+  # Default: LiteLLM has no TTS entries
+  let(:litellm_response) { {"gpt-4o" => {"input_cost_per_token" => 0.0025}} }
+
   describe ".calculate_cost" do
-    context "OpenAI models (hardcoded fallback)" do
-      it "prices tts-1 at $0.015 per 1K characters" do
+    context "when no pricing is found" do
+      it "returns zero for unknown models" do
+        cost = described_class.calculate_cost(
+          provider: :openai, model_id: "unknown-tts-model", characters: 1000
+        )
+        expect(cost).to eq(0.0)
+      end
+
+      it "returns zero for unknown provider" do
+        cost = described_class.calculate_cost(
+          provider: :unknown, model_id: "some-model", characters: 1000
+        )
+        expect(cost).to eq(0.0)
+      end
+    end
+
+    context "with LiteLLM pricing" do
+      let(:litellm_response) do
+        {
+          "tts/tts-1" => {"input_cost_per_character" => 0.000015, "mode" => "tts"},
+          "tts/tts-1-hd" => {"input_cost_per_character" => 0.000030, "mode" => "tts"},
+          "elevenlabs/eleven_v3" => {"input_cost_per_character" => 0.000300, "mode" => "tts"},
+          "elevenlabs/eleven_flash_v2" => {"input_cost_per_character" => 0.000150, "mode" => "tts"}
+        }
+      end
+
+      it "prices tts-1 from LiteLLM" do
         cost = described_class.calculate_cost(
           provider: :openai, model_id: "tts-1", characters: 1000
         )
         expect(cost).to eq(0.015)
       end
 
-      it "prices tts-1-hd at $0.030 per 1K characters" do
+      it "prices tts-1-hd from LiteLLM" do
         cost = described_class.calculate_cost(
           provider: :openai, model_id: "tts-1-hd", characters: 1000
         )
         expect(cost).to eq(0.030)
+      end
+
+      it "prices eleven_v3 from LiteLLM" do
+        cost = described_class.calculate_cost(
+          provider: :elevenlabs, model_id: "eleven_v3", characters: 1000
+        )
+        expect(cost).to eq(0.30)
+      end
+
+      it "prices eleven_flash_v2 from LiteLLM" do
+        cost = described_class.calculate_cost(
+          provider: :elevenlabs, model_id: "eleven_flash_v2", characters: 1000
+        )
+        expect(cost).to eq(0.15)
       end
 
       it "scales linearly with character count" do
@@ -49,75 +97,38 @@ RSpec.describe RubyLLM::Agents::Audio::SpeechPricing do
       end
     end
 
-    context "ElevenLabs models (hardcoded fallback)" do
-      it "prices eleven_v3 at $0.30 per 1K characters" do
-        cost = described_class.calculate_cost(
-          provider: :elevenlabs, model_id: "eleven_v3", characters: 1000
-        )
-        expect(cost).to eq(0.30)
+    context "when LiteLLM fetch fails" do
+      before do
+        stub_request(:get, RubyLLM::Agents::Pricing::DataStore::LITELLM_URL)
+          .to_return(status: 500, body: "Server Error")
+        described_class.refresh!
       end
 
-      it "prices eleven_multilingual_v2 at $0.30 per 1K characters" do
+      it "returns zero when no other source available" do
         cost = described_class.calculate_cost(
-          provider: :elevenlabs, model_id: "eleven_multilingual_v2", characters: 1000
+          provider: :openai, model_id: "tts-1", characters: 1000
         )
-        expect(cost).to eq(0.30)
-      end
-
-      it "prices flash models at $0.15 per 1K characters" do
-        cost = described_class.calculate_cost(
-          provider: :elevenlabs, model_id: "eleven_flash_v2_5", characters: 1000
-        )
-        expect(cost).to eq(0.15)
-      end
-
-      it "prices turbo models at $0.15 per 1K characters" do
-        cost = described_class.calculate_cost(
-          provider: :elevenlabs, model_id: "eleven_turbo_v2", characters: 1000
-        )
-        expect(cost).to eq(0.15)
-      end
-
-      it "prices deprecated v1 models at $0.30 per 1K characters" do
-        cost = described_class.calculate_cost(
-          provider: :elevenlabs, model_id: "eleven_monolingual_v1", characters: 1000
-        )
-        expect(cost).to eq(0.30)
-      end
-
-      it "prices eleven_flash_v2 at $0.15 per 1K characters" do
-        cost = described_class.calculate_cost(
-          provider: :elevenlabs, model_id: "eleven_flash_v2", characters: 1000
-        )
-        expect(cost).to eq(0.15)
-      end
-
-      it "prices eleven_turbo_v2_5 at $0.15 per 1K characters" do
-        cost = described_class.calculate_cost(
-          provider: :elevenlabs, model_id: "eleven_turbo_v2_5", characters: 1000
-        )
-        expect(cost).to eq(0.15)
-      end
-
-      it "defaults unknown ElevenLabs models to $0.30" do
-        cost = described_class.calculate_cost(
-          provider: :elevenlabs, model_id: "eleven_future_v4", characters: 1000
-        )
-        expect(cost).to eq(0.30)
+        expect(cost).to eq(0.0)
       end
     end
 
-    context "unknown provider" do
-      it "uses default_tts_cost from config" do
+    context "when LiteLLM URL times out" do
+      before do
+        stub_request(:get, RubyLLM::Agents::Pricing::DataStore::LITELLM_URL)
+          .to_timeout
+        described_class.refresh!
+      end
+
+      it "returns zero when no other source available" do
         cost = described_class.calculate_cost(
-          provider: :unknown, model_id: "some-model", characters: 1000
+          provider: :openai, model_id: "tts-1", characters: 1000
         )
-        expect(cost).to eq(0.015) # default
+        expect(cost).to eq(0.0)
       end
     end
   end
 
-  describe "Tier 2: config overrides" do
+  describe "Tier 1: config overrides" do
     before do
       RubyLLM::Agents.configure do |c|
         c.tts_model_pricing = {
@@ -149,7 +160,12 @@ RSpec.describe RubyLLM::Agents::Audio::SpeechPricing do
       expect(cost).to eq(0.10)
     end
 
-    it "falls back to hardcoded when model not in config" do
+    it "falls through to LiteLLM when model not in config" do
+      litellm_data = {"tts/tts-1-hd" => {"input_cost_per_character" => 0.000030}}
+      stub_request(:get, RubyLLM::Agents::Pricing::DataStore::LITELLM_URL)
+        .to_return(status: 200, body: litellm_data.to_json)
+      described_class.refresh!
+
       cost = described_class.calculate_cost(
         provider: :openai, model_id: "tts-1-hd", characters: 1000
       )
@@ -157,56 +173,21 @@ RSpec.describe RubyLLM::Agents::Audio::SpeechPricing do
     end
   end
 
-  describe "Tier 1: LiteLLM (future-proof)" do
-    context "when LiteLLM has TTS pricing" do
-      let(:litellm_response) do
-        {
-          "tts-1" => {"input_cost_per_character" => 0.000015},
-          "eleven_v3" => {"input_cost_per_character" => 0.000300}
-        }
-      end
+  describe "config default_tts_cost fallback" do
+    it "uses default_tts_cost when configured and no other source found" do
+      RubyLLM::Agents.configure { |c| c.default_tts_cost = 0.02 }
 
-      it "uses LiteLLM price for tts-1" do
-        cost = described_class.calculate_cost(
-          provider: :openai, model_id: "tts-1", characters: 1000
-        )
-        expect(cost).to eq(0.015)
-      end
-
-      it "uses LiteLLM price for eleven_v3" do
-        cost = described_class.calculate_cost(
-          provider: :elevenlabs, model_id: "eleven_v3", characters: 1000
-        )
-        expect(cost).to eq(0.30)
-      end
+      cost = described_class.calculate_cost(
+        provider: :openai, model_id: "unknown-model", characters: 1000
+      )
+      expect(cost).to eq(0.02)
     end
 
-    context "when LiteLLM fetch fails" do
-      before do
-        stub_request(:get, described_class::LITELLM_PRICING_URL)
-          .to_return(status: 500, body: "Server Error")
-      end
-
-      it "falls through to hardcoded fallback" do
-        cost = described_class.calculate_cost(
-          provider: :openai, model_id: "tts-1", characters: 1000
-        )
-        expect(cost).to eq(0.015)
-      end
-    end
-
-    context "when LiteLLM URL times out" do
-      before do
-        stub_request(:get, described_class::LITELLM_PRICING_URL)
-          .to_timeout
-      end
-
-      it "falls through to hardcoded fallback" do
-        cost = described_class.calculate_cost(
-          provider: :openai, model_id: "tts-1", characters: 1000
-        )
-        expect(cost).to eq(0.015)
-      end
+    it "returns zero when default_tts_cost is nil" do
+      cost = described_class.calculate_cost(
+        provider: :openai, model_id: "unknown-model", characters: 1000
+      )
+      expect(cost).to eq(0.0)
     end
   end
 
@@ -278,6 +259,19 @@ RSpec.describe RubyLLM::Agents::Audio::SpeechPricing do
       expect(cost).to eq(1.50)
     end
 
+    context "when elevenlabs_base_cost_per_1k is nil (not configured)" do
+      before do
+        RubyLLM::Agents.configure { |c| c.elevenlabs_base_cost_per_1k = nil }
+      end
+
+      it "skips ElevenLabs API tier and returns zero" do
+        cost = described_class.calculate_cost(
+          provider: :elevenlabs, model_id: "eleven_v3", characters: 1000
+        )
+        expect(cost).to eq(0.0)
+      end
+    end
+
     context "priority: user config overrides API tier" do
       before do
         RubyLLM::Agents.configure do |c|
@@ -299,28 +293,29 @@ RSpec.describe RubyLLM::Agents::Audio::SpeechPricing do
         stub_request(:get, models_url).to_timeout
       end
 
-      it "falls through to hardcoded fallback" do
+      it "returns zero when no other source available" do
         cost = described_class.calculate_cost(
           provider: :elevenlabs, model_id: "eleven_v3", characters: 1000
         )
-        expect(cost).to eq(0.30)
+        expect(cost).to eq(0.0)
       end
     end
 
     context "when model is unknown to the API" do
-      it "falls through to hardcoded fallback for unknown model" do
+      it "returns zero for unknown model" do
         cost = described_class.calculate_cost(
           provider: :elevenlabs, model_id: "eleven_future_v99", characters: 1000
         )
-        expect(cost).to eq(0.30) # hardcoded default for unknown ElevenLabs
+        expect(cost).to eq(0.0)
       end
     end
 
     it "does not affect OpenAI pricing" do
+      # OpenAI models are not in ElevenLabs API, and LiteLLM has no TTS data
       cost = described_class.calculate_cost(
         provider: :openai, model_id: "tts-1", characters: 1000
       )
-      expect(cost).to eq(0.015)
+      expect(cost).to eq(0.0)
     end
   end
 
@@ -331,9 +326,6 @@ RSpec.describe RubyLLM::Agents::Audio::SpeechPricing do
       expect(pricing).to have_key(:litellm)
       expect(pricing).to have_key(:configured)
       expect(pricing).to have_key(:elevenlabs_api)
-      expect(pricing).to have_key(:fallbacks)
-      expect(pricing[:fallbacks]).to include("tts-1" => 0.015)
-      expect(pricing[:fallbacks]).to include("eleven_v3" => 0.30)
     end
 
     context "with ElevenLabs API configured" do
@@ -358,22 +350,12 @@ RSpec.describe RubyLLM::Agents::Audio::SpeechPricing do
         expect(api_pricing["eleven_turbo_v2"]).to eq(0.15)
       end
     end
-  end
 
-  describe "fallback pricing table" do
-    it "includes all supported models" do
-      table = described_class.send(:fallback_pricing_table)
-
-      # OpenAI
-      expect(table).to include("tts-1", "tts-1-hd")
-      # ElevenLabs v1
-      expect(table).to include("eleven_monolingual_v1", "eleven_multilingual_v1")
-      # ElevenLabs v2
-      expect(table).to include("eleven_multilingual_v2", "eleven_turbo_v2", "eleven_flash_v2")
-      # ElevenLabs v2.5
-      expect(table).to include("eleven_turbo_v2_5", "eleven_flash_v2_5")
-      # ElevenLabs v3
-      expect(table).to include("eleven_v3")
+    context "when elevenlabs_base_cost_per_1k is nil" do
+      it "returns empty hash for elevenlabs_api" do
+        pricing = described_class.all_pricing
+        expect(pricing[:elevenlabs_api]).to eq({})
+      end
     end
   end
 end

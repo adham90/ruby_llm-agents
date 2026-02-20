@@ -397,25 +397,28 @@ module RubyLLM
       # @param response [Object] The ruby_llm embedding response
       # @return [Float] Cost in USD
       def calculate_cost(response)
-        # ruby_llm may provide cost directly, otherwise estimate
+        # ruby_llm may provide cost directly
         return response.input_cost if response.respond_to?(:input_cost) && response.input_cost
 
-        # Fallback: estimate based on tokens and model
+        # Look up pricing from the model registry (same approach as BaseAgent)
         tokens = response.input_tokens || 0
-        model_name = response.model.to_s
+        model_id = response.model.to_s
 
-        price_per_million = case model_name
-        when /text-embedding-3-small/
-          0.02
-        when /text-embedding-3-large/
-          0.13
-        when /text-embedding-ada/
-          0.10
-        else
-          0.02 # Default to small pricing
-        end
+        input_price = find_embedding_price(model_id)
+        (tokens / 1_000_000.0) * input_price
+      end
 
-        (tokens / 1_000_000.0) * price_per_million
+      # Looks up the per-million-token input price for an embedding model
+      #
+      # @param model_id [String] The model identifier
+      # @return [Numeric] Price per million tokens (0 if unknown)
+      def find_embedding_price(model_id)
+        return 0 unless defined?(RubyLLM::Models)
+
+        model_info = RubyLLM::Models.find(model_id)
+        model_info&.pricing&.text_tokens&.input || 0
+      rescue
+        0
       end
 
       # Resolves the model to use

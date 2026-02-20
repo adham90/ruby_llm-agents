@@ -31,7 +31,7 @@ RSpec.describe RubyLLM::Agents::Speaker do
         headers: {"Content-Type" => "audio/mpeg"})
 
     # Stub LiteLLM pricing to prevent real HTTP calls
-    stub_request(:get, RubyLLM::Agents::Audio::SpeechPricing::LITELLM_PRICING_URL)
+    stub_request(:get, RubyLLM::Agents::Pricing::DataStore::LITELLM_URL)
       .to_return(status: 200, body: "{}",
         headers: {"Content-Type" => "application/json"})
   end
@@ -537,6 +537,18 @@ RSpec.describe RubyLLM::Agents::Speaker do
   end
 
   describe "cost calculation" do
+    before do
+      # Provide TTS pricing via user config (since LiteLLM is stubbed empty)
+      RubyLLM::Agents.configure do |c|
+        c.tts_model_pricing = {
+          "tts-1" => 0.015,
+          "tts-1-hd" => 0.030,
+          "eleven_v3" => 0.30,
+          "eleven_flash_v2_5" => 0.15
+        }
+      end
+    end
+
     let(:test_speaker) do
       Class.new(described_class) do
         def self.name

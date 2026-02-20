@@ -702,7 +702,7 @@ module RubyLLM
 
         # TTS pricing defaults
         @tts_model_pricing = {}
-        @default_tts_cost = 0.015
+        @default_tts_cost = nil
 
         # Execution/conversation agent tracking
         @track_executions = true
@@ -725,7 +725,7 @@ module RubyLLM
         # Image Pricing defaults
         @litellm_pricing_url = nil  # Use default from Pricing module
         @litellm_pricing_cache_ttl = nil  # Use default (24 hours)
-        @default_image_cost = 0.04  # Fallback cost per image
+        @default_image_cost = nil  # User-configurable fallback cost per image
         @image_model_pricing = {}  # User-defined pricing overrides
 
         # Phase 2: Image Variation, Editing, Transformation, Upscaling defaults
@@ -756,8 +756,9 @@ module RubyLLM
         # Audio data persistence (disabled by default — base64 audio can be large)
         @persist_audio_data = false
 
-        # ElevenLabs dynamic pricing: base cost per 1K characters (Pro plan overage rate)
-        @elevenlabs_base_cost_per_1k = 0.30
+        # ElevenLabs dynamic pricing: base cost per 1K characters
+        # Set to your plan's overage rate (e.g., 0.30 for Pro) to enable API-based pricing
+        @elevenlabs_base_cost_per_1k = nil
         # ElevenLabs models cache TTL in seconds (6 hours)
         @elevenlabs_models_cache_ttl = 21_600
       end

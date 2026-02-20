@@ -1,17 +1,20 @@
 # frozen_string_literal: true
 
-require "net/http"
-require "json"
+require_relative "../../pricing/data_store"
+require_relative "../../pricing/ruby_llm_adapter"
+require_relative "../../pricing/litellm_adapter"
 
 module RubyLLM
   module Agents
     class ImageGenerator
-      # Dynamic pricing resolution for image generation models
+      # Dynamic pricing resolution for image generation models.
       #
-      # Uses a three-tier strategy:
-      # 1. LiteLLM JSON (primary) - comprehensive, community-maintained
-      # 2. Configurable pricing table - user overrides
-      # 3. Hardcoded fallbacks - last resort
+      # Uses a three-tier strategy (no hardcoded prices):
+      # 1. Configurable pricing table - user overrides
+      # 2. RubyLLM gem (local, no HTTP) - model registry pricing
+      # 3. LiteLLM (via shared DataStore) - comprehensive, community-maintained
+      #
+      # When no pricing is found, returns 0 to signal unknown cost.
       #
       # @example Get price for a model
       #   Pricing.cost_per_image("gpt-image-1", size: "1024x1024", quality: "hd")
@@ -23,9 +26,6 @@ module RubyLLM
       #
       module Pricing
         extend self
-
-        LITELLM_PRICING_URL = "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
-        DEFAULT_CACHE_TTL = 24 * 60 * 60 # 24 hours in seconds
 
         # Calculate total cost for image generation
         #
@@ -44,29 +44,32 @@ module RubyLLM
         # @param model_id [String] The model identifier
         # @param size [String] Image size
         # @param quality [String] Quality setting
-        # @return [Float] Cost per image in USD
+        # @return [Float] Cost per image in USD (0 if unknown)
         def cost_per_image(model_id, size: nil, quality: nil)
-          # 1. Try LiteLLM pricing data
-          if (litellm_price = from_litellm(model_id, size, quality))
-            return litellm_price
-          end
-
-          # 2. Try configurable pricing table
+          # Tier 1: User-configurable pricing table
           if (config_price = from_config(model_id, size, quality))
             return config_price
           end
 
-          # 3. Fall back to hardcoded estimates
-          fallback_price(model_id, size, quality)
+          # Tier 2: RubyLLM gem (local, no HTTP)
+          if (ruby_llm_price = from_ruby_llm(model_id))
+            return ruby_llm_price
+          end
+
+          # Tier 3: LiteLLM (via shared DataStore + adapter)
+          if (litellm_price = from_litellm(model_id, size, quality))
+            return litellm_price
+          end
+
+          # No pricing found — return user-configured default or 0
+          config.default_image_cost || 0
         end
 
-        # Refresh pricing data from LiteLLM
+        # Refresh pricing data
         #
-        # @return [Hash] The fetched pricing data
+        # @return [void]
         def refresh!
-          @litellm_data = nil
-          @litellm_fetched_at = nil
-          litellm_data
+          Agents::Pricing::DataStore.refresh!
         end
 
         # Get all known pricing for debugging/display
@@ -75,139 +78,16 @@ module RubyLLM
         def all_pricing
           {
             litellm: litellm_image_models,
-            configured: config.image_model_pricing || {},
-            fallbacks: fallback_pricing_table
+            configured: config.image_model_pricing || {}
           }
         end
 
         private
 
-        # Fetch from LiteLLM JSON
-        def from_litellm(model_id, size, quality)
-          data = litellm_data
-          return nil unless data
+        # ============================================================
+        # Tier 1: User-configurable pricing table
+        # ============================================================
 
-          # Try exact match first
-          model_data = find_litellm_model(data, model_id, size, quality)
-          return nil unless model_data
-
-          extract_litellm_price(model_data, size, quality)
-        end
-
-        def find_litellm_model(data, model_id, size, quality)
-          normalized = normalize_model_id(model_id)
-
-          # Try various key formats LiteLLM uses
-          candidates = [
-            model_id,
-            normalized,
-            "#{size}/#{model_id}",
-            "#{size}/#{quality}/#{model_id}",
-            "aiml/#{normalized}",
-            "together_ai/#{normalized}"
-          ]
-
-          candidates.each do |key|
-            return data[key] if data[key]
-          end
-
-          # Fuzzy match by model name pattern
-          data.find do |key, _value|
-            key_lower = key.to_s.downcase
-            normalized_lower = normalized.downcase
-
-            key_lower.include?(normalized_lower) ||
-              normalized_lower.include?(key_lower.split("/").last.to_s)
-          end&.last
-        end
-
-        def extract_litellm_price(model_data, size, quality)
-          # LiteLLM uses different pricing fields for images
-          if model_data["input_cost_per_image"]
-            return model_data["input_cost_per_image"]
-          end
-
-          if model_data["input_cost_per_pixel"] && size
-            width, height = size.split("x").map(&:to_i)
-            pixels = width * height
-            return (model_data["input_cost_per_pixel"] * pixels).round(6)
-          end
-
-          # Some models have quality-based pricing
-          if quality == "hd" && model_data["input_cost_per_image_hd"]
-            return model_data["input_cost_per_image_hd"]
-          end
-
-          nil
-        end
-
-        def litellm_data
-          return @litellm_data if @litellm_data && !cache_expired?
-
-          @litellm_data = fetch_litellm_data
-          @litellm_fetched_at = Time.now
-          @litellm_data
-        end
-
-        def fetch_litellm_data
-          # Use Rails cache if available
-          if defined?(Rails) && Rails.cache
-            Rails.cache.fetch("litellm_pricing_data", expires_in: cache_ttl) do
-              fetch_from_url
-            end
-          else
-            fetch_from_url
-          end
-        rescue => e
-          warn "[RubyLLM::Agents] Failed to fetch LiteLLM pricing: #{e.message}"
-          {}
-        end
-
-        def fetch_from_url
-          uri = URI(config.litellm_pricing_url || LITELLM_PRICING_URL)
-          http = Net::HTTP.new(uri.host, uri.port)
-          http.use_ssl = uri.scheme == "https"
-          http.open_timeout = 5
-          http.read_timeout = 10
-
-          request = Net::HTTP::Get.new(uri)
-          response = http.request(request)
-
-          if response.is_a?(Net::HTTPSuccess)
-            JSON.parse(response.body)
-          else
-            {}
-          end
-        rescue => e
-          warn "[RubyLLM::Agents] HTTP error fetching LiteLLM pricing: #{e.message}"
-          {}
-        end
-
-        def cache_expired?
-          return true unless @litellm_fetched_at
-          Time.now - @litellm_fetched_at > cache_ttl
-        end
-
-        def cache_ttl
-          ttl = config.litellm_pricing_cache_ttl
-          return DEFAULT_CACHE_TTL unless ttl
-
-          # Handle ActiveSupport::Duration
-          ttl.respond_to?(:to_i) ? ttl.to_i : ttl
-        end
-
-        # Get image-specific models from LiteLLM data
-        def litellm_image_models
-          litellm_data.select do |key, value|
-            value.is_a?(Hash) && (
-              value["input_cost_per_image"] ||
-              value["input_cost_per_pixel"] ||
-              key.to_s.match?(/dall-e|flux|sdxl|stable|imagen|image/i)
-            )
-          end
-        end
-
-        # Fetch from configurable pricing table
         def from_config(model_id, size, quality)
           table = config.image_model_pricing
           return nil unless table
@@ -251,80 +131,58 @@ module RubyLLM
           pricing[:base] || pricing["base"] || pricing[:default] || pricing["default"] || pricing[:standard] || pricing["standard"]
         end
 
-        # Hardcoded fallback prices
-        def fallback_price(model_id, size, quality)
-          normalized = normalize_model_id(model_id)
+        # ============================================================
+        # Tier 2: RubyLLM gem (local, no HTTP)
+        # ============================================================
 
-          case normalized
-          when /gpt-image-1|dall-e-3/i
-            dalle3_price(size, quality)
-          when /dall-e-2/i
-            dalle2_price(size)
-          when /imagen/i
-            0.02
-          when /flux.*pro.*ultra/i
-            0.063
-          when /flux.*pro/i
-            0.05
-          when /flux.*dev/i
-            0.025
-          when /flux.*schnell/i
-            0.003
-          when /sdxl.*lightning/i
-            0.002
-          when /sdxl|stable-diffusion-xl/i
-            0.04
-          when /stable-diffusion/i
-            0.02
-          when /ideogram/i
-            0.04
-          when /recraft/i
-            0.04
-          when /real-esrgan|upscal/i
-            0.01
-          when /blip|caption|analyz/i
-            0.001
-          when /segment|background|rembg/i
-            0.01
-          else
-            config.default_image_cost || 0.04
-          end
+        def from_ruby_llm(model_id)
+          data = Agents::Pricing::RubyLLMAdapter.find_model(model_id)
+          return nil unless data
+
+          data[:input_cost_per_image]
         end
 
-        def dalle3_price(size, quality)
-          pixels = parse_pixels(size)
-          is_large = pixels && pixels >= 1_000_000
+        # ============================================================
+        # Tier 3: LiteLLM (via shared DataStore + adapter)
+        # ============================================================
 
-          case quality
-          when "hd"
-            is_large ? 0.12 : 0.08
-          else
-            is_large ? 0.08 : 0.04
-          end
+        def from_litellm(model_id, size, quality)
+          data = Agents::Pricing::LiteLLMAdapter.find_model(model_id)
+          return nil unless data
+
+          extract_image_price(data, size, quality)
         end
 
-        def dalle2_price(size)
-          case size
-          when "1024x1024" then 0.02
-          when "512x512" then 0.018
-          when "256x256" then 0.016
-          else 0.02
+        def extract_image_price(data, size, quality)
+          # Check quality-specific pricing first when HD requested
+          if quality == "hd" && data[:input_cost_per_image_hd]
+            return data[:input_cost_per_image_hd]
           end
+
+          if data[:input_cost_per_image]
+            return data[:input_cost_per_image]
+          end
+
+          if data[:input_cost_per_pixel] && size
+            width, height = size.split("x").map(&:to_i)
+            pixels = width * height
+            return (data[:input_cost_per_pixel] * pixels).round(6)
+          end
+
+          nil
         end
 
-        def fallback_pricing_table
-          {
-            "gpt-image-1" => {standard: 0.04, hd: 0.08, large_hd: 0.12},
-            "dall-e-3" => {standard: 0.04, hd: 0.08, large_hd: 0.12},
-            "dall-e-2" => {"1024x1024" => 0.02, "512x512" => 0.018, "256x256" => 0.016},
-            "flux-pro" => 0.05,
-            "flux-dev" => 0.025,
-            "flux-schnell" => 0.003,
-            "sdxl" => 0.04,
-            "stable-diffusion-3.5" => 0.03,
-            "imagen-3" => 0.02,
-            "ideogram-2" => 0.04
-          }
+        def litellm_image_models
+          data = Agents::Pricing::DataStore.litellm_data
+          return {} unless data.is_a?(Hash)
+
+          data.select do |key, value|
+            value.is_a?(Hash) && (
+              value["input_cost_per_image"] ||
+              value["input_cost_per_pixel"] ||
+              key.to_s.match?(/dall-e|flux|sdxl|stable|imagen|image/i)
+            )
+          end
         end
 
         def parse_pixels(size)

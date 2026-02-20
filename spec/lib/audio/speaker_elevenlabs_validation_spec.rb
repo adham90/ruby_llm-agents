@@ -24,7 +24,7 @@ RSpec.describe "Speaker ElevenLabs model validation" do
       .to_return(status: 200, body: models_json)
 
     # Stub LiteLLM to prevent real HTTP calls from SpeechPricing
-    stub_request(:get, RubyLLM::Agents::Audio::SpeechPricing::LITELLM_PRICING_URL)
+    stub_request(:get, RubyLLM::Agents::Pricing::DataStore::LITELLM_URL)
       .to_return(status: 200, body: {}.to_json)
   end
 
