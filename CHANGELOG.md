@@ -5,15 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.6.0] - 2026-02-21
 
 ### Added
 
+- **Agent-as-tool composition** — Wrap any agent as a RubyLLM tool with `AgentTool` adapter. Use `tools AgentTool.from(OtherAgent)` to let agents call other agents. Execution hierarchy tracked via `parent_execution_id` in metadata
+- **Queryable agents** — Query execution history directly from agent classes: `.executions`, `.last_run`, `.failures(since:)`, `.total_spent(since:)`, `.stats(since:)`, `.cost_by_model(since:)`, `.with_params(**params)`. Includes replay support for A/B testing models on real inputs
+- **ActiveSupport Notifications** — Instrument the full pipeline with `ruby_llm_agents.*` events:
+  - Execution lifecycle: `execution.start`, `execution.complete`, `execution.error`
+  - Cache: `cache.hit`, `cache.miss`, `cache.write`
+  - Budget: `budget.check`, `budget.record`, `budget.exceeded`
+  - Reliability: `reliability.fallback`, `reliability.exhausted`
+- **Custom middleware** — Inject custom middleware into the pipeline globally via `config.middleware` or per-agent via `middleware` DSL. Supports `before`/`after`/`around` positioning relative to built-in middleware
 - **Agent rename support** — Three complementary approaches for handling agent class renames:
   - **Aliases DSL** — `aliases "OldName", "AnotherOldName"` on agent classes makes `by_agent` scopes, analytics, and budget checks automatically include records from all previous names
   - **Programmatic helper** — `RubyLLM::Agents.rename_agent("Old", to: "New")` updates execution records and tenant budget keys in-place, with `dry_run: true` support
   - **Migration generator** — `rails generate ruby_llm_agents:rename_agent OldName NewName` creates a reversible migration
   - **Rake task** — `rake ruby_llm_agents:rename_agent FROM=Old TO=New [DRY_RUN=1]` as a CLI alternative
+- **Debugging helpers** — `Configuration#to_h`, `BaseAgent.config_summary`, `Result#execution` for console inspection
+- **Parameter descriptions** — `desc:` / `description:` keyword on `param` DSL for documenting agent parameters
+- **Dashboard enhancements** — Custom date range picker for stats/charts, cache savings display, top tenants overview, favicons
+
+### Changed
+
+- Tenant middleware now supports objects responding to `llm_tenant_id` in addition to string/symbol tenant IDs
+- Deep symbolize hash keys in agent response processing for consistent access patterns
+- Replaced test doubles with real objects across spec suite for more reliable tests
+
+### Removed
+
+- Dead code cleanup: removed unused `Reliability::Executor` sub-classes, duplicate error classes, orphaned `async_max_concurrency` config, unimplemented redaction stub, hardcoded pricing constants, dead `Pipeline` convenience methods and `Instrumentation` diagnostic methods
 
 ## [3.5.5] - 2026-02-19
 
@@ -722,6 +743,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[3.6.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.5.5...v3.6.0
 [3.5.5]: https://github.com/adham90/ruby_llm-agents/compare/v3.5.4...v3.5.5
 [3.5.4]: https://github.com/adham90/ruby_llm-agents/compare/v3.5.3...v3.5.4
 [3.5.3]: https://github.com/adham90/ruby_llm-agents/compare/v3.5.2...v3.5.3
