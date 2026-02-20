@@ -857,3 +857,4 @@ See [Querying Executions](Querying-Executions) for full documentation including 
 - [Reliability](Reliability) - Fault tolerance configuration
 - [Caching](Caching) - Cache configuration
 - [Querying Executions](Querying-Executions) - Query history and replay
+- [Custom Middleware](Custom-Middleware) - Per-agent middleware injection

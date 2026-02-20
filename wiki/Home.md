@@ -28,6 +28,7 @@ Welcome to the official documentation for **RubyLLM::Agents**, a production-read
 - **[Execution Tracking](Execution-Tracking)** - Automatic logging and analytics
 - **[Querying Executions](Querying-Executions)** - Query execution history from agent classes
 - **[ActiveSupport Notifications](ActiveSupport-Notifications)** - Real-time instrumentation events
+- **[Custom Middleware](Custom-Middleware)** - Inject custom middleware into the pipeline
 
 ### Specialized Capabilities
 - **[Routing](Routing)** - Message classification and routing

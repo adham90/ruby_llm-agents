@@ -281,6 +281,24 @@ gem 'async', '~> 2.0'
 
 See [Async/Fiber](Async-Fiber) for details.
 
+### Custom Middleware
+
+Inject custom middleware into the execution pipeline for all agents:
+
+```ruby
+config.use_middleware AuditMiddleware
+config.use_middleware RateLimitMiddleware, before: RubyLLM::Agents::Pipeline::Middleware::Cache
+config.use_middleware TracingMiddleware, after: RubyLLM::Agents::Pipeline::Middleware::Tenant
+```
+
+Clear all registered middleware:
+
+```ruby
+config.clear_middleware!
+```
+
+See [Custom Middleware](Custom-Middleware) for writing middleware, per-agent registration, and examples.
+
 ## Environment-Specific Configuration
 
 ```ruby
@@ -422,4 +440,5 @@ end
 - [Multi-Tenancy](Multi-Tenancy) - Tenant isolation
 - [Async/Fiber](Async-Fiber) - Concurrent execution
 - [Dashboard](Dashboard) - Monitoring UI
+- [Custom Middleware](Custom-Middleware) - Pipeline middleware injection
 - [Migration](Migration) - Upgrading between versions
