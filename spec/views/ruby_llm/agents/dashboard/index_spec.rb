@@ -39,9 +39,10 @@ RSpec.describe "ruby_llm/agents/dashboard/index", type: :view do
       expect(rendered).to include('id="cost-by-model-chart"')
     end
 
-    it "renders cost & usage section header" do
+    it "renders breakdown chart containers" do
       render
-      expect(rendered).to include("cost &amp; usage").or include("cost & usage")
+      expect(rendered).to include('id="cost-by-agent-chart"')
+      expect(rendered).to include('id="cost-by-model-chart"')
     end
   end
 

@@ -104,7 +104,9 @@
   const successData = trendData.map(d => [new Date(d.date).getTime(), d.count - d.errors]);
   const errorData = trendData.map(d => [new Date(d.date).getTime(), d.errors]);
 
-  Highcharts.chart('agent-trend-chart', {
+  function renderChart() {
+    window.__initHighchartsDefaults && window.__initHighchartsDefaults();
+    Highcharts.chart('agent-trend-chart', {
     chart: { type: 'areaspline', backgroundColor: 'transparent', spacing: [5, 0, 0, 0] },
     title: { text: null },
     xAxis: {
@@ -159,6 +161,19 @@
       }
     ]
   });
+  }
+
+  function waitForHighcharts(attempts) {
+    if (typeof Highcharts !== 'undefined') {
+      renderChart();
+    } else if (attempts > 0) {
+      setTimeout(function() { waitForHighcharts(attempts - 1); }, 100);
+    }
+  }
+
+  document.readyState === 'loading'
+    ? document.addEventListener('DOMContentLoaded', function() { waitForHighcharts(50); })
+    : waitForHighcharts(50);
 })();
 </script>
 

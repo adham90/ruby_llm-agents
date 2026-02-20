@@ -12,6 +12,14 @@
       <span class="<%= @now_strip[:errors_today] > 0 ? 'text-red-500' : 'text-gray-800 dark:text-gray-200' %>"><%= @now_strip[:errors_today] %></span> errors<% if total > 0 && @now_strip[:errors_today] > 0 %> <span class="text-gray-300 dark:text-gray-600">(<%= (@now_strip[:errors_today].to_f / total * 100).round(1) %>%)</span><% end %>
       <span class="text-gray-300 dark:text-gray-700">&middot;</span>
       <span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(@now_strip[:cost_today], precision: 2) %></span>
+      <% if @cache_savings[:count] > 0 %>
+        <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+        <span class="text-green-500"><%= number_with_delimiter(@cache_savings[:count]) %></span> cache hits
+        <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+        <span class="text-green-500">$<%= number_with_precision(@cache_savings[:estimated_savings], precision: 2) %></span> saved
+        <span class="text-gray-300 dark:text-gray-700">&middot;</span>
+        <span class="text-gray-800 dark:text-gray-200"><%= @cache_savings[:hit_rate] %>%</span> hit rate
+      <% end %>
     </div>
   </div>
   <div class="flex font-mono text-xs gap-0.5">
@@ -25,7 +33,7 @@
 </div>
 
 <!-- Activity Chart -->
-<div id="activity-chart" style="width: 100%; height: 180px;"></div>
+<div id="activity-chart" style="width: 100%; height: 160px;"></div>
 
 <!-- Tenant Budget (when viewing specific tenant) -->
 <%= render partial: "ruby_llm/agents/dashboard/tenant_budget", locals: { tenant_budget: @tenant_budget } %>
@@ -42,7 +50,6 @@
     <% @recent_executions.first(5).each do |execution| %>
       <div class="group flex items-center gap-3 py-1.5 px-2 -mx-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer"
            onclick="window.location='<%= ruby_llm_agents.execution_path(execution) %>'">
-        <span class="text-gray-300 dark:text-gray-700">▸</span>
         <span class="w-28 truncate text-gray-900 dark:text-gray-200"><%= execution.agent_type.gsub(/Agent$/, '') %></span>
         <%# Status dot %>
         <% dot_color = if execution.status_running?
@@ -159,30 +166,7 @@
   <% end %>
 </div>
 
-<!-- ── cost & usage ────────────────────────── -->
-<div class="flex items-center gap-3 mt-8 mb-3">
-  <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">cost & usage</span>
-  <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
-</div>
-
-<%# Cache savings stat strip %>
-<% if @cache_savings[:count] > 0 %>
-  <div class="font-mono text-xs text-gray-400 dark:text-gray-500 mb-4 px-2">
-    <span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(@cache_savings[:count]) %></span> cache hits
-    <span class="text-gray-300 dark:text-gray-700">&middot;</span>
-    <span class="text-green-500">$<%= number_with_precision(@cache_savings[:estimated_savings], precision: 2) %></span> saved
-    <span class="text-gray-300 dark:text-gray-700">&middot;</span>
-    <span class="text-gray-800 dark:text-gray-200"><%= @cache_savings[:hit_rate] %>%</span> hit rate
-  </div>
-<% end %>
-
-<%# Time-series charts: Cost + Tokens %>
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-  <div id="cost-over-time-chart" style="width: 100%; height: 140px;"></div>
-  <div id="tokens-over-time-chart" style="width: 100%; height: 140px;"></div>
-</div>
-
-<%# Breakdown charts: Cost by Agent + Cost by Model %>
+<!-- ── spending ──────────────────────────────── -->
 <%
   # Prepare cost-by-agent data (top 8 by cost, all agent types merged)
   cost_by_agent_data = [@agent_stats, @embedder_stats, @transcriber_stats, @speaker_stats, @image_generator_stats]
@@ -196,9 +180,19 @@
     .select { |m| m[:total_cost].to_f > 0 }
     .first(6)
 %>
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-  <div id="cost-by-agent-chart" style="width: 100%; height: 160px;"></div>
-  <div id="cost-by-model-chart" style="width: 100%; height: 160px;"></div>
+<div class="mt-8">
+  <div class="flex items-center gap-3 mb-3">
+    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">spending</span>
+    <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div id="cost-over-time-chart" style="width: 100%; height: 160px;"></div>
+    <div id="tokens-over-time-chart" style="width: 100%; height: 160px;"></div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+    <div id="cost-by-agent-chart" style="width: 100%; height: 200px;"></div>
+    <div id="cost-by-model-chart" style="width: 100%; height: 200px;"></div>
+  </div>
 </div>
 
 <%# Top tenants overview %>
@@ -331,8 +325,8 @@
         series: [{
           name: 'cost',
           data: toDatetimePoints(data.series[2].data, range),
-          color: chartColor('#8B5CF6', '#d3869b'),
-          fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, chartColorAlpha('rgba(139, 92, 246, 0.12)', 211, 134, 155, 0.12)], [1, chartColorAlpha('rgba(139, 92, 246, 0)', 211, 134, 155, 0)]] }
+          color: chartColor('#F59E0B', '#fabd2f'),
+          fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, chartColorAlpha('rgba(245, 158, 11, 0.12)', 250, 189, 47, 0.12)], [1, chartColorAlpha('rgba(245, 158, 11, 0)', 250, 189, 47, 0)]] }
         }]
       });
     }
@@ -368,8 +362,8 @@
         series: [{
           name: 'tokens',
           data: toDatetimePoints(data.series[4].data, range),
-          color: chartColor('#06B6D4', '#8ec07c'),
-          fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, chartColorAlpha('rgba(6, 182, 212, 0.12)', 142, 192, 124, 0.12)], [1, chartColorAlpha('rgba(6, 182, 212, 0)', 142, 192, 124, 0)]] }
+          color: chartColor('#3B82F6', '#83a598'),
+          fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, chartColorAlpha('rgba(59, 130, 246, 0.12)', 131, 165, 152, 0.12)], [1, chartColorAlpha('rgba(59, 130, 246, 0)', 131, 165, 152, 0)]] }
         }]
       });
     }
@@ -415,7 +409,7 @@
           bar: {
             borderWidth: 0,
             borderRadius: 2,
-            color: chartColor('#8B5CF6', '#d3869b')
+            color: chartColor('#F59E0B', '#fabd2f')
           }
         },
         series: [{ name: 'cost', data: values }]
@@ -430,12 +424,12 @@
         return;
       }
       var colors = [
-        chartColor('#8B5CF6', '#d3869b'),
-        chartColor('#06B6D4', '#8ec07c'),
         chartColor('#F59E0B', '#fabd2f'),
+        chartColor('#3B82F6', '#83a598'),
         chartColor('#10B981', '#b8bb26'),
         chartColor('#EF4444', '#fb4934'),
-        chartColor('#6366F1', '#83a598')
+        chartColor('#8B5CF6', '#d3869b'),
+        chartColor('#F97316', '#fe8019')
       ];
 
       Highcharts.chart('cost-by-model-chart', {
@@ -468,10 +462,6 @@
     }
 
     function initCharts() {
-      if (typeof Highcharts === 'undefined') {
-        console.log('[RubyLLM::Agents] Highcharts not loaded — charts disabled');
-        return;
-      }
       window.__initHighchartsDefaults && window.__initHighchartsDefaults();
 
       fetch(chartUrl)
@@ -487,8 +477,19 @@
       renderCostByModelChart();
     }
 
+    // Wait for Highcharts to load (handles async fallback CDN)
+    function waitForHighcharts(attempts) {
+      if (typeof Highcharts !== 'undefined') {
+        initCharts();
+      } else if (attempts > 0) {
+        setTimeout(function() { waitForHighcharts(attempts - 1); }, 100);
+      } else {
+        console.log('[RubyLLM::Agents] Highcharts not loaded after 5s — charts disabled');
+      }
+    }
+
     document.readyState === 'loading'
-      ? document.addEventListener('DOMContentLoaded', initCharts)
-      : initCharts();
+      ? document.addEventListener('DOMContentLoaded', function() { waitForHighcharts(50); })
+      : waitForHighcharts(50);
   })();
 </script>
