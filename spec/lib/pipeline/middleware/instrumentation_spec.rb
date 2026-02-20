@@ -110,7 +110,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           id: 123,
           status: "running",
           detail: nil,
-          class: RubyLLM::Agents::Execution)
+          class: RubyLLM::Agents::Execution,
+          parent_execution_id: nil,
+          root_execution_id: nil)
       end
 
       before do
@@ -118,6 +120,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         RubyLLM::Agents.configuration.multi_tenancy_enabled = false
         # Allow detail creation for prompt persistence
         allow(mock_execution).to receive(:create_detail!)
+        # Allow hierarchy ID updates
+        allow(mock_execution).to receive(:update_column)
       end
 
       describe "running execution pattern" do
@@ -356,7 +360,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           id: 123,
           status: "running",
           detail: nil,
-          class: RubyLLM::Agents::Execution)
+          class: RubyLLM::Agents::Execution,
+          parent_execution_id: nil,
+          root_execution_id: nil)
       end
 
       before do
@@ -364,6 +370,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         RubyLLM::Agents.configuration.track_cache_hits = false
         RubyLLM::Agents.configuration.multi_tenancy_enabled = false
         allow(mock_execution).to receive(:create_detail!)
+        allow(mock_execution).to receive(:update_column)
       end
 
       it "does not record cache hits when track_cache_hits is false" do
@@ -409,13 +416,16 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           id: 123,
           status: "running",
           detail: nil,
-          class: RubyLLM::Agents::Execution)
+          class: RubyLLM::Agents::Execution,
+          parent_execution_id: nil,
+          root_execution_id: nil)
       end
 
       before do
         RubyLLM::Agents.configuration.track_embeddings = true
         RubyLLM::Agents.configuration.multi_tenancy_enabled = false
         allow(mock_execution).to receive(:create_detail!)
+        allow(mock_execution).to receive(:update_column)
       end
 
       it "creates running record synchronously even when async_logging is enabled" do
@@ -655,12 +665,15 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         id: 123,
         status: "running",
         detail: nil,
-        class: RubyLLM::Agents::Execution)
+        class: RubyLLM::Agents::Execution,
+        parent_execution_id: nil,
+        root_execution_id: nil)
     end
 
     before do
       RubyLLM::Agents.configuration.track_embeddings = true
       allow(mock_execution).to receive(:create_detail!)
+      allow(mock_execution).to receive(:update_column)
     end
 
     it "includes tenant_id when multi-tenancy is enabled" do
@@ -710,7 +723,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         id: 123,
         status: "running",
         detail: nil,
-        class: RubyLLM::Agents::Execution)
+        class: RubyLLM::Agents::Execution,
+        parent_execution_id: nil,
+        root_execution_id: nil)
     end
 
     before do
@@ -718,6 +733,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       RubyLLM::Agents.configuration.track_cache_hits = true
       RubyLLM::Agents.configuration.multi_tenancy_enabled = false
       allow(mock_execution).to receive(:create_detail!)
+      allow(mock_execution).to receive(:update_column)
     end
 
     it "includes cache key for cached results" do
@@ -745,13 +761,16 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         id: 123,
         status: "running",
         detail: nil,
-        class: RubyLLM::Agents::Execution)
+        class: RubyLLM::Agents::Execution,
+        parent_execution_id: nil,
+        root_execution_id: nil)
     end
 
     before do
       RubyLLM::Agents.configuration.track_embeddings = true
       RubyLLM::Agents.configuration.multi_tenancy_enabled = false
       allow(mock_execution).to receive(:create_detail!)
+      allow(mock_execution).to receive(:update_column)
     end
 
     it "includes custom metadata in execution record when metadata is present" do
@@ -988,7 +1007,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         id: 123,
         status: "running",
         detail: nil,
-        class: RubyLLM::Agents::Execution)
+        class: RubyLLM::Agents::Execution,
+        parent_execution_id: nil,
+        root_execution_id: nil)
     end
 
     let(:agent_class_with_options) do
@@ -1011,6 +1032,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       RubyLLM::Agents.configuration.track_embeddings = true
       RubyLLM::Agents.configuration.multi_tenancy_enabled = false
       allow(mock_execution).to receive(:create_detail!)
+      allow(mock_execution).to receive(:update_column)
     end
 
     it "redacts sensitive parameters" do
@@ -1068,13 +1090,16 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         id: 123,
         status: "running",
         detail: nil,
-        class: RubyLLM::Agents::Execution)
+        class: RubyLLM::Agents::Execution,
+        parent_execution_id: nil,
+        root_execution_id: nil)
     end
 
     before do
       RubyLLM::Agents.configuration.track_embeddings = true
       RubyLLM::Agents.configuration.multi_tenancy_enabled = false
       allow(mock_execution).to receive(:create_detail!)
+      allow(mock_execution).to receive(:update_column)
     end
 
     context "when persist_responses is enabled" do
@@ -1229,12 +1254,15 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           id: 456,
           status: "running",
           detail: nil,
-          class: RubyLLM::Agents::Execution)
+          class: RubyLLM::Agents::Execution,
+          parent_execution_id: nil,
+          root_execution_id: nil)
       end
 
       before do
         RubyLLM::Agents.configuration.multi_tenancy_enabled = false
         allow(mock_execution).to receive(:create_detail!)
+        allow(mock_execution).to receive(:update_column)
       end
 
       it "persists reliability_attempts in the execution record" do

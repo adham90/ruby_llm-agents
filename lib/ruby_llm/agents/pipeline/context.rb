@@ -34,6 +34,9 @@ module RubyLLM
         # Execution tracking (set by Instrumentation middleware)
         attr_accessor :started_at, :completed_at, :attempt, :attempts_made, :execution_id
 
+        # Execution hierarchy (agent-as-tool)
+        attr_accessor :parent_execution_id, :root_execution_id
+
         # Result data (set by core execute method)
         attr_accessor :output, :error, :cached
 
@@ -59,12 +62,16 @@ module RubyLLM
         # @param skip_cache [Boolean] Whether to skip caching
         # @param stream_block [Proc, nil] Block for streaming
         # @param options [Hash] Additional options passed to the agent
-        def initialize(input:, agent_class:, agent_instance: nil, model: nil, tenant: nil, skip_cache: false, stream_block: nil, **options)
+        def initialize(input:, agent_class:, agent_instance: nil, model: nil, tenant: nil, skip_cache: false, stream_block: nil, parent_execution_id: nil, root_execution_id: nil, **options)
           @input = input
           @agent_class = agent_class
           @agent_instance = agent_instance
           @agent_type = extract_agent_type(agent_class)
           @model = model || extract_model(agent_class)
+
+          # Execution hierarchy
+          @parent_execution_id = parent_execution_id
+          @root_execution_id = root_execution_id
 
           # Store tenant in options for middleware to resolve
           @options = options.merge(tenant: tenant).compact
@@ -202,6 +209,9 @@ module RubyLLM
           new_ctx.tenant_config = @tenant_config
           new_ctx.started_at = @started_at
           new_ctx.attempts_made = @attempts_made
+          # Preserve execution hierarchy
+          new_ctx.parent_execution_id = @parent_execution_id
+          new_ctx.root_execution_id = @root_execution_id
           new_ctx
         end
 

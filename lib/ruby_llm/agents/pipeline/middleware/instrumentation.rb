@@ -93,6 +93,12 @@ module RubyLLM
             data = build_running_execution_data(context)
             execution = Execution.create!(data)
 
+            # Root executions point root_execution_id at themselves
+            if execution.parent_execution_id.nil? && execution.root_execution_id.nil?
+              execution.update_column(:root_execution_id, execution.id)
+            end
+            context.root_execution_id = execution.root_execution_id || execution.id
+
             # Create detail record with parameters
             params = sanitize_parameters(context)
             if params.present? && params != {}
@@ -206,6 +212,12 @@ module RubyLLM
             agent_meta = safe_agent_metadata(context)
             if agent_meta.any?
               data[:metadata] = agent_meta.transform_keys(&:to_s)
+            end
+
+            # Execution hierarchy (agent-as-tool)
+            if context.parent_execution_id.present?
+              data[:parent_execution_id] = context.parent_execution_id
+              data[:root_execution_id] = context.root_execution_id || context.parent_execution_id
             end
 
             data

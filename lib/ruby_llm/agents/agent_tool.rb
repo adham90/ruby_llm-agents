@@ -52,7 +52,7 @@ module RubyLLM
             call_kwargs = kwargs.dup
             if caller_ctx
               call_kwargs[:_parent_execution_id] = caller_ctx.execution_id
-              call_kwargs[:_root_execution_id] = caller_ctx[:root_execution_id] || caller_ctx.execution_id
+              call_kwargs[:_root_execution_id] = caller_ctx.root_execution_id || caller_ctx.execution_id
               call_kwargs[:tenant] = caller_ctx.tenant_object if caller_ctx.tenant_id && !call_kwargs.key?(:tenant)
             end
 

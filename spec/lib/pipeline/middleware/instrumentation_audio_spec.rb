@@ -27,7 +27,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation, "audio pe
       id: 456,
       status: "running",
       detail: nil,
-      class: RubyLLM::Agents::Execution)
+      class: RubyLLM::Agents::Execution,
+      parent_execution_id: nil,
+      root_execution_id: nil)
   end
 
   def build_context(options = {})
@@ -54,6 +56,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation, "audio pe
     allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
     allow(mock_execution).to receive(:update!)
     allow(mock_execution).to receive(:create_detail!)
+    allow(mock_execution).to receive(:update_column)
   end
 
   after do

@@ -255,6 +255,8 @@ module RubyLLM
       # @param options [Hash] Agent parameters defined via the param DSL
       def initialize(model: self.class.model, temperature: self.class.temperature, **options)
         @ask_message = options.delete(:_ask_message)
+        @parent_execution_id = options.delete(:_parent_execution_id)
+        @root_execution_id = options.delete(:_root_execution_id)
         @model = model
         @temperature = temperature
         @options = options
@@ -424,6 +426,8 @@ module RubyLLM
           tenant: resolve_tenant,
           skip_cache: @options[:skip_cache],
           stream_block: (block if streaming_enabled?),
+          parent_execution_id: @parent_execution_id,
+          root_execution_id: @root_execution_id,
           options: execution_options
         )
       end
@@ -495,19 +499,30 @@ module RubyLLM
 
       # Raises if two tools resolve to the same name.
       #
-      # @param tools [Array<Class>] Resolved tool classes
+      # @param tools [Array] Resolved tool classes or instances
       # @raise [ArgumentError] On duplicate names
       def detect_duplicate_tool_names!(tools)
-        names = tools.map { |t|
-          if t.respond_to?(:tool_name)
-            t.tool_name
-          else
-            inst = t.new
-            inst.respond_to?(:name) ? inst.name : t.to_s
-          end
-        }
+        names = tools.map { |t| tool_name_for(t) }
         duplicates = names.group_by(&:itself).select { |_, v| v.size > 1 }.keys
         raise ArgumentError, "Duplicate tool names: #{duplicates.join(", ")}" if duplicates.any?
+      end
+
+      # Extracts a tool name from a tool class or instance.
+      #
+      # @param tool [Class, Object] A tool class or instance
+      # @return [String] The tool name
+      def tool_name_for(tool)
+        return tool.tool_name if tool.respond_to?(:tool_name)
+
+        if tool.is_a?(Class) && tool < RubyLLM::Tool
+          tool.new.name
+        elsif tool.is_a?(Class)
+          tool.name.to_s
+        elsif tool.respond_to?(:name)
+          tool.name.to_s
+        else
+          tool.to_s
+        end
       end
 
       # Resolves messages for this execution
@@ -619,10 +634,17 @@ module RubyLLM
       # @return [void] Sets context.output with the result
       def execute(context)
         client = build_client(context)
+
+        # Make context available to AgentTool instances during tool execution
+        previous_context = Thread.current[:ruby_llm_agents_caller_context]
+        Thread.current[:ruby_llm_agents_caller_context] = context
+
         response = execute_llm_call(client, context)
         capture_response(response, context)
         result = build_result(process_response(response), response, context)
         context.output = result
+      ensure
+        Thread.current[:ruby_llm_agents_caller_context] = previous_context
       end
 
       # Builds and configures the RubyLLM client
