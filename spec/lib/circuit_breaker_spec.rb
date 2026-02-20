@@ -136,23 +136,6 @@ RSpec.describe RubyLLM::Agents::CircuitBreaker do
     end
   end
 
-  describe "#status" do
-    let(:breaker) { described_class.new("TestAgent", "gpt-4o", errors: 5, within: 30, cooldown: 120) }
-
-    it "returns status hash" do
-      2.times { breaker.record_failure! }
-      status = breaker.status
-
-      expect(status[:agent_type]).to eq("TestAgent")
-      expect(status[:model_id]).to eq("gpt-4o")
-      expect(status[:open]).to be false
-      expect(status[:failure_count]).to eq(2)
-      expect(status[:errors_threshold]).to eq(5)
-      expect(status[:window_seconds]).to eq(30)
-      expect(status[:cooldown_seconds]).to eq(120)
-    end
-  end
-
   describe "isolation between agents and models" do
     it "isolates breakers per agent-model combination" do
       breaker1 = described_class.new("Agent1", "gpt-4o", errors: 2)

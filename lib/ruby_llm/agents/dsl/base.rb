@@ -123,14 +123,6 @@ module RubyLLM
           @user_template || inherited_or_default(:user_config, nil)
         end
 
-        # Returns the prompt configuration (alias for user_config)
-        #
-        # @deprecated Use `user_config` instead
-        # @return [String, nil] The prompt template, or nil
-        def prompt_config
-          user_config
-        end
-
         # Sets the system prompt/instructions
         #
         # When a string is provided, {placeholder} syntax is supported for

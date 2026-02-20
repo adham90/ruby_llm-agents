@@ -173,24 +173,6 @@ RSpec.describe RubyLLM::Agents::AttemptTracker do
     end
   end
 
-  describe "#total_duration_ms" do
-    let(:mock_response) { double(input_tokens: 100, output_tokens: 50, cached_tokens: 0, cache_creation_tokens: 0, model_id: nil) }
-
-    it "sums duration from all attempts" do
-      tracker = described_class.new
-
-      attempt1 = tracker.start_attempt("gpt-4o")
-      sleep 0.01
-      tracker.complete_attempt(attempt1, success: true, response: mock_response)
-
-      attempt2 = tracker.start_attempt("gpt-4o")
-      sleep 0.01
-      tracker.complete_attempt(attempt2, success: true, response: mock_response)
-
-      expect(tracker.total_duration_ms).to be >= 20
-    end
-  end
-
   describe "#successful_attempt" do
     let(:mock_response) { double(input_tokens: 50, output_tokens: 25, cached_tokens: 0, cache_creation_tokens: 0, model_id: nil) }
 

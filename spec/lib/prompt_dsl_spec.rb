@@ -84,11 +84,6 @@ RSpec.describe "Three-Role Prompt DSL" do
       expect(agent_class.params.keys).to include(:query)
     end
 
-    it "prompt_config returns same as user_config" do
-      agent_class = Class.new(RubyLLM::Agents::Base) { user "Test {x}" }
-      expect(agent_class.prompt_config).to eq(agent_class.user_config)
-    end
-
     it "block form is silently ignored (removed in v3.0)" do
       agent_class = Class.new(RubyLLM::Agents::Base) do
         prompt { "Dynamic #{1 + 1}" }

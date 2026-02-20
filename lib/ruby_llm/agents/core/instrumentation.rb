@@ -836,23 +836,6 @@ module RubyLLM
         }.compact
       end
 
-      # Serializes tool calls to an array of hashes for storage
-      #
-      # @param response [RubyLLM::Message] The LLM response
-      # @return [Array<Hash>, nil] Serialized tool calls or nil if none
-      def serialize_tool_calls(response)
-        tool_calls = safe_response_value(response, :tool_calls)
-        return nil if tool_calls.nil? || tool_calls.empty?
-
-        tool_calls.map do |id, tool_call|
-          if tool_call.respond_to?(:to_h)
-            tool_call.to_h
-          else
-            {id: id, name: tool_call[:name], arguments: tool_call[:arguments]}
-          end
-        end
-      end
-
       # Records an execution for a cache hit
       #
       # Creates a minimal execution record with cache_hit: true, 0 tokens,

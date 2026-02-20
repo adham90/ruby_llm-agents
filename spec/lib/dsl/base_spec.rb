@@ -261,7 +261,7 @@ RSpec.describe RubyLLM::Agents::DSL::Base do
     context "with template string" do
       it "sets the prompt template" do
         agent_class.prompt "Search for: {query}"
-        expect(agent_class.prompt_config).to eq("Search for: {query}")
+        expect(agent_class.user_config).to eq("Search for: {query}")
       end
 
       it "auto-registers parameters from placeholders" do
@@ -300,7 +300,7 @@ RSpec.describe RubyLLM::Agents::DSL::Base do
     context "with block (removed in v3.0)" do
       it "silently ignores the block" do
         agent_class.prompt { "Dynamic prompt" }
-        expect(agent_class.prompt_config).to be_nil
+        expect(agent_class.user_config).to be_nil
       end
 
       it "use def user_prompt method override for dynamic content" do

@@ -121,33 +121,6 @@ module RubyLLM
         cache_read(count_key).to_i
       end
 
-      # Returns the time remaining until the breaker closes
-      #
-      # @return [Integer, nil] Seconds until cooldown expires, or nil if not open
-      def time_until_close
-        return nil unless open?
-
-        # We can't easily get TTL from Rails.cache, so this is an approximation
-        # In a real implementation, you might store the open time as well
-        cooldown_seconds
-      end
-
-      # Returns status information for the circuit breaker
-      #
-      # @return [Hash] Status information including open state and failure count
-      def status
-        {
-          agent_type: agent_type,
-          model_id: model_id,
-          tenant_id: tenant_id,
-          open: open?,
-          failure_count: failure_count,
-          errors_threshold: errors_threshold,
-          window_seconds: window_seconds,
-          cooldown_seconds: cooldown_seconds
-        }
-      end
-
       private
 
       # Resolves the current tenant ID

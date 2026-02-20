@@ -164,7 +164,6 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
         tracker.record_short_circuit("gpt-4")
 
         expect(tracker.attempts_count).to eq(1)
-        expect(tracker.short_circuited_count).to eq(1)
         expect(tracker.failed_attempts.first[:short_circuited]).to be true
       end
     end
@@ -189,29 +188,6 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
       end
     end
 
-    describe "#last_failed_attempt" do
-      let(:tracker) { RubyLLM::Agents::AttemptTracker.new }
-
-      it "returns nil when no failed attempts" do
-        attempt = tracker.start_attempt("gpt-4")
-        mock_resp = double("Response", input_tokens: 100, output_tokens: 50, cached_tokens: 0, cache_creation_tokens: 0, model_id: "gpt-4")
-        tracker.complete_attempt(attempt, success: true, response: mock_resp)
-
-        expect(tracker.last_failed_attempt).to be_nil
-      end
-
-      it "returns the last failed attempt" do
-        attempt1 = tracker.start_attempt("gpt-4")
-        tracker.complete_attempt(attempt1, success: false, error: StandardError.new("First fail"))
-
-        attempt2 = tracker.start_attempt("gpt-3.5-turbo")
-        tracker.complete_attempt(attempt2, success: false, error: StandardError.new("Second fail"))
-
-        expect(tracker.last_failed_attempt[:model_id]).to eq("gpt-3.5-turbo")
-        expect(tracker.last_failed_attempt[:error_message]).to include("Second fail")
-      end
-    end
-
     describe "#total_cached_tokens" do
       let(:tracker) { RubyLLM::Agents::AttemptTracker.new }
 
@@ -221,36 +197,6 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
         tracker.complete_attempt(attempt1, success: true, response: mock_resp1)
 
         expect(tracker.total_cached_tokens).to eq(20)
-      end
-    end
-
-    describe "#total_duration_ms" do
-      let(:tracker) { RubyLLM::Agents::AttemptTracker.new }
-
-      it "sums duration from all attempts" do
-        attempt = tracker.start_attempt("gpt-4")
-        # Allow some time to pass
-        sleep(0.01)
-        mock_resp = double("Response", input_tokens: 100, output_tokens: 50, cached_tokens: 0, cache_creation_tokens: 0, model_id: "gpt-4")
-        tracker.complete_attempt(attempt, success: true, response: mock_resp)
-
-        expect(tracker.total_duration_ms).to be >= 0
-      end
-    end
-
-    describe "#failed_attempts_count" do
-      let(:tracker) { RubyLLM::Agents::AttemptTracker.new }
-
-      it "counts failed attempts" do
-        attempt1 = tracker.start_attempt("gpt-4")
-        tracker.complete_attempt(attempt1, success: false, error: StandardError.new("Fail 1"))
-
-        attempt2 = tracker.start_attempt("gpt-3.5-turbo")
-        mock_resp = double("Response", input_tokens: 100, output_tokens: 50, cached_tokens: 0, cache_creation_tokens: 0, model_id: "gpt-3.5-turbo")
-        tracker.complete_attempt(attempt2, success: true, response: mock_resp)
-
-        expect(tracker.failed_attempts_count).to eq(1)
-        expect(tracker.attempts_count).to eq(2)
       end
     end
   end
@@ -364,10 +310,6 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
 
         def test_extract_routing_data(attempt_tracker, error)
           extract_routing_data(attempt_tracker, error)
-        end
-
-        def test_serialize_tool_calls(response)
-          serialize_tool_calls(response)
         end
 
         def test_safe_serialize_response(response)
@@ -937,56 +879,6 @@ RSpec.describe RubyLLM::Agents::Instrumentation do
 
         expect(result[:retryable]).to be false
         expect(result[:rate_limited]).to be false
-      end
-    end
-
-    describe "#serialize_tool_calls" do
-      it "returns nil when no tool_calls" do
-        mock_response = double("Response")
-        allow(mock_response).to receive(:respond_to?).with(:tool_calls).and_return(false)
-
-        result = test_instance.test_serialize_tool_calls(mock_response)
-
-        expect(result).to be_nil
-      end
-
-      it "returns nil when tool_calls is empty" do
-        mock_response = double("Response", tool_calls: {})
-        allow(mock_response).to receive(:respond_to?).with(:tool_calls).and_return(true)
-
-        result = test_instance.test_serialize_tool_calls(mock_response)
-
-        expect(result).to be_nil
-      end
-
-      it "serializes tool calls with to_h method" do
-        tool_call = double("ToolCall")
-        allow(tool_call).to receive(:respond_to?).with(:to_h).and_return(true)
-        allow(tool_call).to receive(:to_h).and_return({id: "call_1", name: "calculator", arguments: {x: 1, y: 2}})
-
-        mock_response = double("Response", tool_calls: {"call_1" => tool_call})
-        allow(mock_response).to receive(:respond_to?).with(:tool_calls).and_return(true)
-
-        result = test_instance.test_serialize_tool_calls(mock_response)
-
-        expect(result).to be_an(Array)
-        expect(result.first[:name]).to eq("calculator")
-      end
-
-      it "serializes tool calls from hash without to_h" do
-        tool_call = double("ToolCall")
-        allow(tool_call).to receive(:respond_to?).with(:to_h).and_return(false)
-        allow(tool_call).to receive(:[]).with(:name).and_return("search")
-        allow(tool_call).to receive(:[]).with(:arguments).and_return({query: "test"})
-
-        mock_response = double("Response", tool_calls: {"call_2" => tool_call})
-        allow(mock_response).to receive(:respond_to?).with(:tool_calls).and_return(true)
-
-        result = test_instance.test_serialize_tool_calls(mock_response)
-
-        expect(result).to be_an(Array)
-        expect(result.first[:id]).to eq("call_2")
-        expect(result.first[:name]).to eq("search")
       end
     end
 

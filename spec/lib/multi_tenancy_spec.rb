@@ -180,14 +180,6 @@ RSpec.describe "Multi-tenancy support" do
         expect(breaker_2.open?).to be false
       end
 
-      it "includes tenant_id in status" do
-        breaker = described_class.new("TestAgent", "gpt-4o", tenant_id: "tenant_1", errors: 5)
-
-        status = breaker.status
-
-        expect(status[:tenant_id]).to eq("tenant_1")
-      end
-
       it "isolates reset per tenant" do
         breaker_1 = described_class.new("TestAgent", "gpt-4o", tenant_id: "tenant_1", errors: 3)
         breaker_2 = described_class.new("TestAgent", "gpt-4o", tenant_id: "tenant_2", errors: 3)
