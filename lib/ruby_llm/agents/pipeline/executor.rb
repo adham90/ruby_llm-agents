@@ -57,30 +57,6 @@ module RubyLLM
       end
 
       # Lambda-based executor for simple cases
-      #
-      # Allows wrapping a lambda/proc as the core executor,
-      # useful for testing or simple agents.
-      #
-      # @example
-      #   executor = LambdaExecutor.new(->(ctx) {
-      #     ctx.output = "Hello, #{ctx.input}!"
-      #   })
-      #
-      class LambdaExecutor
-        # @param callable [#call] A lambda/proc that takes a context
-        def initialize(callable)
-          @callable = callable
-        end
-
-        # Execute the lambda with the context
-        #
-        # @param context [Context] The execution context
-        # @return [Context] The context (possibly modified by the lambda)
-        def call(context)
-          @callable.call(context)
-          context
-        end
-      end
     end
   end
 end
