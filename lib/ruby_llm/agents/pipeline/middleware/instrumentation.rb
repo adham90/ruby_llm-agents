@@ -42,6 +42,7 @@ module RubyLLM
             # Create "running" record immediately (SYNC - must appear on dashboard)
             execution = create_running_execution(context)
             context.execution_id = execution&.id
+            emit_start_notification(context)
             status_update_completed = false
             raised_exception = nil
 
@@ -55,6 +56,8 @@ module RubyLLM
               rescue
                 # Let ensure block handle via mark_execution_failed!
               end
+
+              emit_complete_notification(context, "success")
             rescue => e
               context.completed_at = Time.current
               context.error = e
@@ -67,6 +70,7 @@ module RubyLLM
                 # Let ensure block handle via mark_execution_failed!
               end
 
+              emit_complete_notification(context, determine_error_status(e))
               raise
             ensure
               # Emergency fallback if update failed
@@ -185,6 +189,61 @@ module RubyLLM
           # @return [String] The determined status ("timeout" or "error")
           def determine_error_status(error)
             error.is_a?(Timeout::Error) ? "timeout" : "error"
+          end
+
+          # Emits an AS::Notification for execution start
+          #
+          # Fires even when DB tracking is disabled — observability should
+          # work independently of persistence.
+          #
+          # @param context [Context] The execution context
+          def emit_start_notification(context)
+            ActiveSupport::Notifications.instrument(
+              "ruby_llm_agents.execution.start",
+              agent_type: context.agent_class&.name,
+              model: context.model,
+              tenant_id: context.tenant_id,
+              execution_id: context.execution_id
+            )
+          rescue
+            # Never let notifications break execution
+          end
+
+          # Emits an AS::Notification for execution completion or error
+          #
+          # Uses execution.complete for success, execution.error for failures.
+          # Fires even when DB tracking is disabled.
+          #
+          # @param context [Context] The execution context
+          # @param status [String] "success", "error", or "timeout"
+          def emit_complete_notification(context, status)
+            event = (status == "success") ? "ruby_llm_agents.execution.complete" : "ruby_llm_agents.execution.error"
+
+            ActiveSupport::Notifications.instrument(
+              event,
+              agent_type: context.agent_class&.name,
+              agent_type_symbol: context.agent_type,
+              execution_id: context.execution_id,
+              model: context.model,
+              model_used: context.model_used,
+              tenant_id: context.tenant_id,
+              status: status,
+              duration_ms: context.duration_ms,
+              input_tokens: context.input_tokens,
+              output_tokens: context.output_tokens,
+              total_tokens: context.total_tokens,
+              input_cost: context.input_cost,
+              output_cost: context.output_cost,
+              total_cost: context.total_cost,
+              cached: context.cached?,
+              attempts_made: context.attempts_made,
+              finish_reason: context.finish_reason,
+              time_to_first_token_ms: context.time_to_first_token_ms,
+              error_class: context.error&.class&.name,
+              error_message: context.error&.message
+            )
+          rescue
+            # Never let notifications break execution
           end
 
           # Builds data for initial running execution record
