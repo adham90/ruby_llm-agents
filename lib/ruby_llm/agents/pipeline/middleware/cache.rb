@@ -41,9 +41,12 @@ module RubyLLM
                 context.cached = true
                 context[:cache_key] = cache_key
                 debug("Cache hit for #{cache_key}")
+                emit_cache_notification("ruby_llm_agents.cache.hit", cache_key)
                 return context
               end
             end
+
+            emit_cache_notification("ruby_llm_agents.cache.miss", cache_key)
 
             # Execute the chain
             @app.call(context)
@@ -52,12 +55,27 @@ module RubyLLM
             if context.success?
               cache_write(cache_key, context.output)
               debug("Cache write for #{cache_key}")
+              emit_cache_notification("ruby_llm_agents.cache.write", cache_key)
             end
 
             context
           end
 
           private
+
+          # Emits an AS::Notification for cache events
+          #
+          # @param event [String] The notification event name
+          # @param cache_key [String] The cache key involved
+          def emit_cache_notification(event, cache_key)
+            ActiveSupport::Notifications.instrument(
+              event,
+              agent_type: @agent_class&.name,
+              cache_key: cache_key
+            )
+          rescue
+            # Never let notifications break execution
+          end
 
           # Returns whether caching is enabled for this agent
           #
