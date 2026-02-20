@@ -1105,13 +1105,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     context "when persist_responses is enabled" do
       before do
         RubyLLM::Agents.configuration.persist_responses = true
-        # Set redaction config for Redactor
-        # Note: Use specific field names that won't match input_tokens/output_tokens
-        RubyLLM::Agents.configuration.redaction = {
-          fields: %w[password api_key secret credential],
-          patterns: [],
-          placeholder: "[REDACTED]"
-        }
       end
 
       it "stores response when output has content" do
@@ -1170,24 +1163,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         expect(mock_execution).to receive(:create_detail!).with(
           hash_including(response: hash_including(input_tokens: 100, output_tokens: 50))
         )
-
-        middleware.call(context)
-      end
-
-      it "applies redaction to response content" do
-        context = build_context
-
-        result_obj = RubyLLM::Agents::Result.new(content: {message: "Hello", password: "secret123"})
-        allow(app).to receive(:call) do |ctx|
-          ctx.output = result_obj
-          ctx
-        end
-        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
-
-        expect(mock_execution).to receive(:update!) do |data|
-          expect(data[:response][:content][:message]).to eq("Hello")
-          expect(data[:response][:content][:password]).to eq("[REDACTED]")
-        end
 
         middleware.call(context)
       end
