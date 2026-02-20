@@ -13,11 +13,6 @@ require_relative "agents/core/llm_tenant"
 
 # Infrastructure - Reliability
 require_relative "agents/infrastructure/reliability"
-require_relative "agents/infrastructure/reliability/retry_strategy"
-require_relative "agents/infrastructure/reliability/fallback_routing"
-require_relative "agents/infrastructure/reliability/breaker_manager"
-require_relative "agents/infrastructure/reliability/execution_constraints"
-require_relative "agents/infrastructure/reliability/executor"
 
 # Pipeline infrastructure (middleware-based execution)
 require_relative "agents/pipeline"
