@@ -162,6 +162,21 @@ result.url          # => "https://..."
 result.save("logo.png")
 ```
 
+```ruby
+# Evaluate agent quality with built-in scoring
+class SupportRouter::Eval < RubyLLM::Agents::Eval::EvalSuite
+  agent SupportRouter
+
+  test_case "billing",   input: { message: "charged twice" }, expected: "billing"
+  test_case "technical",  input: { message: "500 error" },     expected: "technical"
+  test_case "greeting",   input: { message: "hello" },         expected: "general"
+end
+
+run = SupportRouter::Eval.run!
+puts run.summary
+# SupportRouter eval: 3/3 passed (score: 1.0)
+```
+
 ## Features
 
 | Feature | Description | Docs |
@@ -184,6 +199,7 @@ result.save("logo.png")
 | **Audio** | Text-to-speech (OpenAI, ElevenLabs), speech-to-text, dynamic pricing, 28+ output formats, dashboard audio playback | [Audio](https://github.com/adham90/ruby_llm-agents/wiki/Audio) |
 | **Agent Composition** | Use agents as tools in other agents with automatic hierarchy tracking | [Tools](https://github.com/adham90/ruby_llm-agents/wiki/Tools) |
 | **Queryable Agents** | Query execution history from agent classes with stats, replay, and cost breakdown | [Querying](https://github.com/adham90/ruby_llm-agents/wiki/Querying-Executions) |
+| **Evaluation** | Test agent quality with exact match, contains, LLM judge, and custom scorers | [Evaluation](https://github.com/adham90/ruby_llm-agents/wiki/Evaluation) |
 | **Alerts** | Slack, webhook, and custom notifications | [Alerts](https://github.com/adham90/ruby_llm-agents/wiki/Alerts) |
 | **AS::Notifications** | 11 instrumentation events across execution, cache, budget, and reliability | [Events](https://github.com/adham90/ruby_llm-agents/wiki/ActiveSupport-Notifications) |
 | **Custom Middleware** | Inject custom middleware globally or per-agent with positioning control | [Middleware](https://github.com/adham90/ruby_llm-agents/wiki/Custom-Middleware) |
@@ -267,6 +283,7 @@ mount RubyLLM::Agents::Engine => "/agents"
 | [Multi-Tenancy](https://github.com/adham90/ruby_llm-agents/wiki/Multi-Tenancy) | Per-tenant budgets, isolation, configuration |
 | [Async/Fiber](https://github.com/adham90/ruby_llm-agents/wiki/Async-Fiber) | Concurrent execution with Ruby fibers |
 | [Testing Agents](https://github.com/adham90/ruby_llm-agents/wiki/Testing-Agents) | RSpec patterns, mocking, dry_run mode |
+| [Evaluation](https://github.com/adham90/ruby_llm-agents/wiki/Evaluation) | Score agent quality with built-in and custom scorers |
 | [Error Handling](https://github.com/adham90/ruby_llm-agents/wiki/Error-Handling) | Error types, recovery patterns |
 | [Routing](https://github.com/adham90/ruby_llm-agents/wiki/Routing) | Message classification, routing DSL, inline classify |
 | [Embeddings](https://github.com/adham90/ruby_llm-agents/wiki/Embeddings) | Vector embeddings, batching, caching, preprocessing |

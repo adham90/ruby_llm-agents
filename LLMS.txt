@@ -170,6 +170,13 @@ ruby_llm-agents brings structure, observability, and control to LLM-based Rails 
 - [Tool Tracking](lib/ruby_llm/agents/base/tool_tracking.rb): Tracking tool calls in executions
 - [Attachments](wiki/Attachments.md): Sending files and images to agents
 
+## Evaluation
+
+- [Evaluation Guide](wiki/Evaluation.md): Score agent quality with test datasets and built-in scorers
+- [EvalSuite](lib/ruby_llm/agents/eval/eval_suite.rb): DSL for defining test cases, running them, and scoring results (exact match, contains, LLM judge, custom lambda)
+- [EvalResult](lib/ruby_llm/agents/eval/eval_result.rb): Per-case result with score, actual/expected, error tracking
+- [EvalRun](lib/ruby_llm/agents/eval/eval_run.rb): Aggregate results with score, pass/fail counts, summary, JSON export
+
 ## Testing and Development
 
 - [Testing Agents](wiki/Testing-Agents.md): Testing strategies and mocking

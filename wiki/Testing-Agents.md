@@ -396,9 +396,24 @@ end
 5. **Test error paths** - Verify retry, fallback, and error handling behavior
 6. **Disable async logging** - Ensure execution records are created synchronously
 
+## Evaluation Framework
+
+For systematic quality testing beyond unit tests, see the [Evaluation](Evaluation) page. The eval framework lets you define test datasets, score agent outputs with built-in or custom scorers, and gate deployments on quality thresholds.
+
+```ruby
+class SupportRouter::Eval < RubyLLM::Agents::Eval::EvalSuite
+  agent SupportRouter
+  test_case "billing", input: { message: "charged twice" }, expected: "billing"
+end
+
+run = SupportRouter::Eval.run!
+expect(run.score).to be >= 0.9
+```
+
 ## Related Pages
 
 - [Agent DSL](Agent-DSL) - Agent configuration
 - [Result Object](Result-Object) - Understanding results
+- [Evaluation](Evaluation) - Score agent quality with test datasets
 - [Error Handling](Error-Handling) - Error types
 - [Reliability](Reliability) - Retries and fallbacks

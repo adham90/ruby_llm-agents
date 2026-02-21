@@ -55,6 +55,7 @@ Welcome to the official documentation for **RubyLLM::Agents**, a production-read
 
 #### Development
 - **[Testing Agents](Testing-Agents)** - RSpec patterns and mocking
+- **[Evaluation](Evaluation)** - Score agent quality with built-in and custom scorers
 - **[Error Handling](Error-Handling)** - Error types and recovery
 
 ### Operations
