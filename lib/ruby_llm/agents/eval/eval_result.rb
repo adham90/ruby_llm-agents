@@ -46,7 +46,7 @@ module RubyLLM
           return nil unless agent_result
 
           if agent_result.respond_to?(:route)
-            agent_result.route
+            {route: agent_result.route}
           elsif agent_result.respond_to?(:content)
             agent_result.content
           else

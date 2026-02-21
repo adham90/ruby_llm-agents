@@ -239,7 +239,7 @@ module RubyLLM
 
           def extract_comparable(result)
             if result.respond_to?(:route)
-              result.route
+              {route: result.route}
             elsif result.respond_to?(:content)
               content = result.content
               content.is_a?(Hash) ? content.transform_keys(&:to_sym) : content.to_s.strip
