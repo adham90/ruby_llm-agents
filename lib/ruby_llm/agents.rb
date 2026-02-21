@@ -75,6 +75,9 @@ require_relative "agents/image/analyzer"
 require_relative "agents/image/background_remover"
 require_relative "agents/image/pipeline"
 
+# Evaluation framework
+require_relative "agents/eval"
+
 # Rails integration
 if defined?(Rails)
   require_relative "agents/core/inflections"
