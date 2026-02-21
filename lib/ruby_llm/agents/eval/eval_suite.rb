@@ -63,7 +63,7 @@ module RubyLLM
 
           def dataset(path)
             full_path = path.start_with?("/") ? path : Rails.root.join(path).to_s
-            cases = YAML.safe_load_file(full_path, symbolize_names: true)
+            cases = YAML.safe_load_file(full_path, permitted_classes: [Symbol], symbolize_names: true)
             cases.each do |tc|
               test_case(
                 tc[:name],
@@ -150,6 +150,8 @@ module RubyLLM
               score: score,
               execution_id: agent_result.respond_to?(:execution_id) ? agent_result.execution_id : nil
             )
+          rescue ArgumentError
+            raise
           rescue => e
             EvalResult.new(
               test_case: tc,
