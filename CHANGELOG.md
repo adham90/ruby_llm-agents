@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.0] - 2026-02-21
+
+### Added
+
+- **Evaluation framework** — New `RubyLLM::Agents::Eval` module for testing and benchmarking agents:
+  - `EvalSuite` — Define test cases with expected outputs, run evaluations with built-in scorers (exact match, includes, semantic similarity, custom), and generate summary reports
+  - `EvalResult` — Structured result objects with pass/fail status, scores, and metadata
+  - `EvalRun` — Batch evaluation runner with parallel execution support and aggregate statistics
+- Evaluation examples in example app (`SchemaAgentEval`, `SupportRouterEval`)
+- Evaluation framework documentation in README, wiki, and LLMS.txt
+- Comprehensive unit and integration specs for eval framework components
+
+### Fixed
+
+- Dashboard overview stats overflow on mobile viewports
+
+### Removed
+
+- Dead redaction references left over from v3.0.0 removal
+
 ## [3.6.0] - 2026-02-21
 
 ### Added
@@ -743,6 +763,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[3.7.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.6.0...v3.7.0
 [3.6.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.5.5...v3.6.0
 [3.5.5]: https://github.com/adham90/ruby_llm-agents/compare/v3.5.4...v3.5.5
 [3.5.4]: https://github.com/adham90/ruby_llm-agents/compare/v3.5.3...v3.5.4
