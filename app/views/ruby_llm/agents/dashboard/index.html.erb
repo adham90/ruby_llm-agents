@@ -2,27 +2,27 @@
 <%= render partial: "ruby_llm/agents/dashboard/action_center", locals: { critical_alerts: @critical_alerts } %>
 
 <!-- Stats Strip + Range Selector -->
-<div class="flex items-center justify-between mb-3">
-  <div class="flex items-center gap-4">
-    <h1 class="text-[10px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-widest font-mono">overview</h1>
-    <div class="flex items-center gap-1.5 font-mono text-xs text-gray-400 dark:text-gray-500">
+<div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+  <div class="flex items-center gap-4 min-w-0">
+    <h1 class="text-[10px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-widest font-mono shrink-0">overview</h1>
+    <div class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 font-mono text-xs text-gray-400 dark:text-gray-500">
       <% total = @now_strip[:success_today] + @now_strip[:errors_today] %>
-      <span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(total) %></span> runs
+      <span class="whitespace-nowrap"><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(total) %></span> runs</span>
       <span class="text-gray-300 dark:text-gray-700">&middot;</span>
-      <span class="<%= @now_strip[:errors_today] > 0 ? 'text-red-500' : 'text-gray-800 dark:text-gray-200' %>"><%= @now_strip[:errors_today] %></span> errors<% if total > 0 && @now_strip[:errors_today] > 0 %> <span class="text-gray-300 dark:text-gray-600">(<%= (@now_strip[:errors_today].to_f / total * 100).round(1) %>%)</span><% end %>
+      <span class="whitespace-nowrap"><span class="<%= @now_strip[:errors_today] > 0 ? 'text-red-500' : 'text-gray-800 dark:text-gray-200' %>"><%= @now_strip[:errors_today] %></span> errors<% if total > 0 && @now_strip[:errors_today] > 0 %> <span class="text-gray-300 dark:text-gray-600">(<%= (@now_strip[:errors_today].to_f / total * 100).round(1) %>%)</span><% end %></span>
       <span class="text-gray-300 dark:text-gray-700">&middot;</span>
-      <span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(@now_strip[:cost_today], precision: 2) %></span>
+      <span class="text-gray-800 dark:text-gray-200 whitespace-nowrap">$<%= number_with_precision(@now_strip[:cost_today], precision: 2) %></span>
       <% if @cache_savings[:count] > 0 %>
         <span class="text-gray-300 dark:text-gray-700">&middot;</span>
-        <span class="text-green-500"><%= number_with_delimiter(@cache_savings[:count]) %></span> cache hits
+        <span class="whitespace-nowrap"><span class="text-green-500"><%= number_with_delimiter(@cache_savings[:count]) %></span> cache hits</span>
         <span class="text-gray-300 dark:text-gray-700">&middot;</span>
-        <span class="text-green-500">$<%= number_with_precision(@cache_savings[:estimated_savings], precision: 2) %></span> saved
+        <span class="whitespace-nowrap"><span class="text-green-500">$<%= number_with_precision(@cache_savings[:estimated_savings], precision: 2) %></span> saved</span>
         <span class="text-gray-300 dark:text-gray-700">&middot;</span>
-        <span class="text-gray-800 dark:text-gray-200"><%= @cache_savings[:hit_rate] %>%</span> hit rate
+        <span class="whitespace-nowrap"><span class="text-gray-800 dark:text-gray-200"><%= @cache_savings[:hit_rate] %>%</span> hit rate</span>
       <% end %>
     </div>
   </div>
-  <div class="relative font-mono text-xs" x-data="{ open: false, showCustom: false }" @click.outside="open = false; showCustom = false">
+  <div class="relative font-mono text-xs shrink-0" x-data="{ open: false, showCustom: false }" @click.outside="open = false; showCustom = false">
     <button @click="open = !open" class="flex items-center gap-1 px-2 py-0.5 text-gray-900 dark:text-gray-100 hover:text-gray-600 dark:hover:text-gray-300">
       <% if @selected_range == "custom" && @custom_from && @custom_to %>
         <%= @custom_from.strftime("%b %-d") %> – <%= @custom_to.strftime("%b %-d") %>
