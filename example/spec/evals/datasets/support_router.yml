@@ -1,0 +1,42 @@
+# Test dataset for SupportRouter evaluation
+#
+# Each entry needs:
+#   name:     Unique test case identifier
+#   input:    Hash of agent params
+#   expected: Expected output to compare against
+#   score:    (optional) Scoring method - exact_match (default), contains, llm_judge
+
+- name: billing_charge
+  input:
+    message: "You charged me twice this month"
+  expected: billing
+
+- name: billing_refund
+  input:
+    message: "I want my money back"
+  expected: billing
+
+- name: technical_error
+  input:
+    message: "Getting a 404 error on the dashboard"
+  expected: technical
+
+- name: technical_crash
+  input:
+    message: "App freezes when uploading files"
+  expected: technical
+
+- name: sales_pricing
+  input:
+    message: "How much does the enterprise plan cost?"
+  expected: sales
+
+- name: account_password
+  input:
+    message: "I can't log in, forgot my password"
+  expected: account
+
+- name: general_hello
+  input:
+    message: "Hi there!"
+  expected: general

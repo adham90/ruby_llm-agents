@@ -53,6 +53,16 @@ app/
     content_moderation_pipeline.rb  # Content safety analysis
     marketing_asset_pipeline.rb     # Marketing image generation
 
+  evals/            # Example agent evaluation suites
+    support_router_eval.rb          # Quality checks for the support router
+    schema_agent_eval.rb            # Quality checks for the schema agent
+
+spec/
+  evals/            # RSpec wrappers for eval suites
+    support_router_eval_spec.rb     # Gated with RUN_EVAL=1
+    datasets/
+      support_router.yml            # YAML test dataset
+
 config/
   initializers/
     ruby_llm_agents.rb      # Gem configuration
@@ -207,6 +217,41 @@ result.save("marketing_hero.png")
 
 # Save all intermediate images
 result.save_all("./output", prefix: "product")
+```
+
+### Agent Evaluation
+
+Score agent quality with test datasets. Eval suites live in `app/agents/evals/`.
+
+```ruby
+# Run the full SupportRouter eval
+run = Evals::SupportRouterEval.run!
+puts run.summary
+# Routers::SupportRouter eval: 12/12 passed (score: 1.0)
+
+# Run a subset of cases
+run = Evals::SupportRouterEval.run!(only: ["billing: double charge", "billing: refund request"])
+
+# Run SchemaAgent eval with custom scorers
+run = Evals::SchemaAgentEval.run!
+```
+
+Use the YAML dataset for a data-driven approach:
+
+```ruby
+# Load test cases from spec/evals/datasets/support_router.yml
+class YamlEval < RubyLLM::Agents::Eval::EvalSuite
+  agent Routers::SupportRouter
+  dataset "spec/evals/datasets/support_router.yml"
+end
+
+run = YamlEval.run!
+```
+
+Gate evals in CI with an environment variable:
+
+```bash
+RUN_EVAL=1 bundle exec rspec spec/evals/
 ```
 
 ## Relationship to Parent Gem
