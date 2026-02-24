@@ -58,6 +58,9 @@ require_relative "agents/image/concerns/image_operation_execution"
 # Routing concern (classification & routing)
 require_relative "agents/routing"
 
+# Workflow orchestration
+require_relative "agents/workflow"
+
 # Text agents
 require_relative "agents/text/embedder"
 

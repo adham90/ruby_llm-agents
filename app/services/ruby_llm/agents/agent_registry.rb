@@ -70,7 +70,9 @@ module RubyLLM
           transcribers = RubyLLM::Agents::Transcriber.descendants.map(&:name).compact
           image_generators = RubyLLM::Agents::ImageGenerator.descendants.map(&:name).compact
 
-          (agents + embedders + speakers + transcribers + image_generators).uniq
+          workflows = RubyLLM::Agents::Workflow.descendants.map(&:name).compact
+
+          (agents + embedders + speakers + transcribers + image_generators + workflows).uniq
         rescue => e
           Rails.logger.error("[RubyLLM::Agents] Error loading agents from file system: #{e.message}")
           []
@@ -192,6 +194,8 @@ module RubyLLM
             "image_generator"
           elsif agent_class.respond_to?(:routes) && agent_class.ancestors.any? { |a| a.name.to_s == "RubyLLM::Agents::Routing" }
             "router"
+          elsif agent_class < RubyLLM::Agents::Workflow
+            "workflow"
           else
             "agent"
           end
