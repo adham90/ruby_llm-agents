@@ -123,6 +123,7 @@ module RubyLLM
             class: agent_class,
             active: agent_class.present?,
             agent_type: detected_type,
+            is_workflow: detected_type == "workflow",
             version: safe_call(agent_class, :version) || "N/A",
             description: safe_call(agent_class, :description),
             model: safe_call(agent_class, :model) || "N/A",

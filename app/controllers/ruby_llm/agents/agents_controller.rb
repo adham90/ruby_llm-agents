@@ -45,13 +45,18 @@ module RubyLLM
         @deleted_agents = sort_agents(@deleted_agents)
 
         # Group active agents by type for sub-tabs
+        # Separate workflows from regular agents
+        @workflows = all_items.select { |a| a[:is_workflow] && a[:active] }
+        @workflows = sort_agents(@workflows)
+
         @agents_by_type = {
           agent: @agents.select { |a| a[:agent_type] == "agent" },
           embedder: @agents.select { |a| a[:agent_type] == "embedder" },
           speaker: @agents.select { |a| a[:agent_type] == "speaker" },
           transcriber: @agents.select { |a| a[:agent_type] == "transcriber" },
           image_generator: @agents.select { |a| a[:agent_type] == "image_generator" },
-          router: @agents.select { |a| a[:agent_type] == "router" }
+          router: @agents.select { |a| a[:agent_type] == "router" },
+          workflow: @workflows
         }
 
         @agent_count = @agents.size

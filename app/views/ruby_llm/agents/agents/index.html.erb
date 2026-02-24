@@ -18,6 +18,7 @@
     audio: <%= audio_count %>,
     image_generator: <%= @agents_by_type[:image_generator].size %>,
     router: <%= @agents_by_type[:router].size %>,
+    workflow: <%= @agents_by_type[:workflow]&.size || 0 %>,
     deleted: <%= @deleted_count %>
   },
   get currentCount() {
@@ -67,6 +68,11 @@
         <button type="button" @click="activeSubTab = 'router'; updateUrl()"
                 :class="activeSubTab === 'router' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
                 class="px-2 py-0.5">routers</button>
+      <% end %>
+      <% if (@agents_by_type[:workflow]&.size || 0) > 0 %>
+        <button type="button" @click="activeSubTab = 'workflow'; updateUrl()"
+                :class="activeSubTab === 'workflow' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+                class="px-2 py-0.5">workflows</button>
       <% end %>
       <% if @deleted_count > 0 %>
         <button type="button" @click="activeSubTab = 'deleted'; updateUrl()"
@@ -120,6 +126,35 @@
           <span class="flex-1 min-w-0 truncate text-gray-500 dark:text-gray-400 hidden sm:inline"><%= agent[:agent_type]&.to_s || 'agent' %></span>
           <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= dot_color %>"></span>
           <span class="flex-[2] min-w-0 truncate text-gray-400 dark:text-gray-600 hidden lg:inline"><%= agent[:model]&.split("/")&.last || "—" %></span>
+          <span class="w-14 flex-shrink-0 text-right text-gray-500 dark:text-gray-400"><%= number_with_delimiter(agent[:execution_count] || 0) %><span class="text-gray-400 dark:text-gray-600">r</span></span>
+          <span class="w-16 flex-shrink-0 text-right text-gray-500 dark:text-gray-400 hidden md:inline">$<%= number_with_precision(agent[:total_cost] || 0, precision: 2) %></span>
+          <span class="w-12 flex-shrink-0 text-right <%= success_rate >= 95 ? 'text-green-500' : success_rate >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= success_rate.round %>%</span>
+          <span class="w-24 flex-shrink-0 text-gray-400 dark:text-gray-600 text-right whitespace-nowrap">
+            <% if agent[:last_executed] %>
+              <%= time_ago_in_words(agent[:last_executed]) %>
+            <% else %>
+              —
+            <% end %>
+          </span>
+        </div>
+      <% end %>
+
+      <!-- Workflow agents -->
+      <% (@workflows || []).each do |agent| %>
+        <%
+          success_rate = agent[:success_rate] || 0
+          dot_color = success_rate >= 95 ? 'bg-green-500' : success_rate >= 80 ? 'bg-yellow-500' : 'bg-red-500'
+        %>
+        <div x-show="activeSubTab === null || activeSubTab === 'workflow'"
+             class="group flex items-center gap-3 py-1.5 px-2 -mx-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer"
+             onclick="window.location='<%= ruby_llm_agents.agent_path(ERB::Util.url_encode(agent[:name]), subtab: params[:subtab]) %>'"
+             title="<%= agent[:description] %>">
+          <span class="flex-[2] min-w-0 truncate text-gray-900 dark:text-gray-200">
+            <%= agent[:name].split('::').last %><span class="hidden lg:inline text-gray-400 dark:text-gray-600 ml-1 text-[10px]">workflow</span>
+          </span>
+          <span class="flex-1 min-w-0 truncate text-gray-500 dark:text-gray-400 hidden sm:inline">workflow</span>
+          <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= dot_color %>"></span>
+          <span class="flex-[2] min-w-0 truncate text-gray-400 dark:text-gray-600 hidden lg:inline">multi-step</span>
           <span class="w-14 flex-shrink-0 text-right text-gray-500 dark:text-gray-400"><%= number_with_delimiter(agent[:execution_count] || 0) %><span class="text-gray-400 dark:text-gray-600">r</span></span>
           <span class="w-16 flex-shrink-0 text-right text-gray-500 dark:text-gray-400 hidden md:inline">$<%= number_with_precision(agent[:total_cost] || 0, precision: 2) %></span>
           <span class="w-12 flex-shrink-0 text-right <%= success_rate >= 95 ? 'text-green-500' : success_rate >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= success_rate.round %>%</span>

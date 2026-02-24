@@ -75,6 +75,35 @@
   <%= render "ruby_llm/agents/executions/audio_player" %>
 <% end %>
 
+<!-- ── workflow steps ──────────────────── -->
+<% if @execution.execution_type == "workflow" && @execution.metadata&.dig("step_names").present? %>
+  <div class="mt-4 mb-2">
+    <div class="flex items-center gap-3 mb-3">
+      <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">
+        workflow steps (<%= @execution.metadata["step_count"] || @execution.metadata["step_names"]&.size %>)
+      </span>
+      <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-2">
+      <% (@execution.metadata["step_names"] || []).each_with_index do |step_name, idx| %>
+        <div class="flex items-center gap-3 px-3 py-2 bg-gray-50 dark:bg-gray-900 rounded text-xs font-mono">
+          <span class="text-gray-400 dark:text-gray-600 w-5 text-right"><%= idx + 1 %></span>
+          <span class="text-gray-800 dark:text-gray-200"><%= step_name %></span>
+          <% successful = @execution.metadata["successful_steps"] || 0 %>
+          <% if idx < successful %>
+            <span class="ml-auto text-green-600 dark:text-green-400">&#10003;</span>
+          <% elsif @execution.metadata["failed_steps"].to_i > 0 && idx >= successful %>
+            <span class="ml-auto text-red-500 dark:text-red-400">&#10007;</span>
+          <% else %>
+            <span class="ml-auto text-gray-400 dark:text-gray-600">&mdash;</span>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
 <!-- ── tokens ──────────────────────── -->
 <%
   input_tokens = @execution.input_tokens || 0
