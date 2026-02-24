@@ -16,6 +16,7 @@ ruby_llm-agents brings structure, observability, and control to LLM-based Rails 
 - [Parameters](wiki/Parameters.md): Defining and validating agent parameters
 - [Prompts and Schemas](wiki/Prompts-and-Schemas.md): System prompts, user prompts, and response schemas
 - [Result Object](wiki/Result-Object.md): Understanding the unified result object with metadata
+- [Multi-Agent Orchestration](wiki/Multi-Agent-Orchestration.md): Workflows with pipelines, parallel, dispatch, supervisors
 - [Examples](wiki/Examples.md): Code examples and common patterns
 - [Best Practices](wiki/Best-Practices.md): Recommended patterns and guidelines
 - [API Reference](wiki/API-Reference.md): Complete API documentation
@@ -162,6 +163,22 @@ ruby_llm-agents brings structure, observability, and control to LLM-based Rails 
 - [Image Pipeline Result](lib/ruby_llm/agents/image_pipeline_result.rb): Combined pipeline result
 - [Image Operation DSL](lib/ruby_llm/agents/concerns/image_operation_dsl.rb): Shared DSL for image operations
 - [Image Operation Execution](lib/ruby_llm/agents/concerns/image_operation_execution.rb): Shared execution logic
+
+## Multi-Agent Orchestration
+
+- [Multi-Agent Orchestration Guide](wiki/Multi-Agent-Orchestration.md): Compose agents into workflows with sequential pipelines, parallel fan-out/fan-in, dispatch routing, and supervisor loops
+- [Workflow](lib/ruby_llm/agents/workflow.rb): Base class for agent composition workflows (standalone, not a BaseAgent subclass)
+- [Workflow DSL](lib/ruby_llm/agents/workflow/dsl.rb): Declarative DSL: step, flow, pass, description, on_failure, budget, dispatch, supervisor, delegate
+- [Workflow Step](lib/ruby_llm/agents/workflow/step.rb): Step value object (name, agent_class, params, after, conditions)
+- [Workflow Context](lib/ruby_llm/agents/workflow/context.rb): Thread-safe shared context with Mutex for parallel execution
+- [Flow Graph](lib/ruby_llm/agents/workflow/flow_graph.rb): DAG construction and Kahn's topological sort for execution layer ordering
+- [Workflow Runner](lib/ruby_llm/agents/workflow/runner.rb): Layer-by-layer step execution with pass mapping and context accumulation
+- [Parallel Runner](lib/ruby_llm/agents/workflow/parallel_runner.rb): Concurrent step execution using Thread.new for parallel layers
+- [Dispatch](lib/ruby_llm/agents/workflow/dispatch.rb): Route-to-agent mapping for routing-based dispatch after classification steps
+- [Supervisor](lib/ruby_llm/agents/workflow/supervisor.rb): Orchestrator loop with delegate/complete tools and max_turns limit
+- [Delegate Tool](lib/ruby_llm/agents/workflow/delegate_tool.rb): RubyLLM::Tool subclass injected into supervisor for delegating to sub-agents
+- [Complete Tool](lib/ruby_llm/agents/workflow/complete_tool.rb): RubyLLM::Tool subclass for signaling supervisor loop completion
+- [Workflow Result](lib/ruby_llm/agents/workflow/result.rb): WorkflowResult with step access, cost/token aggregation, timing, success/error/partial status
 
 ## Tools and Agent Composition
 

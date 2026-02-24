@@ -281,6 +281,95 @@ class SupportAgent < ApplicationAgent
 end
 ```
 
+## Multi-Agent Orchestration (Workflows)
+
+### Sequential Pipeline
+
+Chain agents into a step-by-step pipeline with data passing:
+
+```ruby
+class ContentPipeline < ApplicationWorkflow
+  description "Research, draft, and edit content"
+
+  step :research, ResearchAgent
+  step :draft,    DraftAgent,  after: :research
+  step :edit,     EditAgent,   after: :draft
+
+  flow :research >> :draft >> :edit
+
+  pass :research, to: :draft, as: { notes: :content }
+  pass :draft,    to: :edit,  as: { content: :content }
+end
+
+result = ContentPipeline.call(topic: "AI safety")
+result.success?           # => true
+result.total_cost         # => 0.0082
+result.step(:edit).content # => edited article
+```
+
+### Parallel Execution
+
+Steps without dependencies run concurrently:
+
+```ruby
+class ContentAnalyzer < ApplicationWorkflow
+  description "Analyze content from multiple angles"
+
+  step :sentiment, SentimentAgent
+  step :keywords,  KeywordAgent
+  step :summary,   SummaryAgent
+
+  # Fan-in: report runs after all three complete
+  step :report, ReportAgent, after: [:sentiment, :keywords, :summary]
+end
+
+result = ContentAnalyzer.call(text: "Article content...")
+result.step(:sentiment).content  # => sentiment analysis
+result.step(:keywords).content   # => extracted keywords
+result.step(:report).content     # => combined report
+result.duration_ms               # => wall-clock time (parallel steps overlap)
+```
+
+### Dispatch Routing
+
+Route to different agents based on classification:
+
+```ruby
+class SupportWorkflow < ApplicationWorkflow
+  description "Route support tickets to specialists"
+
+  step :classify, SupportRouter
+
+  dispatch :classify do |d|
+    d.on :billing,   agent: BillingAgent
+    d.on :technical, agent: TechAgent
+    d.on_default     agent: GeneralAgent
+  end
+end
+
+result = SupportWorkflow.call(message: "I was charged twice")
+result.step(:handler).content  # => BillingAgent's response
+```
+
+### Supervisor Loop
+
+An orchestrator delegates to sub-agents until done:
+
+```ruby
+class ResearchWorkflow < ApplicationWorkflow
+  description "Supervisor-driven research"
+
+  supervisor OrchestratorAgent, max_turns: 10
+
+  delegate :researcher, ResearchAgent
+  delegate :writer,     WriterAgent
+end
+
+result = ResearchWorkflow.call(topic: "Quantum computing")
+```
+
+See [Multi-Agent Orchestration](Multi-Agent-Orchestration) for the full DSL reference.
+
 ## Multi-Agent Composition
 
 ### Agent-as-Tool (LLM-Driven Orchestration)
@@ -847,6 +936,7 @@ end
 ## Related Pages
 
 - [Agent DSL](Agent-DSL) - Configuration reference
+- [Multi-Agent Orchestration](Multi-Agent-Orchestration) - Workflow DSL reference
 - [Prompts and Schemas](Prompts-and-Schemas) - Structuring outputs
 - [Error Handling](Error-Handling) - Error types and recovery
 - [Testing Agents](Testing-Agents) - Testing patterns

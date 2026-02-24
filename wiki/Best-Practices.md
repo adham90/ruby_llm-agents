@@ -222,6 +222,61 @@ RSpec.describe SearchAgent do
 end
 ```
 
+## Workflows
+
+### 22. Keep Steps Focused
+
+Each workflow step should do one thing well:
+
+```ruby
+# Good - single responsibility per step
+step :research, ResearchAgent
+step :draft,    DraftAgent, after: :research
+step :edit,     EditAgent,  after: :draft
+
+# Avoid - monolithic agents that do everything
+step :do_everything, MegaAgent
+```
+
+### 23. Use `pass` for Explicit Data Flow
+
+Make data dependencies clear and testable:
+
+```ruby
+# Good - explicit data mapping
+pass :research, to: :draft, as: { notes: :content }
+pass :draft,    to: :edit,  as: { content: :content }
+
+# Avoid - relying on shared context implicitly
+```
+
+### 24. Set Budget Limits on Workflows
+
+Catch runaway costs early, especially during development:
+
+```ruby
+class ExpensiveWorkflow < ApplicationWorkflow
+  budget 5.00  # Stop if total exceeds $5
+
+  step :analyze, DeepAnalysisAgent
+  step :report,  ReportAgent, after: :analyze
+end
+```
+
+### 25. Use `on_failure :continue` for Optional Steps
+
+Keep the pipeline running when non-critical steps fail:
+
+```ruby
+class EnrichedPipeline < ApplicationWorkflow
+  on_failure :continue
+
+  step :core,      CoreAgent          # Must succeed
+  step :sentiment, SentimentAgent     # Nice to have
+  step :tags,      TagAgent           # Nice to have
+end
+```
+
 ## Security
 
 ### 15. Control Prompt Persistence

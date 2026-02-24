@@ -827,6 +827,139 @@ execution.replays  # => ActiveRecord::Relation
 
 ---
 
+## RubyLLM::Agents::Workflow
+
+Base class for composing agents into multi-step workflows. Not a `BaseAgent` subclass — follows the `ImagePipeline` architectural pattern.
+
+### Class Methods — DSL
+
+#### `.step(name, agent_class, **options)`
+
+Define a workflow step.
+
+```ruby
+step :research, ResearchAgent
+step :draft, DraftAgent, after: :research, params: { tone: "formal" }
+step :review, ReviewAgent, if: -> (ctx) { ctx[:needs_review] }
+```
+
+Options: `params:`, `after:`, `if:`, `unless:`
+
+#### `.flow(chain)`
+
+Declare sequential dependencies.
+
+```ruby
+flow :research >> :draft >> :edit
+flow [:research, :draft, :edit]
+```
+
+#### `.pass(from_step, to:, as:)`
+
+Map outputs from one step to inputs of another.
+
+```ruby
+pass :research, to: :draft, as: { notes: :content }
+```
+
+#### `.description(text)`
+
+Set workflow description.
+
+#### `.on_failure(strategy)`
+
+Set error handling: `:stop` (default) or `:continue`.
+
+#### `.budget(max_cost)`
+
+Set maximum cost limit in USD.
+
+#### `.dispatch(router_step, as: :handler, &block)`
+
+Route to agents based on a classification step.
+
+```ruby
+dispatch :classify do |d|
+  d.on :billing, agent: BillingAgent
+  d.on_default agent: GeneralAgent
+end
+```
+
+#### `.supervisor(agent_class, max_turns: 10)`
+
+Configure a supervisor loop.
+
+#### `.delegate(name, agent_class)`
+
+Register a sub-agent for supervisor mode.
+
+#### `.call(**params)`
+
+Execute the workflow.
+
+```ruby
+result = ContentWorkflow.call(topic: "AI safety")
+```
+
+---
+
+## RubyLLM::Agents::Workflow::WorkflowResult
+
+Returned by `Workflow.call`. Aggregates results across all steps.
+
+### Step Access
+
+```ruby
+result.step(:name)       # Agent Result for that step
+result[:name]            # Same as step(:name)
+result.final_result      # Last completed step's Result
+result.content           # final_result.content
+result.step_names        # [:research, :draft, :edit]
+result.step_count        # 3
+```
+
+### Status
+
+```ruby
+result.success?              # All steps succeeded
+result.error?                # Has errors
+result.partial?              # Some succeeded, some failed
+result.successful_step_count # Number of successful steps
+result.failed_step_count     # Number of failed steps
+```
+
+### Cost Aggregation
+
+```ruby
+result.total_cost     # Sum of all step costs
+result.input_cost     # Sum of input costs
+result.output_cost    # Sum of output costs
+```
+
+### Token Aggregation
+
+```ruby
+result.total_tokens   # Sum of all tokens
+result.input_tokens   # Sum of input tokens
+result.output_tokens  # Sum of output tokens
+```
+
+### Timing
+
+```ruby
+result.duration_ms    # Wall-clock milliseconds
+result.started_at     # Time
+result.completed_at   # Time
+```
+
+### Serialization
+
+```ruby
+result.to_h  # Full hash representation
+```
+
+---
+
 ## Exceptions
 
 ```ruby

@@ -163,6 +163,25 @@ result.save("logo.png")
 ```
 
 ```ruby
+# Multi-agent workflows — compose agents into pipelines
+class ContentWorkflow < ApplicationWorkflow
+  step :research, ResearchAgent
+  step :draft,    DraftAgent,  after: :research
+  step :edit,     EditAgent,   after: :draft
+
+  flow :research >> :draft >> :edit
+  pass :research, to: :draft, as: { notes: :content }
+end
+
+result = ContentWorkflow.call(topic: "AI safety")
+
+result.success?          # => true
+result.total_cost        # => 0.0082 (aggregated across all steps)
+result.step(:edit)       # => EditAgent's Result
+result.duration_ms       # => 8500
+```
+
+```ruby
 # Evaluate agent quality with built-in scoring
 class SupportRouter::Eval < RubyLLM::Agents::Eval::EvalSuite
   agent SupportRouter
@@ -198,6 +217,7 @@ puts run.summary
 | **Routing** | Message classification and routing with auto-generated prompts, inline classify | [Routing](https://github.com/adham90/ruby_llm-agents/wiki/Routing) |
 | **Audio** | Text-to-speech (OpenAI, ElevenLabs), speech-to-text, dynamic pricing, 28+ output formats, dashboard audio playback | [Audio](https://github.com/adham90/ruby_llm-agents/wiki/Audio) |
 | **Agent Composition** | Use agents as tools in other agents with automatic hierarchy tracking | [Tools](https://github.com/adham90/ruby_llm-agents/wiki/Tools) |
+| **Multi-Agent Orchestration** | Compose agents into workflows: sequential pipelines, parallel, dispatch routing, supervisor loops | [Orchestration](https://github.com/adham90/ruby_llm-agents/wiki/Multi-Agent-Orchestration) |
 | **Queryable Agents** | Query execution history from agent classes with stats, replay, and cost breakdown | [Querying](https://github.com/adham90/ruby_llm-agents/wiki/Querying-Executions) |
 | **Evaluation** | Test agent quality with exact match, contains, LLM judge, and custom scorers | [Evaluation](https://github.com/adham90/ruby_llm-agents/wiki/Evaluation) |
 | **Alerts** | Slack, webhook, and custom notifications | [Alerts](https://github.com/adham90/ruby_llm-agents/wiki/Alerts) |
@@ -285,6 +305,7 @@ mount RubyLLM::Agents::Engine => "/agents"
 | [Testing Agents](https://github.com/adham90/ruby_llm-agents/wiki/Testing-Agents) | RSpec patterns, mocking, dry_run mode |
 | [Evaluation](https://github.com/adham90/ruby_llm-agents/wiki/Evaluation) | Score agent quality with built-in and custom scorers |
 | [Error Handling](https://github.com/adham90/ruby_llm-agents/wiki/Error-Handling) | Error types, recovery patterns |
+| [Orchestration](https://github.com/adham90/ruby_llm-agents/wiki/Multi-Agent-Orchestration) | Compose agents into workflows: pipelines, parallel, dispatch, supervisors |
 | [Routing](https://github.com/adham90/ruby_llm-agents/wiki/Routing) | Message classification, routing DSL, inline classify |
 | [Embeddings](https://github.com/adham90/ruby_llm-agents/wiki/Embeddings) | Vector embeddings, batching, caching, preprocessing |
 | [Image Generation](https://github.com/adham90/ruby_llm-agents/wiki/Image-Generation) | Text-to-image, templates, pipelines, cost tracking |

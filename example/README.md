@@ -20,20 +20,23 @@ Then visit http://localhost:3000/agents to see the dashboard.
 app/
   agents/           # Example agent implementations
     application_agent.rb    # Base agent class
-    extractor_agent.rb      # Pipeline: extraction step
-    classifier_agent.rb     # Pipeline: classification step
-    formatter_agent.rb      # Pipeline: formatting step
-    sentiment_agent.rb      # Parallel: sentiment analysis
-    keyword_agent.rb        # Parallel: keyword extraction
-    summary_agent.rb        # Parallel: summarization
-    billing_agent.rb        # Router: billing support
-    technical_agent.rb      # Router: technical support
-    general_agent.rb        # Router: general support
+    ...
 
-  workflows/        # Example workflow implementations
-    content_pipeline.rb     # Sequential pipeline workflow
-    content_analyzer.rb     # Parallel execution workflow
-    support_router.rb       # Conditional routing workflow
+    workflows/      # Multi-agent orchestration examples
+      application_workflow.rb   # Base workflow class with DSL reference
+      content_pipeline.rb       # Sequential pipeline: extract >> classify >> format
+      content_analyzer.rb       # Parallel execution: sentiment + keywords + summary
+      support_workflow.rb       # Dispatch routing: classify then route to specialist
+      extractor_agent.rb        # Pipeline step: data extraction
+      classifier_agent.rb       # Pipeline step: content classification
+      formatter_agent.rb        # Pipeline step: report formatting
+      sentiment_agent.rb        # Parallel step: sentiment analysis
+      keyword_agent.rb          # Parallel step: keyword extraction
+      summary_agent.rb          # Parallel step: summarization
+      support_classifier.rb     # Router step: message classification
+      billing_agent.rb          # Dispatch target: billing support
+      technical_agent.rb        # Dispatch target: technical support
+      general_agent.rb          # Dispatch target: general support
 
   image_analyzers/  # Example image analyzer implementations
     application_image_analyzer.rb   # Base analyzer with DSL reference
@@ -86,6 +89,9 @@ bin/rails generate ruby_llm_agents:background_remover ProductRemover --model=seg
 # Generate an image pipeline
 bin/rails generate ruby_llm_agents:image_pipeline ProductWorkflow --steps generate,upscale,analyze
 
+# Generate a workflow
+bin/rails generate ruby_llm_agents:workflow Content --steps=research,draft,edit
+
 # Run the upgrade generator (adds new columns to existing installations)
 bin/rails generate ruby_llm_agents:upgrade
 
@@ -102,32 +108,35 @@ bin/rails console
 ### Pipeline Workflow (Sequential Steps)
 
 ```ruby
-# Process content through extract -> classify -> format steps
-result = ContentPipeline.call(text: "Your content here")
-result.steps[:extract].content   # Extracted data
-result.steps[:classify].content  # Classification result
+# Process content through extract >> classify >> format steps
+result = Workflows::ContentPipeline.call(text: "Your content here")
+result.step(:extract).content    # { entities: [...], facts: [...], themes: [...] }
+result.step(:classify).content   # { category: "...", confidence: 0.95, tags: [...] }
+result.step(:format).content     # Formatted report
 result.total_cost                # Total cost of all steps
+result.duration_ms               # Wall-clock time
 ```
 
 ### Parallel Workflow (Concurrent Execution)
 
 ```ruby
 # Analyze content from multiple perspectives concurrently
-result = ContentAnalyzer.call(text: "Your content here")
-result.branches[:sentiment].content  # Sentiment analysis
-result.branches[:keywords].content   # Keyword extraction
-result.branches[:summary].content    # Summary
-result.total_cost                    # Combined cost
+result = Workflows::ContentAnalyzer.call(text: "Your content here")
+result.step(:sentiment).content  # { sentiment: "positive", score: 0.8 }
+result.step(:keywords).content   # { keywords: [...], phrases: [...] }
+result.step(:summary).content    # Summary text
+result.total_cost                # Combined cost
+result.duration_ms               # Wall-clock time (parallel steps overlap)
 ```
 
-### Router Workflow (Conditional Dispatch)
+### Dispatch Workflow (Routing to Specialists)
 
 ```ruby
-# Route customer messages to specialized agents based on intent
-result = SupportRouter.call(message: "I was charged twice")
-result.routed_to         # :billing, :technical, or :default
-result.classification    # Classification details
-result.content           # Response from routed agent
+# Route customer messages to specialized agents based on classification
+result = Workflows::SupportWorkflow.call(message: "I was charged twice")
+result.step(:classify).route     # => :billing
+result.step(:handler).content    # => BillingAgent's response
+result.total_cost                # Cost of classify + handler
 ```
 
 ### Image Analyzers (Vision AI)

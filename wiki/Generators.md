@@ -10,7 +10,9 @@ All generated files are organized under `app/agents/`:
 app/
 └── agents/                           # Root directory
     ├── application_agent.rb          # Core agents
+    ├── application_workflow.rb       # Workflow base class
     ├── search_agent.rb
+    ├── content_workflow.rb           # Workflow pipelines
     ├── audio/                        # Audio operations
     │   ├── application_speaker.rb
     │   ├── narrator_speaker.rb
@@ -425,6 +427,45 @@ rails generate ruby_llm_agents:image_pipeline full --steps generate,upscale,tran
 - `app/agents/images/application_image_pipeline.rb` (if not exists)
 - `app/agents/images/[name]_pipeline.rb`
 
+## Workflow Generator
+
+Create multi-agent workflow pipelines:
+
+```bash
+# Basic workflow
+rails generate ruby_llm_agents:workflow Content
+
+# With steps (creates step declarations, flow, and agent references)
+rails generate ruby_llm_agents:workflow Content --steps=research,draft,edit
+```
+
+**Options:**
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--steps` | Workflow steps (comma-separated) | `--steps=research,draft,edit` |
+
+**Creates:**
+- `app/agents/application_workflow.rb` (if not exists)
+- `app/agents/[name]_workflow.rb`
+
+**Examples:**
+
+```bash
+# Content production pipeline
+rails generate ruby_llm_agents:workflow Content --steps=research,draft,edit
+
+# Data processing workflow
+rails generate ruby_llm_agents:workflow DataProcessing --steps=extract,transform,load
+
+# Simple workflow (add steps manually)
+rails generate ruby_llm_agents:workflow Support
+```
+
+The generated workflow includes step declarations with `after:` dependencies, agent class references, and a `flow` declaration when steps are specified. Without steps, it includes commented examples.
+
+See [Multi-Agent Orchestration](Multi-Agent-Orchestration) for full DSL reference.
+
 ## Rename Agent Generator
 
 Create a reversible migration to rename an agent in execution records:
@@ -567,6 +608,7 @@ rails generate ruby_llm_agents:agent search --pretend
 
 - [Getting Started](Getting-Started) - Initial setup
 - [Agent DSL](Agent-DSL) - Agent configuration
+- [Multi-Agent Orchestration](Multi-Agent-Orchestration) - Workflow DSL reference
 - [Embeddings](Embeddings) - Vector embeddings
 - [Audio](Audio) - Transcription and TTS
 - [Image Operations](Image-Generation) - Image generation, analysis, and processing
