@@ -37,6 +37,10 @@ app/
       billing_agent.rb          # Dispatch target: billing support
       technical_agent.rb        # Dispatch target: technical support
       general_agent.rb          # Dispatch target: general support
+      research_workflow.rb      # Supervisor loop: orchestrator delegates to agents
+      orchestrator_agent.rb     # Supervisor: decides which agent to call
+      researcher_agent.rb       # Delegate: researches topics
+      writer_agent.rb           # Delegate: writes polished content
 
   image_analyzers/  # Example image analyzer implementations
     application_image_analyzer.rb   # Base analyzer with DSL reference
@@ -137,6 +141,16 @@ result = Workflows::SupportWorkflow.call(message: "I was charged twice")
 result.step(:classify).route     # => :billing
 result.step(:handler).content    # => BillingAgent's response
 result.total_cost                # Cost of classify + handler
+```
+
+### Supervisor Workflow (Loop-Based Orchestration)
+
+```ruby
+# Orchestrator agent delegates to researcher and writer until done
+result = Workflows::ResearchWorkflow.call(topic: "Quantum computing")
+result.success?       # => true
+result.total_cost     # => combined cost of all delegations
+result.content        # => final result from the supervisor
 ```
 
 ### Image Analyzers (Vision AI)

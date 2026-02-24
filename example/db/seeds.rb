@@ -2038,6 +2038,429 @@ rescue NameError
 end
 
 # =============================================================================
+# WORKFLOW EXECUTIONS (Multi-Agent Orchestration)
+# =============================================================================
+puts "\n#{"=" * 60}"
+puts "Creating Workflow Executions..."
+puts "=" * 60
+
+# Helper for workflow executions (parent + child steps)
+def create_workflow_execution(attrs = {})
+  steps = attrs.delete(:steps) || []
+  workflow_type = attrs.delete(:workflow_type) || "pipeline"
+
+  defaults = {
+    execution_type: "workflow",
+    model_id: "gpt-4o-mini",
+    model_provider: "openai",
+    temperature: 0.7,
+    status: "success",
+    started_at: Time.current - rand(1..60).minutes,
+    streaming: false
+  }
+
+  merged = defaults.merge(attrs)
+
+  # Aggregate tokens and costs from steps
+  total_input_tokens = steps.sum { |s| s[:input_tokens] || rand(100..500) }
+  total_output_tokens = steps.sum { |s| s[:output_tokens] || rand(50..300) }
+  merged[:input_tokens] = total_input_tokens
+  merged[:output_tokens] = total_output_tokens
+  merged[:total_tokens] = total_input_tokens + total_output_tokens
+
+  # Calculate total cost from steps
+  total_cost = steps.sum { |s| s[:total_cost] || 0.001 }
+  merged[:input_cost] = (total_cost * 0.6).round(6)
+  merged[:output_cost] = (total_cost * 0.4).round(6)
+  merged[:total_cost] = total_cost.round(6)
+
+  # Calculate duration (sequential = sum, parallel = max of parallel group)
+  total_duration = steps.sum { |s| s[:duration_ms] || rand(500..2000) }
+  merged[:completed_at] ||= merged[:started_at] + (total_duration / 1000.0) if merged[:status] != "running"
+  merged[:duration_ms] = total_duration
+
+  # Workflow metadata
+  merged[:metadata] = (merged[:metadata] || {}).merge(
+    workflow_type: workflow_type,
+    step_names: steps.map { |s| s[:name] },
+    step_count: steps.size,
+    successful_steps: steps.count { |s| s[:status] == "success" || !s.key?(:status) }
+  )
+
+  parent = create_execution_with_detail!(merged)
+
+  # Create child step executions
+  step_offset = 0
+  steps.each do |step|
+    step_started = merged[:started_at] + (step_offset / 1000.0)
+    step_duration = step[:duration_ms] || rand(500..2000)
+
+    step_input_tokens = step[:input_tokens] || rand(100..500)
+    step_output_tokens = step[:output_tokens] || rand(50..300)
+    step_model = step[:model_id] || "gpt-4o-mini"
+
+    input_price = case step_model
+    when /gpt-4o-mini/ then 0.15
+    when /gpt-4o/ then 5.0
+    when /claude/ then 3.0
+    else 1.0
+    end
+    output_price = input_price * 4
+
+    step_input_cost = (step_input_tokens / 1_000_000.0 * input_price).round(6)
+    step_output_cost = (step_output_tokens / 1_000_000.0 * output_price).round(6)
+
+    create_execution_with_detail!(
+      parent_execution_id: parent.id,
+      root_execution_id: parent.id,
+      agent_type: step[:agent_type],
+      model_id: step_model,
+      model_provider: step[:model_provider] || "openai",
+      temperature: step[:temperature] || 0.7,
+      status: step[:status] || "success",
+      started_at: step_started,
+      completed_at: step_started + (step_duration / 1000.0),
+      duration_ms: step_duration,
+      input_tokens: step_input_tokens,
+      output_tokens: step_output_tokens,
+      total_tokens: step_input_tokens + step_output_tokens,
+      input_cost: step_input_cost,
+      output_cost: step_output_cost,
+      total_cost: step_input_cost + step_output_cost,
+      streaming: false,
+      tenant_id: merged[:tenant_id],
+      parameters: step[:parameters] || {},
+      response: step[:response] || {content: "Step result"},
+      metadata: {
+        workflow_step: step[:name],
+        workflow_id: parent.id,
+        workflow_type: workflow_type
+      },
+      created_at: step_started
+    )
+
+    step_offset += step_duration unless step[:parallel]
+  end
+
+  parent
+end
+
+# --- ContentPipeline (Sequential: extract >> classify >> format) ---
+3.times do |i|
+  texts = [
+    "The Federal Reserve announced a 25 basis point rate cut today, marking the third reduction this year. Markets rallied in response.",
+    "Apple Inc reported Q4 earnings of $1.46 per share, beating analyst estimates by 8%. Revenue grew 6% year-over-year to $89.5 billion.",
+    "New study published in Nature shows promising results for CRISPR-based treatments in sickle cell disease patients."
+  ]
+  create_workflow_execution(
+    tenant_id: acme.llm_tenant_id,
+    agent_type: "Workflows::ContentPipeline",
+    workflow_type: "pipeline",
+    parameters: {text: texts[i]},
+    response: {content: "Formatted report for content #{i + 1}"},
+    created_at: Time.current - (i * 25).minutes,
+    steps: [
+      {
+        name: "extract",
+        agent_type: "Workflows::ExtractorAgent",
+        model_id: "gpt-4o-mini",
+        input_tokens: rand(200..400),
+        output_tokens: rand(150..300),
+        duration_ms: rand(800..1500),
+        total_cost: rand(0.0002..0.0008).round(6),
+        parameters: {text: texts[i]},
+        response: {content: {entities: ["Fed", "rate cut"], facts: ["25bp cut", "third this year"], themes: ["monetary policy"]}.to_json}
+      },
+      {
+        name: "classify",
+        agent_type: "Workflows::ClassifierAgent",
+        model_id: "gpt-4o-mini",
+        input_tokens: rand(150..300),
+        output_tokens: rand(50..100),
+        duration_ms: rand(500..1000),
+        total_cost: rand(0.0001..0.0004).round(6),
+        parameters: {text: texts[i]},
+        response: {content: {category: "finance", confidence: 0.95, tags: %w[economics markets]}.to_json}
+      },
+      {
+        name: "format",
+        agent_type: "Workflows::FormatterAgent",
+        model_id: "gpt-4o-mini",
+        input_tokens: rand(300..600),
+        output_tokens: rand(200..500),
+        duration_ms: rand(1000..2000),
+        total_cost: rand(0.0003..0.0009).round(6),
+        parameters: {text: texts[i]},
+        response: {content: "# Report\n\n## Summary\n..."}
+      }
+    ]
+  )
+end
+puts "  Created 3 ContentPipeline (sequential) workflow executions"
+
+# --- ContentAnalyzer (Parallel: sentiment + keywords + summary) ---
+3.times do |i|
+  texts = [
+    "I absolutely love this product! It exceeded all my expectations and the customer service was outstanding.",
+    "The conference was poorly organized. Long wait times, unclear directions, and the sessions ran late consistently.",
+    "The new city park features walking trails, a playground, and a community garden. Local residents have mixed feelings about the project."
+  ]
+  sentiments = %w[positive negative mixed]
+  create_workflow_execution(
+    tenant_id: enterprise.llm_tenant_id,
+    agent_type: "Workflows::ContentAnalyzer",
+    workflow_type: "parallel",
+    parameters: {text: texts[i]},
+    response: {content: "Analysis complete"},
+    metadata: {parallel_steps: %w[sentiment keywords summary]},
+    created_at: Time.current - (i * 20).minutes,
+    steps: [
+      {
+        name: "sentiment",
+        agent_type: "Workflows::SentimentAgent",
+        model_id: "gpt-4o-mini",
+        input_tokens: rand(100..200),
+        output_tokens: rand(30..80),
+        duration_ms: rand(400..900),
+        total_cost: rand(0.0001..0.0003).round(6),
+        parallel: true,
+        parameters: {text: texts[i]},
+        response: {content: {sentiment: sentiments[i], score: rand(0.6..0.95).round(2)}.to_json}
+      },
+      {
+        name: "keywords",
+        agent_type: "Workflows::KeywordAgent",
+        model_id: "gpt-4o-mini",
+        input_tokens: rand(100..200),
+        output_tokens: rand(50..120),
+        duration_ms: rand(400..800),
+        total_cost: rand(0.0001..0.0003).round(6),
+        parallel: true,
+        parameters: {text: texts[i]},
+        response: {content: {keywords: %w[product service quality], phrases: ["exceeded expectations"]}.to_json}
+      },
+      {
+        name: "summary",
+        agent_type: "Workflows::SummaryAgent",
+        model_id: "gpt-4o-mini",
+        input_tokens: rand(100..250),
+        output_tokens: rand(80..200),
+        duration_ms: rand(600..1200),
+        total_cost: rand(0.0002..0.0005).round(6),
+        parallel: true,
+        parameters: {text: texts[i]},
+        response: {content: "Brief summary of the analyzed content."}
+      }
+    ]
+  )
+end
+puts "  Created 3 ContentAnalyzer (parallel) workflow executions"
+
+# --- SupportWorkflow (Dispatch: classify then route to specialist) ---
+support_scenarios = [
+  {message: "I was charged twice on my credit card for the same order", route: "billing", handler_agent: "Workflows::BillingAgent"},
+  {message: "The app crashes when I try to upload files larger than 10MB", route: "technical", handler_agent: "Workflows::TechnicalAgent"},
+  {message: "What are your business hours and holiday schedule?", route: "general", handler_agent: "Workflows::GeneralAgent"},
+  {message: "I need a refund for my subscription. I cancelled but was still charged.", route: "billing", handler_agent: "Workflows::BillingAgent"},
+  {message: "Getting 502 Bad Gateway errors on the API endpoint since this morning", route: "technical", handler_agent: "Workflows::TechnicalAgent"}
+]
+
+support_scenarios.each_with_index do |scenario, i|
+  create_workflow_execution(
+    tenant_id: acme.llm_tenant_id,
+    agent_type: "Workflows::SupportWorkflow",
+    workflow_type: "dispatch",
+    parameters: {message: scenario[:message]},
+    response: {content: "Support response for #{scenario[:route]} issue"},
+    metadata: {dispatched_route: scenario[:route]},
+    created_at: Time.current - (i * 15).minutes,
+    steps: [
+      {
+        name: "classify",
+        agent_type: "Workflows::SupportClassifier",
+        model_id: "gpt-4o-mini",
+        temperature: 0.0,
+        input_tokens: rand(80..150),
+        output_tokens: rand(5..15),
+        duration_ms: rand(300..700),
+        total_cost: rand(0.00005..0.0002).round(6),
+        parameters: {message: scenario[:message]},
+        response: {content: scenario[:route]}
+      },
+      {
+        name: "handler",
+        agent_type: scenario[:handler_agent],
+        model_id: "gpt-4o-mini",
+        input_tokens: rand(200..500),
+        output_tokens: rand(150..400),
+        duration_ms: rand(800..2000),
+        total_cost: rand(0.0002..0.0008).round(6),
+        parameters: {message: scenario[:message]},
+        response: {content: "Detailed response handling the #{scenario[:route]} issue."}
+      }
+    ]
+  )
+end
+puts "  Created #{support_scenarios.size} SupportWorkflow (dispatch) workflow executions"
+
+# --- ResearchWorkflow (Supervisor: orchestrator delegates to researcher/writer) ---
+research_topics = [
+  {topic: "Quantum computing applications in drug discovery", turns: 3},
+  {topic: "Impact of AI on software engineering productivity", turns: 4},
+  {topic: "Sustainable energy storage technologies for 2025", turns: 3}
+]
+
+research_topics.each_with_index do |scenario, i|
+  steps = []
+
+  # Each turn: orchestrator delegates to either researcher or writer
+  scenario[:turns].times do |turn|
+    step = if turn < scenario[:turns] - 1
+      # Delegate to researcher
+      {
+        name: "turn_#{turn + 1}_research",
+        agent_type: "Workflows::ResearcherAgent",
+        model_id: "gpt-4o-mini",
+        temperature: 0.3,
+        input_tokens: rand(200..600),
+        output_tokens: rand(300..800),
+        duration_ms: rand(1000..3000),
+        total_cost: rand(0.0003..0.001).round(6),
+        parameters: {input: "Research #{scenario[:topic]}"},
+        response: {content: "Research findings on #{scenario[:topic]}..."}
+      }
+    else
+      # Final turn: delegate to writer then complete
+      {
+        name: "turn_#{turn + 1}_write",
+        agent_type: "Workflows::WriterAgent",
+        model_id: "gpt-4o-mini",
+        temperature: 0.7,
+        input_tokens: rand(500..1000),
+        output_tokens: rand(600..1200),
+        duration_ms: rand(2000..4000),
+        total_cost: rand(0.0005..0.0015).round(6),
+        parameters: {input: "Write article from research notes"},
+        response: {content: "Polished article on #{scenario[:topic]}"}
+      }
+    end
+    steps << step
+  end
+
+  create_workflow_execution(
+    tenant_id: enterprise.llm_tenant_id,
+    agent_type: "Workflows::ResearchWorkflow",
+    model_id: "gpt-4o",
+    workflow_type: "supervisor",
+    parameters: {topic: scenario[:topic]},
+    response: {content: "Final research article on #{scenario[:topic]}"},
+    metadata: {
+      supervisor_agent: "Workflows::OrchestratorAgent",
+      max_turns: 5,
+      actual_turns: scenario[:turns],
+      delegates_used: %w[researcher writer]
+    },
+    created_at: Time.current - (i * 35).minutes,
+    steps: steps
+  )
+end
+puts "  Created #{research_topics.size} ResearchWorkflow (supervisor) workflow executions"
+
+# Workflow error example - pipeline with a failing step
+create_workflow_execution(
+  tenant_id: startup.llm_tenant_id,
+  agent_type: "Workflows::ContentPipeline",
+  workflow_type: "pipeline",
+  status: "error",
+  error_class: "RubyLLM::APIError",
+  error_message: "Step 'classify' failed: Rate limit exceeded",
+  parameters: {text: "Content that triggered rate limit"},
+  response: nil,
+  created_at: Time.current - 2.hours,
+  steps: [
+    {
+      name: "extract",
+      agent_type: "Workflows::ExtractorAgent",
+      model_id: "gpt-4o-mini",
+      input_tokens: 250,
+      output_tokens: 180,
+      duration_ms: 1200,
+      total_cost: 0.0004,
+      status: "success",
+      parameters: {text: "Content that triggered rate limit"},
+      response: {content: {entities: [], facts: [], themes: []}.to_json}
+    },
+    {
+      name: "classify",
+      agent_type: "Workflows::ClassifierAgent",
+      model_id: "gpt-4o-mini",
+      input_tokens: 0,
+      output_tokens: 0,
+      duration_ms: 350,
+      total_cost: 0,
+      status: "error",
+      parameters: {text: "Content that triggered rate limit"},
+      response: nil
+    }
+  ]
+)
+puts "  Created 1 workflow error execution"
+
+# Workflow with on_failure: :continue (partial success)
+create_workflow_execution(
+  tenant_id: acme.llm_tenant_id,
+  agent_type: "Workflows::ContentAnalyzer",
+  workflow_type: "parallel",
+  status: "success",
+  parameters: {text: "Analysis with one failing step"},
+  response: {content: "Partial analysis complete"},
+  metadata: {on_failure: "continue", partial_success: true},
+  created_at: Time.current - 90.minutes,
+  steps: [
+    {
+      name: "sentiment",
+      agent_type: "Workflows::SentimentAgent",
+      model_id: "gpt-4o-mini",
+      input_tokens: 120,
+      output_tokens: 45,
+      duration_ms: 600,
+      total_cost: 0.0002,
+      status: "success",
+      parallel: true,
+      parameters: {text: "Analysis with one failing step"},
+      response: {content: {sentiment: "neutral", score: 0.5}.to_json}
+    },
+    {
+      name: "keywords",
+      agent_type: "Workflows::KeywordAgent",
+      model_id: "gpt-4o-mini",
+      input_tokens: 0,
+      output_tokens: 0,
+      duration_ms: 200,
+      total_cost: 0,
+      status: "error",
+      parallel: true,
+      parameters: {text: "Analysis with one failing step"},
+      response: nil
+    },
+    {
+      name: "summary",
+      agent_type: "Workflows::SummaryAgent",
+      model_id: "gpt-4o-mini",
+      input_tokens: 130,
+      output_tokens: 90,
+      duration_ms: 800,
+      total_cost: 0.0003,
+      status: "success",
+      parallel: true,
+      parameters: {text: "Analysis with one failing step"},
+      response: {content: "Summary of the text."}
+    }
+  ]
+)
+puts "  Created 1 workflow partial success execution"
+
+# =============================================================================
 # LEGACY EXECUTIONS (no tenant - backward compatibility)
 # =============================================================================
 puts "\n#{"=" * 60}"
@@ -2220,6 +2643,28 @@ puts "\nRouters Available:"
   puts "  #{router}: model=#{klass.model}, routes=#{klass.routes.keys.inspect}" if klass
 end
 
+puts "\nWorkflow Executions:"
+workflow_types = %w[Workflows::ContentPipeline Workflows::ContentAnalyzer Workflows::SupportWorkflow Workflows::ResearchWorkflow]
+workflow_types.each do |workflow|
+  count = RubyLLM::Agents::Execution.where(agent_type: workflow).count
+  next unless count.positive?
+
+  child_count = RubyLLM::Agents::Execution.where(
+    parent_execution_id: RubyLLM::Agents::Execution.where(agent_type: workflow).select(:id)
+  ).count
+  puts "  #{workflow}: #{count} executions (#{child_count} child steps)"
+end
+
+# Workflow step agent executions
+workflow_step_agents = %w[
+  Workflows::ExtractorAgent Workflows::ClassifierAgent Workflows::FormatterAgent
+  Workflows::SentimentAgent Workflows::KeywordAgent Workflows::SummaryAgent
+  Workflows::SupportClassifier Workflows::BillingAgent Workflows::TechnicalAgent
+  Workflows::GeneralAgent Workflows::ResearcherAgent Workflows::WriterAgent
+]
+step_count = RubyLLM::Agents::Execution.where(agent_type: workflow_step_agents).count
+puts "  Total workflow step executions: #{step_count}"
+
 puts "\nImage Generators Available:"
 %w[ApplicationImageGenerator ProductImageGenerator LogoGenerator ThumbnailGenerator AvatarGenerator
   IllustrationGenerator].each do |generator|
@@ -2227,6 +2672,26 @@ puts "\nImage Generators Available:"
   puts "  #{generator}: model=#{klass.model}, size=#{klass.size}, quality=#{klass.quality}" if klass
 rescue NameError
   puts "  #{generator}: (class definition error - skipping)"
+end
+
+puts "\nWorkflows Available:"
+%w[ContentPipeline ContentAnalyzer SupportWorkflow ResearchWorkflow].each do |workflow|
+  klass = "Workflows::#{workflow}".safe_constantize
+  if klass
+    wf_type = if klass.respond_to?(:supervisor_mode?) && klass.supervisor_mode?
+      "supervisor"
+    elsif klass.respond_to?(:dispatches) && klass.dispatches&.any?
+      "dispatch"
+    elsif klass.respond_to?(:steps)
+      "pipeline"
+    else
+      "unknown"
+    end
+    step_names = klass.respond_to?(:steps) ? klass.steps.map(&:name).inspect : "N/A"
+    puts "  #{workflow}: type=#{wf_type}, steps=#{step_names}"
+  end
+rescue NameError
+  puts "  #{workflow}: (class not loaded)"
 end
 
 puts "\nTotal: #{Organization.count} organizations, #{RubyLLM::Agents::Execution.count} executions"
