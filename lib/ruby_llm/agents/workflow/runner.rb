@@ -84,6 +84,9 @@ module RubyLLM
 
             @context.store_step_result(step_name, result)
             record_timing(step_name, started_at)
+
+            # Check for dispatch after this step
+            run_dispatch(step_name, result)
           rescue => e
             @context.store_error(step_name, e)
             record_timing(step_name, started_at)
@@ -135,6 +138,50 @@ module RubyLLM
             completed_at: completed_at,
             duration_ms: ((completed_at - started_at) * 1000).round
           }
+        end
+
+        # Execute dispatch handlers for a completed routing step
+        def run_dispatch(step_name, result)
+          @workflow_class.dispatches.each do |dispatch_def|
+            builder = dispatch_def[:builder]
+            next unless builder.router_step == step_name
+
+            # Extract route from result
+            route = extract_route(result)
+            next unless route
+
+            handler = builder.resolve(route)
+            next unless handler
+
+            handler_name = dispatch_def[:handler_name]
+            execute_dispatch_handler(handler_name, handler, route)
+          end
+        end
+
+        def extract_route(result)
+          if result.respond_to?(:route)
+            result.route
+          elsif result.respond_to?(:content) && result.content.is_a?(Hash)
+            result.content[:route] || result.content["route"]
+          end
+        end
+
+        def execute_dispatch_handler(handler_name, handler, route)
+          started_at = Time.current
+          begin
+            params = @context.params.dup
+            params.merge!(handler[:params]) if handler[:params]
+            params[:parent_execution_id] = @parent_execution_id if @parent_execution_id
+            params[:root_execution_id] = @root_execution_id if @root_execution_id
+
+            result = handler[:agent].call(**params)
+            @context.store_step_result(handler_name, result)
+            @context[:dispatched_route] = route
+            record_timing(handler_name, started_at)
+          rescue => e
+            @context.store_error(handler_name, e)
+            record_timing(handler_name, started_at)
+          end
         end
 
         # Override point for Phase 2

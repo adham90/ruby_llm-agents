@@ -6,6 +6,7 @@ require_relative "workflow/flow_graph"
 require_relative "workflow/dsl"
 require_relative "workflow/runner"
 require_relative "workflow/parallel_runner"
+require_relative "workflow/dispatch"
 require_relative "workflow/result"
 
 module RubyLLM
@@ -63,6 +64,7 @@ module RubyLLM
           subclass.instance_variable_set(:@on_failure, @on_failure)
           subclass.instance_variable_set(:@budget_limit, @budget_limit)
           subclass.instance_variable_set(:@tenant, @tenant)
+          subclass.instance_variable_set(:@dispatches, @dispatches&.dup || [])
         end
       end
 

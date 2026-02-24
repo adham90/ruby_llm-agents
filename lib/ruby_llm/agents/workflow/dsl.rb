@@ -135,6 +135,37 @@ module RubyLLM
           end
         end
 
+        # Define a dispatch block for routing-based step dispatch
+        #
+        # Maps route names from a routing step to handler agent classes.
+        # After the routing step executes, the matched handler runs as
+        # a `:handler` step (or custom name via `as:`).
+        #
+        # @param router_step [Symbol] The step that produces a RoutingResult
+        # @param as [Symbol] Name for the dispatched handler step (default: :handler)
+        # @yield [builder] Block to configure route-to-agent mappings
+        #
+        # @example
+        #   dispatch :classify do |d|
+        #     d.on :billing,  agent: BillingAgent
+        #     d.on :technical, agent: TechAgent
+        #     d.on_default     agent: GeneralAgent
+        #   end
+        #
+        def dispatch(router_step, as: :handler, &block)
+          @dispatches ||= []
+          builder = DispatchBuilder.new(router_step)
+          block.call(builder)
+          @dispatches << {builder: builder, handler_name: as.to_sym}
+        end
+
+        # Get dispatch definitions
+        #
+        # @return [Array<Hash>]
+        def dispatches
+          @dispatches ||= []
+        end
+
         # Get all defined steps
         #
         # @return [Array<Step>]
