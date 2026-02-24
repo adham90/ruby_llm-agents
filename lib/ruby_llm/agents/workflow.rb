@@ -5,6 +5,7 @@ require_relative "workflow/context"
 require_relative "workflow/flow_graph"
 require_relative "workflow/dsl"
 require_relative "workflow/runner"
+require_relative "workflow/parallel_runner"
 require_relative "workflow/result"
 
 module RubyLLM
@@ -95,7 +96,7 @@ module RubyLLM
       def build_runner(graph)
         parent_id = record_parent_execution
 
-        Runner.new(
+        ParallelRunner.new(
           workflow_class: self.class,
           graph: graph,
           context: @context,
