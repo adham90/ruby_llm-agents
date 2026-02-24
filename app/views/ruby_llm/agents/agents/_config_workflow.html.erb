@@ -1,0 +1,60 @@
+<%# Configuration partial for Workflow types - shows steps, flow, and settings %>
+<%
+  steps = config[:steps] || []
+  on_failure_strategy = config[:on_failure] || "stop"
+  budget_limit = config[:budget_limit]
+  has_dispatches = config[:has_dispatches]
+  is_supervisor = config[:is_supervisor]
+%>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 font-mono text-xs">
+  <!-- Steps -->
+  <div>
+    <span class="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider">steps</span>
+    <% if steps.any? %>
+      <div class="mt-1.5 space-y-0.5">
+        <% steps.each do |step| %>
+          <div class="flex items-center gap-3 py-1">
+            <span class="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0"></span>
+            <span class="text-gray-900 dark:text-gray-200"><%= step[:name] %></span>
+            <span class="text-gray-400 dark:text-gray-600"><%= step[:agent_class] %></span>
+            <% if step[:after].present? %>
+              <span class="text-gray-400 dark:text-gray-600 text-[10px]">after: <%= Array(step[:after]).join(", ") %></span>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="mt-1 py-1 text-gray-400 dark:text-gray-600">no steps defined</div>
+    <% end %>
+  </div>
+
+  <!-- Settings -->
+  <div>
+    <span class="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider">settings</span>
+    <div class="mt-1.5 space-y-0.5">
+      <div class="flex items-center gap-3 py-1">
+        <span class="w-20 text-gray-400 dark:text-gray-600">on_failure</span>
+        <span class="text-gray-900 dark:text-gray-200"><%= on_failure_strategy %></span>
+      </div>
+      <div class="flex items-center gap-3 py-1">
+        <span class="w-20 text-gray-400 dark:text-gray-600">budget</span>
+        <% if budget_limit %>
+          <span class="text-gray-900 dark:text-gray-200">$<%= budget_limit %></span>
+        <% else %>
+          <span class="text-gray-400 dark:text-gray-600">unlimited</span>
+        <% end %>
+      </div>
+      <div class="flex items-center gap-3 py-1">
+        <span class="w-20 text-gray-400 dark:text-gray-600">mode</span>
+        <% if is_supervisor %>
+          <span class="text-purple-500">supervisor</span>
+        <% elsif has_dispatches %>
+          <span class="text-orange-500">dispatch</span>
+        <% else %>
+          <span class="text-blue-500">pipeline</span>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

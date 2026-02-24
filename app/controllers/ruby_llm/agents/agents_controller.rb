@@ -215,6 +215,8 @@ module RubyLLM
           load_image_generator_config
         when "router"
           load_router_config
+        when "workflow"
+          load_workflow_config
         else
           load_base_agent_config
         end
@@ -316,6 +318,27 @@ module RubyLLM
           fallback_models: safe_config_call(:fallback_models),
           total_timeout: safe_config_call(:total_timeout),
           circuit_breaker: safe_config_call(:circuit_breaker_config)
+        )
+      end
+
+      # Loads configuration specific to Workflow types
+      #
+      # @return [void]
+      def load_workflow_config
+        steps = if @agent_class.respond_to?(:steps)
+          @agent_class.steps.map do |s|
+            {name: s.name, agent_class: s.agent_class.name, after: s.after_steps}
+          end
+        else
+          []
+        end
+
+        @config.merge!(
+          steps: steps,
+          on_failure: safe_config_call(:on_failure),
+          budget_limit: safe_config_call(:budget_limit),
+          has_dispatches: (safe_config_call(:dispatches) || []).any?,
+          is_supervisor: safe_config_call(:supervisor_mode?) || false
         )
       end
 
