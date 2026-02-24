@@ -7,6 +7,9 @@ require_relative "workflow/dsl"
 require_relative "workflow/runner"
 require_relative "workflow/parallel_runner"
 require_relative "workflow/dispatch"
+require_relative "workflow/delegate_tool"
+require_relative "workflow/complete_tool"
+require_relative "workflow/supervisor"
 require_relative "workflow/result"
 
 module RubyLLM
@@ -65,6 +68,8 @@ module RubyLLM
           subclass.instance_variable_set(:@budget_limit, @budget_limit)
           subclass.instance_variable_set(:@tenant, @tenant)
           subclass.instance_variable_set(:@dispatches, @dispatches&.dup || [])
+          subclass.instance_variable_set(:@supervisor_config, @supervisor_config)
+          subclass.instance_variable_set(:@delegate_agents, @delegate_agents&.dup || {})
         end
       end
 
@@ -83,17 +88,36 @@ module RubyLLM
         @started_at = Time.current
         @context = WorkflowContext.new(**@options)
 
-        graph = FlowGraph.new(self.class.steps)
-
-        runner = build_runner(graph)
-        step_timings = runner.run
-
-        build_result(step_timings)
+        if self.class.supervisor_mode?
+          run_supervisor
+        else
+          run_steps
+        end
       rescue => e
         build_error_result(e)
       end
 
       private
+
+      def run_steps
+        graph = FlowGraph.new(self.class.steps)
+        runner = build_runner(graph)
+        step_timings = runner.run
+        build_result(step_timings)
+      end
+
+      def run_supervisor
+        parent_id = record_parent_execution
+
+        step_timings = Supervisor.run(
+          workflow_class: self.class,
+          context: @context,
+          parent_execution_id: parent_id,
+          root_execution_id: parent_id
+        )
+
+        build_result(step_timings)
+      end
 
       def build_runner(graph)
         parent_id = record_parent_execution

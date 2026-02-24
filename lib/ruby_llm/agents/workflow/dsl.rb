@@ -166,6 +166,47 @@ module RubyLLM
           @dispatches ||= []
         end
 
+        # Configure a supervisor agent for loop-based orchestration
+        #
+        # @param agent_class [Class] The supervisor agent class
+        # @param max_turns [Integer] Maximum loop iterations (default: 10)
+        #
+        # @example
+        #   supervisor OrchestratorAgent, max_turns: 10
+        #
+        def supervisor(agent_class, max_turns: 10)
+          @supervisor_config = {agent_class: agent_class, max_turns: max_turns}
+        end
+
+        # Get supervisor configuration
+        def supervisor_config
+          @supervisor_config || inherited_or_default(:supervisor_config, nil)
+        end
+
+        # Check if this workflow uses supervisor mode
+        def supervisor_mode?
+          !supervisor_config.nil?
+        end
+
+        # Register a delegate agent for supervisor mode
+        #
+        # @param name [Symbol] Agent name the supervisor uses to delegate
+        # @param agent_class [Class] The agent class to delegate to
+        #
+        # @example
+        #   delegate :researcher, ResearchAgent
+        #   delegate :writer,     WriterAgent
+        #
+        def delegate(name, agent_class)
+          @delegate_agents ||= {}
+          @delegate_agents[name.to_sym] = agent_class
+        end
+
+        # Get delegate agent mapping
+        def delegate_agents
+          @delegate_agents ||= {}
+        end
+
         # Get all defined steps
         #
         # @return [Array<Step>]
