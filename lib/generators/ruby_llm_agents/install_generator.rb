@@ -67,6 +67,10 @@ module RubyLlmAgents
       template "application_agent.rb.tt", "app/agents/application_agent.rb"
     end
 
+    def create_application_workflow
+      template "application_workflow.rb.tt", "app/agents/application_workflow.rb"
+    end
+
     def create_skill_files
       say_status :create, "skill documentation files", :green
 
@@ -100,6 +104,7 @@ module RubyLlmAgents
       say "  app/"
       say "  ├── agents/"
       say "  │   ├── application_agent.rb"
+      say "  │   ├── application_workflow.rb"
       say "  │   ├── concerns/"
       say "  │   └── AGENTS.md"
       say "  └── tools/"
@@ -115,6 +120,7 @@ module RubyLlmAgents
       say ""
       say "Generator commands:"
       say "  rails generate ruby_llm_agents:agent CustomerSupport query:required"
+      say "  rails generate ruby_llm_agents:workflow Content --steps research,draft,edit"
       say "  rails generate ruby_llm_agents:image_generator Product"
       say "  rails generate ruby_llm_agents:transcriber Meeting"
       say "  rails generate ruby_llm_agents:embedder Semantic"

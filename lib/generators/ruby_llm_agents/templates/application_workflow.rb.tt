@@ -1,0 +1,38 @@
+# frozen_string_literal: true
+
+# ApplicationWorkflow - Base class for all workflows in this application
+#
+# All workflows inherit from this class. Configure shared settings here
+# that apply to all workflows, or override them per-workflow as needed.
+#
+# Example:
+#   class ContentWorkflow < ApplicationWorkflow
+#     step :research, ResearchAgent
+#     step :draft,    DraftAgent, after: :research
+#     step :edit,     EditAgent,  after: :draft
+#
+#     flow :research >> :draft >> :edit
+#
+#     pass :research, to: :draft, as: { notes: :content }
+#   end
+#
+# Usage:
+#   ContentWorkflow.call(topic: "AI safety")
+#
+class ApplicationWorkflow < RubyLLM::Agents::Workflow
+  # ============================================
+  # Shared Workflow Configuration
+  # ============================================
+
+  # on_failure :stop     # Stop on first error (default)
+  # on_failure :continue # Continue despite errors
+
+  # ============================================
+  # Shared Helper Methods
+  # ============================================
+
+  # Example: Common metadata
+  # def metadata
+  #   { app_version: Rails.application.config.version }
+  # end
+end

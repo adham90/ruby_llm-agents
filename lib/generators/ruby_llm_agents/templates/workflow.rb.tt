@@ -1,0 +1,32 @@
+# frozen_string_literal: true
+
+class <%= class_name %>Workflow < ApplicationWorkflow
+  description "<%= class_name.underscore.humanize %> workflow"
+<% if @steps.any? %>
+
+  # Steps
+<% @steps.each_with_index do |step, idx| %>
+<% if idx == 0 %>
+  step :<%= step %>, <%= step.to_s.camelize %>Agent
+<% else %>
+  step :<%= step %>, <%= step.to_s.camelize %>Agent, after: :<%= @steps[idx - 1] %>
+<% end %>
+<% end %>
+<% if @steps.size > 1 %>
+
+  # Sequential flow
+  flow <%= @steps.map { |s| ":#{s}" }.join(" >> ") %>
+<% end %>
+<% else %>
+  # Define your workflow steps:
+  #
+  # step :research, ResearchAgent
+  # step :draft,    DraftAgent,  after: :research
+  # step :edit,     EditAgent,   after: :draft
+  #
+  # flow :research >> :draft >> :edit
+  #
+  # pass :research, to: :draft, as: { notes: :content }
+  # pass :draft,    to: :edit,  as: { content: :content }
+<% end %>
+end
