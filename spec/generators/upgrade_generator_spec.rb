@@ -132,6 +132,11 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
         .with(:ruby_llm_agents_execution_details, :assistant_prompt)
         .and_return(true)
 
+      # usage counter columns exist on tenants (fully upgraded)
+      allow(ActiveRecord::Base.connection).to receive(:column_exists?)
+        .with(:ruby_llm_agents_tenants, :monthly_cost_spent)
+        .and_return(true)
+
       run_generator
     end
 
@@ -269,6 +274,11 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
       # assistant_prompt column exists on execution_details (fully upgraded)
       allow(ActiveRecord::Base.connection).to receive(:column_exists?)
         .with(:ruby_llm_agents_execution_details, :assistant_prompt)
+        .and_return(true)
+
+      # usage counter columns exist on tenants (fully upgraded)
+      allow(ActiveRecord::Base.connection).to receive(:column_exists?)
+        .with(:ruby_llm_agents_tenants, :monthly_cost_spent)
         .and_return(true)
     end
 

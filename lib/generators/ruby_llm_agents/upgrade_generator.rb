@@ -60,6 +60,25 @@ module RubyLlmAgents
       )
     end
 
+    # Add usage counter columns to tenants (v3.x upgrade)
+    def create_add_usage_counters_migration
+      unless table_exists?(:ruby_llm_agents_tenants)
+        say_status :skip, "tenants table does not exist yet", :yellow
+        return
+      end
+
+      if column_exists?(:ruby_llm_agents_tenants, :monthly_cost_spent)
+        say_status :skip, "usage counter columns already exist on tenants", :yellow
+        return
+      end
+
+      say_status :upgrade, "Adding usage counter columns to tenants", :blue
+      migration_template(
+        "add_usage_counters_to_tenants_migration.rb.tt",
+        File.join(db_migrate_path, "add_usage_counters_to_ruby_llm_agents_tenants.rb")
+      )
+    end
+
     # Add assistant_prompt column to execution_details (v3.0 -> v3.1 upgrade)
     def create_add_assistant_prompt_migration
       if column_exists?(:ruby_llm_agents_execution_details, :assistant_prompt)
