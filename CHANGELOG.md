@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.1] - 2026-02-25
+
+### Fixed
+
+- **Upgrade generator missing usage counter columns migration** — The upgrade generator had a template for adding usage counter columns (`monthly_cost_spent`, `daily_cost_spent`, etc.) to the tenants table but never wired it into the generator steps. Users upgrading from older versions would hit `PG::UndefinedColumn` errors on the dashboard. Running `rails generate ruby_llm_agents:upgrade` now correctly detects and generates the missing migration.
+
 ## [3.7.0] - 2026-02-21
 
 ### Added
@@ -763,6 +769,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[3.7.1]: https://github.com/adham90/ruby_llm-agents/compare/v3.7.0...v3.7.1
 [3.7.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.6.0...v3.7.0
 [3.6.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.5.5...v3.6.0
 [3.5.5]: https://github.com/adham90/ruby_llm-agents/compare/v3.5.4...v3.5.5
