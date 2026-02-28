@@ -20,6 +20,8 @@ module RubyLLM
     #   result.save_all("./logos")
     #
     class ImageGenerationResult
+      include Trackable
+
       attr_reader :images, :prompt, :model_id, :size, :quality, :style,
         :started_at, :completed_at, :tenant_id, :generator_class,
         :error_class, :error_message, :execution_id
@@ -40,7 +42,7 @@ module RubyLLM
       # @param error_message [String, nil] Error message if failed
       def initialize(images:, prompt:, model_id:, size:, quality:, style:,
         started_at:, completed_at:, tenant_id:, generator_class:,
-        error_class: nil, error_message: nil, execution_id: nil)
+        error_class: nil, error_message: nil, execution_id: nil, agent_class_name: nil)
         @images = images
         @prompt = prompt
         @model_id = model_id
@@ -54,6 +56,10 @@ module RubyLLM
         @error_class = error_class
         @error_message = error_message
         @execution_id = execution_id
+
+        # Tracking
+        @agent_class_name = agent_class_name
+        register_with_tracker
       end
 
       # Loads the associated Execution record from the database

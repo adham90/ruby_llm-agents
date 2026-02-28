@@ -42,6 +42,7 @@ require_relative "agents/tracker"
 require_relative "agents/track_report"
 
 # Results
+require_relative "agents/results/trackable"
 require_relative "agents/results/base"
 require_relative "agents/results/embedding_result"
 require_relative "agents/results/transcription_result"

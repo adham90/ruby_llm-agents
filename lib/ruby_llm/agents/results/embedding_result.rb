@@ -25,6 +25,8 @@ module RubyLLM
     #
     # @api public
     class EmbeddingResult
+      include Trackable
+
       # @!attribute [r] vectors
       #   @return [Array<Array<Float>>] The embedding vectors
       attr_reader :vectors
@@ -106,6 +108,8 @@ module RubyLLM
         @error_class = attributes[:error_class]
         @error_message = attributes[:error_message]
         @execution_id = attributes[:execution_id]
+        @agent_class_name = attributes[:agent_class_name]
+        register_with_tracker
       end
 
       # Loads the associated Execution record from the database

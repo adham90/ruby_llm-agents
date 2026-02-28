@@ -17,6 +17,8 @@ module RubyLLM
     #   result.success?     # => true
     #
     class ImageAnalysisResult
+      include Trackable
+
       attr_reader :image, :model_id, :analysis_type,
         :caption, :description, :tags, :objects, :colors, :text,
         :raw_response, :started_at, :completed_at, :tenant_id, :analyzer_class,
@@ -43,7 +45,7 @@ module RubyLLM
       # @param error_message [String, nil] Error message if failed
       def initialize(image:, model_id:, analysis_type:, caption:, description:, tags:,
         objects:, colors:, text:, raw_response:, started_at:, completed_at:,
-        tenant_id:, analyzer_class:, error_class: nil, error_message: nil)
+        tenant_id:, analyzer_class:, error_class: nil, error_message: nil, agent_class_name: nil)
         @image = image
         @model_id = model_id
         @analysis_type = analysis_type
@@ -61,6 +63,10 @@ module RubyLLM
         @error_class = error_class
         @error_message = error_message
         @execution_id = nil
+
+        # Tracking
+        @agent_class_name = agent_class_name
+        register_with_tracker
       end
 
       # Loads the associated Execution record from the database

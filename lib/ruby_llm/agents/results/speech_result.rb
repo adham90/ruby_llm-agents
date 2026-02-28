@@ -23,6 +23,8 @@ module RubyLLM
     #
     # @api public
     class SpeechResult
+      include Trackable
+
       # @!group Audio Content
 
       # @!attribute [r] audio
@@ -229,6 +231,10 @@ module RubyLLM
 
         # Execution record
         @execution_id = attributes[:execution_id]
+
+        # Tracking
+        @agent_class_name = attributes[:agent_class_name]
+        register_with_tracker
       end
 
       # Loads the associated Execution record from the database

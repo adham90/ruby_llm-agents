@@ -885,6 +885,7 @@ module RubyLLM
       def build_result(content, response, context)
         Result.new(
           content: content,
+          agent_class_name: self.class.name,
           input_tokens: context.input_tokens,
           output_tokens: context.output_tokens,
           input_cost: context.input_cost,
