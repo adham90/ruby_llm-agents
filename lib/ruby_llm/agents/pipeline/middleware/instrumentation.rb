@@ -289,6 +289,9 @@ module RubyLLM
               data[:root_execution_id] = context.root_execution_id || context.parent_execution_id
             end
 
+            # Inject tracker request_id and tags
+            inject_tracker_data(context, data)
+
             data
           end
 
@@ -546,6 +549,34 @@ module RubyLLM
           rescue => e
             debug("Failed to retrieve agent metadata: #{e.message}")
             {}
+          end
+
+          # Injects tracker request_id and tags into execution data
+          #
+          # Reads @_track_request_id and @_track_tags from the agent instance,
+          # which are set by BaseAgent#initialize when a Tracker is active.
+          #
+          # @param context [Context] The execution context
+          # @param data [Hash] The execution data hash to modify
+          def inject_tracker_data(context, data)
+            agent = context.agent_instance
+            return unless agent
+
+            # Inject request_id
+            track_request_id = agent.instance_variable_get(:@_track_request_id)
+            if track_request_id && data[:request_id].blank?
+              data[:request_id] = track_request_id
+            end
+
+            # Merge tracker tags into metadata
+            track_tags = agent.instance_variable_get(:@_track_tags)
+            if track_tags.is_a?(Hash) && track_tags.any?
+              data[:metadata] = (data[:metadata] || {}).merge(
+                "tags" => track_tags.transform_keys(&:to_s)
+              )
+            end
+          rescue
+            # Never let tracker data injection break execution
           end
 
           # Sensitive parameter keys that should be redacted
