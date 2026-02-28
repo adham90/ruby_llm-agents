@@ -295,7 +295,8 @@
           <% nav_items = [
             [ruby_llm_agents.root_path, "dashboard"],
             [ruby_llm_agents.agents_path, "agents"],
-            [ruby_llm_agents.executions_path, "executions"]
+            [ruby_llm_agents.executions_path, "executions"],
+            [ruby_llm_agents.requests_path, "requests"]
           ]
           nav_items << [ruby_llm_agents.tenants_path, "tenants"] if tenant_filter_enabled?
           nav_items.each do |path, label| %>
@@ -345,7 +346,8 @@
           <% mobile_nav_items = [
             [ruby_llm_agents.root_path, "dashboard"],
             [ruby_llm_agents.agents_path, "agents"],
-            [ruby_llm_agents.executions_path, "executions"]
+            [ruby_llm_agents.executions_path, "executions"],
+            [ruby_llm_agents.requests_path, "requests"]
           ]
           mobile_nav_items << [ruby_llm_agents.tenants_path, "tenants"] if tenant_filter_enabled?
           mobile_nav_items.each do |path, label| %>

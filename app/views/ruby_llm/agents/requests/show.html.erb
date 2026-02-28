@@ -1,0 +1,136 @@
+<div class="flex items-center gap-3 mb-6">
+  <%= link_to ruby_llm_agents.requests_path, class: "text-gray-400 dark:text-gray-600 hover:text-gray-700 dark:hover:text-gray-300 transition-colors" do %>
+    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+    </svg>
+  <% end %>
+  <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">request</span>
+  <code class="font-mono text-xs text-gray-900 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded"><%= @request_id %></code>
+  <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+  <% if @summary[:all_successful] %>
+    <span class="badge badge-sm badge-success">all ok</span>
+  <% elsif @summary[:error_count] > 0 %>
+    <span class="badge badge-sm badge-error"><%= @summary[:error_count] %> error<%= @summary[:error_count] > 1 ? "s" : "" %></span>
+  <% end %>
+</div>
+
+<!-- Summary Stats -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+  <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg px-4 py-3">
+    <div class="font-mono text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider mb-1">calls</div>
+    <div class="font-mono text-lg text-gray-900 dark:text-gray-100"><%= @summary[:call_count] %></div>
+  </div>
+  <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg px-4 py-3">
+    <div class="font-mono text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider mb-1">total cost</div>
+    <div class="font-mono text-lg text-gray-900 dark:text-gray-100">$<%= number_with_precision(@summary[:total_cost] || 0, precision: 4) %></div>
+  </div>
+  <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg px-4 py-3">
+    <div class="font-mono text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider mb-1">tokens</div>
+    <div class="font-mono text-lg text-gray-900 dark:text-gray-100"><%= number_with_delimiter(@summary[:total_tokens] || 0) %></div>
+  </div>
+  <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg px-4 py-3">
+    <div class="font-mono text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider mb-1">duration</div>
+    <div class="font-mono text-lg text-gray-900 dark:text-gray-100">
+      <%= @summary[:duration_ms] ? format_duration_ms(@summary[:duration_ms]) : "—" %>
+    </div>
+  </div>
+</div>
+
+<!-- Agents & Models -->
+<div class="flex flex-wrap gap-2 mb-6">
+  <% @summary[:agent_types].each do |agent_type| %>
+    <%= link_to agent_type.gsub(/Agent$/, ""),
+        ruby_llm_agents.agent_path(agent_type),
+        class: "font-mono text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors" %>
+  <% end %>
+  <span class="w-px h-4 bg-gray-200 dark:bg-gray-700 self-center"></span>
+  <% @summary[:models_used].each do |model| %>
+    <span class="font-mono text-xs px-2 py-0.5 rounded bg-gray-50 dark:bg-gray-800/30 text-gray-400 dark:text-gray-600"><%= model %></span>
+  <% end %>
+</div>
+
+<!-- Execution Timeline -->
+<div class="mb-2">
+  <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">execution timeline</span>
+</div>
+
+<div class="space-y-px">
+  <!-- Column headers -->
+  <div class="flex items-center gap-3 px-2 -mx-2 font-mono text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider mb-1">
+    <span class="w-5 flex-shrink-0 text-center">#</span>
+    <span class="flex-1 min-w-0">agent</span>
+    <span class="w-20 flex-shrink-0">status</span>
+    <span class="flex-1 min-w-0 hidden lg:block">model</span>
+    <span class="w-16 flex-shrink-0 text-right">duration</span>
+    <span class="w-16 flex-shrink-0 text-right hidden md:block">tokens</span>
+    <span class="w-16 flex-shrink-0 text-right hidden md:block">cost</span>
+  </div>
+
+  <div class="font-mono text-xs">
+    <% @executions.each_with_index do |execution, idx| %>
+      <%
+        status_badge_class = case execution.status.to_s
+          when "running" then "badge-running"
+          when "success" then "badge-success"
+          when "error" then "badge-error"
+          when "timeout" then "badge-timeout"
+          else "badge-timeout"
+        end
+      %>
+      <div class="group flex items-center gap-3 py-1.5 px-2 -mx-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer"
+           onclick="window.location='<%= ruby_llm_agents.execution_path(execution) %>'">
+        <span class="w-5 flex-shrink-0 text-center text-gray-300 dark:text-gray-700"><%= idx + 1 %></span>
+        <span class="flex-1 min-w-0 truncate">
+          <%= link_to execution.agent_type.gsub(/Agent$/, ""),
+              ruby_llm_agents.agent_path(execution.agent_type),
+              class: "text-gray-900 dark:text-gray-200 hover:underline",
+              onclick: "event.stopPropagation()" %>
+        </span>
+        <span class="w-20 flex-shrink-0">
+          <span class="badge badge-sm <%= status_badge_class %>"><%= execution.status %></span>
+        </span>
+        <span class="flex-1 min-w-0 truncate text-gray-400 dark:text-gray-600 hidden lg:inline" title="<%= execution.model_id %>"><%= execution.model_id %></span>
+        <span class="w-16 flex-shrink-0 text-right text-gray-500 dark:text-gray-400">
+          <% if execution.status_running? %>
+            <span class="text-blue-500 animate-pulse">...</span>
+          <% else %>
+            <%= execution.duration_ms ? format_duration_ms(execution.duration_ms) : "—" %>
+          <% end %>
+        </span>
+        <span class="w-16 flex-shrink-0 text-right text-gray-500 dark:text-gray-400 hidden md:inline"><%= number_with_delimiter(execution.total_tokens || 0) %></span>
+        <span class="w-16 flex-shrink-0 text-right text-gray-500 dark:text-gray-400 hidden md:inline">$<%= number_with_precision(execution.total_cost || 0, precision: 4) %></span>
+      </div>
+      <% if execution.status_error? && execution.error_class.present? %>
+        <div class="flex items-center gap-1 pl-8 py-0.5 text-red-400 dark:text-red-500/70 text-xs font-mono">
+          <span class="text-gray-300 dark:text-gray-700">&#x2514;</span>
+          <span class="truncate"><%= execution.error_class.split("::").last %><%= execution.error_message.present? ? ": #{truncate(execution.error_message, length: 100)}" : "" %></span>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>
+
+<!-- Timing Details -->
+<% if @summary[:started_at] %>
+<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-800">
+  <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">timing</span>
+  <div class="mt-2 font-mono text-xs text-gray-500 dark:text-gray-400 space-y-1">
+    <div class="flex gap-4">
+      <span class="text-gray-400 dark:text-gray-600 w-20">started</span>
+      <span><%= @summary[:started_at].strftime("%Y-%m-%d %H:%M:%S.%L") %></span>
+    </div>
+    <% if @summary[:completed_at] %>
+    <div class="flex gap-4">
+      <span class="text-gray-400 dark:text-gray-600 w-20">completed</span>
+      <span><%= @summary[:completed_at].strftime("%Y-%m-%d %H:%M:%S.%L") %></span>
+    </div>
+    <% end %>
+    <% if @summary[:duration_ms] %>
+    <div class="flex gap-4">
+      <span class="text-gray-400 dark:text-gray-600 w-20">wall clock</span>
+      <span><%= format_duration_ms(@summary[:duration_ms]) %></span>
+    </div>
+    <% end %>
+  </div>
+</div>
+<% end %>
