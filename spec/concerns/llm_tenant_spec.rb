@@ -23,6 +23,11 @@ RSpec.describe RubyLLM::Agents::LLMTenant do
 
         include RubyLLM::Agents::LLMTenant
 
+        # Define llm_executions so tests can stub it even with verify_partial_doubles
+        def llm_executions
+          RubyLLM::Agents::Execution.where(tenant_id: llm_tenant_id)
+        end
+
         def to_s
           name || "Organization ##{id}"
         end
