@@ -271,6 +271,12 @@ module RubyLLM
             agent_meta = safe_agent_metadata(context)
             if agent_meta.any?
               data[:metadata] = agent_meta.transform_keys(&:to_s)
+
+              # Extract tracing fields from metadata to dedicated columns
+              data[:trace_id] = agent_meta[:trace_id] if agent_meta[:trace_id]
+              data[:request_id] = agent_meta[:request_id] if agent_meta[:request_id]
+              data[:parent_execution_id] = agent_meta[:parent_execution_id] if agent_meta[:parent_execution_id]
+              data[:root_execution_id] = agent_meta[:root_execution_id] if agent_meta[:root_execution_id]
             end
 
             # Track replay source if this is a replayed execution
@@ -283,7 +289,7 @@ module RubyLLM
               data[:metadata] = (data[:metadata] || {}).merge("replay_source_id" => replay_source_id.to_s)
             end
 
-            # Execution hierarchy (agent-as-tool)
+            # Execution hierarchy (agent-as-tool) — context-level values take precedence
             if context.parent_execution_id.present?
               data[:parent_execution_id] = context.parent_execution_id
               data[:root_execution_id] = context.root_execution_id || context.parent_execution_id
@@ -444,6 +450,14 @@ module RubyLLM
               attempts_count: context.attempts_made,
               metadata: merged_metadata
             }
+
+            # Extract tracing fields from agent metadata to dedicated columns
+            if agent_meta.any?
+              data[:trace_id] = agent_meta[:trace_id] if agent_meta[:trace_id]
+              data[:request_id] = agent_meta[:request_id] if agent_meta[:request_id]
+              data[:parent_execution_id] = agent_meta[:parent_execution_id] if agent_meta[:parent_execution_id]
+              data[:root_execution_id] = agent_meta[:root_execution_id] if agent_meta[:root_execution_id]
+            end
 
             # Add tenant_id only if multi-tenancy is enabled and tenant is set
             if global_config.multi_tenancy_enabled? && context.tenant_id.present?

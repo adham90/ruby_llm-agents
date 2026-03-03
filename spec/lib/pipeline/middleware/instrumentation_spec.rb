@@ -1292,4 +1292,193 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       end
     end
   end
+
+  describe "tracing fields extraction from agent metadata" do
+    before do
+      RubyLLM::Agents.reset_configuration!
+      RubyLLM::Agents.configure do |c|
+        c.track_embeddings = true
+        c.track_executions = true
+        c.persist_prompts = false
+        c.persist_responses = false
+      end
+    end
+
+    let(:passthrough_app) do
+      proc { |ctx|
+        ctx.output = "result"
+        ctx
+      }
+    end
+
+    let(:agent_class_with_tracing) do
+      Class.new do
+        def self.name = "TracingAgent"
+        def self.agent_type = :embedding
+        def self.model = "test-model"
+
+        attr_reader :options
+
+        def initialize
+          @options = {}
+        end
+
+        def metadata
+          {trace_id: "trace-abc-123", request_id: "req-xyz-789", user_id: 42}
+        end
+      end
+    end
+
+    it "extracts trace_id from agent metadata to the dedicated column" do
+      agent_instance = agent_class_with_tracing.new
+      mw = described_class.new(passthrough_app, agent_class_with_tracing)
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: agent_class_with_tracing,
+        agent_instance: agent_instance
+      )
+
+      mw.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.trace_id).to eq("trace-abc-123")
+    end
+
+    it "extracts request_id from agent metadata to the dedicated column" do
+      agent_instance = agent_class_with_tracing.new
+      mw = described_class.new(passthrough_app, agent_class_with_tracing)
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: agent_class_with_tracing,
+        agent_instance: agent_instance
+      )
+
+      mw.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.request_id).to eq("req-xyz-789")
+    end
+
+    it "extracts parent_execution_id from agent metadata to the dedicated column" do
+      parent = RubyLLM::Agents::Execution.create!(
+        agent_type: "ParentAgent",
+        model_id: "test-model",
+        started_at: Time.current,
+        status: "success"
+      )
+
+      agent_class_with_parent = Class.new do
+        def self.name = "ChildAgent"
+        def self.agent_type = :embedding
+        def self.model = "test-model"
+
+        attr_reader :options
+        attr_accessor :parent_id
+
+        def initialize(parent_id)
+          @options = {}
+          @parent_id = parent_id
+        end
+
+        def metadata
+          {parent_execution_id: parent_id}
+        end
+      end
+
+      agent_instance = agent_class_with_parent.new(parent.id)
+      mw = described_class.new(passthrough_app, agent_class_with_parent)
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: agent_class_with_parent,
+        agent_instance: agent_instance
+      )
+
+      mw.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.parent_execution_id).to eq(parent.id)
+    end
+
+    it "extracts root_execution_id from agent metadata to the dedicated column" do
+      root = RubyLLM::Agents::Execution.create!(
+        agent_type: "RootAgent",
+        model_id: "test-model",
+        started_at: Time.current,
+        status: "success"
+      )
+
+      agent_class_with_root = Class.new do
+        def self.name = "NestedAgent"
+        def self.agent_type = :embedding
+        def self.model = "test-model"
+
+        attr_reader :options
+        attr_accessor :root_id
+
+        def initialize(root_id)
+          @options = {}
+          @root_id = root_id
+        end
+
+        def metadata
+          {root_execution_id: root_id}
+        end
+      end
+
+      agent_instance = agent_class_with_root.new(root.id)
+      mw = described_class.new(passthrough_app, agent_class_with_root)
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: agent_class_with_root,
+        agent_instance: agent_instance
+      )
+
+      mw.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.root_execution_id).to eq(root.id)
+    end
+
+    it "still includes non-tracing metadata in the metadata column" do
+      agent_instance = agent_class_with_tracing.new
+      mw = described_class.new(passthrough_app, agent_class_with_tracing)
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: agent_class_with_tracing,
+        agent_instance: agent_instance
+      )
+
+      mw.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.metadata).to include("user_id" => 42)
+    end
+
+    it "extracts tracing fields in the legacy fallback path (build_execution_data)" do
+      agent_instance = agent_class_with_tracing.new
+      mw = described_class.new(passthrough_app, agent_class_with_tracing)
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: agent_class_with_tracing,
+        agent_instance: agent_instance
+      )
+
+      # Force the legacy fallback path by making the initial create fail once
+      call_count = 0
+      allow(RubyLLM::Agents::Execution).to receive(:create!).and_wrap_original do |method, *args|
+        call_count += 1
+        if call_count == 1
+          raise ActiveRecord::RecordInvalid.new(RubyLLM::Agents::Execution.new)
+        else
+          method.call(*args)
+        end
+      end
+
+      mw.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.trace_id).to eq("trace-abc-123")
+      expect(execution.request_id).to eq("req-xyz-789")
+    end
+  end
 end
