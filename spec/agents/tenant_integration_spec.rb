@@ -261,23 +261,31 @@ RSpec.describe "Agent tenant integration" do
         expect(key_at_execution).to eq("sk-test-openai-123")
       end
 
-      it "applies gemini key from tenant object method" do
+      it "applies gemini key via scoped context without mutating global config" do
         org = api_keys_org
 
         # Build mock using shared helper
         mock_response = build_mock_response(content: "test response", input_tokens: 10, output_tokens: 20)
         mock_client = build_mock_chat_client(response: mock_response)
-        stub_ruby_llm_chat(mock_client)
+
+        gemini_key_during_execution = nil
+        stub_ruby_llm_chat(mock_client) do |config|
+          gemini_key_during_execution = config.gemini_api_key
+        end
+
+        saved_gemini = RubyLLM.config.gemini_api_key
 
         # Execute agent with tenant object
         agent = test_agent_class.new(tenant: org)
         agent.call
 
-        # Verify that the gemini key from method was applied
-        expect(RubyLLM.config.gemini_api_key).to eq("test-gemini-key")
+        # Verify tenant's gemini key was available during execution via scoped config
+        expect(gemini_key_during_execution).to eq("test-gemini-key")
+        # Global config should NOT be mutated
+        expect(RubyLLM.config.gemini_api_key).to eq(saved_gemini)
       end
 
-      it "tenant object api_keys are applied via middleware before execution" do
+      it "tenant object api_keys are applied via scoped context before execution" do
         org = api_keys_org
 
         # Build mock using shared helper
@@ -295,7 +303,7 @@ RSpec.describe "Agent tenant integration" do
         agent = test_agent_class.new(tenant: org)
         agent.call
 
-        # Both keys should be applied from tenant object before the chat client is created
+        # Both keys should be available via scoped config during execution
         expect(openai_key_during_execution).to eq("sk-test-openai-123")
         expect(anthropic_key_during_execution).to eq("sk-test-anthropic-456")
       end

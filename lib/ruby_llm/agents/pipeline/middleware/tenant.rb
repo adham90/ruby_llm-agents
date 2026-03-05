@@ -178,7 +178,11 @@ module RubyLLM
             apply_tenant_object_api_keys!(context)
           end
 
-          # Applies API keys from tenant object's llm_api_keys method
+          # Stores tenant API keys on the context for thread-safe per-request use.
+          #
+          # Instead of mutating the global RubyLLM configuration (which is not
+          # thread-safe), keys are stored on the context. The Pipeline::Context#llm
+          # method creates a scoped RubyLLM::Context with these keys when needed.
           #
           # @param context [Context] The execution context
           def apply_tenant_object_api_keys!(context)
@@ -188,32 +192,10 @@ module RubyLLM
             api_keys = tenant_object.llm_api_keys
             return if api_keys.blank?
 
-            apply_api_keys_to_ruby_llm(api_keys)
+            context[:tenant_api_keys] = api_keys
           rescue => e
             # Log but don't fail if API key extraction fails
             warn_api_key_error("tenant object", e)
-          end
-
-          # Applies a hash of API keys to RubyLLM configuration
-          #
-          # @param api_keys [Hash] Hash of provider => key mappings
-          def apply_api_keys_to_ruby_llm(api_keys)
-            RubyLLM.configure do |config|
-              api_keys.each do |provider, key|
-                next if key.blank?
-
-                setter = api_key_setter_for(provider)
-                config.public_send(setter, key) if config.respond_to?(setter)
-              end
-            end
-          end
-
-          # Returns the setter method name for a provider's API key
-          #
-          # @param provider [Symbol, String] Provider name (e.g., :openai, :anthropic)
-          # @return [String] Setter method name (e.g., "openai_api_key=")
-          def api_key_setter_for(provider)
-            "#{provider}_api_key="
           end
 
           # Logs a warning about API key resolution failure

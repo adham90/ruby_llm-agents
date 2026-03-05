@@ -731,7 +731,13 @@ module RubyLLM
       # @return [RubyLLM::Chat] Configured chat client
       def build_client(context = nil)
         effective_model = context&.model || model
-        client = RubyLLM.chat(model: effective_model)
+        chat_opts = {model: effective_model}
+
+        # Pass scoped RubyLLM context for thread-safe per-tenant API keys
+        llm_ctx = context&.llm
+        chat_opts[:context] = llm_ctx if llm_ctx.is_a?(RubyLLM::Context)
+
+        client = RubyLLM.chat(**chat_opts)
           .with_temperature(temperature)
 
         client = client.with_instructions(system_prompt) if system_prompt

@@ -136,6 +136,24 @@ module RubyLLM
           (@input_tokens || 0) + (@output_tokens || 0)
         end
 
+        # Returns a RubyLLM interface scoped to tenant API keys when present.
+        #
+        # When tenant API keys are stored on this context (by the Tenant middleware),
+        # returns a RubyLLM::Context with a cloned config that has tenant-specific
+        # keys applied. This avoids mutating global RubyLLM configuration, making
+        # multi-tenant LLM calls thread-safe.
+        #
+        # When no tenant API keys are present, returns the RubyLLM module directly
+        # (which uses the global configuration).
+        #
+        # @return [RubyLLM::Context, RubyLLM] Scoped context or global module
+        def llm
+          api_keys = self[:tenant_api_keys]
+          return RubyLLM if api_keys.nil? || api_keys.empty?
+
+          @llm_context ||= build_llm_context(api_keys)
+        end
+
         # Custom metadata storage - read
         #
         # @param key [Symbol, String] The metadata key
@@ -216,6 +234,24 @@ module RubyLLM
         end
 
         private
+
+        # Builds a RubyLLM::Context with tenant-specific API keys
+        #
+        # Clones the global RubyLLM config and overlays tenant API keys,
+        # then wraps it in a RubyLLM::Context for thread-safe per-request use.
+        #
+        # @param api_keys [Hash] Provider => key mappings (e.g., {openai: "sk-..."})
+        # @return [RubyLLM::Context] Context with tenant-scoped configuration
+        def build_llm_context(api_keys)
+          config = RubyLLM.config.dup
+          api_keys.each do |provider, key|
+            next if key.nil? || (key.respond_to?(:empty?) && key.empty?)
+
+            setter = "#{provider}_api_key="
+            config.public_send(setter, key) if config.respond_to?(setter)
+          end
+          RubyLLM::Context.new(config)
+        end
 
         # Extracts agent_type from the agent class
         #

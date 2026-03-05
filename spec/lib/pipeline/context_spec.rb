@@ -242,6 +242,69 @@ RSpec.describe RubyLLM::Agents::Pipeline::Context do
     end
   end
 
+  describe "#llm" do
+    it "returns RubyLLM module when no tenant API keys are set" do
+      context = described_class.new(input: "hello", agent_class: agent_class)
+
+      expect(context.llm).to eq(RubyLLM)
+    end
+
+    it "returns a RubyLLM::Context with tenant-specific keys when set" do
+      context = described_class.new(input: "hello", agent_class: agent_class)
+      context[:tenant_api_keys] = {openai: "sk-tenant-key"}
+
+      llm = context.llm
+
+      expect(llm).to be_a(RubyLLM::Context)
+      expect(llm.config.openai_api_key).to eq("sk-tenant-key")
+    end
+
+    it "preserves global config values for non-overridden keys" do
+      saved_anthropic = RubyLLM.config.anthropic_api_key
+      RubyLLM.configure { |c| c.anthropic_api_key = "sk-global-anthropic" }
+
+      context = described_class.new(input: "hello", agent_class: agent_class)
+      context[:tenant_api_keys] = {openai: "sk-tenant-openai"}
+
+      llm = context.llm
+
+      expect(llm.config.openai_api_key).to eq("sk-tenant-openai")
+      expect(llm.config.anthropic_api_key).to eq("sk-global-anthropic")
+    ensure
+      RubyLLM.configure { |c| c.anthropic_api_key = saved_anthropic }
+    end
+
+    it "does not mutate the global RubyLLM configuration" do
+      saved_openai = RubyLLM.config.openai_api_key
+
+      context = described_class.new(input: "hello", agent_class: agent_class)
+      context[:tenant_api_keys] = {openai: "sk-tenant-key"}
+
+      context.llm
+
+      expect(RubyLLM.config.openai_api_key).to eq(saved_openai)
+    end
+
+    it "caches the RubyLLM::Context instance" do
+      context = described_class.new(input: "hello", agent_class: agent_class)
+      context[:tenant_api_keys] = {openai: "sk-tenant-key"}
+
+      first_call = context.llm
+      second_call = context.llm
+
+      expect(first_call).to equal(second_call)
+    end
+
+    it "skips blank API keys" do
+      context = described_class.new(input: "hello", agent_class: agent_class)
+      context[:tenant_api_keys] = {openai: "sk-valid", anthropic: nil, gemini: ""}
+
+      llm = context.llm
+
+      expect(llm.config.openai_api_key).to eq("sk-valid")
+    end
+  end
+
   describe "agent type inference" do
     it "infers :embedding from class name" do
       embedder_class = Class.new do

@@ -196,7 +196,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Tenant do
           expect(result.tenant_config).to be_nil
         end
 
-        it "applies API keys from the resolved tenant object" do
+        it "stores API keys on context instead of mutating global config" do
           tenant_with_keys = Class.new do
             def llm_tenant_id
               "keys_resolved"
@@ -217,9 +217,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Tenant do
 
           middleware.call(context)
 
-          expect(RubyLLM.config.openai_api_key).to eq("sk-resolved-key")
-        ensure
-          RubyLLM.configure { |c| c.openai_api_key = saved_openai }
+          # Keys are stored on context, NOT on global config
+          expect(context[:tenant_api_keys]).to eq({openai: "sk-resolved-key"})
+          expect(RubyLLM.config.openai_api_key).to eq(saved_openai)
         end
       end
     end
@@ -328,20 +328,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Tenant do
   end
 
   describe "API key application from tenant object" do
-    around do |example|
-      # Save original RubyLLM config
-      saved_openai = RubyLLM.config.openai_api_key
-      saved_anthropic = RubyLLM.config.anthropic_api_key
-
-      example.run
-
-      # Restore original config
-      RubyLLM.configure do |config|
-        config.openai_api_key = saved_openai
-        config.anthropic_api_key = saved_anthropic
-      end
-    end
-
     context "with tenant object providing llm_api_keys" do
       let(:tenant_with_keys) do
         Class.new do
@@ -355,13 +341,24 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Tenant do
         end.new
       end
 
-      it "applies API keys from tenant object" do
+      it "stores API keys on context for thread-safe per-request use" do
         context = build_context(tenant: tenant_with_keys)
         allow(app).to receive(:call).with(context).and_return(context)
 
         middleware.call(context)
 
-        expect(RubyLLM.config.openai_api_key).to eq("sk-tenant-object-key")
+        expect(context[:tenant_api_keys]).to eq({openai: "sk-tenant-object-key"})
+      end
+
+      it "does not mutate global RubyLLM configuration" do
+        saved_openai = RubyLLM.config.openai_api_key
+
+        context = build_context(tenant: tenant_with_keys)
+        allow(app).to receive(:call).with(context).and_return(context)
+
+        middleware.call(context)
+
+        expect(RubyLLM.config.openai_api_key).to eq(saved_openai)
       end
     end
 

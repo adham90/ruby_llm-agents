@@ -147,8 +147,11 @@ module ChatMockHelpers
   # @param capture_key_block [Proc, nil] Block to capture the config at execution time
   def stub_ruby_llm_chat(mock, &capture_key_block)
     if capture_key_block
-      allow(RubyLLM).to receive(:chat).with(any_args) do
-        capture_key_block.call(RubyLLM.config)
+      allow(RubyLLM).to receive(:chat).with(any_args) do |**kwargs|
+        # Use the scoped context config if present (thread-safe tenant keys),
+        # otherwise fall back to global config
+        effective_config = kwargs[:context]&.config || RubyLLM.config
+        capture_key_block.call(effective_config)
         mock
       end
     else
