@@ -349,6 +349,7 @@ module RubyLLM
         perplexity_api_key
         xai_api_key
         gpustack_api_key
+        inception_api_key
         openai_api_base
         openai_organization_id
         openai_project_id
