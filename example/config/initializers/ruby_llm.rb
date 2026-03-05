@@ -5,4 +5,7 @@ RubyLLM.configure do |config|
 
   # or for Claude:
   # config.anthropic_api_key = ENV['ANTHROPIC_API_KEY']
+
+  # Inception Labs Mercury (diffusion LLM):
+  # config.inception_api_key = ENV['INCEPTION_API_KEY']
 end
