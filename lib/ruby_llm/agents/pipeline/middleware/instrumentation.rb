@@ -414,72 +414,19 @@ module RubyLLM
             error("Failed to record execution: #{e.message}")
           end
 
-          # Builds execution data hash
+          # Builds execution data hash for the legacy single-step persistence path.
+          #
+          # Composes from build_running_execution_data and build_completion_data
+          # to avoid duplication.
           #
           # @param context [Context] The execution context
           # @param status [String] "success" or "error"
-          # @return [Hash] Execution data
+          # @return [Hash] Execution data with _detail_data for detail record
           def build_execution_data(context, status)
-            # Merge metadata: agent metadata (base) < middleware metadata (overlay)
-            agent_meta = safe_agent_metadata(context)
-            merged_metadata = agent_meta.transform_keys(&:to_s)
+            data = build_running_execution_data(context)
+              .merge(build_completion_data(context, determine_status(context, status)))
 
-            context_meta = begin
-              context.metadata.dup
-            rescue
-              {}
-            end
-            context_meta.transform_keys!(&:to_s)
-            merged_metadata.merge!(context_meta)
-
-            if context.cached? && context[:cache_key]
-              merged_metadata["response_cache_key"] = context[:cache_key]
-            end
-
-            data = {
-              agent_type: context.agent_class&.name,
-              model_id: context.model,
-              status: determine_status(context, status),
-              duration_ms: context.duration_ms,
-              started_at: context.started_at,
-              completed_at: context.completed_at,
-              cache_hit: context.cached?,
-              input_tokens: context.input_tokens || 0,
-              output_tokens: context.output_tokens || 0,
-              total_cost: context.total_cost || 0,
-              attempts_count: context.attempts_made,
-              metadata: merged_metadata
-            }
-
-            # Extract tracing fields from agent metadata to dedicated columns
-            if agent_meta.any?
-              data[:trace_id] = agent_meta[:trace_id] if agent_meta[:trace_id]
-              data[:request_id] = agent_meta[:request_id] if agent_meta[:request_id]
-              data[:parent_execution_id] = agent_meta[:parent_execution_id] if agent_meta[:parent_execution_id]
-              data[:root_execution_id] = agent_meta[:root_execution_id] if agent_meta[:root_execution_id]
-            end
-
-            # Add tenant_id only if multi-tenancy is enabled and tenant is set
-            if global_config.multi_tenancy_enabled? && context.tenant_id.present?
-              data[:tenant_id] = context.tenant_id
-            end
-
-            # Error class on execution
-            if context.error
-              data[:error_class] = context.error.class.name
-            end
-
-            # Tool calls count on execution
-            if context[:tool_calls].present?
-              data[:tool_calls_count] = context[:tool_calls].size
-            end
-
-            # Attempts count on execution
-            if context[:reliability_attempts].present?
-              data[:attempts_count] = context[:reliability_attempts].size
-            end
-
-            # Store detail data for separate creation
+            # Build detail data for separate creation
             detail_data = {parameters: sanitize_parameters(context)}
             if global_config.persist_prompts
               exec_opts = context.options[:options] || {}
@@ -494,11 +441,9 @@ module RubyLLM
               detail_data[:response] = serialize_response(context)
             end
 
-            # Persist audio data for Speaker executions
             maybe_persist_audio_response(context, detail_data)
 
             data[:_detail_data] = detail_data
-
             data
           end
 

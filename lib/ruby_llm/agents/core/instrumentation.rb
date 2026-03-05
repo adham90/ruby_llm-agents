@@ -2,31 +2,27 @@
 
 module RubyLLM
   module Agents
-    # Instrumentation concern for tracking agent executions
+    # @deprecated This module is deprecated and will be removed in a future version.
+    #   All agents now use {Pipeline::Middleware::Instrumentation} automatically
+    #   via the middleware pipeline. This module is no longer included in any
+    #   production class. It remains only for backward compatibility with code
+    #   that explicitly includes it.
     #
-    # Provides comprehensive execution tracking including:
-    # - Timing metrics (started_at, completed_at, duration_ms)
-    # - Token usage tracking (input, output, cached)
-    # - Cost calculation via RubyLLM pricing data
-    # - Error and timeout handling with status tracking
-    # - Safe parameter sanitization for logging
-    #
-    # Included automatically in {RubyLLM::Agents::Base}.
-    #
-    # @example Adding custom metadata to executions
-    #   class MyAgent < ApplicationAgent
-    #     def metadata
-    #       { user_id: Current.user&.id, request_id: request.uuid }
-    #     end
-    #   end
-    #
-    # @see RubyLLM::Agents::Execution
-    # @see RubyLLM::Agents::ExecutionLoggerJob
+    # @see Pipeline::Middleware::Instrumentation
     # @api private
     module Instrumentation
       extend ActiveSupport::Concern
 
       included do
+        if defined?(RubyLLM::Agents::Deprecations)
+          RubyLLM::Agents::Deprecations.warn(
+            "RubyLLM::Agents::Instrumentation is deprecated. " \
+            "All agents now use Pipeline::Middleware::Instrumentation automatically. " \
+            "Remove `include RubyLLM::Agents::Instrumentation` from #{name || "your class"}.",
+            caller
+          )
+        end
+
         # @!attribute [rw] execution_id
         #   The ID of the current execution record
         #   @return [Integer, nil]
