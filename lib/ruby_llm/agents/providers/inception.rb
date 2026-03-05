@@ -40,7 +40,11 @@ end
 require_relative "inception/capabilities"
 require_relative "inception/chat"
 require_relative "inception/models"
+require_relative "inception/registry"
 
 # Include modules after they're loaded
 RubyLLM::Agents::Providers::Inception.include RubyLLM::Agents::Providers::Inception::Chat
 RubyLLM::Agents::Providers::Inception.include RubyLLM::Agents::Providers::Inception::Models
+
+# Register Mercury models in the RubyLLM model registry
+RubyLLM::Agents::Providers::Inception::Registry.register_models!
