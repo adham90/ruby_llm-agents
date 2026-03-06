@@ -1,0 +1,23 @@
+# frozen_string_literal: true
+
+# Migration to add composite indexes for dashboard query performance
+#
+# These indexes optimize the most frequent dashboard queries:
+# - [status, created_at]: now_strip_data conditional counts, error spike detection, top_errors
+# - [model_id, status]: model_stats GROUP BY with success count
+# - [cache_hit, created_at]: cache_savings queries
+class AddDashboardPerformanceIndexes < ActiveRecord::Migration<%= migration_version %>
+  def change
+    add_index :ruby_llm_agents_executions, [:status, :created_at],
+              name: "idx_executions_status_created_at",
+              if_not_exists: true
+
+    add_index :ruby_llm_agents_executions, [:model_id, :status],
+              name: "idx_executions_model_id_status",
+              if_not_exists: true
+
+    add_index :ruby_llm_agents_executions, [:cache_hit, :created_at],
+              name: "idx_executions_cache_hit_created_at",
+              if_not_exists: true
+  end
+end

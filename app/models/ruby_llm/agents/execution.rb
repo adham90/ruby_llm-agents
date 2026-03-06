@@ -275,6 +275,8 @@ module RubyLLM
       alias_method :has_tool_calls?, :tool_calls?
 
       # Returns real-time dashboard data for the Now Strip
+      # Optimized: 3 queries (current aggregate + previous aggregate + running count)
+      # instead of ~15 individual count/sum/average queries.
       #
       # @param range [String] Time range: "today", "7d", "30d", or "90d"
       # @return [Hash] Now strip metrics with period-over-period comparisons
@@ -293,38 +295,31 @@ module RubyLLM
         else yesterday
         end
 
-        current = {
+        curr = aggregate_period_stats(current_scope)
+        prev = aggregate_period_stats(previous_scope)
+
+        {
           running: running.count,
-          success_today: current_scope.status_success.count,
-          errors_today: current_scope.status_error.count,
-          timeouts_today: current_scope.status_timeout.count,
-          cost_today: current_scope.sum(:total_cost) || 0,
-          executions_today: current_scope.count,
-          success_rate: calculate_period_success_rate(current_scope),
-          avg_duration_ms: current_scope.avg_duration&.round || 0,
-          total_tokens: current_scope.total_tokens_sum || 0
-        }
-
-        previous = {
-          success: previous_scope.status_success.count,
-          errors: previous_scope.status_error.count,
-          cost: previous_scope.sum(:total_cost) || 0,
-          avg_duration_ms: previous_scope.avg_duration&.round || 0,
-          total_tokens: previous_scope.total_tokens_sum || 0
-        }
-
-        current.merge(
+          success_today: curr[:success],
+          errors_today: curr[:errors],
+          timeouts_today: curr[:timeouts],
+          cost_today: curr[:cost],
+          executions_today: curr[:total],
+          success_rate: curr[:success_rate],
+          avg_duration_ms: curr[:avg_duration_ms],
+          total_tokens: curr[:tokens],
           comparisons: {
-            success_change: pct_change(previous[:success], current[:success_today]),
-            errors_change: pct_change(previous[:errors], current[:errors_today]),
-            cost_change: pct_change(previous[:cost], current[:cost_today]),
-            duration_change: pct_change(previous[:avg_duration_ms], current[:avg_duration_ms]),
-            tokens_change: pct_change(previous[:total_tokens], current[:total_tokens])
+            success_change: pct_change(prev[:success], curr[:success]),
+            errors_change: pct_change(prev[:errors], curr[:errors]),
+            cost_change: pct_change(prev[:cost], curr[:cost]),
+            duration_change: pct_change(prev[:avg_duration_ms], curr[:avg_duration_ms]),
+            tokens_change: pct_change(prev[:tokens], curr[:tokens])
           }
-        )
+        }
       end
 
       # Returns Now Strip data for a custom date range
+      # Optimized: 3 queries instead of ~15.
       #
       # Compares the selected range against the same-length window
       # immediately preceding it.
@@ -339,35 +334,27 @@ module RubyLLM
         previous_to = from - 1.day
         previous_scope = where(created_at: previous_from.beginning_of_day..previous_to.end_of_day)
 
-        current = {
+        curr = aggregate_period_stats(current_scope)
+        prev = aggregate_period_stats(previous_scope)
+
+        {
           running: running.count,
-          success_today: current_scope.status_success.count,
-          errors_today: current_scope.status_error.count,
-          timeouts_today: current_scope.status_timeout.count,
-          cost_today: current_scope.sum(:total_cost) || 0,
-          executions_today: current_scope.count,
-          success_rate: calculate_period_success_rate(current_scope),
-          avg_duration_ms: current_scope.avg_duration&.round || 0,
-          total_tokens: current_scope.total_tokens_sum || 0
-        }
-
-        previous = {
-          success: previous_scope.status_success.count,
-          errors: previous_scope.status_error.count,
-          cost: previous_scope.sum(:total_cost) || 0,
-          avg_duration_ms: previous_scope.avg_duration&.round || 0,
-          total_tokens: previous_scope.total_tokens_sum || 0
-        }
-
-        current.merge(
+          success_today: curr[:success],
+          errors_today: curr[:errors],
+          timeouts_today: curr[:timeouts],
+          cost_today: curr[:cost],
+          executions_today: curr[:total],
+          success_rate: curr[:success_rate],
+          avg_duration_ms: curr[:avg_duration_ms],
+          total_tokens: curr[:tokens],
           comparisons: {
-            success_change: pct_change(previous[:success], current[:success_today]),
-            errors_change: pct_change(previous[:errors], current[:errors_today]),
-            cost_change: pct_change(previous[:cost], current[:cost_today]),
-            duration_change: pct_change(previous[:avg_duration_ms], current[:avg_duration_ms]),
-            tokens_change: pct_change(previous[:total_tokens], current[:total_tokens])
+            success_change: pct_change(prev[:success], curr[:success]),
+            errors_change: pct_change(prev[:errors], curr[:errors]),
+            cost_change: pct_change(prev[:cost], curr[:cost]),
+            duration_change: pct_change(prev[:avg_duration_ms], curr[:avg_duration_ms]),
+            tokens_change: pct_change(prev[:tokens], curr[:tokens])
           }
-        )
+        }
       end
 
       # Calculates percentage change between old and new values
@@ -390,6 +377,39 @@ module RubyLLM
 
         (scope.successful.count.to_f / total * 100).round(1)
       end
+
+      # Returns aggregate stats for a scope in a single query using conditional aggregation
+      #
+      # Replaces ~9 individual count/sum/average queries with one SQL query.
+      #
+      # @param scope [ActiveRecord::Relation] Time-filtered scope
+      # @return [Hash] Aggregated metrics
+      def self.aggregate_period_stats(scope)
+        total, success, errors, timeouts, cost, avg_dur, tokens = scope.pick(
+          Arel.sql("COUNT(*)"),
+          Arel.sql("SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END)"),
+          Arel.sql("SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END)"),
+          Arel.sql("SUM(CASE WHEN status = 'timeout' THEN 1 ELSE 0 END)"),
+          Arel.sql("COALESCE(SUM(total_cost), 0)"),
+          Arel.sql("AVG(duration_ms)"),
+          Arel.sql("COALESCE(SUM(total_tokens), 0)")
+        )
+
+        total = total.to_i
+        success = success.to_i
+
+        {
+          total: total,
+          success: success,
+          errors: errors.to_i,
+          timeouts: timeouts.to_i,
+          cost: cost.to_f,
+          avg_duration_ms: avg_dur.to_i,
+          tokens: tokens.to_i,
+          success_rate: (total > 0) ? (success.to_f / total * 100).round(1) : 0.0
+        }
+      end
+      private_class_method :aggregate_period_stats
 
       private
 

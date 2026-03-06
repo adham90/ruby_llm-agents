@@ -98,6 +98,25 @@ module RubyLlmAgents
       )
     end
 
+    # Add dashboard performance indexes
+    def create_add_dashboard_performance_indexes_migration
+      unless table_exists?(:ruby_llm_agents_executions)
+        say_status :skip, "executions table does not exist yet", :yellow
+        return
+      end
+
+      if index_exists?(:ruby_llm_agents_executions, [:status, :created_at])
+        say_status :skip, "dashboard performance indexes already exist", :yellow
+        return
+      end
+
+      say_status :upgrade, "Adding dashboard performance indexes", :blue
+      migration_template(
+        "add_dashboard_performance_indexes_migration.rb.tt",
+        File.join(db_migrate_path, "add_dashboard_performance_indexes.rb")
+      )
+    end
+
     def suggest_config_consolidation
       ruby_llm_initializer = File.join(destination_root, "config/initializers/ruby_llm.rb")
       agents_initializer = File.join(destination_root, "config/initializers/ruby_llm_agents.rb")
@@ -189,6 +208,12 @@ module RubyLlmAgents
 
     def table_exists?(table)
       ActiveRecord::Base.connection.table_exists?(table)
+    rescue
+      false
+    end
+
+    def index_exists?(table, columns)
+      ActiveRecord::Base.connection.index_exists?(table, columns)
     rescue
       false
     end

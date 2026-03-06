@@ -152,7 +152,7 @@ module RubyLLM
           private
 
           # Builds hourly chart data for last 24 hours
-          # Optimized: Single GROUP BY query instead of 72 individual queries
+          # Optimized: Single SQL GROUP BY with conditional aggregation
           # Database-agnostic: works with both PostgreSQL and SQLite
           #
           # @param offset_days [Integer, nil] Optional offset for comparison data
@@ -161,12 +161,9 @@ module RubyLLM
             reference_time = (Time.current - offset).beginning_of_hour
             start_time = reference_time - 23.hours
 
-            # Use database-agnostic aggregation with Ruby post-processing
-            results = where(created_at: start_time..(reference_time + 1.hour))
-              .select(:status, :total_cost, :duration_ms, :input_tokens, :output_tokens, :created_at)
-              .group_by { |r| r.created_at.beginning_of_hour }
+            scope = where(created_at: start_time..(reference_time + 1.hour))
+            results = aggregated_chart_query(scope, granularity: :hour)
 
-            # Build arrays for all 24 hours (fill missing with zeros)
             success_data = []
             failed_data = []
             cost_data = []
@@ -181,29 +178,23 @@ module RubyLLM
 
             23.downto(0).each do |hours_ago|
               bucket_time = (reference_time - hours_ago.hours).beginning_of_hour
-              rows = results[bucket_time] || []
+              key = bucket_time.strftime("%Y-%m-%d %H:00:00")
+              row = results[key] || {success: 0, failed: 0, cost: 0.0, duration: 0, tokens: 0}
 
-              s = rows.count { |r| r.status == "success" }
-              f = rows.count { |r| r.status.in?(%w[error timeout]) }
-              c = rows.sum { |r| r.total_cost.to_f }
-              t = rows.sum { |r| (r.input_tokens || 0) + (r.output_tokens || 0) }
+              success_data << row[:success]
+              failed_data << row[:failed]
+              cost_data << row[:cost].round(4)
+              duration_data << row[:duration]
+              tokens_data << row[:tokens]
 
-              # Average duration for this bucket
-              duration_rows = rows.select { |r| r.duration_ms.to_i > 0 }
-              d = duration_rows.any? ? (duration_rows.sum { |r| r.duration_ms.to_i } / duration_rows.count) : 0
-
-              success_data << s
-              failed_data << f
-              cost_data << c.round(4)
-              duration_data << d.round
-              tokens_data << t
-
-              total_success += s
-              total_failed += f
-              total_cost += c
-              total_tokens += t
-              total_duration_sum += duration_rows.sum { |r| r.duration_ms.to_i }
-              total_duration_count += duration_rows.count
+              total_success += row[:success]
+              total_failed += row[:failed]
+              total_cost += row[:cost]
+              total_tokens += row[:tokens]
+              if row[:duration] > 0
+                total_duration_sum += row[:duration]
+                total_duration_count += 1
+              end
             end
 
             avg_duration_ms = (total_duration_count > 0) ? (total_duration_sum / total_duration_count).round : 0
@@ -228,7 +219,7 @@ module RubyLLM
           end
 
           # Builds daily chart data for specified number of days
-          # Optimized: Single query instead of 3*days individual queries
+          # Optimized: Single SQL GROUP BY with conditional aggregation
           # Database-agnostic: works with both PostgreSQL and SQLite
           #
           # @param days [Integer] Number of days to include
@@ -238,12 +229,9 @@ module RubyLLM
             end_date = Date.current - offset.days
             start_date = end_date - (days - 1).days
 
-            # Use database-agnostic aggregation with Ruby post-processing
-            results = where(created_at: start_date.beginning_of_day..end_date.end_of_day)
-              .select(:status, :total_cost, :duration_ms, :input_tokens, :output_tokens, :created_at)
-              .group_by { |r| r.created_at.to_date }
+            scope = where(created_at: start_date.beginning_of_day..end_date.end_of_day)
+            results = aggregated_chart_query(scope, granularity: :day)
 
-            # Build arrays for all days (fill missing with zeros)
             success_data = []
             failed_data = []
             cost_data = []
@@ -258,29 +246,23 @@ module RubyLLM
 
             (days - 1).downto(0).each do |i|
               date = end_date - i.days
-              rows = results[date] || []
+              key = date.to_s
+              row = results[key] || {success: 0, failed: 0, cost: 0.0, duration: 0, tokens: 0}
 
-              s = rows.count { |r| r.status == "success" }
-              f = rows.count { |r| r.status.in?(%w[error timeout]) }
-              c = rows.sum { |r| r.total_cost.to_f }
-              t = rows.sum { |r| (r.input_tokens || 0) + (r.output_tokens || 0) }
+              success_data << row[:success]
+              failed_data << row[:failed]
+              cost_data << row[:cost].round(4)
+              duration_data << row[:duration]
+              tokens_data << row[:tokens]
 
-              # Average duration for this bucket
-              duration_rows = rows.select { |r| r.duration_ms.to_i > 0 }
-              d = duration_rows.any? ? (duration_rows.sum { |r| r.duration_ms.to_i } / duration_rows.count) : 0
-
-              success_data << s
-              failed_data << f
-              cost_data << c.round(4)
-              duration_data << d.round
-              tokens_data << t
-
-              total_success += s
-              total_failed += f
-              total_cost += c
-              total_tokens += t
-              total_duration_sum += duration_rows.sum { |r| r.duration_ms.to_i }
-              total_duration_count += duration_rows.count
+              total_success += row[:success]
+              total_failed += row[:failed]
+              total_cost += row[:cost]
+              total_tokens += row[:tokens]
+              if row[:duration] > 0
+                total_duration_sum += row[:duration]
+                total_duration_count += 1
+              end
             end
 
             avg_duration_ms = (total_duration_count > 0) ? (total_duration_sum / total_duration_count).round : 0
@@ -306,6 +288,7 @@ module RubyLLM
           end
 
           # Builds daily chart data for a custom date range
+          # Optimized: Single SQL GROUP BY with conditional aggregation
           # Database-agnostic: works with both PostgreSQL and SQLite
           #
           # @param from_date [Date] Start date (inclusive)
@@ -314,12 +297,9 @@ module RubyLLM
           def build_daily_chart_data_for_dates(from_date, to_date)
             days = (to_date - from_date).to_i + 1
 
-            # Use database-agnostic aggregation with Ruby post-processing
-            results = where(created_at: from_date.beginning_of_day..to_date.end_of_day)
-              .select(:status, :total_cost, :duration_ms, :input_tokens, :output_tokens, :created_at)
-              .group_by { |r| r.created_at.to_date }
+            scope = where(created_at: from_date.beginning_of_day..to_date.end_of_day)
+            results = aggregated_chart_query(scope, granularity: :day)
 
-            # Build arrays for all days (fill missing with zeros)
             success_data = []
             failed_data = []
             cost_data = []
@@ -334,29 +314,23 @@ module RubyLLM
 
             (0...days).each do |i|
               date = from_date + i.days
-              rows = results[date] || []
+              key = date.to_s
+              row = results[key] || {success: 0, failed: 0, cost: 0.0, duration: 0, tokens: 0}
 
-              s = rows.count { |r| r.status == "success" }
-              f = rows.count { |r| r.status.in?(%w[error timeout]) }
-              c = rows.sum { |r| r.total_cost.to_f }
-              t = rows.sum { |r| (r.input_tokens || 0) + (r.output_tokens || 0) }
+              success_data << row[:success]
+              failed_data << row[:failed]
+              cost_data << row[:cost].round(4)
+              duration_data << row[:duration]
+              tokens_data << row[:tokens]
 
-              # Average duration for this bucket
-              duration_rows = rows.select { |r| r.duration_ms.to_i > 0 }
-              d = duration_rows.any? ? (duration_rows.sum { |r| r.duration_ms.to_i } / duration_rows.count) : 0
-
-              success_data << s
-              failed_data << f
-              cost_data << c.round(4)
-              duration_data << d.round
-              tokens_data << t
-
-              total_success += s
-              total_failed += f
-              total_cost += c
-              total_tokens += t
-              total_duration_sum += duration_rows.sum { |r| r.duration_ms.to_i }
-              total_duration_count += duration_rows.count
+              total_success += row[:success]
+              total_failed += row[:failed]
+              total_cost += row[:cost]
+              total_tokens += row[:tokens]
+              if row[:duration] > 0
+                total_duration_sum += row[:duration]
+                total_duration_count += 1
+              end
             end
 
             avg_duration_ms = (total_duration_count > 0) ? (total_duration_sum / total_duration_count).round : 0
@@ -387,25 +361,28 @@ module RubyLLM
 
           # Builds the hourly activity data structure
           # Shows the last 24 hours with current hour on the right
+          # Optimized: Single SQL GROUP BY instead of 48 individual queries
           #
           # @return [Array<Hash>] Success and failed series data
           # @api private
           def build_hourly_activity_data
+            reference_time = Time.current.beginning_of_hour
+            start_time = reference_time - 23.hours
+
+            scope = where(created_at: start_time..(reference_time + 1.hour))
+            results = aggregated_chart_query(scope, granularity: :hour)
+
             success_data = {}
             failed_data = {}
 
-            # Use current time as reference so chart shows "now" on the right
-            reference_time = Time.current.beginning_of_hour
-
-            # Create entries for the last 24 hours ending at current hour
             23.downto(0).each do |hours_ago|
-              start_time = reference_time - hours_ago.hours
-              end_time = start_time + 1.hour
-              time_label = start_time.in_time_zone.strftime("%H:%M")
+              bucket_time = (reference_time - hours_ago.hours).beginning_of_hour
+              time_label = bucket_time.in_time_zone.strftime("%H:%M")
+              key = bucket_time.strftime("%Y-%m-%d %H:00:00")
+              row = results[key] || {success: 0, failed: 0}
 
-              hour_scope = where(created_at: start_time...end_time)
-              success_data[time_label] = hour_scope.successful.count
-              failed_data[time_label] = hour_scope.failed.count
+              success_data[time_label] = row[:success]
+              failed_data[time_label] = row[:failed]
             end
 
             [
@@ -428,22 +405,38 @@ module RubyLLM
           end
 
           # Builds the hourly cost data structure (uncached)
+          # Optimized: Single SQL GROUP BY instead of 48 individual queries
           #
           # @return [Array<Hash>] Input and output cost series data
           # @api private
           def build_hourly_cost_data
+            day_start = Time.current.beginning_of_day
+            bucket = date_bucket_sql(:hour)
+
+            rows = where(created_at: day_start..(day_start + 24.hours))
+              .select(
+                Arel.sql("#{bucket} AS bucket"),
+                Arel.sql("SUM(COALESCE(input_cost, 0)) AS sum_input_cost"),
+                Arel.sql("SUM(COALESCE(output_cost, 0)) AS sum_output_cost")
+              )
+              .group(Arel.sql("bucket"))
+
+            cost_by_hour = rows.each_with_object({}) do |row, hash|
+              hash[row["bucket"].to_s] = {
+                input: row["sum_input_cost"].to_f.round(6),
+                output: row["sum_output_cost"].to_f.round(6)
+              }
+            end
+
             input_cost_data = {}
             output_cost_data = {}
 
-            # Create entries for each hour of the day (0-23)
             (0..23).each do |hour|
               time_label = format("%02d:00", hour)
-              start_time = Time.current.beginning_of_day + hour.hours
-              end_time = start_time + 1.hour
-
-              hour_scope = where(created_at: start_time...end_time)
-              input_cost_data[time_label] = (hour_scope.sum(:input_cost) || 0).round(6)
-              output_cost_data[time_label] = (hour_scope.sum(:output_cost) || 0).round(6)
+              key = (day_start + hour.hours).strftime("%Y-%m-%d %H:00:00")
+              row = cost_by_hour[key] || {input: 0, output: 0}
+              input_cost_data[time_label] = row[:input]
+              output_cost_data[time_label] = row[:output]
             end
 
             [
@@ -515,32 +508,36 @@ module RubyLLM
           end
 
           # Builds per-model statistics for model comparison
+          # Optimized: Single SQL GROUP BY with conditional aggregation
           #
           # @param scope [ActiveRecord::Relation] Pre-filtered scope
           # @return [Array<Hash>] Model stats sorted by total cost descending
           def model_stats(scope: all)
-            scope = scope.where.not(model_id: nil)
+            rows = scope.where.not(model_id: nil)
+              .select(
+                :model_id,
+                Arel.sql("COUNT(*) AS exec_count"),
+                Arel.sql("COALESCE(SUM(total_cost), 0) AS sum_cost"),
+                Arel.sql("COALESCE(SUM(total_tokens), 0) AS sum_tokens"),
+                Arel.sql("AVG(duration_ms) AS avg_dur"),
+                Arel.sql("SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS success_cnt")
+              )
+              .group(:model_id)
 
-            counts = scope.group(:model_id).count
-            costs = scope.group(:model_id).sum(:total_cost)
-            tokens = scope.group(:model_id).sum(:total_tokens)
-            durations = scope.group(:model_id).average(:duration_ms)
-            success_counts = scope.successful.group(:model_id).count
+            total_cost = rows.sum { |r| r["sum_cost"].to_f }
 
-            total_cost = costs.values.sum
-
-            counts.keys.map do |model_id|
-              count = counts[model_id] || 0
-              model_cost = costs[model_id] || 0
-              model_tokens = tokens[model_id] || 0
-              successful = success_counts[model_id] || 0
+            rows.map do |row|
+              count = row["exec_count"].to_i
+              model_cost = row["sum_cost"].to_f
+              model_tokens = row["sum_tokens"].to_i
+              successful = row["success_cnt"].to_i
 
               {
-                model_id: model_id,
+                model_id: row.model_id,
                 executions: count,
                 total_cost: model_cost,
                 total_tokens: model_tokens,
-                avg_duration_ms: durations[model_id]&.round || 0,
+                avg_duration_ms: row["avg_dur"].to_i,
                 success_rate: (count > 0) ? (successful.to_f / count * 100).round(1) : 0,
                 cost_per_1k_tokens: (model_tokens > 0) ? (model_cost / model_tokens * 1000).round(4) : 0,
                 cost_percentage: (total_cost > 0) ? (model_cost / total_cost * 100).round(1) : 0
@@ -572,46 +569,55 @@ module RubyLLM
           end
 
           # Builds cache savings statistics
+          # Optimized: Single SQL query with conditional aggregation
           #
           # @param scope [ActiveRecord::Relation] Pre-filtered scope
           # @return [Hash] Cache savings data
           def cache_savings(scope: all)
-            total_count = scope.count
-            return {count: 0, estimated_savings: 0, hit_rate: 0, total_executions: 0} if total_count.zero?
+            cond = cache_hit_condition
+            total_count, cache_count, cache_cost = scope.pick(
+              Arel.sql("COUNT(*)"),
+              Arel.sql("SUM(CASE WHEN #{cond} THEN 1 ELSE 0 END)"),
+              Arel.sql("COALESCE(SUM(CASE WHEN #{cond} THEN total_cost ELSE 0 END), 0)")
+            )
 
-            cached_scope = scope.cached
-            cache_count = cached_scope.count
-            estimated_savings = cached_scope.sum(:total_cost)
+            total_count = total_count.to_i
+            cache_count = cache_count.to_i
+
+            return {count: 0, estimated_savings: 0, hit_rate: 0, total_executions: 0} if total_count.zero?
 
             {
               count: cache_count,
-              estimated_savings: estimated_savings,
+              estimated_savings: cache_cost.to_f,
               hit_rate: (cache_count.to_f / total_count * 100).round(1),
               total_executions: total_count
             }
           end
 
           # Batch fetches execution stats grouped by agent type
+          # Optimized: Single SQL GROUP BY with conditional aggregation
           #
           # @param scope [ActiveRecord::Relation] Pre-filtered scope
           # @return [Hash<String, Hash>] Agent type => stats hash
           def batch_agent_stats(scope: all)
-            counts = scope.group(:agent_type).count
-            costs = scope.group(:agent_type).sum(:total_cost)
-            success_counts = scope.successful.group(:agent_type).count
-            durations = scope.group(:agent_type).average(:duration_ms)
+            rows = scope.select(
+              :agent_type,
+              Arel.sql("COUNT(*) AS exec_count"),
+              Arel.sql("COALESCE(SUM(total_cost), 0) AS sum_cost"),
+              Arel.sql("AVG(duration_ms) AS avg_dur"),
+              Arel.sql("SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS success_cnt")
+            ).group(:agent_type)
 
-            agent_types = (counts.keys + costs.keys).uniq
-            agent_types.each_with_object({}) do |agent_type, hash|
-              count = counts[agent_type] || 0
-              total_cost = costs[agent_type] || 0
-              successful = success_counts[agent_type] || 0
+            rows.each_with_object({}) do |row, hash|
+              count = row["exec_count"].to_i
+              total_cost = row["sum_cost"].to_f
+              successful = row["success_cnt"].to_i
 
-              hash[agent_type] = {
+              hash[row.agent_type] = {
                 count: count,
                 total_cost: total_cost,
                 avg_cost: (count > 0) ? (total_cost / count).round(6) : 0,
-                avg_duration_ms: durations[agent_type]&.round || 0,
+                avg_duration_ms: row["avg_dur"].to_i,
                 success_rate: (count > 0) ? (successful.to_f / count * 100).round(1) : 0
               }
             end
@@ -684,6 +690,77 @@ module RubyLLM
           def percent_change(old_value, new_value)
             return 0.0 if old_value.nil? || old_value.zero?
             ((new_value - old_value).to_f / old_value * 100).round(2)
+          end
+
+          # Returns a SQL expression for date/time bucketing
+          #
+          # Database-agnostic: uses strftime for SQLite, date_trunc for PostgreSQL.
+          #
+          # @param granularity [Symbol] :hour or :day
+          # @return [Arel::Nodes::SqlLiteral] SQL fragment for SELECT/GROUP BY
+          def date_bucket_sql(granularity)
+            col = "#{table_name}.created_at"
+
+            if connection.adapter_name.downcase.include?("sqlite")
+              case granularity
+              when :hour then Arel.sql("strftime('%Y-%m-%d %H:00:00', #{col})")
+              when :day then Arel.sql("strftime('%Y-%m-%d', #{col})")
+              else raise ArgumentError, "Unknown granularity: #{granularity}"
+              end
+            else
+              case granularity
+              when :hour then Arel.sql("to_char(date_trunc('hour', #{col}), 'YYYY-MM-DD HH24:00:00')")
+              when :day then Arel.sql("to_char(#{col}::date, 'YYYY-MM-DD')")
+              else raise ArgumentError, "Unknown granularity: #{granularity}"
+              end
+            end
+          end
+
+          # Runs a single aggregated query for chart data using SQL GROUP BY
+          #
+          # Replaces loading all records into Ruby memory. One SQL query returns
+          # pre-aggregated metrics per time bucket.
+          #
+          # @param scope [ActiveRecord::Relation] Pre-filtered scope with time range
+          # @param granularity [Symbol] :hour or :day
+          # @return [Hash{String => Hash}] Bucket key => {success:, failed:, cost:, duration:, tokens:}
+          def aggregated_chart_query(scope, granularity:)
+            bucket = date_bucket_sql(granularity)
+
+            rows = scope
+              .select(
+                Arel.sql("#{bucket} AS bucket"),
+                Arel.sql("SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS success_count"),
+                Arel.sql("SUM(CASE WHEN status IN ('error','timeout') THEN 1 ELSE 0 END) AS failed_count"),
+                Arel.sql("SUM(COALESCE(total_cost, 0)) AS sum_cost"),
+                Arel.sql("AVG(CASE WHEN duration_ms > 0 THEN duration_ms ELSE NULL END) AS avg_dur"),
+                Arel.sql("SUM(COALESCE(input_tokens, 0) + COALESCE(output_tokens, 0)) AS sum_tokens")
+              )
+              .group(Arel.sql("bucket"))
+              .order(Arel.sql("bucket"))
+
+            rows.each_with_object({}) do |row, hash|
+              hash[row["bucket"].to_s] = {
+                success: row["success_count"].to_i,
+                failed: row["failed_count"].to_i,
+                cost: row["sum_cost"].to_f,
+                duration: row["avg_dur"].to_i,
+                tokens: row["sum_tokens"].to_i
+              }
+            end
+          end
+
+          # SQL condition for boolean cache_hit column
+          #
+          # SQLite stores booleans as 1/0, PostgreSQL as TRUE/FALSE.
+          #
+          # @return [String] SQL condition fragment
+          def cache_hit_condition
+            if connection.adapter_name.downcase.include?("sqlite")
+              "cache_hit = 1"
+            else
+              "cache_hit = TRUE"
+            end
           end
         end
       end
