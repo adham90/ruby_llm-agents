@@ -295,32 +295,15 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           ctx
         }
 
-        # Should not call create! if tracking is disabled
-        if defined?(RubyLLM::Agents::Execution)
-          expect(RubyLLM::Agents::Execution).not_to receive(:create!)
-        end
-
-        middleware.call(context)
+        expect { middleware.call(context) }.not_to change(RubyLLM::Agents::Execution, :count)
       end
     end
 
     context "when result is cached" do
-      let(:mock_execution) do
-        double("RubyLLM::Agents::Execution",
-          id: 123,
-          status: "running",
-          detail: nil,
-          class: RubyLLM::Agents::Execution,
-          parent_execution_id: nil,
-          root_execution_id: nil)
-      end
-
       before do
         RubyLLM::Agents.configuration.track_embeddings = true
         RubyLLM::Agents.configuration.track_cache_hits = false
         RubyLLM::Agents.configuration.multi_tenancy_enabled = false
-        allow(mock_execution).to receive(:create_detail!)
-        allow(mock_execution).to receive(:update_column)
       end
 
       it "does not record cache hits when track_cache_hits is false" do
@@ -332,9 +315,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           ctx
         }
 
-        expect(RubyLLM::Agents::Execution).not_to receive(:create!)
-
-        middleware.call(context)
+        expect { middleware.call(context) }.not_to change(RubyLLM::Agents::Execution, :count)
       end
 
       it "records cache hits when track_cache_hits is true" do
@@ -348,34 +329,18 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           ctx
         }
 
-        expect(RubyLLM::Agents::Execution).to receive(:create!).with(
-          hash_including(status: "running")
-        ).and_return(mock_execution)
-
-        expect(mock_execution).to receive(:update!).with(
-          hash_including(cache_hit: true)
-        )
-
         middleware.call(context)
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution).to be_present
+        expect(execution.cache_hit).to eq(true)
       end
     end
 
     context "async logging" do
-      let(:mock_execution) do
-        double("RubyLLM::Agents::Execution",
-          id: 123,
-          status: "running",
-          detail: nil,
-          class: RubyLLM::Agents::Execution,
-          parent_execution_id: nil,
-          root_execution_id: nil)
-      end
-
       before do
         RubyLLM::Agents.configuration.track_embeddings = true
         RubyLLM::Agents.configuration.multi_tenancy_enabled = false
-        allow(mock_execution).to receive(:create_detail!)
-        allow(mock_execution).to receive(:update_column)
       end
 
       it "creates running record synchronously even when async_logging is enabled" do
@@ -390,20 +355,12 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           ctx
         end
 
-        # Running record is always created synchronously
-        expect(RubyLLM::Agents::Execution).to receive(:create!).with(
-          hash_including(
-            agent_type: "TestAgent",
-            status: "running"
-          )
-        ).and_return(mock_execution)
-
-        # Update is also called (synchronously for now to ensure dashboard correctness)
-        expect(mock_execution).to receive(:update!).with(
-          hash_including(status: "success")
-        )
-
         middleware.call(context)
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution).to be_present
+        expect(execution.agent_type).to eq("TestAgent")
+        expect(execution.status).to eq("success")
       end
 
       it "falls back to sync when async_logging is disabled" do
@@ -418,18 +375,12 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           ctx
         end
 
-        expect(RubyLLM::Agents::Execution).to receive(:create!).with(
-          hash_including(
-            agent_type: "TestAgent",
-            status: "running"
-          )
-        ).and_return(mock_execution)
-
-        expect(mock_execution).to receive(:update!).with(
-          hash_including(status: "success")
-        )
-
         middleware.call(context)
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution).to be_present
+        expect(execution.agent_type).to eq("TestAgent")
+        expect(execution.status).to eq("success")
       end
 
       it "falls back to legacy create when running record creation fails" do
@@ -491,8 +442,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         ctx
       }
 
-      expect(RubyLLM::Agents::Execution).not_to receive(:create!)
-      middleware.call(context)
+      expect { middleware.call(context) }.not_to change(RubyLLM::Agents::Execution, :count)
     end
 
     it "checks track_image_generation for image agents" do
@@ -519,8 +469,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         ctx
       }
 
-      expect(RubyLLM::Agents::Execution).not_to receive(:create!)
-      middleware.call(context)
+      expect { middleware.call(context) }.not_to change(RubyLLM::Agents::Execution, :count)
     end
 
     it "checks track_audio for audio agents" do
@@ -547,8 +496,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         ctx
       }
 
-      expect(RubyLLM::Agents::Execution).not_to receive(:create!)
-      middleware.call(context)
+      expect { middleware.call(context) }.not_to change(RubyLLM::Agents::Execution, :count)
     end
 
     it "checks track_executions for conversation agents" do
@@ -575,8 +523,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         ctx
       }
 
-      expect(RubyLLM::Agents::Execution).not_to receive(:create!)
-      middleware.call(context)
+      expect { middleware.call(context) }.not_to change(RubyLLM::Agents::Execution, :count)
     end
 
     it "falls back to false when tracking config raises an error" do
@@ -610,20 +557,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
   end
 
   describe "multi-tenancy support" do
-    let(:mock_execution) do
-      double("RubyLLM::Agents::Execution",
-        id: 123,
-        status: "running",
-        detail: nil,
-        class: RubyLLM::Agents::Execution,
-        parent_execution_id: nil,
-        root_execution_id: nil)
-    end
-
     before do
       RubyLLM::Agents.configuration.track_embeddings = true
-      allow(mock_execution).to receive(:create_detail!)
-      allow(mock_execution).to receive(:update_column)
     end
 
     it "includes tenant_id when multi-tenancy is enabled" do
@@ -637,13 +572,11 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         ctx
       }
 
-      expect(RubyLLM::Agents::Execution).to receive(:create!).with(
-        hash_including(tenant_id: "tenant-123")
-      ).and_return(mock_execution)
-
-      allow(mock_execution).to receive(:update!)
-
       middleware.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution).to be_present
+      expect(execution.tenant_id).to eq("tenant-123")
     end
 
     it "omits tenant_id when multi-tenancy is disabled" do
@@ -657,33 +590,19 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         ctx
       }
 
-      expect(RubyLLM::Agents::Execution).to receive(:create!).with(
-        hash_not_including(:tenant_id)
-      ).and_return(mock_execution)
-
-      allow(mock_execution).to receive(:update!)
-
       middleware.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution).to be_present
+      expect(execution.tenant_id).to be_nil
     end
   end
 
   describe "cache key tracking" do
-    let(:mock_execution) do
-      double("RubyLLM::Agents::Execution",
-        id: 123,
-        status: "running",
-        detail: nil,
-        class: RubyLLM::Agents::Execution,
-        parent_execution_id: nil,
-        root_execution_id: nil)
-    end
-
     before do
       RubyLLM::Agents.configuration.track_embeddings = true
       RubyLLM::Agents.configuration.track_cache_hits = true
       RubyLLM::Agents.configuration.multi_tenancy_enabled = false
-      allow(mock_execution).to receive(:create_detail!)
-      allow(mock_execution).to receive(:update_column)
     end
 
     it "includes cache key for cached results" do
@@ -695,32 +614,19 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         ctx.output = "result"
         ctx
       }
-      allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
-
-      expect(mock_execution).to receive(:update!).with(
-        hash_including(metadata: hash_including("response_cache_key" => "ruby_llm_agents/test/key"))
-      )
 
       middleware.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution).to be_present
+      expect(execution.metadata).to include("response_cache_key" => "ruby_llm_agents/test/key")
     end
   end
 
   describe "metadata tracking" do
-    let(:mock_execution) do
-      double("RubyLLM::Agents::Execution",
-        id: 123,
-        status: "running",
-        detail: nil,
-        class: RubyLLM::Agents::Execution,
-        parent_execution_id: nil,
-        root_execution_id: nil)
-    end
-
     before do
       RubyLLM::Agents.configuration.track_embeddings = true
       RubyLLM::Agents.configuration.multi_tenancy_enabled = false
-      allow(mock_execution).to receive(:create_detail!)
-      allow(mock_execution).to receive(:update_column)
     end
 
     it "includes custom metadata in execution record when metadata is present" do
@@ -736,19 +642,14 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         ctx.output = "result"
         ctx
       end
-      allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
-
-      # The middleware only includes metadata if context.metadata.any? is true
-      expect(mock_execution).to receive(:update!) do |data|
-        # Metadata should be included when context has metadata entries
-        expect(data[:status]).to eq("success")
-        # Check if metadata was properly propagated
-        if context.metadata.any?
-          expect(data).to have_key(:metadata)
-        end
-      end
 
       middleware.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution).to be_present
+      expect(execution.status).to eq("success")
+      expect(execution.metadata).to include("custom_field" => "custom_value")
+      expect(execution.metadata).to include("request_id" => "req-123")
     end
 
     it "does not include metadata key when metadata is empty" do
@@ -759,13 +660,12 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         ctx.output = "result"
         ctx
       }
-      allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
-
-      expect(mock_execution).to receive(:update!).with(
-        hash_not_including(:metadata)
-      )
 
       middleware.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution).to be_present
+      expect(execution.metadata).to be_blank
     end
   end
 
@@ -952,16 +852,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
   end
 
   describe "parameter sanitization" do
-    let(:mock_execution) do
-      double("RubyLLM::Agents::Execution",
-        id: 123,
-        status: "running",
-        detail: nil,
-        class: RubyLLM::Agents::Execution,
-        parent_execution_id: nil,
-        root_execution_id: nil)
-    end
-
     let(:agent_class_with_options) do
       Class.new do
         def self.name
@@ -981,8 +871,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     before do
       RubyLLM::Agents.configuration.track_embeddings = true
       RubyLLM::Agents.configuration.multi_tenancy_enabled = false
-      allow(mock_execution).to receive(:create_detail!)
-      allow(mock_execution).to receive(:update_column)
     end
 
     it "redacts sensitive parameters" do
@@ -1014,42 +902,25 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         ctx
       }
 
-      # Parameters are now stored on the detail record, not the execution
-      expect(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
-      expect(mock_execution).to receive(:create_detail!).with(
-        hash_including(
-          parameters: hash_including(
-            "query" => "test query",
-            "api_key" => "[REDACTED]",
-            "password" => "[REDACTED]",
-            "token" => "[REDACTED]",
-            "normal_param" => "normal"
-          )
-        )
-      )
-
-      allow(mock_execution).to receive(:update!)
-
       middleware.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution).to be_present
+      expect(execution.detail).to be_present
+      expect(execution.detail.parameters).to include(
+        "query" => "test query",
+        "api_key" => "[REDACTED]",
+        "password" => "[REDACTED]",
+        "token" => "[REDACTED]",
+        "normal_param" => "normal"
+      )
     end
   end
 
   describe "response persistence" do
-    let(:mock_execution) do
-      double("RubyLLM::Agents::Execution",
-        id: 123,
-        status: "running",
-        detail: nil,
-        class: RubyLLM::Agents::Execution,
-        parent_execution_id: nil,
-        root_execution_id: nil)
-    end
-
     before do
       RubyLLM::Agents.configuration.track_embeddings = true
       RubyLLM::Agents.configuration.multi_tenancy_enabled = false
-      allow(mock_execution).to receive(:create_detail!)
-      allow(mock_execution).to receive(:update_column)
     end
 
     context "when persist_responses is enabled" do
@@ -1065,15 +936,13 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           ctx.output = result_obj
           ctx
         end
-        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
-        allow(mock_execution).to receive(:update!)
-
-        # Response is now stored via create_detail!, not update!
-        expect(mock_execution).to receive(:create_detail!).with(
-          hash_including(response: hash_including(content: "Test response"))
-        )
 
         middleware.call(context)
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution).to be_present
+        expect(execution.detail).to be_present
+        expect(execution.detail.response).to include("content" => "Test response")
       end
 
       it "includes model_id in response when available" do
@@ -1085,15 +954,13 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           ctx.output = result_obj
           ctx
         end
-        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
-        allow(mock_execution).to receive(:update!)
-
-        # Response is now stored via create_detail!, not update!
-        expect(mock_execution).to receive(:create_detail!).with(
-          hash_including(response: hash_including(content: "Test response", model_id: "gpt-4"))
-        )
 
         middleware.call(context)
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution).to be_present
+        expect(execution.detail).to be_present
+        expect(execution.detail.response).to include("content" => "Test response", "model_id" => "gpt-4")
       end
 
       it "includes token info in response when available" do
@@ -1106,15 +973,13 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           ctx.output = result_obj
           ctx
         end
-        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
-        allow(mock_execution).to receive(:update!)
-
-        # Response is now stored via create_detail!, not update!
-        expect(mock_execution).to receive(:create_detail!).with(
-          hash_including(response: hash_including(input_tokens: 100, output_tokens: 50))
-        )
 
         middleware.call(context)
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution).to be_present
+        expect(execution.detail).to be_present
+        expect(execution.detail.response).to include("input_tokens" => 100, "output_tokens" => 50)
       end
 
       it "does not store response when output is nil" do
@@ -1124,13 +989,15 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           ctx.output = nil
           ctx
         end
-        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
-
-        expect(mock_execution).to receive(:update!).with(
-          hash_not_including(:response)
-        )
 
         middleware.call(context)
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution).to be_present
+        # No detail record should be created with response data, or response should be empty
+        if execution.detail
+          expect(execution.detail.response).to be_blank
+        end
       end
 
       it "does not store response when output does not respond to content" do
@@ -1140,13 +1007,15 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           ctx.output = "plain string"
           ctx
         end
-        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
-
-        expect(mock_execution).to receive(:update!).with(
-          hash_not_including(:response)
-        )
 
         middleware.call(context)
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution).to be_present
+        # No detail record should be created with response data, or response should be empty
+        if execution.detail
+          expect(execution.detail.response).to be_blank
+        end
       end
     end
 
@@ -1163,31 +1032,21 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           ctx.output = result_obj
           ctx
         end
-        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
-
-        expect(mock_execution).to receive(:update!).with(
-          hash_not_including(:response)
-        )
 
         middleware.call(context)
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution).to be_present
+        # Response should not be persisted
+        if execution.detail
+          expect(execution.detail.response).to be_blank
+        end
       end
     end
 
     describe "reliability attempts persistence" do
-      let(:mock_execution) do
-        double("RubyLLM::Agents::Execution",
-          id: 456,
-          status: "running",
-          detail: nil,
-          class: RubyLLM::Agents::Execution,
-          parent_execution_id: nil,
-          root_execution_id: nil)
-      end
-
       before do
         RubyLLM::Agents.configuration.multi_tenancy_enabled = false
-        allow(mock_execution).to receive(:create_detail!)
-        allow(mock_execution).to receive(:update_column)
       end
 
       it "persists reliability_attempts in the execution record" do
@@ -1202,26 +1061,18 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           ctx
         end
 
-        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
+        middleware.call(context)
 
-        # attempts_count on the execution, attempts data goes to detail
-        expect(mock_execution).to receive(:update!).with(
-          hash_including(
-            attempts_count: 2
-          )
-        )
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution).to be_present
+        expect(execution.attempts_count).to eq(2)
 
         # Attempts data is stored on the detail record
-        expect(mock_execution).to receive(:create_detail!).with(
-          hash_including(
-            attempts: [
-              {"model_id" => "gemini-2.5-flash", "error_class" => "StandardError", "error_message" => "quota exceeded"},
-              {"model_id" => "gpt-4.1-mini", "error_class" => nil, "error_message" => nil}
-            ]
-          )
-        )
-
-        middleware.call(context)
+        expect(execution.detail).to be_present
+        expect(execution.detail.attempts).to eq([
+          {"model_id" => "gemini-2.5-flash", "error_class" => "StandardError", "error_message" => "quota exceeded"},
+          {"model_id" => "gpt-4.1-mini", "error_class" => nil, "error_message" => nil}
+        ])
       end
 
       it "does not include attempts when reliability_attempts is absent" do
@@ -1232,13 +1083,12 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           ctx
         end
 
-        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
-
-        expect(mock_execution).to receive(:update!).with(
-          hash_not_including(:attempts)
-        )
-
         middleware.call(context)
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution).to be_present
+        # Default attempts_count is 0 when no reliability middleware has run
+        expect(execution.attempts_count).to eq(0)
       end
     end
   end

@@ -120,6 +120,44 @@ module RubyLLM
         end
       end
 
+      # Renders a sortable column header link with arrow indicator
+      #
+      # Replaces inline `raw()` calls in views with safe content_tag usage.
+      #
+      # @param column [String] The sort column name
+      # @param label [String] Display label for the header
+      # @param current_column [String] Currently active sort column
+      # @param current_direction [String] Current sort direction ("asc"/"desc")
+      # @param extra_class [String] Additional CSS classes
+      # @return [ActiveSupport::SafeBuffer] HTML link element
+      def sort_header_link(column, label, current_column:, current_direction:, extra_class: "")
+        is_active = column == current_column
+        next_dir = (is_active && current_direction == "asc") ? "desc" : "asc"
+        url = url_for(request.query_parameters.merge(sort: column, direction: next_dir, page: 1))
+
+        arrow = if is_active && current_direction == "asc"
+          content_tag(:svg, class: "w-2.5 h-2.5 inline", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24") do
+            content_tag(:path, nil, "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "2", d: "M5 15l7-7 7 7")
+          end
+        elsif is_active
+          content_tag(:svg, class: "w-2.5 h-2.5 inline", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24") do
+            content_tag(:path, nil, "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-width": "2", d: "M19 9l-7 7-7-7")
+          end
+        else
+          "".html_safe
+        end
+
+        active_class = is_active ? "text-gray-700 dark:text-gray-300" : ""
+        opacity_class = is_active ? "opacity-100" : "opacity-0 group-hover:opacity-50"
+
+        link_to url, class: "group inline-flex items-center gap-0.5 hover:text-gray-700 dark:hover:text-gray-300 #{active_class} #{extra_class}" do
+          safe_join([
+            content_tag(:span, label),
+            content_tag(:span, arrow, class: "#{opacity_class} transition-opacity")
+          ])
+        end
+      end
+
       # Syntax-highlights a Ruby object as pretty-printed JSON
       #
       # Converts the object to JSON and applies color highlighting

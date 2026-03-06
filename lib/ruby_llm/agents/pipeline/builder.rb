@@ -170,7 +170,8 @@ module RubyLLM
           # @return [Array<Hash>] Middleware entries
           def global_middleware_entries
             RubyLLM::Agents.configuration.middleware_stack
-          rescue
+          rescue => e
+            Rails.logger.debug("[RubyLLM::Agents::Pipeline] Failed to load global middleware: #{e.message}") if defined?(Rails) && Rails.logger
             []
           end
 
@@ -182,7 +183,8 @@ module RubyLLM
             return [] unless agent_class&.respond_to?(:agent_middleware)
 
             agent_class.agent_middleware
-          rescue
+          rescue => e
+            Rails.logger.debug("[RubyLLM::Agents::Pipeline] Failed to load agent middleware: #{e.message}") if defined?(Rails) && Rails.logger
             []
           end
 
@@ -207,7 +209,8 @@ module RubyLLM
           # @return [Boolean]
           def budgets_enabled?
             RubyLLM::Agents.configuration.budgets_enabled?
-          rescue
+          rescue => e
+            Rails.logger.debug("[RubyLLM::Agents::Pipeline] Failed to check budgets_enabled: #{e.message}") if defined?(Rails) && Rails.logger
             false
           end
 
@@ -248,7 +251,8 @@ module RubyLLM
 
             (retries.is_a?(Integer) && retries.positive?) ||
               (fallbacks.is_a?(Array) && fallbacks.any?)
-          rescue
+          rescue => e
+            Rails.logger.debug("[RubyLLM::Agents::Pipeline] Failed to check reliability_enabled: #{e.message}") if defined?(Rails) && Rails.logger
             false
           end
         end

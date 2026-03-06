@@ -64,8 +64,8 @@ module RubyLLM
                 tenant_id: context.tenant_id
               }.merge(extras)
             )
-          rescue
-            # Never let notifications break execution
+          rescue => e
+            debug("Budget notification failed: #{e.message}")
           end
 
           # Returns whether budgets are enabled globally
@@ -73,7 +73,8 @@ module RubyLLM
           # @return [Boolean]
           def budgets_enabled?
             global_config.budgets_enabled?
-          rescue
+          rescue => e
+            debug("Failed to check budgets_enabled config: #{e.message}")
             false
           end
 
@@ -104,7 +105,8 @@ module RubyLLM
             emit_budget_notification("ruby_llm_agents.budget.exceeded", context)
             raise
           rescue => e
-            error("Budget check failed: #{e.message}")
+            # Log at error level so unexpected failures are visible in logs
+            error("Budget check failed: #{e.class}: #{e.message}")
           end
 
           # Records spend after execution

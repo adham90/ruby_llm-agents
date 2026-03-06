@@ -100,11 +100,12 @@ module RubyLLM
       #
       # @return [void]
       def load_agent_stats
-        @stats = Execution.stats_for(@agent_type, period: :all_time)
-        @stats_today = Execution.stats_for(@agent_type, period: :today)
+        base = tenant_scoped_executions
+        @stats = base.stats_for(@agent_type, period: :all_time)
+        @stats_today = base.stats_for(@agent_type, period: :today)
 
         # Additional stats for new schema fields
-        agent_scope = Execution.by_agent(@agent_type)
+        agent_scope = base.by_agent(@agent_type)
         @cache_hit_rate = agent_scope.cache_hit_rate
         @streaming_rate = agent_scope.streaming_rate
         @avg_ttft = agent_scope.avg_time_to_first_token
@@ -118,9 +119,10 @@ module RubyLLM
       # @return [void]
       def load_filter_options
         # Single query to get all filter options (fixes N+1)
-        filter_data = Execution.by_agent(@agent_type)
+        base = tenant_scoped_executions.by_agent(@agent_type)
+        filter_data = base
           .where.not(model_id: nil)
-          .or(Execution.by_agent(@agent_type).where.not(temperature: nil))
+          .or(base.where.not(temperature: nil))
           .pluck(:model_id, :temperature)
 
         @models = filter_data.map(&:first).compact.uniq.sort
@@ -152,7 +154,7 @@ module RubyLLM
       #
       # @return [ActiveRecord::Relation] Filtered execution scope
       def build_filtered_scope
-        scope = Execution.by_agent(@agent_type)
+        scope = tenant_scoped_executions.by_agent(@agent_type)
 
         # Apply status filter with validation
         statuses = parse_array_param(:statuses)
@@ -177,9 +179,10 @@ module RubyLLM
       #
       # @return [void]
       def load_chart_data
-        @trend_data = Execution.trend_analysis(agent_type: @agent_type, days: 30)
-        @status_distribution = Execution.by_agent(@agent_type).group(:status).count
-        @finish_reason_distribution = Execution.by_agent(@agent_type).finish_reason_distribution
+        base = tenant_scoped_executions
+        @trend_data = base.trend_analysis(agent_type: @agent_type, days: 30)
+        @status_distribution = base.by_agent(@agent_type).group(:status).count
+        @finish_reason_distribution = base.by_agent(@agent_type).finish_reason_distribution
       end
 
       # Loads the current agent class configuration

@@ -2,26 +2,12 @@
 <% show_tenant_column = tenant_filter_enabled? && current_tenant_id.blank? %>
 
 <%
-  # Inline sort helper
+  # Sort params for the sort_header_link helper
   sort_column = @sort_params[:column]
   sort_direction = @sort_params[:direction]
 
-  sort_link = ->(column, label, align: "left", extra_class: "") {
-    is_active = column == sort_column
-    next_dir = is_active && sort_direction == "asc" ? "desc" : "asc"
-    url = url_for(request.query_parameters.merge(sort: column, direction: next_dir, page: 1))
-
-    arrow = if is_active && sort_direction == "asc"
-              raw('<svg class="w-2.5 h-2.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>')
-            elsif is_active
-              raw('<svg class="w-2.5 h-2.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>')
-            else
-              ""
-            end
-
-    active_class = is_active ? "text-gray-700 dark:text-gray-300" : ""
-
-    raw(%(<a href="#{url}" class="group inline-flex items-center gap-0.5 hover:text-gray-700 dark:hover:text-gray-300 #{active_class} #{extra_class}"><span>#{label}</span><span class="#{is_active ? 'opacity-100' : 'opacity-0 group-hover:opacity-50'} transition-opacity">#{arrow}</span></a>))
+  sort_link = ->(column, label, extra_class: "") {
+    sort_header_link(column, label, current_column: sort_column, current_direction: sort_direction, extra_class: extra_class)
   }
 %>
 

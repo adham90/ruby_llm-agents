@@ -112,7 +112,7 @@ module RubyLLM
               ensure_tenant_for_model!(tenant_object)
             else
               # For hash-based or string tenants, ensure a minimal record exists
-              RubyLLM::Agents::Tenant.find_or_create_by!(tenant_id: context.tenant_id)
+              find_or_create_tenant!(context.tenant_id)
             end
           rescue => e
             # Don't fail the execution if tenant record creation fails
@@ -145,6 +145,18 @@ module RubyLLM
               enforcement: options[:enforcement]&.to_s || "soft",
               inherit_global_defaults: options.fetch(:inherit_global, true)
             )
+          rescue ActiveRecord::RecordNotUnique
+            # Race condition: another thread created the record — safe to ignore
+          end
+
+          # Finds or creates a tenant record, handling race conditions
+          #
+          # @param tenant_id [String] The tenant identifier
+          def find_or_create_tenant!(tenant_id)
+            RubyLLM::Agents::Tenant.find_or_create_by!(tenant_id: tenant_id)
+          rescue ActiveRecord::RecordNotUnique
+            # Another thread/process created the record — just find it
+            RubyLLM::Agents::Tenant.find_by!(tenant_id: tenant_id)
           end
 
           # Checks if the tenants table exists (memoized)
@@ -154,7 +166,8 @@ module RubyLLM
             return @tenant_table_exists if defined?(@tenant_table_exists)
 
             @tenant_table_exists = ::ActiveRecord::Base.connection.table_exists?(:ruby_llm_agents_tenants)
-          rescue
+          rescue => e
+            debug("Failed to check tenant table existence: #{e.message}")
             @tenant_table_exists = false
           end
 
@@ -218,7 +231,8 @@ module RubyLLM
             return nil unless tenant.respond_to?(:llm_config)
 
             tenant.llm_config
-          rescue
+          rescue => e
+            debug("Failed to extract tenant config: #{e.message}")
             nil
           end
         end

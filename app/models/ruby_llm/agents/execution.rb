@@ -421,7 +421,8 @@ module RubyLLM
         return nil unless lookup_model_id
 
         RubyLLM::Models.find(lookup_model_id)
-      rescue
+      rescue => e
+        Rails.logger.debug("[RubyLLM::Agents] Model lookup failed for #{lookup_model_id}: #{e.message}") if defined?(Rails) && Rails.logger
         nil
       end
     end

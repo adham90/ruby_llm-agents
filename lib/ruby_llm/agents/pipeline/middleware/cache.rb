@@ -73,8 +73,8 @@ module RubyLLM
               agent_type: @agent_class&.name,
               cache_key: cache_key
             )
-          rescue
-            # Never let notifications break execution
+          rescue => e
+            debug("Cache notification failed: #{e.message}")
           end
 
           # Returns whether caching is enabled for this agent
@@ -89,7 +89,8 @@ module RubyLLM
           # @return [ActiveSupport::Cache::Store, nil]
           def cache_store
             global_config.cache_store
-          rescue
+          rescue => e
+            debug("Failed to access cache_store config: #{e.message}")
             nil
           end
 
@@ -148,7 +149,8 @@ module RubyLLM
             else
               input.to_json
             end
-          rescue
+          rescue => e
+            debug("Failed to serialize input for cache key: #{e.message}")
             input.to_s
           end
 

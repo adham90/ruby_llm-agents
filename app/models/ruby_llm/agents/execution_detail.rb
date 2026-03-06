@@ -13,6 +13,8 @@ module RubyLLM
       self.table_name = "ruby_llm_agents_execution_details"
 
       belongs_to :execution, class_name: "RubyLLM::Agents::Execution"
+
+      validates :execution_id, presence: true
     end
   end
 end

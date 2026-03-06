@@ -317,8 +317,8 @@ module RubyLLM
               event,
               {agent_type: @agent_class&.name}.merge(extras)
             )
-          rescue
-            # Never let notifications break execution
+          rescue => e
+            debug("Reliability notification failed: #{e.message}")
           end
 
           # Sleeps without blocking other fibers when in async context
@@ -333,8 +333,8 @@ module RubyLLM
             else
               sleep(seconds)
             end
-          rescue
-            # Fall back to regular sleep if async detection fails
+          rescue => e
+            debug("Async sleep failed, falling back to regular sleep: #{e.message}")
             sleep(seconds)
           end
         end

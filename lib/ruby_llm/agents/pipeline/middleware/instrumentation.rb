@@ -176,8 +176,8 @@ module RubyLLM
               else
                 RubyLLM::Agents::ExecutionDetail.create!(detail_attrs.merge(execution_id: execution.id))
               end
-            rescue
-              # Non-critical
+            rescue => e
+              debug("Failed to store error detail: #{e.message}")
             end
           rescue => e
             error("CRITICAL: Failed emergency status update for execution #{execution&.id}: #{e.message}")
@@ -205,8 +205,8 @@ module RubyLLM
               tenant_id: context.tenant_id,
               execution_id: context.execution_id
             )
-          rescue
-            # Never let notifications break execution
+          rescue => e
+            debug("Start notification failed: #{e.message}")
           end
 
           # Emits an AS::Notification for execution completion or error
@@ -242,8 +242,8 @@ module RubyLLM
               error_class: context.error&.class&.name,
               error_message: context.error&.message
             )
-          rescue
-            # Never let notifications break execution
+          rescue => e
+            debug("Complete notification failed: #{e.message}")
           end
 
           # Builds data for initial running execution record
@@ -321,7 +321,8 @@ module RubyLLM
 
             context_meta = begin
               context.metadata.dup
-            rescue
+            rescue => e
+              debug("Failed to read context metadata: #{e.message}")
               {}
             end
             context_meta.transform_keys!(&:to_s)
@@ -472,7 +473,8 @@ module RubyLLM
 
             params = begin
               context.agent_instance.send(:options)
-            rescue
+            rescue => e
+              debug("Failed to extract agent options: #{e.message}")
               {}
             end
             params = params.dup
@@ -634,7 +636,8 @@ module RubyLLM
             else
               cfg.track_executions
             end
-          rescue
+          rescue => e
+            debug("Failed to check tracking config: #{e.message}")
             false
           end
 
@@ -643,7 +646,8 @@ module RubyLLM
           # @return [Boolean]
           def track_cache_hits?
             global_config.respond_to?(:track_cache_hits) && global_config.track_cache_hits
-          rescue
+          rescue => e
+            debug("Failed to check track_cache_hits config: #{e.message}")
             false
           end
 
@@ -652,7 +656,8 @@ module RubyLLM
           # @return [Boolean]
           def async_logging?
             global_config.async_logging && defined?(Infrastructure::ExecutionLoggerJob)
-          rescue
+          rescue => e
+            debug("Failed to check async_logging config: #{e.message}")
             false
           end
 
@@ -667,7 +672,8 @@ module RubyLLM
             @_assistant_prompt_column_exists = begin
               defined?(RubyLLM::Agents::ExecutionDetail) &&
                 RubyLLM::Agents::ExecutionDetail.column_names.include?("assistant_prompt")
-            rescue
+            rescue => e
+              debug("Failed to check assistant_prompt column: #{e.message}")
               false
             end
           end

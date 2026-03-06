@@ -24,7 +24,7 @@ module RubyLLM
         base_scope = tenant_scoped_executions
         @now_strip = build_now_strip(base_scope)
         @critical_alerts = load_critical_alerts(base_scope)
-        @recent_executions = base_scope.recent(10)
+        @recent_executions = base_scope.includes(:detail).recent(10)
         @agent_stats = build_agent_comparison(base_scope)
         @top_errors = build_top_errors(base_scope)
         @tenant_budget = load_tenant_budget(base_scope)
@@ -218,7 +218,7 @@ module RubyLLM
         open_breakers = []
 
         # Get all agents from execution history
-        agent_types = Execution.distinct.pluck(:agent_type)
+        agent_types = tenant_scoped_executions.distinct.pluck(:agent_type)
 
         agent_types.each do |agent_type|
           # Get the agent class if available

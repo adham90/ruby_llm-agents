@@ -83,8 +83,8 @@ module RubyLLM
         # @return [void]
         def emit_notification(event, payload)
           ActiveSupport::Notifications.instrument("ruby_llm_agents.alert.#{event}", payload)
-        rescue
-          # Ignore notification failures
+        rescue => e
+          Rails.logger.debug("[RubyLLM::Agents::AlertManager] Notification failed: #{e.message}") if defined?(Rails) && Rails.logger
         end
 
         # Stores the alert in cache for dashboard display
@@ -106,8 +106,8 @@ module RubyLLM
           alerts = alerts.first(50)
 
           cache.write(key, alerts, expires_in: 24.hours)
-        rescue
-          # Ignore cache failures
+        rescue => e
+          Rails.logger.debug("[RubyLLM::Agents::AlertManager] Cache store failed: #{e.message}") if defined?(Rails) && Rails.logger
         end
 
         # Formats a human-readable message for the event

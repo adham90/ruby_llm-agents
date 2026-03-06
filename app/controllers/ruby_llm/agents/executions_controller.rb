@@ -39,7 +39,7 @@ module RubyLLM
       #
       # @return [void]
       def show
-        @execution = Execution.find(params[:id])
+        @execution = tenant_scoped_executions.includes(:detail, :child_executions).find(params[:id])
       end
 
       # Handles filter search requests via Turbo Stream
