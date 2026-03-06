@@ -78,14 +78,17 @@ RSpec.describe "Tenant auto-creation on agent execution" do
     Object.send(:remove_const, :AutoCreateTenantTestAgent) if Object.const_defined?(:AutoCreateTenantTestAgent)
   end
 
-  # Enable multi-tenancy so execution records include tenant_id
+  # Enable multi-tenancy and ensure tracking is on so execution records are created
   around do |example|
     original_multi_tenancy = RubyLLM::Agents.configuration.multi_tenancy_enabled
+    original_track_executions = RubyLLM::Agents.configuration.track_executions
     RubyLLM::Agents.configuration.multi_tenancy_enabled = true
+    RubyLLM::Agents.configuration.track_executions = true
 
     example.run
   ensure
     RubyLLM::Agents.configuration.multi_tenancy_enabled = original_multi_tenancy
+    RubyLLM::Agents.configuration.track_executions = original_track_executions
   end
 
   # Stub the LLM call so we don't hit real APIs
