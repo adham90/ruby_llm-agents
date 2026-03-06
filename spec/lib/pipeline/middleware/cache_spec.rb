@@ -294,7 +294,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Cache do
       it "passes through when cache_store raises an error" do
         context = build_context
 
-        # Make configuration fail when accessing cache_store
+        # Error-injection stub: tests graceful degradation when config access fails.
+        # This cannot be triggered through normal configuration, so stubbing is acceptable.
         allow(RubyLLM::Agents.configuration).to receive(:cache_store).and_raise(StandardError.new("Config error"))
 
         expect(app).to receive(:call).with(context).and_return(context)

@@ -6,9 +6,16 @@ RSpec.describe "CircuitBreaker State Transitions" do
   let(:cache_store) { ActiveSupport::Cache::MemoryStore.new }
 
   before do
-    allow(RubyLLM::Agents.configuration).to receive(:cache_store).and_return(cache_store)
-    allow(RubyLLM::Agents.configuration).to receive(:multi_tenancy_enabled?).and_return(false)
+    RubyLLM::Agents.reset_configuration!
+    RubyLLM::Agents.configure do |c|
+      c.cache_store = cache_store
+      c.multi_tenancy_enabled = false
+    end
     cache_store.clear
+  end
+
+  after do
+    RubyLLM::Agents.reset_configuration!
   end
 
   describe "closed state (initial)" do
@@ -145,7 +152,7 @@ RSpec.describe "CircuitBreaker State Transitions" do
 
   describe "tenant isolation" do
     before do
-      allow(RubyLLM::Agents.configuration).to receive(:multi_tenancy_enabled?).and_return(true)
+      RubyLLM::Agents.configure { |c| c.multi_tenancy_enabled = true }
     end
 
     it "tracks breakers separately per tenant" do

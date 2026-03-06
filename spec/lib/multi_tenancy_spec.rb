@@ -7,8 +7,12 @@ RSpec.describe "Multi-tenancy support" do
 
   before do
     RubyLLM::Agents.reset_configuration!
-    allow(RubyLLM::Agents.configuration).to receive(:cache_store).and_return(cache_store)
+    RubyLLM::Agents.configure { |c| c.cache_store = cache_store }
     cache_store.clear
+  end
+
+  after do
+    RubyLLM::Agents.reset_configuration!
   end
 
   describe RubyLLM::Agents::BudgetTracker do

@@ -105,23 +105,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     end
 
     context "when tracking is enabled" do
-      let(:mock_execution) do
-        double("RubyLLM::Agents::Execution",
-          id: 123,
-          status: "running",
-          detail: nil,
-          class: RubyLLM::Agents::Execution,
-          parent_execution_id: nil,
-          root_execution_id: nil)
-      end
-
       before do
         RubyLLM::Agents.configuration.track_embeddings = true
         RubyLLM::Agents.configuration.multi_tenancy_enabled = false
-        # Allow detail creation for prompt persistence
-        allow(mock_execution).to receive(:create_detail!)
-        # Allow hierarchy ID updates
-        allow(mock_execution).to receive(:update_column)
       end
 
       describe "running execution pattern" do
@@ -133,21 +119,12 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
             ctx
           end
 
-          # Expect create! to be called with status: "running" first
-          expect(RubyLLM::Agents::Execution).to receive(:create!).with(
-            hash_including(
-              agent_type: "TestAgent",
-              model_id: "test-model",
-              status: "running"
-            )
-          ).and_return(mock_execution)
+          expect { middleware.call(context) }.to change(RubyLLM::Agents::Execution, :count).by(1)
 
-          # Then expect update! to be called with final status
-          expect(mock_execution).to receive(:update!).with(
-            hash_including(status: "success")
-          )
-
-          middleware.call(context)
+          execution = RubyLLM::Agents::Execution.last
+          expect(execution.agent_type).to eq("TestAgent")
+          expect(execution.model_id).to eq("test-model")
+          expect(execution.status).to eq("success")
         end
 
         it "stores execution_id on the context" do
@@ -158,12 +135,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
             ctx
           end
 
-          allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
-          allow(mock_execution).to receive(:update!)
-
           middleware.call(context)
 
-          expect(context.execution_id).to eq(123)
+          expect(context.execution_id).to eq(RubyLLM::Agents::Execution.last.id)
         end
 
         it "updates record on successful completion" do
@@ -177,18 +151,13 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
             ctx
           end
 
-          allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
-
-          expect(mock_execution).to receive(:update!).with(
-            hash_including(
-              status: "success",
-              input_tokens: 100,
-              output_tokens: 50,
-              total_cost: 0.001
-            )
-          )
-
           middleware.call(context)
+
+          execution = RubyLLM::Agents::Execution.last
+          expect(execution.status).to eq("success")
+          expect(execution.input_tokens).to eq(100)
+          expect(execution.output_tokens).to eq(50)
+          expect(execution.total_cost).to eq(0.001)
         end
 
         it "updates record on failure with error details" do
@@ -196,17 +165,12 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           error = StandardError.new("Execution failed")
 
           allow(app).to receive(:call).and_raise(error)
-          allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
-          allow(mock_execution).to receive(:create_detail!)
-
-          expect(mock_execution).to receive(:update!).with(
-            hash_including(
-              status: "error",
-              error_class: "StandardError"
-            )
-          )
 
           expect { middleware.call(context) }.to raise_error(StandardError)
+
+          execution = RubyLLM::Agents::Execution.last
+          expect(execution.status).to eq("error")
+          expect(execution.error_class).to eq("StandardError")
         end
 
         it "marks timeout errors with timeout status" do
@@ -214,14 +178,11 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           error = Timeout::Error.new("Request timed out")
 
           allow(app).to receive(:call).and_raise(error)
-          allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
-          allow(mock_execution).to receive(:create_detail!)
-
-          expect(mock_execution).to receive(:update!).with(
-            hash_including(status: "timeout")
-          )
 
           expect { middleware.call(context) }.to raise_error(Timeout::Error)
+
+          execution = RubyLLM::Agents::Execution.last
+          expect(execution.status).to eq("timeout")
         end
 
         it "proceeds even if initial creation fails" do
@@ -277,7 +238,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
 
           # Expect emergency update_all to be called
           expect(RubyLLM::Agents::Execution).to receive(:where).with(id: running_execution.id, status: "running").and_call_original
-          # The update_all will actually run against the database
 
           middleware.call(context)
 
@@ -293,18 +253,12 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         error = StandardError.new(long_message)
 
         allow(app).to receive(:call).and_raise(error)
-        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
-        allow(mock_execution).to receive(:create_detail!)
-
-        # error_message is now stored on the detail record, not the execution
-        expect(mock_execution).to receive(:update!).with(
-          hash_including(
-            status: "error",
-            error_class: "StandardError"
-          )
-        )
 
         expect { middleware.call(context) }.to raise_error(StandardError)
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution.status).to eq("error")
+        expect(execution.error_class).to eq("StandardError")
       end
 
       it "includes token usage in execution record" do
@@ -317,17 +271,13 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           ctx.output = "result"
           ctx
         }
-        allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
-
-        expect(mock_execution).to receive(:update!).with(
-          hash_including(
-            input_tokens: 500,
-            output_tokens: 200,
-            total_cost: 0.0035
-          )
-        )
 
         middleware.call(context)
+
+        execution = RubyLLM::Agents::Execution.last
+        expect(execution.input_tokens).to eq(500)
+        expect(execution.output_tokens).to eq(200)
+        expect(execution.total_cost).to eq(0.0035)
       end
     end
 

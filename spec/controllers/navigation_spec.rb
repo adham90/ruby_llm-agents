@@ -5,9 +5,13 @@ require "rails_helper"
 RSpec.describe "Navigation tenants link visibility", type: :request do
   let(:engine_root) { RubyLLM::Agents::Engine.routes.url_helpers.root_path }
 
+  after do
+    RubyLLM::Agents.reset_configuration!
+  end
+
   context "when multi_tenancy_enabled is false" do
     before do
-      allow(RubyLLM::Agents.configuration).to receive(:multi_tenancy_enabled?).and_return(false)
+      RubyLLM::Agents.configure { |c| c.multi_tenancy_enabled = false }
       get engine_root
     end
 
@@ -24,7 +28,7 @@ RSpec.describe "Navigation tenants link visibility", type: :request do
 
   context "when multi_tenancy_enabled is true" do
     before do
-      allow(RubyLLM::Agents.configuration).to receive(:multi_tenancy_enabled?).and_return(true)
+      RubyLLM::Agents.configure { |c| c.multi_tenancy_enabled = true }
       get engine_root
     end
 

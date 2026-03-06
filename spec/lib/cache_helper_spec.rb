@@ -21,8 +21,12 @@ RSpec.describe RubyLLM::Agents::CacheHelper do
 
   before do
     RubyLLM::Agents.reset_configuration!
-    allow(RubyLLM::Agents.configuration).to receive(:cache_store).and_return(cache_store)
+    RubyLLM::Agents.configure { |c| c.cache_store = cache_store }
     cache_store.clear
+  end
+
+  after do
+    RubyLLM::Agents.reset_configuration!
   end
 
   describe "NAMESPACE" do
@@ -175,7 +179,7 @@ RSpec.describe RubyLLM::Agents::CacheHelper do
       end
 
       before do
-        allow(RubyLLM::Agents.configuration).to receive(:cache_store).and_return(simple_cache)
+        RubyLLM::Agents.configure { |c| c.cache_store = simple_cache }
       end
 
       it "falls back to read-modify-write" do

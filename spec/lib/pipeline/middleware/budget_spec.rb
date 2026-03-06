@@ -190,6 +190,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Budget do
 
     context "when budgets_enabled? raises an error" do
       before do
+        # Error-injection stub: tests graceful degradation when config access fails.
+        # This cannot be triggered through normal configuration, so stubbing is acceptable.
         allow(RubyLLM::Agents.configuration).to receive(:budgets_enabled?).and_raise(StandardError.new("Config error"))
       end
 

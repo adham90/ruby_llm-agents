@@ -6,8 +6,13 @@ RSpec.describe RubyLLM::Agents::CircuitBreaker do
   let(:cache_store) { ActiveSupport::Cache::MemoryStore.new }
 
   before do
-    allow(RubyLLM::Agents.configuration).to receive(:cache_store).and_return(cache_store)
+    RubyLLM::Agents.reset_configuration!
+    RubyLLM::Agents.configure { |c| c.cache_store = cache_store }
     cache_store.clear
+  end
+
+  after do
+    RubyLLM::Agents.reset_configuration!
   end
 
   describe "#initialize" do

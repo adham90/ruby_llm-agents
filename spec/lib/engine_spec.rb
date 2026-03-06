@@ -3,6 +3,10 @@
 require "rails_helper"
 
 RSpec.describe RubyLLM::Agents::Engine do
+  after do
+    RubyLLM::Agents.reset_configuration!
+  end
+
   describe "engine configuration" do
     it "isolates namespace to RubyLLM::Agents" do
       expect(described_class.isolated?).to be true
@@ -206,8 +210,10 @@ RSpec.describe RubyLLM::Agents::Engine do
     describe "#basic_auth_configured?" do
       context "when username and password are both set" do
         before do
-          allow(RubyLLM::Agents.configuration).to receive(:basic_auth_username).and_return("admin")
-          allow(RubyLLM::Agents.configuration).to receive(:basic_auth_password).and_return("secret")
+          RubyLLM::Agents.configure do |c|
+            c.basic_auth_username = "admin"
+            c.basic_auth_password = "secret"
+          end
         end
 
         it "returns true" do
@@ -217,8 +223,10 @@ RSpec.describe RubyLLM::Agents::Engine do
 
       context "when only username is set" do
         before do
-          allow(RubyLLM::Agents.configuration).to receive(:basic_auth_username).and_return("admin")
-          allow(RubyLLM::Agents.configuration).to receive(:basic_auth_password).and_return(nil)
+          RubyLLM::Agents.configure do |c|
+            c.basic_auth_username = "admin"
+            c.basic_auth_password = nil
+          end
         end
 
         it "returns false" do
@@ -228,8 +236,10 @@ RSpec.describe RubyLLM::Agents::Engine do
 
       context "when only password is set" do
         before do
-          allow(RubyLLM::Agents.configuration).to receive(:basic_auth_username).and_return(nil)
-          allow(RubyLLM::Agents.configuration).to receive(:basic_auth_password).and_return("secret")
+          RubyLLM::Agents.configure do |c|
+            c.basic_auth_username = nil
+            c.basic_auth_password = "secret"
+          end
         end
 
         it "returns false" do
@@ -239,8 +249,10 @@ RSpec.describe RubyLLM::Agents::Engine do
 
       context "when neither is set" do
         before do
-          allow(RubyLLM::Agents.configuration).to receive(:basic_auth_username).and_return(nil)
-          allow(RubyLLM::Agents.configuration).to receive(:basic_auth_password).and_return(nil)
+          RubyLLM::Agents.configure do |c|
+            c.basic_auth_username = nil
+            c.basic_auth_password = nil
+          end
         end
 
         it "returns false" do
@@ -250,8 +262,10 @@ RSpec.describe RubyLLM::Agents::Engine do
 
       context "when values are empty strings" do
         before do
-          allow(RubyLLM::Agents.configuration).to receive(:basic_auth_username).and_return("")
-          allow(RubyLLM::Agents.configuration).to receive(:basic_auth_password).and_return("")
+          RubyLLM::Agents.configure do |c|
+            c.basic_auth_username = ""
+            c.basic_auth_password = ""
+          end
         end
 
         it "returns false" do
@@ -278,7 +292,7 @@ RSpec.describe RubyLLM::Agents::Engine do
 
         before do
           allow(controller).to receive(:basic_auth_configured?).and_return(false)
-          allow(RubyLLM::Agents.configuration).to receive(:dashboard_auth).and_return(auth_proc)
+          RubyLLM::Agents.configure { |c| c.dashboard_auth = auth_proc }
         end
 
         context "and custom auth succeeds" do
@@ -301,8 +315,10 @@ RSpec.describe RubyLLM::Agents::Engine do
 
     describe "#authenticate_with_http_basic_auth" do
       before do
-        allow(RubyLLM::Agents.configuration).to receive(:basic_auth_username).and_return("admin")
-        allow(RubyLLM::Agents.configuration).to receive(:basic_auth_password).and_return("secret")
+        RubyLLM::Agents.configure do |c|
+          c.basic_auth_username = "admin"
+          c.basic_auth_password = "secret"
+        end
         allow(controller).to receive(:authenticate_or_request_with_http_basic).and_yield("admin", "secret")
       end
 
@@ -331,7 +347,7 @@ RSpec.describe RubyLLM::Agents::Engine do
     describe "#tenant_filter_enabled?" do
       context "when multi-tenancy is enabled" do
         before do
-          allow(RubyLLM::Agents.configuration).to receive(:multi_tenancy_enabled?).and_return(true)
+          RubyLLM::Agents.configure { |c| c.multi_tenancy_enabled = true }
         end
 
         it "returns true" do
@@ -341,7 +357,7 @@ RSpec.describe RubyLLM::Agents::Engine do
 
       context "when multi-tenancy is disabled" do
         before do
-          allow(RubyLLM::Agents.configuration).to receive(:multi_tenancy_enabled?).and_return(false)
+          RubyLLM::Agents.configure { |c| c.multi_tenancy_enabled = false }
         end
 
         it "returns false" do
@@ -373,7 +389,10 @@ RSpec.describe RubyLLM::Agents::Engine do
       context "when tenant_id param is not present" do
         before do
           allow(controller).to receive(:params).and_return({})
-          allow(RubyLLM::Agents.configuration).to receive(:current_tenant_id).and_return("resolved-tenant")
+          RubyLLM::Agents.configure do |c|
+            c.multi_tenancy_enabled = true
+            c.tenant_resolver = -> { "resolved-tenant" }
+          end
         end
 
         it "returns the resolved tenant ID" do

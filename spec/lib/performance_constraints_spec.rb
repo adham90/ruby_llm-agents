@@ -92,10 +92,13 @@ RSpec.describe "Performance and Timeout Constraints" do
       end
 
       before do
-        # Configure the cache store for tests
-        allow(RubyLLM::Agents.configuration).to receive(:cache_store).and_return(cache_store)
-        # Reset the breaker before each test
+        RubyLLM::Agents.reset_configuration!
+        RubyLLM::Agents.configure { |c| c.cache_store = cache_store }
         breaker.reset!
+      end
+
+      after do
+        RubyLLM::Agents.reset_configuration!
       end
 
       it "opens after reaching error threshold" do

@@ -9,8 +9,10 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
 
   before do
     allow(Rails).to receive(:root).and_return(Pathname.new(destination_root))
-    allow(RubyLLM::Agents.configuration).to receive(:root_directory).and_return("llm")
-    allow(RubyLLM::Agents.configuration).to receive(:root_namespace).and_return("Llm")
+    RubyLLM::Agents.configure do |c|
+      c.root_directory = "llm"
+      c.root_namespace = "Llm"
+    end
 
     # Default: tenant table exists, old table doesn't
     allow(ActiveRecord::Base.connection).to receive(:table_exists?)
