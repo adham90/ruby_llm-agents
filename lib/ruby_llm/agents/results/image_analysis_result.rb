@@ -161,17 +161,19 @@ module RubyLLM
       #
       # @param name [String] Object name to search for
       # @return [Boolean] Whether the object was detected
-      def has_object?(name)
+      def includes_object?(name)
         objects.any? { |obj| obj[:name]&.downcase&.include?(name.to_s.downcase) }
       end
+      alias_method :has_object?, :includes_object?
 
       # Check if a specific tag is present
       #
       # @param tag [String] Tag to search for
       # @return [Boolean] Whether the tag is present
-      def has_tag?(tag)
+      def includes_tag?(tag)
         tags.any? { |t| t.downcase == tag.to_s.downcase }
       end
+      alias_method :has_tag?, :includes_tag?
 
       # Timing
 

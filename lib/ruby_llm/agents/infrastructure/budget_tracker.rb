@@ -44,7 +44,7 @@ module RubyLLM
         # @raise [Reliability::BudgetExceededError] If hard cap is exceeded
         # @return [void]
         def check_budget!(agent_type, tenant_id: nil, tenant_config: nil)
-          tenant_id = Budget::ConfigResolver.resolve_tenant_id(tenant_id)
+          tenant_id = resolve_tid(tenant_id)
           budget_config = Budget::ConfigResolver.resolve_budget_config(tenant_id, runtime_config: tenant_config)
 
           return unless budget_config[:enabled]
@@ -61,7 +61,7 @@ module RubyLLM
         # @raise [Reliability::BudgetExceededError] If hard cap is exceeded
         # @return [void]
         def check_token_budget!(agent_type, tenant_id: nil, tenant_config: nil)
-          tenant_id = Budget::ConfigResolver.resolve_tenant_id(tenant_id)
+          tenant_id = resolve_tid(tenant_id)
           budget_config = Budget::ConfigResolver.resolve_budget_config(tenant_id, runtime_config: tenant_config)
 
           return unless budget_config[:enabled]
@@ -80,7 +80,7 @@ module RubyLLM
         def record_spend!(agent_type, amount, tenant_id: nil, tenant_config: nil)
           return if amount.nil? || amount <= 0
 
-          tenant_id = Budget::ConfigResolver.resolve_tenant_id(tenant_id)
+          tenant_id = resolve_tid(tenant_id)
           budget_config = Budget::ConfigResolver.resolve_budget_config(tenant_id, runtime_config: tenant_config)
 
           Budget::SpendRecorder.record_spend!(agent_type, amount, tenant_id: tenant_id, budget_config: budget_config)
@@ -96,7 +96,7 @@ module RubyLLM
         def record_tokens!(agent_type, tokens, tenant_id: nil, tenant_config: nil)
           return if tokens.nil? || tokens <= 0
 
-          tenant_id = Budget::ConfigResolver.resolve_tenant_id(tenant_id)
+          tenant_id = resolve_tid(tenant_id)
           budget_config = Budget::ConfigResolver.resolve_budget_config(tenant_id, runtime_config: tenant_config)
 
           Budget::SpendRecorder.record_tokens!(agent_type, tokens, tenant_id: tenant_id, budget_config: budget_config)
@@ -110,7 +110,7 @@ module RubyLLM
         # @param tenant_id [String, nil] Optional tenant identifier (uses resolver if not provided)
         # @return [Float] Current spend in USD
         def current_spend(scope, period, agent_type: nil, tenant_id: nil)
-          tenant_id = Budget::ConfigResolver.resolve_tenant_id(tenant_id)
+          tenant_id = resolve_tid(tenant_id)
           Budget::BudgetQuery.current_spend(scope, period, agent_type: agent_type, tenant_id: tenant_id)
         end
 
@@ -120,7 +120,7 @@ module RubyLLM
         # @param tenant_id [String, nil] Optional tenant identifier (uses resolver if not provided)
         # @return [Integer] Current token usage
         def current_tokens(period, tenant_id: nil)
-          tenant_id = Budget::ConfigResolver.resolve_tenant_id(tenant_id)
+          tenant_id = resolve_tid(tenant_id)
           Budget::BudgetQuery.current_tokens(period, tenant_id: tenant_id)
         end
 
@@ -132,7 +132,7 @@ module RubyLLM
         # @param tenant_id [String, nil] Optional tenant identifier (uses resolver if not provided)
         # @return [Float, nil] Remaining budget in USD, or nil if no limit configured
         def remaining_budget(scope, period, agent_type: nil, tenant_id: nil)
-          tenant_id = Budget::ConfigResolver.resolve_tenant_id(tenant_id)
+          tenant_id = resolve_tid(tenant_id)
           budget_config = Budget::ConfigResolver.resolve_budget_config(tenant_id)
 
           Budget::BudgetQuery.remaining_budget(scope, period, agent_type: agent_type, tenant_id: tenant_id, budget_config: budget_config)
@@ -144,7 +144,7 @@ module RubyLLM
         # @param tenant_id [String, nil] Optional tenant identifier (uses resolver if not provided)
         # @return [Integer, nil] Remaining token budget, or nil if no limit configured
         def remaining_token_budget(period, tenant_id: nil)
-          tenant_id = Budget::ConfigResolver.resolve_tenant_id(tenant_id)
+          tenant_id = resolve_tid(tenant_id)
           budget_config = Budget::ConfigResolver.resolve_budget_config(tenant_id)
 
           Budget::BudgetQuery.remaining_token_budget(period, tenant_id: tenant_id, budget_config: budget_config)
@@ -156,7 +156,7 @@ module RubyLLM
         # @param tenant_id [String, nil] Optional tenant identifier (uses resolver if not provided)
         # @return [Hash] Budget status information
         def status(agent_type: nil, tenant_id: nil)
-          tenant_id = Budget::ConfigResolver.resolve_tenant_id(tenant_id)
+          tenant_id = resolve_tid(tenant_id)
           budget_config = Budget::ConfigResolver.resolve_budget_config(tenant_id)
 
           Budget::BudgetQuery.status(agent_type: agent_type, tenant_id: tenant_id, budget_config: budget_config)
@@ -167,7 +167,7 @@ module RubyLLM
         # @param tenant_id [String, nil] Optional tenant identifier (uses resolver if not provided)
         # @return [Hash, nil] Forecast information
         def calculate_forecast(tenant_id: nil)
-          tenant_id = Budget::ConfigResolver.resolve_tenant_id(tenant_id)
+          tenant_id = resolve_tid(tenant_id)
           budget_config = Budget::ConfigResolver.resolve_budget_config(tenant_id)
 
           Budget::Forecaster.calculate_forecast(tenant_id: tenant_id, budget_config: budget_config)
@@ -178,7 +178,7 @@ module RubyLLM
         # @param tenant_id [String, nil] Optional tenant identifier to reset only that tenant's counters
         # @return [void]
         def reset!(tenant_id: nil)
-          tenant_id = Budget::ConfigResolver.resolve_tenant_id(tenant_id)
+          tenant_id = resolve_tid(tenant_id)
           tenant_part = Budget::SpendRecorder.tenant_key_part(tenant_id)
           today = Budget::SpendRecorder.date_key_part(:daily)
           month = Budget::SpendRecorder.date_key_part(:monthly)
@@ -191,6 +191,14 @@ module RubyLLM
         end
 
         private
+
+        # Resolves tenant ID, falling back to the configured resolver
+        #
+        # @param tenant_id [String, nil] Explicit tenant ID or nil
+        # @return [String, nil] Resolved tenant ID
+        def resolve_tid(tenant_id)
+          Budget::ConfigResolver.resolve_tenant_id(tenant_id)
+        end
 
         # Checks budget limits and raises error if exceeded
         #

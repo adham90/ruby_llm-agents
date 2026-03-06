@@ -263,7 +263,13 @@ module RubyLLM
           if agent_class.respond_to?(:agent_type)
             agent_class.agent_type
           else
-            # Infer from class name as fallback
+            if defined?(RubyLLM::Agents::Deprecations)
+              RubyLLM::Agents::Deprecations.warn(
+                "#{agent_class.name || agent_class} does not define `agent_type`. " \
+                "Guessing from class name. Define `self.agent_type` to silence this warning.",
+                caller
+              )
+            end
             infer_agent_type(agent_class)
           end
         end

@@ -219,16 +219,18 @@ module RubyLLM
       # Returns whether tool calls were made during execution
       #
       # @return [Boolean] true if tool_calls_count > 0
-      def has_tool_calls?
+      def tool_calls?
         tool_calls_count.to_i > 0
       end
+      alias_method :has_tool_calls?, :tool_calls?
 
       # Returns whether thinking data is present in the result
       #
       # @return [Boolean] true if thinking_text is present
-      def has_thinking?
+      def thinking?
         thinking_text.present?
       end
+      alias_method :has_thinking?, :thinking?
 
       # Converts the result to a hash
       #

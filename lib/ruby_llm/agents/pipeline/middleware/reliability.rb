@@ -237,7 +237,7 @@ module RubyLLM
             return false if attempt_index >= max_retries
             return false if total_deadline && Time.current > total_deadline
             # Don't retry if fallback models are available — move to next model instead
-            return false if has_fallback_models?(config)
+            return false if fallback_models?(config)
 
             retryable_error?(error, config)
           end
@@ -256,7 +256,7 @@ module RubyLLM
           #
           # @param config [Hash] The reliability configuration
           # @return [Boolean]
-          def has_fallback_models?(config)
+          def fallback_models?(config)
             fallbacks = config[:fallback_models]
             fallbacks.is_a?(Array) && fallbacks.any?
           end

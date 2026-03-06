@@ -269,9 +269,10 @@ module RubyLLM
       # Returns whether this execution made tool calls
       #
       # @return [Boolean] true if tool calls were made
-      def has_tool_calls?
+      def tool_calls?
         tool_calls_count.to_i > 0
       end
+      alias_method :has_tool_calls?, :tool_calls?
 
       # Returns real-time dashboard data for the Now Strip
       #
