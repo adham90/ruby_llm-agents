@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.0] - 2026-03-06
+
+### Added
+
+- **Inception Labs Mercury provider** — New provider for diffusion-based LLMs via Inception Labs API. Includes model registry, capabilities detection, and chat integration. Configure with `config.inception_api_key`
+- **AgentRegistry service** — Centralized agent discovery combining filesystem scanning with execution history for dashboard agent listings
+- **Dashboard performance indexes** — New composite indexes (`[status, created_at]`, `[model_id, status]`, `[cache_hit, created_at]`) for dashboard query optimization. Available via upgrade generator
+
+### Changed
+
+- **Dashboard query optimization** — Rewrote analytics queries to use SQL `GROUP BY` with conditional aggregation instead of loading records into Ruby. Reduces dashboard page load from ~75 SQL queries to ~10
+- **Thin controllers** — Extracted query logic from dashboard and agents controllers into models and AgentRegistry service
+- **Consolidated instrumentation** — Deprecated legacy `Instrumentation` module in favor of pipeline middleware, DRY'd up shared logic
+- **Thread-safe tenant API keys** — Store tenant API keys on pipeline context instead of mutating global configuration
+
+### Fixed
+
+- **Code quality** — Fixed error logging, race conditions in budget tracking, tenant scoping, XSS in views, and test mock violations
+- **Flaky test** — Fixed `tenant_auto_create_spec` test pollution from leaked `track_executions` config
+- **Test coverage** — Added specs for TenantsController, SystemConfigController, ExecutionDetail, and Mercury provider
+
 ## [3.7.2] - 2026-03-05
 
 ### Fixed
@@ -775,6 +796,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[3.8.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.7.2...v3.8.0
 [3.7.2]: https://github.com/adham90/ruby_llm-agents/compare/v3.7.1...v3.7.2
 [3.7.1]: https://github.com/adham90/ruby_llm-agents/compare/v3.7.0...v3.7.1
 [3.7.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.6.0...v3.7.0
