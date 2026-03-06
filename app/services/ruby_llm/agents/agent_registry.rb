@@ -54,7 +54,105 @@ module RubyLLM
           end
         end
 
+        # Extracts full configuration for an agent class
+        #
+        # Combines base config with type-specific config for display.
+        #
+        # @param agent_class [Class] The agent class
+        # @return [Hash] Configuration hash
+        def config_for(agent_class)
+          return {} unless agent_class
+
+          base = {
+            model: safe_call(agent_class, :model),
+            version: safe_call(agent_class, :version),
+            description: safe_call(agent_class, :description)
+          }
+
+          type = detect_agent_type(agent_class)
+          base.merge(type_config_for(agent_class, type))
+        end
+
         private
+
+        # Extracts type-specific configuration
+        #
+        # @param agent_class [Class] The agent class
+        # @param type [String] The detected agent type
+        # @return [Hash] Type-specific config
+        def type_config_for(agent_class, type)
+          case type
+          when "embedder"
+            {
+              dimensions: safe_call(agent_class, :dimensions),
+              batch_size: safe_call(agent_class, :batch_size),
+              cache_enabled: safe_call(agent_class, :cache_enabled?) || false,
+              cache_ttl: safe_call(agent_class, :cache_ttl)
+            }
+          when "speaker"
+            {
+              provider: safe_call(agent_class, :provider),
+              voice: safe_call(agent_class, :voice),
+              voice_id: safe_call(agent_class, :voice_id),
+              speed: safe_call(agent_class, :speed),
+              output_format: safe_call(agent_class, :output_format),
+              streaming: safe_call(agent_class, :streaming?),
+              ssml_enabled: safe_call(agent_class, :ssml_enabled?),
+              cache_enabled: safe_call(agent_class, :cache_enabled?) || false,
+              cache_ttl: safe_call(agent_class, :cache_ttl)
+            }
+          when "transcriber"
+            {
+              language: safe_call(agent_class, :language),
+              output_format: safe_call(agent_class, :output_format),
+              include_timestamps: safe_call(agent_class, :include_timestamps),
+              cache_enabled: safe_call(agent_class, :cache_enabled?) || false,
+              cache_ttl: safe_call(agent_class, :cache_ttl),
+              fallback_models: safe_call(agent_class, :fallback_models)
+            }
+          when "image_generator"
+            {
+              size: safe_call(agent_class, :size),
+              quality: safe_call(agent_class, :quality),
+              style: safe_call(agent_class, :style),
+              content_policy: safe_call(agent_class, :content_policy),
+              template: safe_call(agent_class, :template_string),
+              negative_prompt: safe_call(agent_class, :negative_prompt),
+              seed: safe_call(agent_class, :seed),
+              guidance_scale: safe_call(agent_class, :guidance_scale),
+              steps: safe_call(agent_class, :steps),
+              cache_enabled: safe_call(agent_class, :cache_enabled?) || false,
+              cache_ttl: safe_call(agent_class, :cache_ttl)
+            }
+          when "router"
+            routes = safe_call(agent_class, :routes) || {}
+            {
+              temperature: safe_call(agent_class, :temperature),
+              timeout: safe_call(agent_class, :timeout),
+              cache_enabled: safe_call(agent_class, :cache_enabled?) || false,
+              cache_ttl: safe_call(agent_class, :cache_ttl),
+              default_route: safe_call(agent_class, :default_route_name),
+              routes: routes.transform_values { |v| v[:description] },
+              route_count: routes.size,
+              retries: safe_call(agent_class, :retries),
+              fallback_models: safe_call(agent_class, :fallback_models),
+              total_timeout: safe_call(agent_class, :total_timeout),
+              circuit_breaker: safe_call(agent_class, :circuit_breaker_config)
+            }
+          else # base agent
+            {
+              temperature: safe_call(agent_class, :temperature),
+              timeout: safe_call(agent_class, :timeout),
+              cache_enabled: safe_call(agent_class, :cache_enabled?) || false,
+              cache_ttl: safe_call(agent_class, :cache_ttl),
+              params: safe_call(agent_class, :params) || {},
+              retries: safe_call(agent_class, :retries),
+              fallback_models: safe_call(agent_class, :fallback_models),
+              total_timeout: safe_call(agent_class, :total_timeout),
+              circuit_breaker: safe_call(agent_class, :circuit_breaker_config)
+            }
+          end
+        end
 
         # Finds agent classes from the file system
         #

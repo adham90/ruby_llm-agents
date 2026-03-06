@@ -53,6 +53,45 @@ module RubyLLM
       scope :linked, -> { where.not(tenant_record_type: nil) }
       scope :unlinked, -> { where(tenant_record_type: nil) }
 
+      # Returns top tenants by monthly spend for dashboard display
+      #
+      # Ensures counter resets are current before returning data.
+      #
+      # @param limit [Integer] Max tenants to return
+      # @return [Array<Hash>, nil] Tenant spend data or nil if none
+      def self.top_by_spend(limit: 5)
+        return nil unless table_exists?
+
+        tenants = active
+          .where("monthly_cost_spent > 0 OR monthly_executions_count > 0")
+          .order(monthly_cost_spent: :desc)
+          .limit(limit)
+
+        return nil if tenants.empty?
+
+        tenants.map do |tenant|
+          tenant.ensure_daily_reset!
+          tenant.ensure_monthly_reset!
+
+          monthly_limit = tenant.effective_monthly_limit
+          daily_limit = tenant.effective_daily_limit
+
+          {
+            id: tenant.id,
+            tenant_id: tenant.tenant_id,
+            name: tenant.display_name,
+            enforcement: tenant.effective_enforcement,
+            monthly_spend: tenant.monthly_cost_spent,
+            monthly_limit: monthly_limit,
+            monthly_percentage: (monthly_limit.to_f > 0) ? (tenant.monthly_cost_spent / monthly_limit * 100).round(1) : 0,
+            daily_spend: tenant.daily_cost_spent,
+            daily_limit: daily_limit,
+            daily_percentage: (daily_limit.to_f > 0) ? (tenant.daily_cost_spent / daily_limit * 100).round(1) : 0,
+            monthly_executions: tenant.monthly_executions_count
+          }
+        end
+      end
+
       # Find tenant for given record or ID
       #
       # Supports multiple lookup strategies:

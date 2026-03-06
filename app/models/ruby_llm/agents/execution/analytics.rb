@@ -514,6 +514,128 @@ module RubyLLM
             (rate_limited_count.to_f / total * 100).round(1)
           end
 
+          # Builds per-model statistics for model comparison
+          #
+          # @param scope [ActiveRecord::Relation] Pre-filtered scope
+          # @return [Array<Hash>] Model stats sorted by total cost descending
+          def model_stats(scope: all)
+            scope = scope.where.not(model_id: nil)
+
+            counts = scope.group(:model_id).count
+            costs = scope.group(:model_id).sum(:total_cost)
+            tokens = scope.group(:model_id).sum(:total_tokens)
+            durations = scope.group(:model_id).average(:duration_ms)
+            success_counts = scope.successful.group(:model_id).count
+
+            total_cost = costs.values.sum
+
+            counts.keys.map do |model_id|
+              count = counts[model_id] || 0
+              model_cost = costs[model_id] || 0
+              model_tokens = tokens[model_id] || 0
+              successful = success_counts[model_id] || 0
+
+              {
+                model_id: model_id,
+                executions: count,
+                total_cost: model_cost,
+                total_tokens: model_tokens,
+                avg_duration_ms: durations[model_id]&.round || 0,
+                success_rate: (count > 0) ? (successful.to_f / count * 100).round(1) : 0,
+                cost_per_1k_tokens: (model_tokens > 0) ? (model_cost / model_tokens * 1000).round(4) : 0,
+                cost_percentage: (total_cost > 0) ? (model_cost / total_cost * 100).round(1) : 0
+              }
+            end.sort_by { |m| -(m[:total_cost] || 0) }
+          end
+
+          # Builds top errors list from error executions
+          #
+          # @param scope [ActiveRecord::Relation] Pre-filtered scope
+          # @param limit [Integer] Max errors to return
+          # @return [Array<Hash>] Top error classes with counts
+          def top_errors(scope: all, limit: 5)
+            error_scope = scope.where(status: "error")
+            total_errors = error_scope.count
+
+            error_scope.group(:error_class)
+              .select("error_class, COUNT(*) as count, MAX(created_at) as last_seen")
+              .order("count DESC")
+              .limit(limit)
+              .map do |row|
+                {
+                  error_class: row.error_class || "Unknown Error",
+                  count: row.count,
+                  percentage: (total_errors > 0) ? (row.count.to_f / total_errors * 100).round(1) : 0,
+                  last_seen: row.last_seen
+                }
+            end
+          end
+
+          # Builds cache savings statistics
+          #
+          # @param scope [ActiveRecord::Relation] Pre-filtered scope
+          # @return [Hash] Cache savings data
+          def cache_savings(scope: all)
+            total_count = scope.count
+            return {count: 0, estimated_savings: 0, hit_rate: 0, total_executions: 0} if total_count.zero?
+
+            cached_scope = scope.cached
+            cache_count = cached_scope.count
+            estimated_savings = cached_scope.sum(:total_cost)
+
+            {
+              count: cache_count,
+              estimated_savings: estimated_savings,
+              hit_rate: (cache_count.to_f / total_count * 100).round(1),
+              total_executions: total_count
+            }
+          end
+
+          # Batch fetches execution stats grouped by agent type
+          #
+          # @param scope [ActiveRecord::Relation] Pre-filtered scope
+          # @return [Hash<String, Hash>] Agent type => stats hash
+          def batch_agent_stats(scope: all)
+            counts = scope.group(:agent_type).count
+            costs = scope.group(:agent_type).sum(:total_cost)
+            success_counts = scope.successful.group(:agent_type).count
+            durations = scope.group(:agent_type).average(:duration_ms)
+
+            agent_types = (counts.keys + costs.keys).uniq
+            agent_types.each_with_object({}) do |agent_type, hash|
+              count = counts[agent_type] || 0
+              total_cost = costs[agent_type] || 0
+              successful = success_counts[agent_type] || 0
+
+              hash[agent_type] = {
+                count: count,
+                total_cost: total_cost,
+                avg_cost: (count > 0) ? (total_cost / count).round(6) : 0,
+                avg_duration_ms: durations[agent_type]&.round || 0,
+                success_rate: (count > 0) ? (successful.to_f / count * 100).round(1) : 0
+              }
+            end
+          end
+
+          # Cached daily statistics for dashboard
+          #
+          # @return [Hash] Daily stats with totals and rates
+          def dashboard_daily_stats
+            Rails.cache.fetch("ruby_llm_agents/daily_stats/#{Date.current}", expires_in: 1.minute) do
+              scope = today
+              total = scope.count
+              {
+                total_executions: total,
+                successful: scope.successful.count,
+                failed: scope.failed.count,
+                total_cost: scope.total_cost_sum || 0,
+                total_tokens: scope.total_tokens_sum || 0,
+                avg_duration_ms: scope.avg_duration&.round || 0,
+                success_rate: (total > 0) ? (scope.successful.count.to_f / total * 100).round(1) : 0.0
+              }
+            end
+          end
+
           private
 
           # Calculates success rate percentage for a scope

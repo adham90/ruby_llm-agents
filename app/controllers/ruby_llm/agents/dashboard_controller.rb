@@ -194,100 +194,14 @@ module RubyLLM
         @agent_stats
       end
 
-      # Builds per-model statistics for model comparison and cost breakdown
-      #
-      # @param base_scope [ActiveRecord::Relation] Base scope to filter from
-      # @return [Array<Hash>] Array of model stats sorted by total cost descending
+      # Delegates to Execution.model_stats with time scoping
       def build_model_stats(base_scope = Execution)
-        scope = time_scoped(base_scope).where.not(model_id: nil)
-
-        # Batch fetch stats grouped by model
-        counts = scope.group(:model_id).count
-        costs = scope.group(:model_id).sum(:total_cost)
-        tokens = scope.group(:model_id).sum(:total_tokens)
-        durations = scope.group(:model_id).average(:duration_ms)
-        success_counts = scope.successful.group(:model_id).count
-
-        total_cost = costs.values.sum
-
-        model_ids = counts.keys
-        model_ids.map do |model_id|
-          count = counts[model_id] || 0
-          model_cost = costs[model_id] || 0
-          model_tokens = tokens[model_id] || 0
-          successful = success_counts[model_id] || 0
-
-          {
-            model_id: model_id,
-            executions: count,
-            total_cost: model_cost,
-            total_tokens: model_tokens,
-            avg_duration_ms: durations[model_id]&.round || 0,
-            success_rate: (count > 0) ? (successful.to_f / count * 100).round(1) : 0,
-            cost_per_1k_tokens: (model_tokens > 0) ? (model_cost / model_tokens * 1000).round(4) : 0,
-            cost_percentage: (total_cost > 0) ? (model_cost / total_cost * 100).round(1) : 0
-          }
-        end.sort_by { |m| -(m[:total_cost] || 0) }
+        Execution.model_stats(scope: time_scoped(base_scope))
       end
 
-      # Builds top errors list
-      #
-      # @param base_scope [ActiveRecord::Relation] Base scope to filter from
-      # @return [Array<Hash>] Top 5 error classes with counts
+      # Delegates to Execution.top_errors with time scoping
       def build_top_errors(base_scope = Execution)
-        scope = time_scoped(base_scope).where(status: "error")
-        total_errors = scope.count
-
-        scope.group(:error_class)
-          .select("error_class, COUNT(*) as count, MAX(created_at) as last_seen")
-          .order("count DESC")
-          .limit(5)
-          .map do |row|
-            {
-              error_class: row.error_class || "Unknown Error",
-              count: row.count,
-              percentage: (total_errors > 0) ? (row.count.to_f / total_errors * 100).round(1) : 0,
-              last_seen: row.last_seen
-            }
-        end
-      end
-
-      # Fetches cached daily statistics for the dashboard
-      #
-      # Results are cached for 1 minute to reduce database load while
-      # keeping the dashboard reasonably up-to-date.
-      #
-      # @return [Hash] Daily statistics
-      # @option return [Integer] :total_executions Total execution count today
-      # @option return [Integer] :successful Successful execution count
-      # @option return [Integer] :failed Failed execution count
-      # @option return [Float] :total_cost Combined cost of all executions
-      # @option return [Integer] :total_tokens Combined token usage
-      # @option return [Integer] :avg_duration_ms Average execution duration
-      # @option return [Float] :success_rate Percentage of successful executions
-      def daily_stats
-        Rails.cache.fetch("ruby_llm_agents/daily_stats/#{Date.current}", expires_in: 1.minute) do
-          scope = Execution.today
-          {
-            total_executions: scope.count,
-            successful: scope.successful.count,
-            failed: scope.failed.count,
-            total_cost: scope.total_cost_sum || 0,
-            total_tokens: scope.total_tokens_sum || 0,
-            avg_duration_ms: scope.avg_duration&.round || 0,
-            success_rate: calculate_success_rate(scope)
-          }
-        end
-      end
-
-      # Calculates the success rate percentage for a scope
-      #
-      # @param scope [ActiveRecord::Relation] The execution scope to calculate from
-      # @return [Float] Success rate as a percentage (0.0-100.0)
-      def calculate_success_rate(scope)
-        total = scope.count
-        return 0.0 if total.zero?
-        (scope.successful.count.to_f / total * 100).round(1)
+        Execution.top_errors(scope: time_scoped(base_scope))
       end
 
       # Loads budget status for display on dashboard
@@ -435,87 +349,19 @@ module RubyLLM
         alerts.take(3)
       end
 
-      # Builds cache savings statistics for the dashboard
-      #
-      # @param base_scope [ActiveRecord::Relation] Base scope to filter from
-      # @return [Hash] Cache savings data with count, estimated savings, and hit rate
+      # Delegates to Execution.cache_savings with time scoping
       def build_cache_savings(base_scope)
-        scope = time_scoped(base_scope)
-        total_count = scope.count
-        return {count: 0, estimated_savings: 0, hit_rate: 0, total_executions: 0} if total_count.zero?
-
-        cached_scope = scope.cached
-        cache_count = cached_scope.count
-        estimated_savings = cached_scope.sum(:total_cost)
-
-        {
-          count: cache_count,
-          estimated_savings: estimated_savings,
-          hit_rate: (cache_count.to_f / total_count * 100).round(1),
-          total_executions: total_count
-        }
+        Execution.cache_savings(scope: time_scoped(base_scope))
       end
 
-      # Builds top tenants list for the dashboard overview
-      #
-      # @return [Array<Hash>, nil] Top 5 tenants by monthly spend, or nil if none
+      # Delegates to Tenant.top_by_spend
       def build_top_tenants
-        return nil unless Tenant.table_exists?
-
-        tenants = Tenant.active
-          .where("monthly_cost_spent > 0 OR monthly_executions_count > 0")
-          .order(monthly_cost_spent: :desc)
-          .limit(5)
-
-        return nil if tenants.empty?
-
-        tenants.map do |tenant|
-          tenant.ensure_daily_reset!
-          tenant.ensure_monthly_reset!
-
-          monthly_limit = tenant.effective_monthly_limit
-          daily_limit = tenant.effective_daily_limit
-
-          {
-            id: tenant.id,
-            tenant_id: tenant.tenant_id,
-            name: tenant.display_name,
-            enforcement: tenant.effective_enforcement,
-            monthly_spend: tenant.monthly_cost_spent,
-            monthly_limit: monthly_limit,
-            monthly_percentage: (monthly_limit.to_f > 0) ? (tenant.monthly_cost_spent / monthly_limit * 100).round(1) : 0,
-            daily_spend: tenant.daily_cost_spent,
-            daily_limit: daily_limit,
-            daily_percentage: (daily_limit.to_f > 0) ? (tenant.daily_cost_spent / daily_limit * 100).round(1) : 0,
-            monthly_executions: tenant.monthly_executions_count
-          }
-        end
+        Tenant.top_by_spend(limit: 5)
       end
 
-      # Batch fetches execution stats for all agents in a time period
-      #
-      # @param scope [ActiveRecord::Relation] Base scope with time filter
-      # @return [Hash<String, Hash>] Agent type => stats hash
+      # Delegates to Execution.batch_agent_stats with pre-filtered scope
       def batch_fetch_agent_stats(scope)
-        counts = scope.group(:agent_type).count
-        costs = scope.group(:agent_type).sum(:total_cost)
-        success_counts = scope.successful.group(:agent_type).count
-        durations = scope.group(:agent_type).average(:duration_ms)
-
-        agent_types = (counts.keys + costs.keys).uniq
-        agent_types.each_with_object({}) do |agent_type, hash|
-          count = counts[agent_type] || 0
-          total_cost = costs[agent_type] || 0
-          successful = success_counts[agent_type] || 0
-
-          hash[agent_type] = {
-            count: count,
-            total_cost: total_cost,
-            avg_cost: (count > 0) ? (total_cost / count).round(6) : 0,
-            avg_duration_ms: durations[agent_type]&.round || 0,
-            success_rate: (count > 0) ? (successful.to_f / count * 100).round(1) : 0
-          }
-        end
+        Execution.batch_agent_stats(scope: scope)
       end
     end
   end
