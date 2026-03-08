@@ -37,7 +37,12 @@ require_relative "agents/infrastructure/budget/config_resolver"
 require_relative "agents/infrastructure/budget/forecaster"
 require_relative "agents/infrastructure/budget/spend_recorder"
 
+# Tracking
+require_relative "agents/tracker"
+require_relative "agents/track_report"
+
 # Results
+require_relative "agents/results/trackable"
 require_relative "agents/results/base"
 require_relative "agents/results/embedding_result"
 require_relative "agents/results/transcription_result"
@@ -119,6 +124,69 @@ module RubyLLM
   # @see RubyLLM::Agents::Configuration
   module Agents
     class << self
+      # Wraps a block of agent calls, collecting all Results and
+      # returning an aggregated TrackReport.
+      #
+      # Shared options (tenant, tags, request_id) are injected into
+      # every agent instantiated inside the block unless overridden.
+      #
+      # @param tenant [Hash, Object, nil] Shared tenant for all calls
+      # @param request_id [String, nil] Shared request ID (auto-generated if nil)
+      # @param tags [Hash] Tags merged into each execution's metadata
+      # @param defaults [Hash] Additional shared options for agents
+      # @yield Block containing agent calls to track
+      # @return [TrackReport] Aggregated report of all calls
+      #
+      # @example Basic usage
+      #   report = RubyLLM::Agents.track do
+      #     ChatAgent.call(query: "hello")
+      #     SummaryAgent.call(text: "...")
+      #   end
+      #   report.total_cost  # => 0.015
+      #
+      # @example With shared tenant
+      #   report = RubyLLM::Agents.track(tenant: current_user) do
+      #     AgentA.call(query: "test")
+      #   end
+      def track(tenant: nil, request_id: nil, tags: {}, **defaults)
+        defaults[:tenant] = tenant if tenant
+        tracker = Tracker.new(defaults: defaults, request_id: request_id, tags: tags)
+
+        # Stack trackers for nesting support
+        previous_tracker = Thread.current[:ruby_llm_agents_tracker]
+        Thread.current[:ruby_llm_agents_tracker] = tracker
+
+        started_at = Time.current
+        value = nil
+        error = nil
+
+        begin
+          value = yield
+        rescue => e
+          error = e
+        end
+
+        completed_at = Time.current
+
+        report = TrackReport.new(
+          value: value,
+          error: error,
+          results: tracker.results,
+          request_id: tracker.request_id,
+          started_at: started_at,
+          completed_at: completed_at
+        )
+
+        # Bubble results up to parent tracker if nested
+        if previous_tracker
+          tracker.results.each { |r| previous_tracker << r }
+        end
+
+        report
+      ensure
+        Thread.current[:ruby_llm_agents_tracker] = previous_tracker
+      end
+
       # Returns the global configuration instance
       #
       # @return [Configuration] The configuration object

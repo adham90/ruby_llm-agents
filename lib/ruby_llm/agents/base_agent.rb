@@ -332,6 +332,14 @@ module RubyLLM
       # @param temperature [Float] Override the class-level temperature
       # @param options [Hash] Agent parameters defined via the param DSL
       def initialize(model: self.class.model, temperature: self.class.temperature, **options)
+        # Merge tracker defaults (shared options like tenant) — explicit opts win
+        tracker = Thread.current[:ruby_llm_agents_tracker]
+        if tracker
+          options = tracker.defaults.merge(options)
+          @_track_request_id = tracker.request_id
+          @_track_tags = tracker.tags
+        end
+
         @ask_message = options.delete(:_ask_message)
         @parent_execution_id = options.delete(:_parent_execution_id)
         @root_execution_id = options.delete(:_root_execution_id)
@@ -891,6 +899,7 @@ module RubyLLM
       def build_result(content, response, context)
         Result.new(
           content: content,
+          agent_class_name: self.class.name,
           input_tokens: context.input_tokens,
           output_tokens: context.output_tokens,
           input_cost: context.input_cost,

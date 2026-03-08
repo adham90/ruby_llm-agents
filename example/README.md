@@ -130,6 +130,25 @@ result.classification    # Classification details
 result.content           # Response from routed agent
 ```
 
+### Multi-Agent Tracking
+
+```ruby
+# Track multiple agent calls, get aggregated cost/tokens/timing
+report = RubyLLM::Agents.track(request_id: "support_flow") do
+  summary = SummarizeAgent.call(text: "Long customer complaint...")
+  category = ClassifyAgent.call(text: summary.content)
+  { summary: summary.content, category: category.content }
+end
+
+report.value[:summary]  # => "Customer reports billing issue"
+report.total_cost       # => 0.0023 (combined cost)
+report.call_count       # => 2
+report.duration_ms      # => 1250
+report.request_id       # => "support_flow"
+
+# View in dashboard: http://localhost:3000/agents/requests
+```
+
 ### Image Analyzers (Vision AI)
 
 ```ruby

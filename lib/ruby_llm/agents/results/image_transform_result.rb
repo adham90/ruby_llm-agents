@@ -17,6 +17,8 @@ module RubyLLM
     #   result.success?  # => true
     #
     class ImageTransformResult
+      include Trackable
+
       attr_reader :images, :source_image, :prompt, :model_id, :size, :strength,
         :started_at, :completed_at, :tenant_id, :transformer_class,
         :error_class, :error_message
@@ -38,7 +40,7 @@ module RubyLLM
       # @param error_message [String, nil] Error message if failed
       def initialize(images:, source_image:, prompt:, model_id:, size:, strength:,
         started_at:, completed_at:, tenant_id:, transformer_class:,
-        error_class: nil, error_message: nil)
+        error_class: nil, error_message: nil, agent_class_name: nil)
         @images = images
         @source_image = source_image
         @prompt = prompt
@@ -52,6 +54,10 @@ module RubyLLM
         @error_class = error_class
         @error_message = error_message
         @execution_id = nil
+
+        # Tracking
+        @agent_class_name = agent_class_name
+        register_with_tracker
       end
 
       # Loads the associated Execution record from the database

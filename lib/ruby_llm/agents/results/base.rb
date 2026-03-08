@@ -107,6 +107,11 @@ module RubyLLM
       #   @return [Integer, nil] Database ID of the associated Execution record
       attr_reader :execution_id
 
+      # @!group Tracking
+      # @!attribute [r] agent_class_name
+      #   @return [String, nil] The agent class that produced this result
+      attr_reader :agent_class_name
+
       # Creates a new Result instance
       #
       # @param content [Hash, String] The processed response content
@@ -159,6 +164,13 @@ module RubyLLM
 
         # Execution record
         @execution_id = options[:execution_id]
+
+        # Tracking
+        @agent_class_name = options[:agent_class_name]
+
+        # Register with active tracker
+        tracker = Thread.current[:ruby_llm_agents_tracker]
+        tracker << self if tracker
       end
 
       # Loads the associated Execution record from the database
@@ -264,7 +276,8 @@ module RubyLLM
           thinking_text: thinking_text,
           thinking_signature: thinking_signature,
           thinking_tokens: thinking_tokens,
-          execution_id: execution_id
+          execution_id: execution_id,
+          agent_class_name: agent_class_name
         }
       end
 

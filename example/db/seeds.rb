@@ -2229,7 +2229,290 @@ rescue NameError
   puts "  #{generator}: (class definition error - skipping)"
 end
 
+# =============================================================================
+# TRACKED REQUESTS (multi-agent workflows grouped by request_id)
+# =============================================================================
+puts "\n#{"=" * 60}"
+puts "Creating tracked requests..."
+puts "=" * 60
+
+# Request 1: Customer support workflow — classify then respond
+req1_id = "track_customer_support_001"
+req1_base = Time.current - 15.minutes
+create_execution(
+  request_id: req1_id,
+  tenant_id: acme.llm_tenant_id,
+  agent_type: "ClassifyAgent",
+  model_id: "gpt-4o-mini",
+  status: "success",
+  started_at: req1_base,
+  input_tokens: 320,
+  output_tokens: 45,
+  parameters: {message: "My order hasn't arrived and it's been 2 weeks"},
+  response: {content: "shipping_issue"},
+  metadata: {tags: {"workflow" => "customer_support", "priority" => "high"}},
+  created_at: req1_base
+)
+create_execution(
+  request_id: req1_id,
+  tenant_id: acme.llm_tenant_id,
+  agent_type: "SummarizeAgent",
+  model_id: "gpt-4o",
+  status: "success",
+  started_at: req1_base + 2,
+  input_tokens: 850,
+  output_tokens: 320,
+  parameters: {text: "Customer reports delayed order..."},
+  response: {content: "I apologize for the delay. Let me look into your order status..."},
+  metadata: {tags: {"workflow" => "customer_support", "priority" => "high"}},
+  created_at: req1_base + 2
+)
+puts "  Created request #{req1_id} (2 agents: classify + summarize)"
+
+# Request 2: Content pipeline — summarize, classify, then generate
+req2_id = "track_content_pipeline_002"
+req2_base = Time.current - 45.minutes
+create_execution(
+  request_id: req2_id,
+  tenant_id: enterprise.llm_tenant_id,
+  agent_type: "SummarizeAgent",
+  model_id: "gpt-4o",
+  status: "success",
+  started_at: req2_base,
+  input_tokens: 2400,
+  output_tokens: 450,
+  parameters: {text: "Long article about AI safety..."},
+  response: {content: "AI safety research focuses on alignment, interpretability..."},
+  metadata: {tags: {"pipeline" => "content", "source" => "blog"}},
+  created_at: req2_base
+)
+create_execution(
+  request_id: req2_id,
+  tenant_id: enterprise.llm_tenant_id,
+  agent_type: "ClassifyAgent",
+  model_id: "gpt-4o-mini",
+  status: "success",
+  started_at: req2_base + 3,
+  input_tokens: 480,
+  output_tokens: 35,
+  parameters: {message: "AI safety research focuses on alignment..."},
+  response: {content: "technology"},
+  metadata: {tags: {"pipeline" => "content", "source" => "blog"}},
+  created_at: req2_base + 3
+)
+create_execution(
+  request_id: req2_id,
+  tenant_id: enterprise.llm_tenant_id,
+  agent_type: "FullFeaturedAgent",
+  model_id: "gpt-4o",
+  status: "success",
+  started_at: req2_base + 5,
+  input_tokens: 1200,
+  output_tokens: 800,
+  parameters: {query: "Write a social media post about this AI safety summary"},
+  response: {content: "🤖 New insights on AI safety: alignment and interpretability..."},
+  metadata: {tags: {"pipeline" => "content", "source" => "blog"}},
+  created_at: req2_base + 5
+)
+puts "  Created request #{req2_id} (3 agents: summarize + classify + generate)"
+
+# Request 3: Failed workflow — classify succeeds, response fails
+req3_id = "track_failed_response_003"
+req3_base = Time.current - 90.minutes
+create_execution(
+  request_id: req3_id,
+  tenant_id: startup.llm_tenant_id,
+  agent_type: "ClassifyAgent",
+  model_id: "gpt-4o-mini",
+  status: "success",
+  started_at: req3_base,
+  input_tokens: 250,
+  output_tokens: 30,
+  parameters: {message: "How do I integrate your API?"},
+  response: {content: "technical_question"},
+  metadata: {tags: {"workflow" => "support"}},
+  created_at: req3_base
+)
+create_execution(
+  request_id: req3_id,
+  tenant_id: startup.llm_tenant_id,
+  agent_type: "ReliabilityAgent",
+  model_id: "gpt-4o",
+  status: "error",
+  error_class: "RubyLLM::Error",
+  error_message: "Rate limit exceeded (429)",
+  started_at: req3_base + 1.5,
+  input_tokens: 0,
+  output_tokens: 0,
+  parameters: {query: "Explain API integration steps"},
+  metadata: {tags: {"workflow" => "support"}},
+  created_at: req3_base + 1.5
+)
+puts "  Created request #{req3_id} (2 agents: classify ok + response error)"
+
+# Request 4: Large batch processing workflow
+req4_id = "track_batch_process_004"
+req4_base = Time.current - 2.hours
+%w[SummarizeAgent SummarizeAgent SummarizeAgent ClassifyAgent ClassifyAgent SchemaAgent].each_with_index do |agent, i|
+  create_execution(
+    request_id: req4_id,
+    tenant_id: acme.llm_tenant_id,
+    agent_type: agent,
+    model_id: (agent == "SchemaAgent") ? "gpt-4o" : "gpt-4o-mini",
+    status: "success",
+    started_at: req4_base + (i * 2),
+    input_tokens: rand(400..1200),
+    output_tokens: rand(100..500),
+    parameters: {text: "Batch document #{i + 1}"},
+    response: {content: "Processed batch item #{i + 1}"},
+    metadata: {tags: {"workflow" => "batch_processing", "batch_size" => "6"}},
+    created_at: req4_base + (i * 2)
+  )
+end
+puts "  Created request #{req4_id} (6 agents: batch processing)"
+
+# Request 5: Real-time streaming conversation
+req5_id = "track_conversation_005"
+req5_base = Time.current - 30.minutes
+create_execution(
+  request_id: req5_id,
+  tenant_id: enterprise.llm_tenant_id,
+  agent_type: "ConversationAgent",
+  model_id: "claude-sonnet-4-20250514",
+  model_provider: "anthropic",
+  status: "success",
+  streaming: true,
+  started_at: req5_base,
+  input_tokens: 500,
+  output_tokens: 200,
+  parameters: {message: "Hello, I need help with my project"},
+  response: {content: "Hi! I'd be happy to help. What kind of project are you working on?"},
+  metadata: {tags: {"session" => "chat_abc123"}},
+  created_at: req5_base
+)
+create_execution(
+  request_id: req5_id,
+  tenant_id: enterprise.llm_tenant_id,
+  agent_type: "ConversationAgent",
+  model_id: "claude-sonnet-4-20250514",
+  model_provider: "anthropic",
+  status: "success",
+  streaming: true,
+  started_at: req5_base + 30,
+  input_tokens: 900,
+  output_tokens: 350,
+  parameters: {message: "It's a Rails app that needs AI features"},
+  response: {content: "Great choice! RubyLLM::Agents is perfect for Rails AI integration..."},
+  metadata: {tags: {"session" => "chat_abc123"}},
+  created_at: req5_base + 30
+)
+create_execution(
+  request_id: req5_id,
+  tenant_id: enterprise.llm_tenant_id,
+  agent_type: "ConversationAgent",
+  model_id: "claude-sonnet-4-20250514",
+  model_provider: "anthropic",
+  status: "success",
+  streaming: true,
+  started_at: req5_base + 75,
+  input_tokens: 1400,
+  output_tokens: 500,
+  parameters: {message: "Can you show me an example?"},
+  response: {content: "Here's a simple agent example..."},
+  metadata: {tags: {"session" => "chat_abc123"}},
+  created_at: req5_base + 75
+)
+puts "  Created request #{req5_id} (3 conversation turns with Claude)"
+
+# Request 6: Multi-model workflow with Gemini
+req6_id = "track_multi_model_006"
+req6_base = Time.current - 5.minutes
+create_execution(
+  request_id: req6_id,
+  tenant_id: acme.llm_tenant_id,
+  agent_type: "ClassifyAgent",
+  model_id: "gemini-2.0-flash",
+  model_provider: "google",
+  status: "success",
+  started_at: req6_base,
+  input_tokens: 300,
+  output_tokens: 25,
+  parameters: {message: "Translate this document to French"},
+  response: {content: "translation_request"},
+  metadata: {tags: {"workflow" => "translation"}},
+  created_at: req6_base
+)
+create_execution(
+  request_id: req6_id,
+  tenant_id: acme.llm_tenant_id,
+  agent_type: "FullFeaturedAgent",
+  model_id: "gpt-4o",
+  status: "success",
+  started_at: req6_base + 1,
+  input_tokens: 1800,
+  output_tokens: 1600,
+  parameters: {query: "Translate the following to French: ..."},
+  response: {content: "Voici la traduction..."},
+  metadata: {tags: {"workflow" => "translation"}},
+  created_at: req6_base + 1
+)
+puts "  Created request #{req6_id} (2 agents: Gemini classify + GPT-4o translate)"
+
+# Request 7: Running request (still in progress)
+req7_id = "track_in_progress_007"
+req7_base = Time.current - 10.seconds
+create_execution(
+  request_id: req7_id,
+  tenant_id: acme.llm_tenant_id,
+  agent_type: "SummarizeAgent",
+  model_id: "gpt-4o",
+  status: "success",
+  started_at: req7_base,
+  input_tokens: 600,
+  output_tokens: 150,
+  parameters: {text: "Summarize this report..."},
+  response: {content: "The quarterly report shows..."},
+  metadata: {tags: {"workflow" => "reporting"}},
+  created_at: req7_base
+)
+create_execution(
+  request_id: req7_id,
+  tenant_id: acme.llm_tenant_id,
+  agent_type: "FullFeaturedAgent",
+  model_id: "gpt-4o",
+  status: "running",
+  started_at: req7_base + 2,
+  input_tokens: 0,
+  output_tokens: 0,
+  parameters: {query: "Generate executive brief from summary"},
+  metadata: {tags: {"workflow" => "reporting"}},
+  created_at: req7_base + 2
+)
+puts "  Created request #{req7_id} (1 done + 1 running)"
+
+# Request 8: Single-agent tracked request
+req8_id = "track_single_agent_008"
+req8_base = Time.current - 3.hours
+create_execution(
+  request_id: req8_id,
+  tenant_id: demo.llm_tenant_id,
+  agent_type: "CachingAgent",
+  model_id: "gpt-4o-mini",
+  status: "success",
+  started_at: req8_base,
+  input_tokens: 200,
+  output_tokens: 100,
+  parameters: {query: "What is the capital of France?"},
+  response: {content: "Paris"},
+  metadata: {tags: {"source" => "demo"}, cached: true},
+  created_at: req8_base
+)
+puts "  Created request #{req8_id} (single cached agent)"
+
+puts "  Total: 8 tracked requests created"
+
 puts "\nTotal: #{Organization.count} organizations, #{RubyLLM::Agents::Execution.count} executions"
 puts "\nStart the server with: bin/rails server"
 puts "Then visit: http://localhost:3000/agents"
 puts "\nTo test tenant filtering, append ?tenant_id=acme-corp to the URL"
+puts "To view tracked requests, visit: http://localhost:3000/agents/requests"

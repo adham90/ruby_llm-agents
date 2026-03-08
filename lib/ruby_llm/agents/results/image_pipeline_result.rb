@@ -21,6 +21,8 @@ module RubyLLM
     #   result.analysis          # => Shortcut to analyzer step result
     #
     class ImagePipelineResult
+      include Trackable
+
       attr_reader :step_results, :started_at, :completed_at, :tenant_id,
         :pipeline_class, :context, :error_class, :error_message
       attr_accessor :execution_id
@@ -36,7 +38,7 @@ module RubyLLM
       # @param error_class [String, nil] Error class name if failed
       # @param error_message [String, nil] Error message if failed
       def initialize(step_results:, started_at:, completed_at:, tenant_id:,
-        pipeline_class:, context:, error_class: nil, error_message: nil)
+        pipeline_class:, context:, error_class: nil, error_message: nil, agent_class_name: nil)
         @step_results = step_results
         @started_at = started_at
         @completed_at = completed_at
@@ -46,6 +48,10 @@ module RubyLLM
         @error_class = error_class
         @error_message = error_message
         @execution_id = nil
+
+        # Tracking
+        @agent_class_name = agent_class_name
+        register_with_tracker
       end
 
       # Loads the associated Execution record from the database

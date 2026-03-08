@@ -15,6 +15,8 @@ module RubyLLM
     #   result.success?   # => true
     #
     class BackgroundRemovalResult
+      include Trackable
+
       attr_reader :foreground, :mask, :source_image, :model_id, :output_format,
         :alpha_matting, :refine_edges,
         :started_at, :completed_at, :tenant_id, :remover_class,
@@ -38,7 +40,7 @@ module RubyLLM
       # @param error_message [String, nil] Error message if failed
       def initialize(foreground:, mask:, source_image:, model_id:, output_format:,
         alpha_matting:, refine_edges:, started_at:, completed_at:,
-        tenant_id:, remover_class:, error_class: nil, error_message: nil)
+        tenant_id:, remover_class:, error_class: nil, error_message: nil, agent_class_name: nil)
         @foreground = foreground
         @mask = mask
         @source_image = source_image
@@ -53,6 +55,10 @@ module RubyLLM
         @error_class = error_class
         @error_message = error_message
         @execution_id = nil
+
+        # Tracking
+        @agent_class_name = agent_class_name
+        register_with_tracker
       end
 
       # Loads the associated Execution record from the database

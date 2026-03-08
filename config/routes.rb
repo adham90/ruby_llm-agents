@@ -13,6 +13,8 @@ RubyLLM::Agents::Engine.routes.draw do
     end
   end
 
+  resources :requests, only: [:index, :show]
+
   resources :tenants, only: [:index, :show, :edit, :update]
 
   # Redirect old analytics route to dashboard
