@@ -741,12 +741,16 @@ module RubyLLM
         effective_model = context&.model || model
         chat_opts = {model: effective_model}
 
-        # Pass scoped RubyLLM context for thread-safe per-tenant API keys
+        # Use scoped RubyLLM::Context for thread-safe per-tenant API keys.
+        # RubyLLM::Context#chat creates a Chat with the scoped config,
+        # so we call .chat on the context instead of RubyLLM.chat.
         llm_ctx = context&.llm
-        chat_opts[:context] = llm_ctx if llm_ctx.is_a?(RubyLLM::Context)
-
-        client = RubyLLM.chat(**chat_opts)
-          .with_temperature(temperature)
+        client = if llm_ctx.is_a?(RubyLLM::Context)
+          llm_ctx.chat(**chat_opts)
+        else
+          RubyLLM.chat(**chat_opts)
+        end
+        client = client.with_temperature(temperature)
 
         client = client.with_instructions(system_prompt) if system_prompt
         client = client.with_schema(schema) if schema

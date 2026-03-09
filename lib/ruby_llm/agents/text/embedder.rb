@@ -337,11 +337,14 @@ module RubyLLM
         embed_options = {model: context&.model || resolved_model}
         embed_options[:dimensions] = resolved_dimensions if resolved_dimensions
 
-        # Pass scoped RubyLLM context for thread-safe per-tenant API keys
+        # Use scoped RubyLLM::Context for thread-safe per-tenant API keys.
+        # RubyLLM::Context#embed creates an Embedding with the scoped config.
         llm_ctx = context&.llm
-        embed_options[:context] = llm_ctx if llm_ctx.is_a?(RubyLLM::Context)
-
-        response = RubyLLM.embed(preprocessed, **embed_options)
+        response = if llm_ctx.is_a?(RubyLLM::Context)
+          llm_ctx.embed(preprocessed, **embed_options)
+        else
+          RubyLLM.embed(preprocessed, **embed_options)
+        end
 
         # ruby_llm returns vectors as an array (even for single text)
         vectors = response.vectors
