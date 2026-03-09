@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.9.0] - 2026-03-09
+
+### Added
+
+- **`RubyLLM::Agents.track` block API** — Group multiple agent executions into a single tracked request with `request_id` and tags. Includes `Tracker` and `TrackReport` classes for aggregated cost/token analytics
+- **Requests dashboard** — New dashboard page for viewing and filtering tracked request groups with per-request detail views
+- **Convenience query API** — `RubyLLM::Agents.executions`, `.recent`, `.for_agent`, `.for_model` class-level query methods for accessing execution data from host apps
+- **`doctor` generator** — `rails generate ruby_llm_agents:doctor` validates installation, configuration, database tables, and RubyLLM connectivity
+- **`demo` generator** — `rails generate ruby_llm_agents:demo` scaffolds a working example agent with demo rake task
+- **Structured logging & pipeline tracing** — Middleware base class now provides structured `log_info`/`log_warn`/`log_error` helpers with trace context for debugging pipeline execution
+- **Trackable results** — All `Result` subclasses register with the active tracker for automatic request-level aggregation
+- **Wiki guide** — "Using Data In Your App" wiki page documenting the convenience query API
+
+### Changed
+
+- **Modernized generators** — Agent and install generators produce cleaner, DSL-focused templates with better inline documentation
+- **Improved error messages** — Actionable error messages for common configuration mistakes (missing API key, missing model, etc.)
+- **README quickstart** — Streamlined golden-path getting started section
+- **Bumped ruby_llm dependency** to v1.13.2
+
+### Fixed
+
+- **Tenant API keys** — Use `RubyLLM::Context#chat` instead of passing context as keyword arg, fixing tenant-scoped API key isolation
+- **Test isolation** — Fixed `verify_partial_doubles` issues in specs
+
 ## [3.8.0] - 2026-03-06
 
 ### Added
@@ -796,6 +821,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[3.9.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.8.0...v3.9.0
 [3.8.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.7.2...v3.8.0
 [3.7.2]: https://github.com/adham90/ruby_llm-agents/compare/v3.7.1...v3.7.2
 [3.7.1]: https://github.com/adham90/ruby_llm-agents/compare/v3.7.0...v3.7.1
