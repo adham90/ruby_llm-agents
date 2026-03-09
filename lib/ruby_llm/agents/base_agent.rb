@@ -514,6 +514,7 @@ module RubyLLM
           stream_block: (block if streaming_enabled?),
           parent_execution_id: @parent_execution_id,
           root_execution_id: @root_execution_id,
+          debug: @options[:debug],
           options: execution_options
         )
       end
@@ -901,7 +902,7 @@ module RubyLLM
       # @param context [Pipeline::Context] The context
       # @return [Result] The result object
       def build_result(content, response, context)
-        Result.new(
+        result_opts = {
           content: content,
           agent_class_name: self.class.name,
           input_tokens: context.input_tokens,
@@ -920,7 +921,12 @@ module RubyLLM
           streaming: streaming_enabled?,
           attempts_count: context.attempts_made || 1,
           execution_id: context.execution_id
-        )
+        }
+
+        # Attach pipeline trace when debug mode is enabled
+        result_opts[:trace] = context.trace if context.trace_enabled? && context.trace.any?
+
+        Result.new(**result_opts)
       end
 
       # Extracts thinking data from a response for inclusion in Result

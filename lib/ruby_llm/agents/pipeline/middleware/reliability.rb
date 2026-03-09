@@ -41,11 +41,13 @@ module RubyLLM
           def call(context)
             return @app.call(context) unless reliability_enabled?
 
-            config = reliability_config
-            models_to_try = build_models_list(context, config)
-            total_deadline = calculate_deadline(config)
+            trace(context) do
+              config = reliability_config
+              models_to_try = build_models_list(context, config)
+              total_deadline = calculate_deadline(config)
 
-            execute_with_reliability(context, models_to_try, config, total_deadline)
+              execute_with_reliability(context, models_to_try, config, total_deadline)
+            end
           end
 
           private
@@ -103,7 +105,7 @@ module RubyLLM
               # Check circuit breaker for this model
               breaker = get_circuit_breaker(current_model, context)
               if breaker&.open?
-                debug("Circuit breaker open for #{current_model}, skipping")
+                debug("Circuit breaker open for #{current_model}, skipping", context)
                 tracker.record_short_circuit(current_model)
                 next
               end

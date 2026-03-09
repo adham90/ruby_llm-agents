@@ -219,6 +219,72 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Base do
     end
   end
 
+  describe "LOG_TAG constant" do
+    it "is defined" do
+      expect(described_class::LOG_TAG).to eq("[RubyLLM::Agents::Pipeline]")
+    end
+  end
+
+  describe "#log_prefix" do
+    let(:test_middleware) do
+      Class.new(described_class) do
+        def test_log_prefix(context = nil)
+          log_prefix(context)
+        end
+      end
+    end
+
+    let(:middleware_instance) { test_middleware.new(app, agent_class) }
+
+    it "returns LOG_TAG when context is nil" do
+      expect(middleware_instance.test_log_prefix).to eq("[RubyLLM::Agents::Pipeline]")
+    end
+
+    it "includes agent class name when context has agent_class" do
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: agent_class
+      )
+
+      prefix = middleware_instance.test_log_prefix(context)
+      expect(prefix).to include("TestAgent")
+    end
+
+    it "includes execution_id when set on context" do
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: agent_class
+      )
+      context.execution_id = 42
+
+      prefix = middleware_instance.test_log_prefix(context)
+      expect(prefix).to include("exec=42")
+    end
+
+    it "includes tenant_id when set on context" do
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: agent_class
+      )
+      context.tenant_id = "tenant-abc"
+
+      prefix = middleware_instance.test_log_prefix(context)
+      expect(prefix).to include("tenant=tenant-abc")
+    end
+
+    it "includes all parts when all are present" do
+      context = RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: agent_class
+      )
+      context.execution_id = 99
+      context.tenant_id = "t-1"
+
+      prefix = middleware_instance.test_log_prefix(context)
+      expect(prefix).to eq("[RubyLLM::Agents::Pipeline] TestAgent exec=99 tenant=t-1")
+    end
+  end
+
   describe "subclass implementation" do
     let(:custom_middleware) do
       Class.new(described_class) do

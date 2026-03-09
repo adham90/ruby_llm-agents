@@ -925,6 +925,30 @@ RSpec.describe RubyLLM::Agents::Configuration do
     end
   end
 
+  describe "#inspect" do
+    it "returns a concise string representation" do
+      result = config.inspect
+      expect(result).to start_with("#<RubyLLM::Agents::Configuration")
+      expect(result).to include("model=")
+      expect(result).to include("temperature=")
+      expect(result).to include("timeout=")
+      expect(result).to include("streaming=")
+      expect(result).to include("multi_tenancy=")
+      expect(result).to include("async_logging=")
+      expect(result).to include("track_executions=")
+    end
+
+    it "includes the configured model" do
+      config.default_model = "gpt-4o"
+      expect(config.inspect).to include('model="gpt-4o"')
+    end
+
+    it "does not expose sensitive data" do
+      expect(config.inspect).not_to include("api_key")
+      expect(config.inspect).not_to include("password")
+    end
+  end
+
   describe "SENSITIVE_ATTRIBUTES" do
     it "includes API key attributes from FORWARDED_RUBY_LLM_ATTRIBUTES" do
       sensitive = described_class::SENSITIVE_ATTRIBUTES

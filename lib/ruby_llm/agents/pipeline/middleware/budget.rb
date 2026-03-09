@@ -32,21 +32,23 @@ module RubyLLM
           def call(context)
             return @app.call(context) unless budgets_enabled?
 
-            # Check budget before execution
-            check_budget!(context)
+            trace(context) do
+              # Check budget before execution
+              check_budget!(context)
 
-            # Execute the chain
-            @app.call(context)
+              # Execute the chain
+              @app.call(context)
 
-            # Record spend after successful execution (if not cached)
-            if context.success? && !context.cached?
-              record_spend!(context)
-              emit_budget_notification("ruby_llm_agents.budget.record", context,
-                total_cost: context.total_cost,
-                total_tokens: context.total_tokens)
+              # Record spend after successful execution (if not cached)
+              if context.success? && !context.cached?
+                record_spend!(context)
+                emit_budget_notification("ruby_llm_agents.budget.record", context,
+                  total_cost: context.total_cost,
+                  total_tokens: context.total_tokens)
+              end
+
+              context
             end
-
-            context
           end
 
           private
@@ -65,7 +67,7 @@ module RubyLLM
               }.merge(extras)
             )
           rescue => e
-            debug("Budget notification failed: #{e.message}")
+            debug("Budget notification failed: #{e.message}", context)
           end
 
           # Returns whether budgets are enabled globally
@@ -106,7 +108,7 @@ module RubyLLM
             raise
           rescue => e
             # Log at error level so unexpected failures are visible in logs
-            error("Budget check failed: #{e.class}: #{e.message}")
+            error("Budget check failed: #{e.class}: #{e.message}", context)
           end
 
           # Records spend after execution
@@ -145,7 +147,7 @@ module RubyLLM
               )
             end
           rescue => e
-            error("Failed to record spend: #{e.message}")
+            error("Failed to record spend: #{e.message}", context)
           end
         end
       end

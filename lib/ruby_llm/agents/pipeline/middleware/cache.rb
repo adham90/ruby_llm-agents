@@ -31,34 +31,46 @@ module RubyLLM
           def call(context)
             return @app.call(context) unless cache_enabled?
 
-            cache_key = generate_cache_key(context)
+            cache_action = nil
+            result = trace(context, action: "cache") do
+              cache_key = generate_cache_key(context)
 
-            # Skip cache read if skip_cache is true
-            unless context.skip_cache
-              # Try to read from cache
-              if (cached = cache_read(cache_key))
-                context.output = cached
-                context.cached = true
-                context[:cache_key] = cache_key
-                debug("Cache hit for #{cache_key}")
-                emit_cache_notification("ruby_llm_agents.cache.hit", cache_key)
-                return context
+              # Skip cache read if skip_cache is true
+              unless context.skip_cache
+                # Try to read from cache
+                if (cached = cache_read(cache_key))
+                  context.output = cached
+                  context.cached = true
+                  context[:cache_key] = cache_key
+                  cache_action = "hit"
+                  debug("Cache hit for #{cache_key}", context)
+                  emit_cache_notification("ruby_llm_agents.cache.hit", cache_key)
+                  next context
+                end
               end
+
+              cache_action = "miss"
+              emit_cache_notification("ruby_llm_agents.cache.miss", cache_key)
+
+              # Execute the chain
+              @app.call(context)
+
+              # Cache successful results
+              if context.success?
+                cache_write(cache_key, context.output)
+                debug("Cache write for #{cache_key}", context)
+                emit_cache_notification("ruby_llm_agents.cache.write", cache_key)
+              end
+
+              context
             end
 
-            emit_cache_notification("ruby_llm_agents.cache.miss", cache_key)
-
-            # Execute the chain
-            @app.call(context)
-
-            # Cache successful results
-            if context.success?
-              cache_write(cache_key, context.output)
-              debug("Cache write for #{cache_key}")
-              emit_cache_notification("ruby_llm_agents.cache.write", cache_key)
+            # Update the last trace entry with the specific cache action
+            if context.trace_enabled? && cache_action && context.trace.last
+              context.trace.last[:action] = cache_action
             end
 
-            context
+            result
           end
 
           private

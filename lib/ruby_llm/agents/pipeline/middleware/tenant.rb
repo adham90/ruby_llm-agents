@@ -41,10 +41,12 @@ module RubyLLM
           # @param context [Context] The execution context
           # @return [Context] The context with tenant fields populated
           def call(context)
-            resolve_tenant!(context)
-            ensure_tenant_record!(context)
-            apply_api_configuration!(context)
-            @app.call(context)
+            trace(context) do
+              resolve_tenant!(context)
+              ensure_tenant_record!(context)
+              apply_api_configuration!(context)
+              @app.call(context)
+            end
           end
 
           private

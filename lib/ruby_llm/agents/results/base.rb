@@ -112,6 +112,11 @@ module RubyLLM
       #   @return [String, nil] The agent class that produced this result
       attr_reader :agent_class_name
 
+      # @!group Debug
+      # @!attribute [r] trace
+      #   @return [Array<Hash>, nil] Pipeline trace entries (when debug: true)
+      attr_reader :trace
+
       # Creates a new Result instance
       #
       # @param content [Hash, String] The processed response content
@@ -167,6 +172,9 @@ module RubyLLM
 
         # Tracking
         @agent_class_name = options[:agent_class_name]
+
+        # Debug trace
+        @trace = options[:trace]
 
         # Register with active tracker
         tracker = Thread.current[:ruby_llm_agents_tracker]
@@ -277,8 +285,9 @@ module RubyLLM
           thinking_signature: thinking_signature,
           thinking_tokens: thinking_tokens,
           execution_id: execution_id,
-          agent_class_name: agent_class_name
-        }
+          agent_class_name: agent_class_name,
+          trace: trace
+        }.compact
       end
 
       # @!group Deprecated Hash Delegation

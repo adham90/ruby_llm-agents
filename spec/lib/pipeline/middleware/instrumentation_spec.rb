@@ -418,113 +418,17 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       end
     end
 
-    it "checks track_embeddings for embedding agents" do
-      agent_class = Class.new do
-        def self.name
-          "EmbedAgent"
-        end
+    it_behaves_like "tracking disabled for agent type",
+      agent_type: :embedding, config_flag: :track_embeddings, agent_name: "EmbedAgent"
 
-        def self.agent_type
-          :embedding
-        end
+    it_behaves_like "tracking disabled for agent type",
+      agent_type: :image, config_flag: :track_image_generation, agent_name: "ImageAgent", model_name: "dalle-3"
 
-        def self.model
-          "embed-model"
-        end
-      end
+    it_behaves_like "tracking disabled for agent type",
+      agent_type: :audio, config_flag: :track_audio, agent_name: "AudioAgent", model_name: "whisper-1"
 
-      middleware = described_class.new(app, agent_class)
-      context = RubyLLM::Agents::Pipeline::Context.new(input: "test", agent_class: agent_class)
-
-      RubyLLM::Agents.configuration.track_embeddings = false
-      allow(app).to receive(:call) { |ctx|
-        ctx.output = "result"
-        ctx
-      }
-
-      expect { middleware.call(context) }.not_to change(RubyLLM::Agents::Execution, :count)
-    end
-
-    it "checks track_image_generation for image agents" do
-      agent_class = Class.new do
-        def self.name
-          "ImageAgent"
-        end
-
-        def self.agent_type
-          :image
-        end
-
-        def self.model
-          "dalle-3"
-        end
-      end
-
-      middleware = described_class.new(app, agent_class)
-      context = RubyLLM::Agents::Pipeline::Context.new(input: "test", agent_class: agent_class)
-
-      RubyLLM::Agents.configuration.track_image_generation = false
-      allow(app).to receive(:call) { |ctx|
-        ctx.output = "result"
-        ctx
-      }
-
-      expect { middleware.call(context) }.not_to change(RubyLLM::Agents::Execution, :count)
-    end
-
-    it "checks track_audio for audio agents" do
-      agent_class = Class.new do
-        def self.name
-          "AudioAgent"
-        end
-
-        def self.agent_type
-          :audio
-        end
-
-        def self.model
-          "whisper-1"
-        end
-      end
-
-      middleware = described_class.new(app, agent_class)
-      context = RubyLLM::Agents::Pipeline::Context.new(input: "test", agent_class: agent_class)
-
-      RubyLLM::Agents.configuration.track_audio = false
-      allow(app).to receive(:call) { |ctx|
-        ctx.output = "result"
-        ctx
-      }
-
-      expect { middleware.call(context) }.not_to change(RubyLLM::Agents::Execution, :count)
-    end
-
-    it "checks track_executions for conversation agents" do
-      agent_class = Class.new do
-        def self.name
-          "ChatAgent"
-        end
-
-        def self.agent_type
-          :conversation
-        end
-
-        def self.model
-          "gpt-4o"
-        end
-      end
-
-      middleware = described_class.new(app, agent_class)
-      context = RubyLLM::Agents::Pipeline::Context.new(input: "test", agent_class: agent_class)
-
-      RubyLLM::Agents.configuration.track_executions = false
-      allow(app).to receive(:call) { |ctx|
-        ctx.output = "result"
-        ctx
-      }
-
-      expect { middleware.call(context) }.not_to change(RubyLLM::Agents::Execution, :count)
-    end
+    it_behaves_like "tracking disabled for agent type",
+      agent_type: :conversation, config_flag: :track_executions, agent_name: "ChatAgent", model_name: "gpt-4o"
 
     it "falls back to false when tracking config raises an error" do
       agent_class = Class.new do

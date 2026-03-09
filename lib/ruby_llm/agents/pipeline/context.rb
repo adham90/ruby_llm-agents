@@ -46,6 +46,9 @@ module RubyLLM
         # Response metadata
         attr_accessor :model_used, :finish_reason, :time_to_first_token_ms
 
+        # Debug trace (set when debug: true is passed)
+        attr_accessor :trace
+
         # Streaming support
         attr_accessor :stream_block, :skip_cache
 
@@ -85,6 +88,10 @@ module RubyLLM
           @skip_cache = skip_cache
           @stream_block = stream_block
 
+          # Debug trace
+          @trace = []
+          @trace_enabled = options[:debug] == true
+
           # Initialize tracking fields
           @attempt = 0
           @attempts_made = 0
@@ -106,6 +113,23 @@ module RubyLLM
           return nil unless @started_at && @completed_at
 
           ((@completed_at - @started_at) * 1000).to_i
+        end
+
+        # Is debug tracing enabled?
+        #
+        # @return [Boolean]
+        def trace_enabled?
+          @trace_enabled
+        end
+
+        # Adds a trace entry for a middleware execution
+        #
+        # @param middleware_name [String] Name of the middleware
+        # @param started_at [Time] When the middleware started
+        # @param duration_ms [Float] How long the middleware took in ms
+        # @param action [String, nil] Optional action description (e.g., "cache hit")
+        def add_trace(middleware_name, started_at:, duration_ms:, action: nil)
+          @trace << {middleware: middleware_name, started_at: started_at, duration_ms: duration_ms, action: action}.compact
         end
 
         # Was the result served from cache?
@@ -230,6 +254,8 @@ module RubyLLM
           # Preserve execution hierarchy
           new_ctx.parent_execution_id = @parent_execution_id
           new_ctx.root_execution_id = @root_execution_id
+          # Preserve trace across retries
+          new_ctx.trace = @trace
           new_ctx
         end
 

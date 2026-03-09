@@ -205,3 +205,24 @@ RSpec.shared_examples "a moderator" do
     expect(described_class.agent_type).to eq(:moderation)
   end
 end
+
+RSpec.shared_examples "tracking disabled for agent type" do |agent_type:, config_flag:, agent_name:, model_name: "test-model"|
+  it "does not create execution records when #{config_flag} is false" do
+    agent_klass = Class.new do
+      define_singleton_method(:name) { agent_name }
+      define_singleton_method(:agent_type) { agent_type }
+      define_singleton_method(:model) { model_name }
+    end
+
+    middleware = described_class.new(app, agent_klass)
+    context = RubyLLM::Agents::Pipeline::Context.new(input: "test", agent_class: agent_klass)
+
+    RubyLLM::Agents.configuration.public_send(:"#{config_flag}=", false)
+    allow(app).to receive(:call) { |ctx|
+      ctx.output = "result"
+      ctx
+    }
+
+    expect { middleware.call(context) }.not_to change(RubyLLM::Agents::Execution, :count)
+  end
+end

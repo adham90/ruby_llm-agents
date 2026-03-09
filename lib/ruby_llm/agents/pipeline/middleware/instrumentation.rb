@@ -39,45 +39,47 @@ module RubyLLM
           def call(context)
             context.started_at = Time.current
 
-            # Create "running" record immediately (SYNC - must appear on dashboard)
-            execution = create_running_execution(context)
-            context.execution_id = execution&.id
-            emit_start_notification(context)
-            status_update_completed = false
-            raised_exception = nil
-
-            begin
-              @app.call(context)
-              context.completed_at = Time.current
+            trace(context) do
+              # Create "running" record immediately (SYNC - must appear on dashboard)
+              execution = create_running_execution(context)
+              context.execution_id = execution&.id
+              emit_start_notification(context)
+              status_update_completed = false
+              raised_exception = nil
 
               begin
-                complete_execution(execution, context, status: "success")
-                status_update_completed = true
-              rescue
-                # Let ensure block handle via mark_execution_failed!
+                @app.call(context)
+                context.completed_at = Time.current
+
+                begin
+                  complete_execution(execution, context, status: "success")
+                  status_update_completed = true
+                rescue
+                  # Let ensure block handle via mark_execution_failed!
+                end
+
+                emit_complete_notification(context, "success")
+              rescue => e
+                context.completed_at = Time.current
+                context.error = e
+                raised_exception = e
+
+                begin
+                  complete_execution(execution, context, status: determine_error_status(e))
+                  status_update_completed = true
+                rescue
+                  # Let ensure block handle via mark_execution_failed!
+                end
+
+                emit_complete_notification(context, determine_error_status(e))
+                raise
+              ensure
+                # Emergency fallback if update failed
+                mark_execution_failed!(execution, error: raised_exception || $!) unless status_update_completed
               end
 
-              emit_complete_notification(context, "success")
-            rescue => e
-              context.completed_at = Time.current
-              context.error = e
-              raised_exception = e
-
-              begin
-                complete_execution(execution, context, status: determine_error_status(e))
-                status_update_completed = true
-              rescue
-                # Let ensure block handle via mark_execution_failed!
-              end
-
-              emit_complete_notification(context, determine_error_status(e))
-              raise
-            ensure
-              # Emergency fallback if update failed
-              mark_execution_failed!(execution, error: raised_exception || $!) unless status_update_completed
+              context
             end
-
-            context
           end
 
           private
@@ -111,7 +113,7 @@ module RubyLLM
 
             execution
           rescue => e
-            error("Failed to create running execution record: #{e.message}")
+            error("Failed to create running execution record: #{e.message}", context)
             nil
           end
 
@@ -142,7 +144,7 @@ module RubyLLM
             # Save detail data (prompts, responses, tool calls, etc.)
             save_execution_details(execution, context, status)
           rescue => e
-            error("Failed to complete execution record: #{e.message}")
+            error("Failed to complete execution record: #{e.message}", context)
             raise # Re-raise for ensure block to handle via mark_execution_failed!
           end
 
@@ -158,7 +160,7 @@ module RubyLLM
             return unless execution&.id
             return unless execution.status == "running"
 
-            error_message = error ? "#{error.class}: #{error.message}".truncate(1000) : "Unknown error"
+            error_message = build_error_message(error)
 
             update_data = {
               status: "error",
@@ -181,6 +183,28 @@ module RubyLLM
             end
           rescue => e
             error("CRITICAL: Failed emergency status update for execution #{execution&.id}: #{e.message}")
+          end
+
+          # Builds an informative error message including backtrace context
+          #
+          # Preserves the error class, message, and the most relevant
+          # backtrace frames (up to 10) so developers can trace the
+          # failure origin without needing to reproduce it.
+          #
+          # @param error [Exception, nil] The exception
+          # @return [String] Formatted error message with backtrace
+          def build_error_message(error)
+            return "Unknown error" unless error
+
+            parts = ["#{error.class}: #{error.message}"]
+
+            if error.backtrace&.any?
+              relevant_frames = error.backtrace.first(10)
+              parts << "Backtrace (first #{relevant_frames.size} frames):"
+              parts.concat(relevant_frames.map { |frame| "  #{frame}" })
+            end
+
+            parts.join("\n").truncate(5000)
           end
 
           # Determines the status based on error type
@@ -206,7 +230,7 @@ module RubyLLM
               execution_id: context.execution_id
             )
           rescue => e
-            debug("Start notification failed: #{e.message}")
+            debug("Start notification failed: #{e.message}", context)
           end
 
           # Emits an AS::Notification for execution completion or error
@@ -243,7 +267,7 @@ module RubyLLM
               error_message: context.error&.message
             )
           rescue => e
-            debug("Complete notification failed: #{e.message}")
+            debug("Complete notification failed: #{e.message}", context)
           end
 
           # Builds data for initial running execution record
@@ -325,7 +349,7 @@ module RubyLLM
             context_meta = begin
               context.metadata.dup
             rescue => e
-              debug("Failed to read context metadata: #{e.message}")
+              debug("Failed to read context metadata: #{e.message}", context)
               {}
             end
             context_meta.transform_keys!(&:to_s)
@@ -368,7 +392,7 @@ module RubyLLM
             end
 
             if context.error
-              detail_data[:error_message] = truncate_error_message(context.error.message)
+              detail_data[:error_message] = build_error_message(context.error)
             end
 
             if context[:tool_calls].present?
@@ -395,7 +419,7 @@ module RubyLLM
               execution.create_detail!(detail_data)
             end
           rescue => e
-            error("Failed to save execution details: #{e.message}")
+            error("Failed to save execution details: #{e.message}", context)
           end
 
           # Persists execution data to database (legacy fallback)
@@ -415,7 +439,7 @@ module RubyLLM
               create_execution_record(data)
             end
           rescue => e
-            error("Failed to record execution: #{e.message}")
+            error("Failed to record execution: #{e.message}", context)
           end
 
           # Builds execution data hash for the legacy single-step persistence path.
@@ -438,7 +462,7 @@ module RubyLLM
               detail_data[:user_prompt] = context.input.to_s.presence
               detail_data[:assistant_prompt] = exec_opts[:assistant_prefill] if assistant_prompt_column_exists?
             end
-            detail_data[:error_message] = truncate_error_message(context.error.message) if context.error
+            detail_data[:error_message] = build_error_message(context.error) if context.error
             detail_data[:tool_calls] = context[:tool_calls] if context[:tool_calls].present?
             detail_data[:attempts] = context[:reliability_attempts] if context[:reliability_attempts].present?
             if global_config.persist_responses && context.output.respond_to?(:content)
@@ -477,7 +501,7 @@ module RubyLLM
             params = begin
               context.agent_instance.send(:options)
             rescue => e
-              debug("Failed to extract agent options: #{e.message}")
+              debug("Failed to extract agent options: #{e.message}", context)
               {}
             end
             params = params.dup
@@ -508,7 +532,7 @@ module RubyLLM
             result = context.agent_instance.metadata
             result.is_a?(Hash) ? result : {}
           rescue => e
-            debug("Failed to retrieve agent metadata: #{e.message}")
+            debug("Failed to retrieve agent metadata: #{e.message}", context)
             {}
           end
 
@@ -558,7 +582,7 @@ module RubyLLM
           def truncate_error_message(message)
             return "" if message.nil?
 
-            message.to_s.truncate(1000)
+            message.to_s.truncate(5000)
           rescue
             message.to_s[0, 1000]
           end
@@ -585,7 +609,7 @@ module RubyLLM
 
             response_data
           rescue => e
-            error("Failed to serialize response: #{e.message}")
+            error("Failed to serialize response: #{e.message}", context)
             nil
           end
 
@@ -612,7 +636,7 @@ module RubyLLM
 
             detail_data[:response] = serialize_audio_response(context.output)
           rescue => e
-            error("Failed to persist audio response: #{e.message}")
+            error("Failed to persist audio response: #{e.message}", context)
           end
 
           # Serializes a SpeechResult into a hash for the response column
@@ -668,7 +692,7 @@ module RubyLLM
               cfg.track_executions
             end
           rescue => e
-            debug("Failed to check tracking config: #{e.message}")
+            debug("Failed to check tracking config: #{e.message}", context)
             false
           end
 

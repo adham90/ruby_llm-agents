@@ -819,6 +819,16 @@ module RubyLLM
         tenant_resolver&.call
       end
 
+      # Returns a concise string representation for debugging
+      #
+      # @return [String] Summary of key configuration values
+      def inspect
+        "#<#{self.class} model=#{default_model.inspect} temperature=#{default_temperature} " \
+          "timeout=#{default_timeout} streaming=#{default_streaming} " \
+          "multi_tenancy=#{multi_tenancy_enabled} async_logging=#{async_logging} " \
+          "track_executions=#{track_executions}>"
+      end
+
       # Returns whether the async gem is available
       #
       # @return [Boolean] true if async gem is loaded
