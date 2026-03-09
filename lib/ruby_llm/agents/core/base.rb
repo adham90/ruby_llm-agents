@@ -87,6 +87,10 @@ module RubyLLM
         run_callbacks(:after, context, response)
 
         context.output = build_result(processed_content, response, context)
+      rescue RubyLLM::UnauthorizedError, RubyLLM::ForbiddenError => e
+        raise_with_setup_hint(e, context)
+      rescue RubyLLM::ModelNotFoundError => e
+        raise_with_model_hint(e, context)
       end
 
       # Returns the resolved tenant ID for tracking

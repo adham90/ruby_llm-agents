@@ -1069,4 +1069,64 @@ RSpec.describe RubyLLM::Agents::Base do
       expect(block_callback_executed).to be true
     end
   end
+
+  describe "actionable error messages" do
+    let(:agent_class) do
+      Class.new(described_class) do
+        model "gpt-4o"
+        param :query, required: true
+
+        private
+
+        def system_prompt
+          "You are helpful."
+        end
+
+        def user_prompt
+          query
+        end
+      end
+    end
+
+    let(:agent) { agent_class.new(query: "test") }
+    let(:context) do
+      RubyLLM::Agents::Pipeline::Context.new(
+        input: "test",
+        agent_class: agent_class,
+        agent_instance: agent
+      )
+    end
+
+    it "wraps UnauthorizedError with setup hint" do
+      allow(agent).to receive(:build_client) { raise RubyLLM::UnauthorizedError.allocate.tap { |e| e.define_singleton_method(:message) { "Invalid API key" } } }
+
+      expect {
+        agent.send(:execute, context)
+      }.to raise_error(RubyLLM::Agents::ConfigurationError, /ruby_llm_agents:doctor/)
+    end
+
+    it "wraps ModelNotFoundError with model hint" do
+      allow(agent).to receive(:build_client).and_raise(RubyLLM::ModelNotFoundError, "not found")
+
+      expect {
+        agent.send(:execute, context)
+      }.to raise_error(RubyLLM::Agents::ConfigurationError, /config\.default_model/)
+    end
+
+    it "includes provider name in auth error" do
+      allow(agent).to receive(:build_client) { raise RubyLLM::UnauthorizedError.allocate.tap { |e| e.define_singleton_method(:message) { "bad key" } } }
+
+      expect {
+        agent.send(:execute, context)
+      }.to raise_error(RubyLLM::Agents::ConfigurationError, /OpenAI/)
+    end
+
+    it "includes model name in model error" do
+      allow(agent).to receive(:build_client).and_raise(RubyLLM::ModelNotFoundError, "not found")
+
+      expect {
+        agent.send(:execute, context)
+      }.to raise_error(RubyLLM::Agents::ConfigurationError, /gpt-4o/)
+    end
+  end
 end

@@ -206,7 +206,7 @@ puts run.summary
 
 ## Quick Start
 
-### Installation
+### 1. Install
 
 ```ruby
 # Gemfile
@@ -219,29 +219,49 @@ rails generate ruby_llm_agents:install
 rails db:migrate
 ```
 
-### Configure API Keys
+### 2. Set one API key
 
-Configure all provider API keys in one place (v2.1+):
+Uncomment one line in `config/initializers/ruby_llm_agents.rb`:
 
 ```ruby
-# config/initializers/ruby_llm_agents.rb
 RubyLLM::Agents.configure do |config|
   config.openai_api_key = ENV["OPENAI_API_KEY"]
-  config.anthropic_api_key = ENV["ANTHROPIC_API_KEY"]
-  config.gemini_api_key = ENV["GOOGLE_API_KEY"]
 end
 ```
 
-Or use environment variables directly (auto-detected by RubyLLM):
+Then set the environment variable (e.g., in `.env` or Rails credentials).
 
-```bash
-# .env
-OPENAI_API_KEY=sk-...
-ANTHROPIC_API_KEY=sk-ant-...
-GOOGLE_API_KEY=...
+<details>
+<summary>Other providers</summary>
+
+```ruby
+config.anthropic_api_key = ENV["ANTHROPIC_API_KEY"]
+config.gemini_api_key    = ENV["GOOGLE_API_KEY"]
+config.deepseek_api_key  = ENV["DEEPSEEK_API_KEY"]
+# ... see initializer for full list
 ```
 
-### Generate an Agent
+Or use environment variables directly (auto-detected by RubyLLM):
+```bash
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+```
+</details>
+
+### 3. Verify setup
+
+```bash
+rails ruby_llm_agents:doctor
+```
+
+### 4. Try it
+
+```bash
+rails generate ruby_llm_agents:demo
+bin/rails runner bin/smoke_test_agent
+```
+
+Or generate a custom agent:
 
 ```bash
 rails generate ruby_llm_agents:agent SearchIntent query:required

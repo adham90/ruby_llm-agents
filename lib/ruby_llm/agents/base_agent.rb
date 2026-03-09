@@ -730,6 +730,10 @@ module RubyLLM
         capture_response(response, context)
         result = build_result(process_response(response), response, context)
         context.output = result
+      rescue RubyLLM::UnauthorizedError, RubyLLM::ForbiddenError => e
+        raise_with_setup_hint(e, context)
+      rescue RubyLLM::ModelNotFoundError => e
+        raise_with_model_hint(e, context)
       ensure
         Thread.current[:ruby_llm_agents_caller_context] = previous_context
       end
@@ -1094,6 +1098,44 @@ module RubyLLM
           tool_call.send(key)
         elsif tool_call.respond_to?(:[])
           tool_call[key] || tool_call[key.to_s]
+        end
+      end
+
+      # Re-raises auth errors with actionable setup guidance
+      def raise_with_setup_hint(error, context)
+        effective_model = context&.model || model
+        provider = detect_provider(effective_model)
+
+        hint = "#{self.class.name} failed: #{error.message}\n\n" \
+               "The API key for #{provider || "your provider"} is missing or invalid.\n" \
+               "Fix: Set the key in config/initializers/ruby_llm_agents.rb\n" \
+               "     or run: rails ruby_llm_agents:doctor"
+
+        raise RubyLLM::Agents::ConfigurationError, hint
+      end
+
+      # Re-raises model errors with actionable guidance
+      def raise_with_model_hint(error, context)
+        effective_model = context&.model || model
+
+        hint = "#{self.class.name} failed: #{error.message}\n\n" \
+               "Model '#{effective_model}' was not found.\n" \
+               "Fix: Check the model name or set a default in your initializer:\n" \
+               "     config.default_model = \"gpt-4o\""
+
+        raise RubyLLM::Agents::ConfigurationError, hint
+      end
+
+      # Best-effort provider detection from model name
+      def detect_provider(model_id)
+        return nil unless model_id
+
+        case model_id.to_s
+        when /gpt|o[1-9]|dall-e|whisper|tts/i then "OpenAI"
+        when /claude/i then "Anthropic"
+        when /gemini|gemma/i then "Google (Gemini)"
+        when /deepseek/i then "DeepSeek"
+        when /mistral|mixtral/i then "Mistral"
         end
       end
     end

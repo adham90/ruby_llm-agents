@@ -53,6 +53,17 @@ module RubyLLM
           helper RubyLLM::Agents::ApplicationHelper
           before_action :authenticate_dashboard!
 
+          rescue_from ::ActiveRecord::StatementInvalid do |e|
+            if e.message.include?("ruby_llm_agents_")
+              render plain: "RubyLLM::Agents migrations are pending.\n\n" \
+                           "Run: rails db:migrate\n" \
+                           "Or:  rails ruby_llm_agents:doctor",
+                status: :service_unavailable
+            else
+              raise
+            end
+          end
+
           private
 
           # Authenticates dashboard access using configured method
