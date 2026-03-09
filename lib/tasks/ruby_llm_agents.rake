@@ -1,6 +1,12 @@
 # frozen_string_literal: true
 
 namespace :ruby_llm_agents do
+  desc "Validate your RubyLLM::Agents setup (API keys, migrations, routes, jobs)"
+  task doctor: :environment do
+    require "generators/ruby_llm_agents/doctor_generator"
+    RubyLlmAgents::DoctorGenerator.start([])
+  end
+
   desc "Rename an agent type in execution records. Usage: rake ruby_llm_agents:rename_agent FROM=OldName TO=NewName [DRY_RUN=1]"
   task rename_agent: :environment do
     from = ENV["FROM"]

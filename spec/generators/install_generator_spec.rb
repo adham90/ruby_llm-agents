@@ -60,7 +60,7 @@ RSpec.describe RubyLlmAgents::InstallGenerator, type: :generator do
 
     it "contains API keys section" do
       content = file_content("config/initializers/ruby_llm_agents.rb")
-      expect(content).to include("LLM Provider API Keys")
+      expect(content).to include("Quick Start")
       expect(content).to include("config.openai_api_key")
       expect(content).to include("config.anthropic_api_key")
       expect(content).to include("config.gemini_api_key")

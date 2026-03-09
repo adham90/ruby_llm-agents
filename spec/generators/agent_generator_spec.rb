@@ -16,31 +16,25 @@ RSpec.describe RubyLlmAgents::AgentGenerator, type: :generator do
       expect(content).to include("class SearchIntentAgent < ApplicationAgent")
     end
 
-    it "includes default model configuration" do
+    it "uses configured default model (no hardcoded model line)" do
       content = file_content("app/agents/search_intent_agent.rb")
-      expect(content).to include('model "gemini-2.0-flash"')
-      expect(content).to include("temperature 0.0")
+      expect(content).not_to include('model "gemini-2.0-flash"')
+      expect(content).not_to include('model "default"')
     end
 
-    it "includes prompt methods" do
+    it "uses modern DSL with system and prompt" do
       content = file_content("app/agents/search_intent_agent.rb")
-      expect(content).to include("def system_prompt")
-      expect(content).to include("def user_prompt")
+      expect(content).to include('system "You are a helpful assistant."')
+      expect(content).to include("prompt ")
     end
   end
 
   describe "with required parameter" do
     before { run_generator ["SearchIntent", "query:required"] }
 
-    it "creates param with required: true" do
+    it "uses {placeholder} syntax in prompt for required params" do
       content = file_content("app/agents/search_intent_agent.rb")
-      expect(content).to include("param :query, required: true")
-    end
-
-    it "uses the param in user_prompt" do
-      content = file_content("app/agents/search_intent_agent.rb")
-      # The template uses the first param name in user_prompt
-      expect(content).to match(/def user_prompt\s+.*query/m)
+      expect(content).to include("{query}")
     end
   end
 
@@ -56,11 +50,16 @@ RSpec.describe RubyLlmAgents::AgentGenerator, type: :generator do
   describe "with multiple parameters" do
     before { run_generator ["SearchIntent", "query:required", "limit:10", "format"] }
 
-    it "creates all params" do
+    it "uses placeholder syntax for all params in prompt" do
       content = file_content("app/agents/search_intent_agent.rb")
-      expect(content).to include("param :query, required: true")
+      expect(content).to include("{query}")
+      expect(content).to include("{limit}")
+      expect(content).to include("{format}")
+    end
+
+    it "adds explicit param declaration for defaults" do
+      content = file_content("app/agents/search_intent_agent.rb")
       expect(content).to include('param :limit, default: "10"')
-      expect(content).to include("param :format")
     end
   end
 
@@ -70,6 +69,15 @@ RSpec.describe RubyLlmAgents::AgentGenerator, type: :generator do
     it "uses the specified model" do
       content = file_content("app/agents/search_intent_agent.rb")
       expect(content).to include('model "gpt-4o"')
+    end
+  end
+
+  describe "without --model option" do
+    before { run_generator ["SearchIntent"] }
+
+    it "omits model line to use configured default" do
+      content = file_content("app/agents/search_intent_agent.rb")
+      expect(content).not_to match(/^\s*model /)
     end
   end
 
@@ -85,18 +93,9 @@ RSpec.describe RubyLlmAgents::AgentGenerator, type: :generator do
   describe "--cache option" do
     before { run_generator ["SearchIntent", "--cache=1.hour"] }
 
-    it "includes cache configuration" do
+    it "includes cache configuration with modern syntax" do
       content = file_content("app/agents/search_intent_agent.rb")
-      expect(content).to include("cache 1.hour")
-    end
-  end
-
-  describe "without --cache option" do
-    before { run_generator ["SearchIntent"] }
-
-    it "includes commented cache example" do
-      content = file_content("app/agents/search_intent_agent.rb")
-      expect(content).to include("# cache 1.hour")
+      expect(content).to include("cache for: 1.hour")
     end
   end
 
@@ -121,8 +120,8 @@ RSpec.describe RubyLlmAgents::AgentGenerator, type: :generator do
       expect(content).to include("class ContentGeneratorAgent < ApplicationAgent")
       expect(content).to include('model "claude-3-sonnet"')
       expect(content).to include("temperature 0.5")
-      expect(content).to include("cache 30.minutes")
-      expect(content).to include("param :text, required: true")
+      expect(content).to include("cache for: 30.minutes")
+      expect(content).to include("{text}")
       expect(content).to include('param :max_length, default: "500"')
     end
   end

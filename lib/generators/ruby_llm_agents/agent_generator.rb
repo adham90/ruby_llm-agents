@@ -21,8 +21,8 @@ module RubyLlmAgents
 
     argument :params, type: :array, default: [], banner: "param[:required|:default] param[:required|:default]"
 
-    class_option :model, type: :string, default: "gemini-2.0-flash",
-      desc: "The LLM model to use"
+    class_option :model, type: :string, default: "default",
+      desc: "The LLM model to use (omit to use configured default)"
     class_option :temperature, type: :numeric, default: 0.0,
       desc: "The temperature setting (0.0-1.0)"
     class_option :cache, type: :string, default: nil,
