@@ -59,7 +59,8 @@ Welcome to the official documentation for **RubyLLM::Agents**, a production-read
 - **[Error Handling](Error-Handling)** - Error types and recovery
 
 ### Operations
-- **[Dashboard](Dashboard)** - Monitoring UI guide
+- **[Using Data in Your App](Using-Data-In-Your-App)** - Query usage, costs, and tenant data for custom dashboards
+- **[Dashboard](Dashboard)** - Built-in monitoring UI
 - **[Database Queries](Database-Queries)** - Execution model queries and analytics
 - **[Production Deployment](Production-Deployment)** - Deployment guide
 - **[Background Jobs](Background-Jobs)** - Async logging

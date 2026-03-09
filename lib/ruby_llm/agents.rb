@@ -216,6 +216,146 @@ module RubyLLM
         @configuration = Configuration.new
       end
 
+      # ============================================================
+      # Convenience Query API
+      # ============================================================
+      # These methods provide quick access to execution data without
+      # needing to reference model classes directly.
+
+      # Returns a chainable scope of all executions.
+      #
+      # @return [ActiveRecord::Relation] All executions
+      #
+      # @example Recent successful executions
+      #   RubyLLM::Agents.executions.successful.recent(10)
+      #
+      # @example Filter by agent
+      #   RubyLLM::Agents.executions.by_agent("ChatAgent").today
+      def executions
+        Execution.all
+      end
+
+      # Returns a usage summary for a given period.
+      #
+      # @param period [Symbol, Range] :today, :yesterday, :this_week, :this_month,
+      #   :last_7_days, :last_30_days, or a custom Time range
+      # @param agent [String, Class, nil] Optional agent class or name to filter by
+      # @param tenant [String, Object, nil] Optional tenant ID or object to filter by
+      # @return [Hash] Usage summary with keys:
+      #   :executions, :successful, :failed, :success_rate,
+      #   :total_cost, :total_tokens, :avg_duration_ms, :avg_cost
+      #
+      # @example Global usage today
+      #   RubyLLM::Agents.usage(period: :today)
+      #
+      # @example Per-agent usage
+      #   RubyLLM::Agents.usage(period: :this_month, agent: "ChatAgent")
+      #
+      # @example Per-tenant usage
+      #   RubyLLM::Agents.usage(period: :this_week, tenant: current_user)
+      def usage(period: :today, agent: nil, tenant: nil)
+        scope = scope_for_period(Execution, period)
+        scope = scope.by_agent(agent_name_for(agent)) if agent
+        scope = scope_for_tenant(scope, tenant) if tenant
+
+        total = scope.count
+        successful = scope.successful.count
+
+        {
+          executions: total,
+          successful: successful,
+          failed: scope.failed.count,
+          success_rate: total.zero? ? 0.0 : (successful.to_f / total * 100).round(1),
+          total_cost: scope.sum(:total_cost),
+          total_tokens: scope.sum(:total_tokens),
+          avg_duration_ms: scope.average(:duration_ms)&.round,
+          avg_cost: total.zero? ? 0 : (scope.sum(:total_cost).to_f / total).round(6)
+        }
+      end
+
+      # Returns cost breakdown by agent for a period.
+      #
+      # @param period [Symbol, Range] Time period (see #usage)
+      # @param tenant [String, Object, nil] Optional tenant filter
+      # @return [Hash{String => Hash}] Agent name => { cost:, count:, avg_cost: }
+      #
+      # @example
+      #   RubyLLM::Agents.costs(period: :this_month)
+      #   # => { "ChatAgent" => { cost: 12.50, count: 1000, avg_cost: 0.0125 } }
+      def costs(period: :today, tenant: nil)
+        scope = scope_for_period(Execution, period)
+        scope = scope_for_tenant(scope, tenant) if tenant
+
+        scope.group(:agent_type).pluck(
+          :agent_type,
+          Arel.sql("COUNT(*)"),
+          Arel.sql("SUM(total_cost)"),
+          Arel.sql("AVG(total_cost)")
+        ).each_with_object({}) do |(agent, count, total, avg), hash|
+          hash[agent] = {
+            cost: total&.to_f&.round(6) || 0,
+            count: count,
+            avg_cost: avg&.to_f&.round(6) || 0
+          }
+        end
+      end
+
+      # Returns all registered agents with their stats.
+      #
+      # @return [Array<Hash>] Agent info with name, model, stats, etc.
+      #
+      # @example
+      #   RubyLLM::Agents.agents
+      #   # => [{ name: "ChatAgent", active: true, model: "gpt-4o", ... }]
+      def agents
+        AgentRegistry.all_with_details
+      end
+
+      # Returns a tenant's usage data.
+      #
+      # @param tenant [String, Object] Tenant ID or object with llm_tenant_id
+      # @return [RubyLLM::Agents::Tenant, nil] The tenant record
+      #
+      # @example
+      #   tenant = RubyLLM::Agents.tenant_for(current_user)
+      #   tenant.cost_today       # => 0.42
+      #   tenant.budget_status    # => { enabled: true, enforcement: :soft, ... }
+      def tenant_for(tenant)
+        Tenant.for(tenant)
+      rescue
+        nil
+      end
+
+      private
+
+      def scope_for_period(model, period)
+        case period
+        when :today then model.today
+        when :yesterday then model.yesterday
+        when :this_week then model.this_week
+        when :this_month then model.this_month
+        when :last_7_days then model.last_n_days(7)
+        when :last_30_days then model.last_n_days(30)
+        when Range then model.where(created_at: period)
+        else model.all
+        end
+      end
+
+      def scope_for_tenant(scope, tenant)
+        tenant_id = case tenant
+        when String then tenant
+        else
+          tenant.try(:llm_tenant_id) || tenant.try(:tenant_id) || tenant.try(:id)&.to_s
+        end
+        scope.by_tenant(tenant_id)
+      end
+
+      def agent_name_for(agent)
+        agent.is_a?(String) ? agent : agent.name
+      end
+
+      public
+
       # Renames an agent in the database, updating execution records and
       # tenant budget configuration keys
       #
