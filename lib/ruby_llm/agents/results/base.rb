@@ -112,6 +112,11 @@ module RubyLLM
       #   @return [String, nil] The agent class that produced this result
       attr_reader :agent_class_name
 
+      # @!group Cancellation
+      # @!attribute [r] cancelled
+      #   @return [Boolean] Whether the execution was cancelled
+      attr_reader :cancelled
+
       # @!group Debug
       # @!attribute [r] trace
       #   @return [Array<Hash>, nil] Pipeline trace entries (when debug: true)
@@ -173,6 +178,9 @@ module RubyLLM
         # Tracking
         @agent_class_name = options[:agent_class_name]
 
+        # Cancellation
+        @cancelled = options[:cancelled] || false
+
         # Debug trace
         @trace = options[:trace]
 
@@ -220,6 +228,13 @@ module RubyLLM
       # @return [Boolean] true if an error occurred
       def error?
         !success?
+      end
+
+      # Returns whether the execution was cancelled
+      #
+      # @return [Boolean] true if cancelled
+      def cancelled?
+        cancelled == true
       end
 
       # Returns whether a fallback model was used

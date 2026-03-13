@@ -730,6 +730,8 @@ module RubyLLM
         capture_response(response, context)
         result = build_result(process_response(response), response, context)
         context.output = result
+      rescue RubyLLM::Agents::CancelledError
+        context.output = Result.new(content: nil, cancelled: true)
       rescue RubyLLM::UnauthorizedError, RubyLLM::ForbiddenError => e
         raise_with_setup_hint(e, context)
       rescue RubyLLM::ModelNotFoundError => e

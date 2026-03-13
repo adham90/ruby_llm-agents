@@ -30,9 +30,9 @@ What doesn't exist: tool base class with context access, per-tool timeouts, sepa
 
 | Phase | Feature | Depends On |
 |-------|---------|------------|
-| 1 | [Tool Base Class](#phase-1--tool-base-class) | Nothing |
-| 2 | [Tool Execution Tracking](#phase-2--tool-execution-tracking) | Phase 1 |
-| 3 | [Cancellation](#phase-3--cancellation) | Phase 1 |
+| 1 | [Tool Base Class](#phase-1--tool-base-class) | Nothing | **DONE** |
+| 2 | [Tool Execution Tracking](#phase-2--tool-execution-tracking) | Phase 1 | **DONE** |
+| 3 | [Cancellation](#phase-3--cancellation) | Phase 1 | **DONE** |
 
 ---
 

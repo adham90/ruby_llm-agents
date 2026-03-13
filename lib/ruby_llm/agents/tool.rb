@@ -71,6 +71,8 @@ module RubyLLM
 
         record = start_tool_tracking(pipeline_context, args)
 
+        check_cancelled!(pipeline_context)
+
         timeout_seconds = self.class.timeout
         timeout_seconds ||= RubyLLM::Agents.configuration.default_tool_timeout
 
@@ -144,6 +146,13 @@ module RubyLLM
         )
       rescue => e
         Rails.logger.debug("[RubyLLM::Agents::Tool] Tracking update failed: #{e.message}") if defined?(Rails) && Rails.logger
+      end
+
+      def check_cancelled!(pipeline_context)
+        return unless pipeline_context
+        on_cancelled = pipeline_context[:on_cancelled]
+        return unless on_cancelled.respond_to?(:call)
+        raise CancelledError, "Execution cancelled" if on_cancelled.call
       end
 
       def normalize_input(args)
