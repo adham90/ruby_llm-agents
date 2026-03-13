@@ -67,7 +67,11 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Budget do
         tenant = instance_double(RubyLLM::Agents::Tenant)
         allow(RubyLLM::Agents::Tenant).to receive(:find_by).and_return(tenant)
         expect(tenant).to receive(:check_budget!).with("TestAgent")
-        allow(tenant).to receive(:record_execution!)
+        expect(tenant).to receive(:record_execution!).with(
+          cost: 0,
+          tokens: 0,
+          error: false
+        )
 
         allow(app).to receive(:call) do |ctx|
           ctx.output = "result"
@@ -129,6 +133,29 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Budget do
         middleware.call(context)
       end
 
+      it "records spend via tenant model after successful execution" do
+        context = build_context(tenant: {id: "org_123"})
+        context.tenant_id = "org_123"
+
+        tenant = instance_double(RubyLLM::Agents::Tenant)
+        allow(RubyLLM::Agents::Tenant).to receive(:find_by).and_return(tenant)
+        allow(tenant).to receive(:check_budget!)
+
+        allow(app).to receive(:call) do |ctx|
+          ctx.output = "result"
+          ctx.total_cost = 0.05
+          ctx
+        end
+
+        expect(tenant).to receive(:record_execution!).with(
+          cost: 0.05,
+          tokens: 0,
+          error: false
+        )
+
+        middleware.call(context)
+      end
+
       it "re-raises BudgetExceededError" do
         context = build_context
 
@@ -154,7 +181,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Budget do
         expect { middleware.call(context) }.not_to raise_error
       end
 
-      it "logs but does not fail on spend recording errors" do
+      it "raises spend recording errors instead of silently swallowing them" do
         context = build_context
         context.total_cost = 0.05
 
@@ -168,8 +195,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Budget do
           StandardError.new("Redis connection failed")
         )
 
-        # Should not raise, should continue execution
-        expect { middleware.call(context) }.not_to raise_error
+        expect { middleware.call(context) }.to raise_error(StandardError, "Redis connection failed")
       end
 
       it "does not record spend when context is not successful" do

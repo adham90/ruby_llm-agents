@@ -124,7 +124,7 @@ module RubyLLM
                 tenant.record_execution!(
                   cost: context.total_cost || 0,
                   tokens: context.total_tokens || 0,
-                  error: context.error?
+                  error: context.failed?
                 )
                 return
               end
@@ -146,8 +146,6 @@ module RubyLLM
                 tenant_id: context.tenant_id
               )
             end
-          rescue => e
-            error("Failed to record spend: #{e.message}", context)
           end
         end
       end

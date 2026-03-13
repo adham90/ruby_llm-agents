@@ -325,7 +325,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
         breaker = instance_double(RubyLLM::Agents::CircuitBreaker)
         allow(RubyLLM::Agents::CircuitBreaker).to receive(:from_config).and_return(breaker)
         allow(breaker).to receive(:open?).and_return(false)
-        allow(breaker).to receive(:record_failure!)
         allow(app).to receive(:call).and_raise(ArgumentError, "bad args")
 
         expect(breaker).to receive(:record_failure!)
@@ -438,8 +437,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
       before do
         allow(RubyLLM::Agents::CircuitBreaker).to receive(:from_config).and_return(breaker)
-        allow(breaker).to receive(:record_success!)
-        allow(breaker).to receive(:record_failure!)
       end
 
       it "skips models with open circuit breakers" do
@@ -461,12 +458,13 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
         allow(primary_breaker).to receive(:open?).and_return(true)
         allow(fallback_breaker).to receive(:open?).and_return(false)
-        allow(fallback_breaker).to receive(:record_success!)
 
         allow(app).to receive(:call) do |ctx|
           ctx.output = "fallback result"
           ctx
         end
+
+        expect(fallback_breaker).to receive(:record_success!)
 
         result = middleware.call(context)
 
@@ -976,7 +974,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
         allow(primary_breaker).to receive(:open?).and_return(true)
         allow(fallback_breaker).to receive(:open?).and_return(false)
-        allow(fallback_breaker).to receive(:record_success!)
 
         context = RubyLLM::Agents::Pipeline::Context.new(
           input: "test", agent_class: agent_cb, model: "primary-model"
@@ -986,6 +983,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
           ctx.output = "fallback result"
           ctx
         end
+
+        expect(fallback_breaker).to receive(:record_success!)
 
         result = cb_middleware.call(context)
         attempts = result[:reliability_attempts]
