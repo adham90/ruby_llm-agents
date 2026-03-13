@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.10.0] - 2026-03-13
+
+### Added
+
+- **`RubyLLM::Agents::Tool` base class** — Extends `RubyLLM::Tool` with agent context access, per-tool timeouts, and automatic error handling. Users implement `execute()` (standard RubyLLM convention) while `call()` wraps with context, timeout, and error recovery
+- **`ToolContext` accessor** — Read-only context wrapper providing method-style (`context.container_id`) and hash-style (`context[:container_id]`) access to agent params, tenant ID, and execution ID from within tools
+- **Per-tool timeout DSL** — `timeout 30` class-level DSL on tools, with `config.default_tool_timeout` global fallback
+- **`ToolExecution` model** — Real-time per-tool tracking with individual database records (INSERT on start, UPDATE on complete), enabling live dashboard views and queryable tool-level analytics
+- **Cancellation support** — `on_cancelled:` proc checked before each tool execution. Raises `CancelledError` which `BaseAgent` catches to return `Result` with `cancelled? = true`
+- **`Result#cancelled?`** — Query whether an agent execution was cancelled mid-run
+- **Example coding agent** — `CodingAgent` with `FileReaderTool` demonstrating tool context and timeout features
+
+### Fixed
+
+- **Undefined method `error?` on Context** — Fixed budget middleware breaking tenant budget tracking when `Pipeline::Context` lacked the `error?` method
+
 ## [3.9.0] - 2026-03-09
 
 ### Added
@@ -843,6 +859,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [2.0.0]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.4...v2.0.0
 [1.3.4]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.3...v1.3.4
 [1.3.3]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.2...v1.3.3
+[3.10.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.9.0...v3.10.0
 [1.3.2]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/adham90/ruby_llm-agents/compare/v1.2.3...v1.3.0
