@@ -26,6 +26,10 @@ require_relative "agents/base_agent"
 # Agent-as-Tool adapter
 require_relative "agents/agent_tool"
 
+# Tool base class and context for coding agents
+require_relative "agents/tool_context"
+require_relative "agents/tool"
+
 # Infrastructure - Budget & Utilities
 require_relative "agents/infrastructure/circuit_breaker"
 require_relative "agents/infrastructure/budget_tracker"

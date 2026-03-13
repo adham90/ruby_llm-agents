@@ -387,6 +387,7 @@ module RubyLLM
         :default_total_timeout,
         :default_streaming,
         :default_tools,
+        :default_tool_timeout,
         :default_thinking,
         :on_alert,
         :persist_prompts,
@@ -639,6 +640,7 @@ module RubyLLM
         # Streaming, tools, and thinking defaults
         @default_streaming = false
         @default_tools = []
+        @default_tool_timeout = nil
         @default_thinking = nil
 
         # Governance defaults
