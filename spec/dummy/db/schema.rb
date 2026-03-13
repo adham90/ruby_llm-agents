@@ -107,6 +107,32 @@ ActiveRecord::Schema.define do
     t.timestamps
   end
 
+  # Tool execution tracking (individual tool calls within an agent execution)
+  create_table :ruby_llm_agents_tool_executions, force: :cascade do |t|
+    t.references :execution, null: false,
+      foreign_key: {to_table: :ruby_llm_agents_executions, on_delete: :cascade}
+
+    t.string :tool_name, null: false
+    t.string :tool_call_id
+    t.integer :iteration, null: false, default: 1
+    t.string :status, null: false, default: "running"
+
+    t.json :input, null: false, default: {}
+    t.text :output
+    t.text :error_message
+    t.integer :output_bytes, default: 0
+
+    t.datetime :started_at
+    t.datetime :completed_at
+    t.integer :duration_ms
+
+    t.timestamps
+  end
+
+  add_index :ruby_llm_agents_tool_executions, [:execution_id, :iteration]
+  add_index :ruby_llm_agents_tool_executions, :tool_name
+  add_index :ruby_llm_agents_tool_executions, :status
+
   # Tenants table (renamed from tenant_budgets)
   create_table :ruby_llm_agents_tenants, force: :cascade do |t|
     # Identity

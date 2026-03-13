@@ -74,6 +74,10 @@ module RubyLLM
       has_one :detail, class_name: "RubyLLM::Agents::ExecutionDetail",
         foreign_key: :execution_id, dependent: :destroy
 
+      # Individual tool call records (real-time tracking)
+      has_many :tool_executions, class_name: "RubyLLM::Agents::ToolExecution",
+        foreign_key: :execution_id, dependent: :destroy
+
       # Delegations so existing code keeps working transparently
       delegate :system_prompt, :user_prompt, :assistant_prompt, :response, :error_message,
         :messages_summary, :tool_calls, :attempts, :fallback_chain,
