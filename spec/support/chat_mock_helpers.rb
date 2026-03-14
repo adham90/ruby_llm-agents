@@ -52,7 +52,9 @@ module ChatMockHelpers
     model_id: "gpt-4",
     tool_calls: nil,
     finish_reason: "stop",
-    thinking: nil
+    thinking: nil,
+    cached_tokens: nil,
+    cache_creation_tokens: nil
   )
     mock = double("RubyLLM::Message")
 
@@ -65,6 +67,8 @@ module ChatMockHelpers
     allow(mock).to receive(:finish_reason).and_return(finish_reason)
     allow(mock).to receive(:thinking).and_return(thinking)
     allow(mock).to receive(:thinking_content).and_return(thinking)
+    allow(mock).to receive(:cached_tokens).and_return(cached_tokens)
+    allow(mock).to receive(:cache_creation_tokens).and_return(cache_creation_tokens)
 
     mock
   end

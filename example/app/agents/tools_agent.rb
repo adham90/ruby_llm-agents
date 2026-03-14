@@ -9,8 +9,6 @@
 # - Loop continues until final answer
 #
 # Tools are fast, local operations (math, file reads, API calls).
-# For delegating to other AI agents, see the `agents` DSL in
-# OrchestratorAgent instead.
 #
 # Available tools:
 # - CalculatorTool: Math operations
@@ -43,7 +41,7 @@ class ToolsAgent < ApplicationAgent
 
   # Register tools available to this agent
   # The LLM will receive descriptions and can call them as needed
-  tools [CalculatorTool, WeatherTool]
+  tools CalculatorTool, WeatherTool
 
   param :query, required: true
 

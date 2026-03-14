@@ -310,13 +310,9 @@ Register tools for the agent to use. You can pass `RubyLLM::Tool` subclasses, ag
 
 ```ruby
 class MyAgent < ApplicationAgent
-  tools [SearchTool, CalculatorTool, WeatherTool]
+  tools SearchTool, CalculatorTool, WeatherTool
 end
 
-# Use other agents as tools
-class OrchestratorAgent < ApplicationAgent
-  tools [ResearchAgent, SummarizerAgent, CalculatorTool]
-end
 ```
 
 For dynamic tool selection based on runtime context, override as an instance method:
@@ -332,7 +328,7 @@ class SmartAgent < ApplicationAgent
 end
 ```
 
-See [Tools](Tools) for details on tool definition and agent-as-tool composition.
+See [Tools](Tools) for details on tool definition.
 
 ### aliases
 

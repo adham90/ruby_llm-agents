@@ -31,7 +31,7 @@ module RubyLLM
     # @example Using with an agent
     #   class CodingAgent < ApplicationAgent
     #     param :container_id, required: true
-    #     tools [BashTool]
+    #     tools BashTool
     #   end
     #
     #   CodingAgent.call(query: "list files", container_id: "abc123")

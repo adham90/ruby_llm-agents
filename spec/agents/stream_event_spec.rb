@@ -38,24 +38,6 @@ RSpec.describe RubyLLM::Agents::StreamEvent do
     it "returns false for :chunk" do
       expect(described_class.new(:chunk).tool_event?).to be false
     end
-
-    it "returns false for :agent_start" do
-      expect(described_class.new(:agent_start).tool_event?).to be false
-    end
-  end
-
-  describe "#agent_event?" do
-    it "returns true for :agent_start" do
-      expect(described_class.new(:agent_start).agent_event?).to be true
-    end
-
-    it "returns true for :agent_end" do
-      expect(described_class.new(:agent_end).agent_event?).to be true
-    end
-
-    it "returns false for :tool_start" do
-      expect(described_class.new(:tool_start).agent_event?).to be false
-    end
   end
 
   describe "#error?" do

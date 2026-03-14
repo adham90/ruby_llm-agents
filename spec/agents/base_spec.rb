@@ -123,7 +123,7 @@ RSpec.describe RubyLLM::Agents::Base do
         expect(klass.tools).to eq([])
       end
 
-      it "allows multiple tools" do
+      it "allows multiple tools as array" do
         tool1 = mock_tool
         tool2 = Class.new {
           def self.name
@@ -134,6 +134,27 @@ RSpec.describe RubyLLM::Agents::Base do
           tools [tool1, tool2]
         end
         expect(klass.tools).to include(tool1, tool2)
+      end
+
+      it "allows multiple tools without brackets" do
+        tool1 = mock_tool
+        tool2 = Class.new {
+          def self.name
+            "AnotherTool"
+          end
+        }
+        klass = Class.new(described_class) do
+          tools tool1, tool2
+        end
+        expect(klass.tools).to include(tool1, tool2)
+      end
+
+      it "allows a single tool without brackets" do
+        tool = mock_tool
+        klass = Class.new(described_class) do
+          tools tool
+        end
+        expect(klass.tools).to eq([tool])
       end
 
       it "inherits tools from parent" do
@@ -786,17 +807,6 @@ RSpec.describe RubyLLM::Agents::Base do
       end
     end
 
-    let(:sub_agent) do
-      Class.new(described_class) do
-        def self.name
-          "SubAgent"
-        end
-
-        description "A sub-agent used as a tool"
-        param :query, required: true, desc: "Query text"
-      end
-    end
-
     it "passes regular tools through unchanged" do
       tool = regular_tool
       klass = Class.new(described_class) do
@@ -813,65 +823,35 @@ RSpec.describe RubyLLM::Agents::Base do
       expect(resolved).to eq([tool])
     end
 
-    it "wraps agent classes with AgentTool" do
-      agent_cls = sub_agent
-      klass = Class.new(described_class) do
-        tools [agent_cls]
-        param :query, required: true
-
-        def user_prompt
-          query
-        end
-      end
-
-      agent = klass.new(query: "test")
-      resolved = agent.send(:resolved_tools)
-      expect(resolved.length).to eq(1)
-      expect(resolved.first).to be < RubyLLM::Tool
-      expect(resolved.first.agent_class).to eq(agent_cls)
-    end
-
-    it "mixes regular tools and agent tools" do
-      tool = regular_tool
-      agent_cls = sub_agent
-      klass = Class.new(described_class) do
-        tools [tool, agent_cls]
-        param :query, required: true
-
-        def user_prompt
-          query
-        end
-      end
-
-      agent = klass.new(query: "test")
-      resolved = agent.send(:resolved_tools)
-      expect(resolved.length).to eq(2)
-      expect(resolved.first).to eq(tool)
-      expect(resolved.last).to be < RubyLLM::Tool
-      expect(resolved.last.agent_class).to eq(agent_cls)
-    end
-
     it "raises on duplicate tool names" do
-      agent1 = Class.new(described_class) do
+      tool1 = Class.new(RubyLLM::Tool) do
+        description "First search"
+        param :query, desc: "Query"
+
         def self.name
-          "SearchAgent"
+          "SearchTool"
         end
 
-        description "First search"
-        param :query, required: true, desc: "Query"
+        def execute(query: nil)
+          "result"
+        end
       end
 
-      agent2 = Class.new(described_class) do
+      tool2 = Class.new(RubyLLM::Tool) do
+        description "Second search"
+        param :query, desc: "Query"
+
         def self.name
-          "Agents::SearchAgent"
+          "SearchTool"
         end
 
-        description "Second search"
-        param :query, required: true, desc: "Query"
+        def execute(query: nil)
+          "result"
+        end
       end
 
       klass = Class.new(described_class) do
-        tools [agent1, agent2]
+        tools [tool1, tool2]
         param :input, required: true
 
         def user_prompt

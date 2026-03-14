@@ -110,7 +110,7 @@ streaming true  # Enable streaming by default
 ### Tools
 
 ```ruby
-tools [SearchTool, CalculatorTool]  # Make tools available to agent
+tools SearchTool, CalculatorTool  # Make tools available to agent
 ```
 
 ### Extended Thinking

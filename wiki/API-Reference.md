@@ -238,7 +238,7 @@ Options:
 Register tools for the agent.
 
 ```ruby
-tools [SearchTool, CalculatorTool]
+tools SearchTool, CalculatorTool
 ```
 
 #### `.retries(options)`

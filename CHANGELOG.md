@@ -9,12 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`agents` DSL** — Separate DSL for declaring sub-agent delegates, distinct from `tools`. Supports simple form (`agents [AgentA, AgentB], forward: [:workspace_path]`) and block form with per-agent `timeout:` and `description:` overrides, `forward` parameter auto-injection, and `instructions` text
-- **`forward` parameter injection** — Auto-injects parent agent params into sub-agent calls and removes them from the LLM-facing tool schema, eliminating token waste and reducing failure points
-- **System prompt auto-generation** — Agents with the `agents` DSL automatically get "## Direct Tools" and "## Agents" sections appended to their system prompt, helping the LLM distinguish between cheap local tools and expensive autonomous agents
-- **`StreamEvent` value object** — Typed streaming events (`:chunk`, `:tool_start`, `:tool_end`, `:agent_start`, `:agent_end`, `:error`) for full execution lifecycle visibility. Opt-in via `stream_events: true` on `.call()` — default raw chunk behavior unchanged
+- **`StreamEvent` value object** — Typed streaming events (`:chunk`, `:tool_start`, `:tool_end`, `:error`) for full execution lifecycle visibility. Opt-in via `stream_events: true` on `.call()` — default raw chunk behavior unchanged
 - **Router auto-delegation** — Routes with `agent:` mapping now automatically invoke the mapped agent after classification. `RoutingResult` exposes `delegated?`, `delegated_to`, `routing_cost`, and `total_cost` for full visibility into the classification + delegation pipeline
-- **`OrchestratorAgent` example** — New example agent demonstrating the `agents` DSL with block form, `forward`, and `instructions`
 
 ## [3.10.0] - 2026-03-13
 
@@ -114,7 +110,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Agent-as-tool composition** — Wrap any agent as a RubyLLM tool with `AgentTool` adapter. Use `tools AgentTool.from(OtherAgent)` to let agents call other agents. Execution hierarchy tracked via `parent_execution_id` in metadata
 - **Queryable agents** — Query execution history directly from agent classes: `.executions`, `.last_run`, `.failures(since:)`, `.total_spent(since:)`, `.stats(since:)`, `.cost_by_model(since:)`, `.with_params(**params)`. Includes replay support for A/B testing models on real inputs
 - **ActiveSupport Notifications** — Instrument the full pipeline with `ruby_llm_agents.*` events:
   - Execution lifecycle: `execution.start`, `execution.complete`, `execution.error`

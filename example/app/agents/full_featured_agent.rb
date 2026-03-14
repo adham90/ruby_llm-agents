@@ -97,7 +97,7 @@ class FullFeaturedAgent < ApplicationAgent
   # ===========================================
   # Tools
   # ===========================================
-  tools [CalculatorTool, WeatherTool]
+  tools CalculatorTool, WeatherTool
 
   # ===========================================
   # Error Handling (Simplified DSL)

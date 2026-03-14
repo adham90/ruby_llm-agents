@@ -214,6 +214,33 @@ module RubyLLM
           @timeout || inherited_or_default(:timeout, default_timeout)
         end
 
+        # Enables Anthropic prompt caching for this agent
+        #
+        # When enabled, adds cache_control breakpoints to the system prompt
+        # and the last tool definition so Anthropic caches them across
+        # multi-turn agent loops. This reduces input token costs by ~90%
+        # on subsequent calls within the same cache window (~5 minutes).
+        #
+        # Only takes effect when the resolved model is served by Anthropic.
+        # Non-Anthropic models silently ignore this setting.
+        #
+        # @param value [Boolean, nil] Whether to enable prompt caching
+        # @return [Boolean] The current setting
+        #
+        # @example
+        #   class BuildAgent < ApplicationAgent
+        #     cache_prompts true
+        #     system "You are a build assistant."
+        #     tools BuildTool, TestTool, DeployTool
+        #   end
+        #
+        def cache_prompts(value = nil)
+          @cache_prompts = value unless value.nil?
+          return @cache_prompts if defined?(@cache_prompts) && !@cache_prompts.nil?
+
+          inherited_or_default(:cache_prompts, false)
+        end
+
         # Sets or returns the response schema for structured output
         #
         # Accepts a hash (JSON Schema), a block (passed to RubyLLM::Schema.create),

@@ -2,25 +2,17 @@
 
 # CodingAgent - Demonstrates RubyLLM::Agents::Tool with context
 #
-# This agent showcases the new tool base class features:
+# This agent showcases the tool base class features:
 # - Tools inherit from RubyLLM::Agents::Tool (instead of RubyLLM::Tool)
 # - Tools access agent params via `context` (e.g., context.workspace_path)
 # - Per-tool timeouts (FileReaderTool has timeout 10)
 # - Automatic error handling in tools
 #
-# This agent can also be used as a sub-agent via the `agents` DSL.
-# See OrchestratorAgent for an example of delegating to CodingAgent.
-#
-# @example Direct usage
+# @example Usage
 #   CodingAgent.call(
 #     query: "Read the Gemfile and tell me what dependencies we have",
 #     workspace_path: "/path/to/project"
 #   )
-#
-# @example As a sub-agent (workspace_path auto-forwarded)
-#   class MyOrchestrator < ApplicationAgent
-#     agents [CodingAgent], forward: [:workspace_path]
-#   end
 #
 # @example Tool context flow
 #   # 1. Agent is called with workspace_path: "/app"
@@ -36,7 +28,7 @@ class CodingAgent < ApplicationAgent
   temperature 0.0
   timeout 60
 
-  tools [FileReaderTool, CalculatorTool]
+  tools FileReaderTool, CalculatorTool
 
   param :query, required: true
   param :workspace_path, default: "."

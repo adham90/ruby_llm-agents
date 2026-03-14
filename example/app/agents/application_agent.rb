@@ -77,7 +77,7 @@
 #
 # TOOLS:
 # ------
-#   tools [SearchTool, CalculatorTool]  # Array of RubyLLM::Tool classes
+#   tools SearchTool, CalculatorTool  # RubyLLM::Tool classes
 #   # Tools are automatically executed when the LLM requests them.
 #   # The agent loops until the LLM provides a final answer.
 #

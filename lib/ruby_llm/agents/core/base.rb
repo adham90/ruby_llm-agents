@@ -72,7 +72,12 @@ module RubyLLM
       # @param context [Pipeline::Context] The execution context
       # @return [void] Sets context.output with the result
       def execute(context)
+        @context = context
         @execution_started_at = context.started_at || Time.current
+
+        # Make context available to Tool instances during tool execution
+        previous_context = Thread.current[:ruby_llm_agents_caller_context]
+        Thread.current[:ruby_llm_agents_caller_context] = context
 
         # Run before_call callbacks
         run_callbacks(:before, context)
@@ -87,10 +92,14 @@ module RubyLLM
         run_callbacks(:after, context, response)
 
         context.output = build_result(processed_content, response, context)
+      rescue RubyLLM::Agents::CancelledError
+        context.output = Result.new(content: nil, cancelled: true)
       rescue RubyLLM::UnauthorizedError, RubyLLM::ForbiddenError => e
         raise_with_setup_hint(e, context)
       rescue RubyLLM::ModelNotFoundError => e
         raise_with_model_hint(e, context)
+      ensure
+        Thread.current[:ruby_llm_agents_caller_context] = previous_context
       end
 
       # Returns the resolved tenant ID for tracking

@@ -101,8 +101,7 @@ tree_cost = RubyLLM::Agents::Execution
 ### How It Works
 
 - **Root execution**: When an agent runs at the top level, `root_execution_id` is set to its own `id` and `parent_execution_id` is `nil`.
-- **Child execution**: When a sub-agent is invoked as a tool, `parent_execution_id` points to the calling agent's execution and `root_execution_id` points to the top-level execution.
-- **Depth**: There is no limit on the number of children, but nesting depth is capped at 5 levels to prevent runaway recursion.
+- **Child execution**: When an agent is called from within another agent's execution, `parent_execution_id` points to the calling agent's execution and `root_execution_id` points to the top-level execution.
 
 ## Viewing Executions
 
