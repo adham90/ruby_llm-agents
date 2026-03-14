@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.11.0] - 2026-03-14
+
+### Added
+
+- **`agents` DSL** — Separate DSL for declaring sub-agent delegates, distinct from `tools`. Supports simple form (`agents [AgentA, AgentB], forward: [:workspace_path]`) and block form with per-agent `timeout:` and `description:` overrides, `forward` parameter auto-injection, and `instructions` text
+- **`forward` parameter injection** — Auto-injects parent agent params into sub-agent calls and removes them from the LLM-facing tool schema, eliminating token waste and reducing failure points
+- **System prompt auto-generation** — Agents with the `agents` DSL automatically get "## Direct Tools" and "## Agents" sections appended to their system prompt, helping the LLM distinguish between cheap local tools and expensive autonomous agents
+- **`StreamEvent` value object** — Typed streaming events (`:chunk`, `:tool_start`, `:tool_end`, `:agent_start`, `:agent_end`, `:error`) for full execution lifecycle visibility. Opt-in via `stream_events: true` on `.call()` — default raw chunk behavior unchanged
+- **Router auto-delegation** — Routes with `agent:` mapping now automatically invoke the mapped agent after classification. `RoutingResult` exposes `delegated?`, `delegated_to`, `routing_cost`, and `total_cost` for full visibility into the classification + delegation pipeline
+- **`OrchestratorAgent` example** — New example agent demonstrating the `agents` DSL with block form, `forward`, and `instructions`
+
 ## [3.10.0] - 2026-03-13
 
 ### Added
@@ -859,6 +870,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [2.0.0]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.4...v2.0.0
 [1.3.4]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.3...v1.3.4
 [1.3.3]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.2...v1.3.3
+[3.11.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.10.0...v3.11.0
 [3.10.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.9.0...v3.10.0
 [1.3.2]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/adham90/ruby_llm-agents/compare/v1.3.0...v1.3.1
