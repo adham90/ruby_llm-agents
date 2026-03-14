@@ -11,19 +11,25 @@ module RubyLLM
       # Wraps an agent class as a RubyLLM::Tool subclass.
       #
       # @param agent_class [Class] A BaseAgent subclass
+      # @param forwarded_params [Array<Symbol>] Params auto-injected from parent (excluded from LLM schema)
+      # @param description_override [String, nil] Custom description for the tool
+      # @param delegate [Boolean] Whether this tool represents an agent delegate (from `agents` DSL)
       # @return [Class] An anonymous RubyLLM::Tool subclass
-      def self.for(agent_class)
+      def self.for(agent_class, forwarded_params: [], description_override: nil, delegate: false)
         tool_name = derive_tool_name(agent_class)
-        tool_desc = agent_class.respond_to?(:description) ? agent_class.description : nil
+        tool_desc = description_override || (agent_class.respond_to?(:description) ? agent_class.description : nil)
         agent_params = agent_class.respond_to?(:params) ? agent_class.params : {}
         captured_agent_class = agent_class
+        captured_forwarded = Array(forwarded_params).map(&:to_sym)
+        is_delegate = delegate
 
         Class.new(RubyLLM::Tool) do
           description tool_desc if tool_desc
 
-          # Map agent params to tool params
+          # Map agent params to tool params, excluding forwarded ones
           agent_params.each do |name, config|
             next if name.to_s.start_with?("_")
+            next if captured_forwarded.include?(name.to_sym)
 
             param name,
               desc: config[:desc] || "#{name} parameter",
@@ -34,6 +40,8 @@ module RubyLLM
           # Store references on the class
           define_singleton_method(:agent_class) { captured_agent_class }
           define_singleton_method(:tool_name) { tool_name }
+          define_singleton_method(:agent_delegate?) { is_delegate }
+          define_singleton_method(:forwarded_params) { captured_forwarded }
 
           # Instance #name returns the derived tool name
           define_method(:name) { tool_name }
@@ -54,6 +62,16 @@ module RubyLLM
               call_kwargs[:_parent_execution_id] = caller_ctx.execution_id
               call_kwargs[:_root_execution_id] = caller_ctx.root_execution_id || caller_ctx.execution_id
               call_kwargs[:tenant] = caller_ctx.tenant_object if caller_ctx.tenant_id && !call_kwargs.key?(:tenant)
+
+              # Inject forwarded params from the parent agent instance
+              if captured_forwarded.any? && caller_ctx.agent_instance
+                captured_forwarded.each do |param_name|
+                  next if call_kwargs.key?(param_name)
+                  if caller_ctx.agent_instance.respond_to?(param_name)
+                    call_kwargs[param_name] = caller_ctx.agent_instance.send(param_name)
+                  end
+                end
+              end
             end
 
             result = captured_agent_class.call(**call_kwargs)

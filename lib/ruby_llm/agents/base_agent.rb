@@ -47,6 +47,7 @@ module RubyLLM
       extend DSL::Reliability
       extend DSL::Caching
       extend DSL::Queryable
+      extend DSL::Agents
       include CacheHelper
 
       class << self
@@ -168,6 +169,7 @@ module RubyLLM
             description: description,
             schema: schema&.respond_to?(:name) ? schema.name : schema&.class&.name,
             tools: tools.map { |t| t.respond_to?(:name) ? t.name : t.to_s },
+            agents: agents_config.agent_entries.map { |e| e[:agent_class].name },
             parameters: params.transform_values { |v| v.slice(:type, :required, :default, :desc) },
             thinking: thinking_config,
             caching: caching_config,
@@ -387,10 +389,19 @@ module RubyLLM
       # System prompt for LLM instructions
       #
       # If a class-level `system` DSL is defined, it will be used.
-      # Otherwise returns nil.
+      # When `agents` are declared, auto-generated sections describing
+      # direct tools and agent delegates are appended.
       #
       # @return [String, nil] System instructions, or nil for none
       def system_prompt
+        base = base_system_prompt
+        append_agents_system_prompt(base)
+      end
+
+      # Returns the raw system prompt without agent/tool sections
+      #
+      # @return [String, nil]
+      def base_system_prompt
         system_config = self.class.system_config
         return resolve_prompt_from_config(system_config) if system_config
 
@@ -512,6 +523,7 @@ module RubyLLM
           tenant: resolve_tenant,
           skip_cache: @options[:skip_cache],
           stream_block: (block if streaming_enabled?),
+          stream_events: @options[:stream_events] == true,
           parent_execution_id: @parent_execution_id,
           root_execution_id: @root_execution_id,
           debug: @options[:debug],
@@ -552,6 +564,55 @@ module RubyLLM
         end
       end
 
+      # Appends auto-generated agent/tool sections to the system prompt
+      # when agents are declared via the `agents` DSL.
+      #
+      # @param base [String, nil] The base system prompt
+      # @return [String, nil] System prompt with agent sections appended
+      def append_agents_system_prompt(base)
+        config = self.class.agents_config
+        return base if config.agent_entries.empty?
+
+        all_tools = resolved_tools
+        tools = all_tools.reject { |t| t.respond_to?(:agent_delegate?) && t.agent_delegate? }
+        agents = all_tools.select { |t| t.respond_to?(:agent_delegate?) && t.agent_delegate? }
+
+        sections = [base].compact
+
+        if tools.any?
+          sections << "\n## Direct Tools"
+          sections << "Fast, local operations:\n"
+          sections << tools.map { |t| "- #{tool_name_for(t)}: #{tool_description_for(t)}" }.join("\n")
+        end
+
+        if agents.any?
+          sections << "\n## Agents"
+          sections << "Specialized AI agents for substantial tasks."
+          sections << "Multiple agents can work simultaneously when called in the same turn.\n"
+          sections << agents.map { |t| "- #{tool_name_for(t)}: #{tool_description_for(t)}" }.join("\n")
+        end
+
+        if config.instructions_text
+          sections << "\n#{config.instructions_text}"
+        end
+
+        sections.join("\n")
+      end
+
+      # Returns the description for a tool class
+      #
+      # @param tool [Class] A tool class
+      # @return [String] The tool's description
+      def tool_description_for(tool)
+        if tool.respond_to?(:description) && tool.description
+          tool.description
+        elsif tool.is_a?(Class) && tool < RubyLLM::Tool
+          tool.new.respond_to?(:description) ? tool.new.description : tool.name.to_s
+        else
+          tool.name.to_s
+        end
+      end
+
       # Resolves tools for this execution
       #
       # Agent classes in the tools list are automatically wrapped as
@@ -567,9 +628,31 @@ module RubyLLM
           self.class.tools
         end
 
-        wrapped = raw.map { |tool_class| wrap_if_agent(tool_class) }
-        detect_duplicate_tool_names!(wrapped)
-        wrapped
+        regular_tools = raw.map { |tool_class| wrap_if_agent(tool_class) }
+        agent_tools = resolve_agent_list
+
+        all_tools = regular_tools + agent_tools
+        detect_duplicate_tool_names!(all_tools)
+        all_tools
+      end
+
+      # Wraps agent classes from the `agents` DSL as AgentTool instances
+      # with `agent_delegate?` marker, forwarded params, and description overrides.
+      #
+      # @return [Array<Class>] Wrapped agent tool classes
+      def resolve_agent_list
+        config = self.class.agents_config
+        return [] if config.agent_entries.empty?
+
+        config.agent_entries.map do |entry|
+          agent_class = entry[:agent_class]
+          AgentTool.for(
+            agent_class,
+            forwarded_params: config.forwarded_params,
+            description_override: config.description_for(agent_class),
+            delegate: true
+          )
+        end
       end
 
       # Wraps an agent class as a tool, or returns the tool class as-is.
@@ -720,6 +803,7 @@ module RubyLLM
       # @param context [Pipeline::Context] The execution context
       # @return [void] Sets context.output with the result
       def execute(context)
+        @context = context
         client = build_client(context)
 
         # Make context available to AgentTool instances during tool execution
@@ -817,7 +901,11 @@ module RubyLLM
 
           response = client.complete do |chunk|
             first_chunk_at ||= Time.current
-            context.stream_block.call(chunk)
+            if context.stream_events?
+              context.stream_block.call(StreamEvent.new(:chunk, {content: chunk.content}))
+            else
+              context.stream_block.call(chunk)
+            end
           end
 
           if first_chunk_at
@@ -843,7 +931,11 @@ module RubyLLM
 
         response = client.ask(user_prompt, **ask_opts) do |chunk|
           first_chunk_at ||= Time.current
-          context.stream_block.call(chunk)
+          if context.stream_events?
+            context.stream_block.call(StreamEvent.new(:chunk, {content: chunk.content}))
+          else
+            context.stream_block.call(chunk)
+          end
         end
 
         if first_chunk_at
@@ -993,8 +1085,80 @@ module RubyLLM
       # @return [RubyLLM::Chat] Client with tracking callbacks
       def setup_tool_tracking(client)
         client
-          .on_tool_call { |tool_call| start_tracking_tool_call(tool_call) }
-          .on_tool_result { |result| complete_tool_call_tracking(result) }
+          .on_tool_call do |tool_call|
+            start_tracking_tool_call(tool_call)
+            name = extract_tool_call_value(tool_call, :name)
+            event_type = agent_delegate_name?(name) ? :agent_start : :tool_start
+            emit_stream_event(event_type, tool_call_start_data(tool_call))
+          end
+          .on_tool_result do |result|
+            name = @pending_tool_call&.dig(:name)
+            event_type = agent_delegate_name?(name) ? :agent_end : :tool_end
+            end_data = tool_call_end_data(result)
+            complete_tool_call_tracking(result)
+            emit_stream_event(event_type, end_data)
+          end
+      end
+
+      # Checks whether a tool name corresponds to an agent delegate
+      #
+      # @param tool_name [String] The tool name
+      # @return [Boolean]
+      def agent_delegate_name?(tool_name)
+        return false unless tool_name
+
+        resolved_tools.any? do |t|
+          t.respond_to?(:agent_delegate?) && t.agent_delegate? &&
+            tool_name_for(t) == tool_name
+        end
+      end
+
+      # Emits a StreamEvent to the caller's stream block when stream_events is enabled
+      #
+      # @param type [Symbol] Event type (:chunk, :tool_start, :tool_end, :agent_start, :agent_end, :error)
+      # @param data [Hash] Event-specific data
+      def emit_stream_event(type, data)
+        return unless @context&.stream_block && @context.stream_events?
+
+        @context.stream_block.call(StreamEvent.new(type, data))
+      end
+
+      # Builds data hash for a tool_start/agent_start event
+      #
+      # @param tool_call [Object] The tool call object from RubyLLM
+      # @return [Hash] Event data
+      def tool_call_start_data(tool_call)
+        name = extract_tool_call_value(tool_call, :name)
+        data = {
+          tool_name: name,
+          input: extract_tool_call_value(tool_call, :arguments) || {}
+        }
+
+        if agent_delegate_name?(name)
+          agent_tool = resolved_tools.find { |t| tool_name_for(t) == name && t.respond_to?(:agent_class) }
+          data[:agent_name] = name
+          data[:agent_class] = agent_tool&.agent_class&.name
+        end
+
+        data.compact
+      end
+
+      # Builds data hash for a tool_end/agent_end event from the pending tool call
+      #
+      # @param result [Object] The tool result
+      # @return [Hash] Event data
+      def tool_call_end_data(result)
+        return {} unless @pending_tool_call
+
+        started_at = @pending_tool_call[:started_at]
+        duration_ms = started_at ? ((Time.current - started_at) * 1000).to_i : nil
+        result_data = extract_tool_result(result)
+
+        {
+          tool_name: @pending_tool_call[:name],
+          status: result_data[:status],
+          duration_ms: duration_ms
+        }.compact
       end
 
       # Starts tracking a tool call

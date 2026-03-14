@@ -3,10 +3,14 @@
 # ToolsAgent - Demonstrates the tools DSL
 #
 # This agent showcases tool integration:
-# - Multiple tools can be registered
+# - Multiple tools can be registered via `tools`
 # - LLM decides when to call tools
 # - Tool results are sent back to LLM
 # - Loop continues until final answer
+#
+# Tools are fast, local operations (math, file reads, API calls).
+# For delegating to other AI agents, see the `agents` DSL in
+# OrchestratorAgent instead.
 #
 # Available tools:
 # - CalculatorTool: Math operations

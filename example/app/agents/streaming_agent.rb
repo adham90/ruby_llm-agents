@@ -6,6 +6,7 @@
 # - Tokens are yielded as they arrive
 # - Great for long responses or real-time UIs
 # - Time to first token tracked
+# - Stream events provide visibility into tool/agent lifecycle
 #
 # @example Basic streaming with block
 #   StreamingAgent.call(query: "Tell me a story") do |chunk|
@@ -17,6 +18,16 @@
 #     print chunk.content
 #   end
 #   puts "\nTotal tokens: #{result.total_tokens}"
+#
+# @example Stream events (typed events for full lifecycle visibility)
+#   StreamingAgent.call(query: "Tell me a story", stream_events: true) do |event|
+#     case event.type
+#     when :chunk      then print event.data[:content]
+#     when :tool_start then puts "Running #{event.data[:tool_name]}..."
+#     when :tool_end   then puts "Done (#{event.data[:duration_ms]}ms)"
+#     when :error      then puts "Error: #{event.data[:message]}"
+#     end
+#   end
 #
 # @example Non-streaming (collects all tokens)
 #   result = StreamingAgent.call(query: "Tell me a story")

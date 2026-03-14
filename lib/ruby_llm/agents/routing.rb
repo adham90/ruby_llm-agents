@@ -131,9 +131,28 @@ module RubyLLM
       end
 
       # Override build_result to return a RoutingResult.
+      # Auto-delegates to the mapped agent when the route has an `agent:` mapping.
       def build_result(content, response, context)
         base = super
+
+        # Auto-delegate to the mapped agent
+        agent_class = content[:agent_class]
+        if agent_class
+          content[:delegated_result] = agent_class.call(**delegation_params)
+        end
+
         RoutingResult.new(base_result: base, route_data: content)
+      end
+
+      # Builds params to forward to the delegated agent.
+      # Forwards original message and custom params, excludes routing internals.
+      #
+      # @return [Hash] Params for the delegated agent
+      def delegation_params
+        forward = @options.except(:dry_run, :skip_cache, :debug, :stream_events)
+        forward[:_parent_execution_id] = @parent_execution_id if @parent_execution_id
+        forward[:_root_execution_id] = @root_execution_id if @root_execution_id
+        forward
       end
     end
   end

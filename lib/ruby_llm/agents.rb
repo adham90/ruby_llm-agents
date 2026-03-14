@@ -26,6 +26,9 @@ require_relative "agents/base_agent"
 # Agent-as-Tool adapter
 require_relative "agents/agent_tool"
 
+# Streaming events
+require_relative "agents/stream_event"
+
 # Tool base class and context for coding agents
 require_relative "agents/tool_context"
 require_relative "agents/tool"

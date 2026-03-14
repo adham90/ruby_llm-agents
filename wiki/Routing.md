@@ -86,14 +86,16 @@ class AppRouter < ApplicationAgent
 end
 
 result = AppRouter.call(message: "I was charged twice")
-result.route        # => :billing
-result.agent_class  # => BillingAgent
-
-# Dispatch to the target agent yourself:
-target_result = result.agent_class.ask(message)
+result.route            # => :billing
+result.delegated?       # => true
+result.delegated_to     # => BillingAgent
+result.content          # => BillingAgent's response content
+result.routing_cost     # => cost of classification step
+result.total_cost       # => classification + delegation combined
+result.delegated_result # => full Result from BillingAgent
 ```
 
-The router never auto-executes the target agent. You decide what to do with the route.
+When a route has an `agent:` mapping, the router automatically classifies and then invokes that agent, returning the delegated agent's response as the result content. Routes without `agent:` just classify.
 
 ## RoutingResult
 
@@ -103,13 +105,20 @@ The router never auto-executes the target agent. You decide what to do with the 
 result = SupportRouter.call(message: "I was charged twice")
 
 # Routing fields
-result.route          # => :billing (Symbol)
-result.agent_class    # => BillingAgent or nil
-result.raw_response   # => "billing" (raw LLM text)
+result.route            # => :billing (Symbol)
+result.agent_class      # => BillingAgent or nil
+result.raw_response     # => "billing" (raw LLM text)
+
+# Delegation fields (when route has agent: mapping)
+result.delegated?       # => true/false
+result.delegated_to     # => BillingAgent or nil
+result.delegated_result # => full Result from delegated agent, or nil
+result.content          # => delegated agent's content (when delegated)
+result.routing_cost     # => cost of classification step only
+result.total_cost       # => classification + delegation combined
 
 # Standard Result fields (all available)
 result.success?       # => true
-result.total_cost     # => 0.00008
 result.input_tokens   # => 85
 result.output_tokens  # => 3
 result.duration_ms    # => 280
@@ -117,7 +126,7 @@ result.model_id       # => "gpt-4o-mini"
 result.cached?        # => false
 
 # Serialization
-result.to_h           # => { route: :billing, agent_class: "BillingAgent", ... }
+result.to_h           # => { route: :billing, agent_class: "BillingAgent", delegated: true, ... }
 ```
 
 ## Custom Prompts
@@ -419,3 +428,7 @@ Inherits from `Result`. Additional attributes:
 | `route` | Symbol | The classified route name |
 | `agent_class` | Class/nil | Mapped agent class (if defined) |
 | `raw_response` | String | Raw text from the LLM |
+| `delegated?` | Boolean | Whether auto-delegation occurred |
+| `delegated_to` | Class/nil | The agent that was auto-invoked |
+| `delegated_result` | Result/nil | Full result from the delegated agent |
+| `routing_cost` | Float | Cost of classification step only |

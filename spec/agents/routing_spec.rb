@@ -419,6 +419,110 @@ RSpec.describe RubyLLM::Agents::Routing do
       expect(result.output_tokens).to eq(3)
     end
 
+    it "auto-delegates to the mapped agent when route has agent: mapping" do
+      billing_agent = Class.new(RubyLLM::Agents::BaseAgent) do
+        def self.name = "BillingAgent"
+        model "gpt-4o"
+        param :message, required: false
+        def user_prompt
+          message || "default"
+        end
+      end
+      billing_ref = billing_agent
+
+      router_with_agents = Class.new(RubyLLM::Agents::BaseAgent) do
+        include RubyLLM::Agents::Routing
+
+        model "gpt-4o-mini"
+        temperature 0.0
+
+        route :billing, "Billing, charges, refunds", agent: billing_ref
+        default_route :general
+      end
+
+      mock_response = build_mock_response(
+        content: "billing",
+        input_tokens: 85,
+        output_tokens: 3,
+        model_id: "gpt-4o-mini"
+      )
+      mock_chat = build_mock_chat_client(response: mock_response)
+      stub_ruby_llm_chat(mock_chat)
+
+      # Verify the routed agent IS called
+      expect(billing_agent).to receive(:call).and_call_original
+
+      result = router_with_agents.call(message: "I was charged twice")
+
+      expect(result.route).to eq(:billing)
+      expect(result.agent_class).to eq(billing_agent)
+      expect(result.delegated?).to be true
+      expect(result.delegated_to).to eq(billing_agent)
+    end
+
+    it "does not delegate when route has no agent mapping" do
+      router_no_agents = Class.new(RubyLLM::Agents::BaseAgent) do
+        include RubyLLM::Agents::Routing
+
+        model "gpt-4o-mini"
+        temperature 0.0
+
+        route :billing, "Billing, charges, refunds"
+        default_route :general
+      end
+
+      mock_response = build_mock_response(
+        content: "billing",
+        input_tokens: 85,
+        output_tokens: 3,
+        model_id: "gpt-4o-mini"
+      )
+      mock_chat = build_mock_chat_client(response: mock_response)
+      stub_ruby_llm_chat(mock_chat)
+
+      result = router_no_agents.call(message: "I was charged twice")
+
+      expect(result.route).to eq(:billing)
+      expect(result.delegated?).to be false
+      expect(result.delegated_to).to be_nil
+    end
+
+    it "exposes routing_cost separately from total_cost" do
+      billing_agent = Class.new(RubyLLM::Agents::BaseAgent) do
+        def self.name = "BillingCostAgent"
+        model "gpt-4o"
+        param :message, required: false
+        def user_prompt
+          message || "default"
+        end
+      end
+      billing_ref = billing_agent
+
+      router = Class.new(RubyLLM::Agents::BaseAgent) do
+        include RubyLLM::Agents::Routing
+
+        model "gpt-4o-mini"
+        temperature 0.0
+
+        route :billing, "Billing", agent: billing_ref
+        default_route :general
+      end
+
+      mock_response = build_mock_response(
+        content: "billing",
+        input_tokens: 85,
+        output_tokens: 3,
+        model_id: "gpt-4o-mini"
+      )
+      mock_chat = build_mock_chat_client(response: mock_response)
+      stub_ruby_llm_chat(mock_chat)
+
+      result = router.call(message: "test")
+
+      expect(result.routing_cost).to be_a(Numeric)
+      expect(result.total_cost).to be >= result.routing_cost
+    end
+
     it "works with dry_run mode" do
       result = router_class.call(message: "test", dry_run: true)
 

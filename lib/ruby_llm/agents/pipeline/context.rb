@@ -50,7 +50,7 @@ module RubyLLM
         attr_accessor :trace
 
         # Streaming support
-        attr_accessor :stream_block, :skip_cache
+        attr_accessor :stream_block, :skip_cache, :stream_events
 
         # Agent metadata
         attr_reader :agent_class, :agent_type
@@ -65,7 +65,7 @@ module RubyLLM
         # @param skip_cache [Boolean] Whether to skip caching
         # @param stream_block [Proc, nil] Block for streaming
         # @param options [Hash] Additional options passed to the agent
-        def initialize(input:, agent_class:, agent_instance: nil, model: nil, tenant: nil, skip_cache: false, stream_block: nil, parent_execution_id: nil, root_execution_id: nil, **options)
+        def initialize(input:, agent_class:, agent_instance: nil, model: nil, tenant: nil, skip_cache: false, stream_block: nil, stream_events: false, parent_execution_id: nil, root_execution_id: nil, **options)
           @input = input
           @agent_class = agent_class
           @agent_instance = agent_instance
@@ -87,6 +87,7 @@ module RubyLLM
           # Execution options
           @skip_cache = skip_cache
           @stream_block = stream_block
+          @stream_events = stream_events
 
           # Debug trace
           @trace = []
@@ -130,6 +131,13 @@ module RubyLLM
         # @param action [String, nil] Optional action description (e.g., "cache hit")
         def add_trace(middleware_name, started_at:, duration_ms:, action: nil)
           @trace << {middleware: middleware_name, started_at: started_at, duration_ms: duration_ms, action: action}.compact
+        end
+
+        # Are stream events enabled?
+        #
+        # @return [Boolean]
+        def stream_events?
+          @stream_events == true
         end
 
         # Was the result served from cache?
@@ -243,6 +251,7 @@ module RubyLLM
             model: @model,
             skip_cache: @skip_cache,
             stream_block: @stream_block,
+            stream_events: @stream_events,
             **opts_without_tenant
           )
           # Preserve resolved tenant state

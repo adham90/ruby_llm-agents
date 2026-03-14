@@ -8,11 +8,19 @@
 # - Per-tool timeouts (FileReaderTool has timeout 10)
 # - Automatic error handling in tools
 #
-# @example Basic usage
+# This agent can also be used as a sub-agent via the `agents` DSL.
+# See OrchestratorAgent for an example of delegating to CodingAgent.
+#
+# @example Direct usage
 #   CodingAgent.call(
 #     query: "Read the Gemfile and tell me what dependencies we have",
 #     workspace_path: "/path/to/project"
 #   )
+#
+# @example As a sub-agent (workspace_path auto-forwarded)
+#   class MyOrchestrator < ApplicationAgent
+#     agents [CodingAgent], forward: [:workspace_path]
+#   end
 #
 # @example Tool context flow
 #   # 1. Agent is called with workspace_path: "/app"
