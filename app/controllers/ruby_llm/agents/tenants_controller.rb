@@ -53,6 +53,15 @@ module RubyLLM
         @tenant = TenantBudget.find(params[:id])
       end
 
+      # Recalculates budget counters from the executions table
+      #
+      # @return [void]
+      def refresh_counters
+        @tenant = TenantBudget.find(params[:id])
+        @tenant.refresh_counters!
+        redirect_to tenant_path(@tenant), notice: "Counters refreshed"
+      end
+
       # Updates a tenant budget
       #
       # @return [void]

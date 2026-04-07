@@ -15,9 +15,13 @@ RubyLLM::Agents::Engine.routes.draw do
 
   resources :requests, only: [:index, :show]
 
-  resources :tenants, only: [:index, :show, :edit, :update]
+  resources :tenants, only: [:index, :show, :edit, :update] do
+    member do
+      post :refresh_counters
+    end
+  end
 
-  # Redirect old analytics route to dashboard
-  get "analytics", to: redirect("/")
+  get "analytics", to: "analytics#index", as: :analytics
+  get "analytics/chart_data", to: "analytics#chart_data", as: :analytics_chart_data
   resource :system_config, only: [:show], controller: "system_config"
 end
