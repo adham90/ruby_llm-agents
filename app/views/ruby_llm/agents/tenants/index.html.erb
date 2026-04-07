@@ -65,7 +65,8 @@
                             when "soft" then "badge-timeout"
                             else ""
                             end
-        last_execution = tenant.executions.order(created_at: :desc).pick(:created_at)
+        last_execution = @tenant_last_executions[tenant.tenant_id]
+        tenant_cost = @tenant_costs[tenant.tenant_id] || 0
       %>
       <div class="group flex items-center gap-3 py-1.5 px-2 -mx-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer"
            onclick="window.location='<%= tenant_path(tenant) %>'">
@@ -96,7 +97,7 @@
             <span class="text-gray-300 dark:text-gray-700">none</span>
           <% end %>
         </span>
-        <span class="w-16 flex-shrink-0 text-right text-gray-500 dark:text-gray-400 hidden md:inline">$<%= number_with_precision(tenant.cost, precision: 2) %></span>
+        <span class="w-16 flex-shrink-0 text-right text-gray-500 dark:text-gray-400 hidden md:inline">$<%= number_with_precision(tenant_cost, precision: 2) %></span>
         <span class="w-24 flex-shrink-0 text-gray-400 dark:text-gray-600 text-right whitespace-nowrap">
           <% if last_execution %>
             <%= time_ago_in_words(last_execution) %>

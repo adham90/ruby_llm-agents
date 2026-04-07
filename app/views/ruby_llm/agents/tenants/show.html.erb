@@ -70,6 +70,153 @@
 </div>
 <div class="border-t border-gray-200 dark:border-gray-800 mb-2"></div>
 
+<!-- ── period comparison ──────────────── -->
+<% if @period_comparison %>
+  <%
+    pc = @period_comparison
+    tm = pc[:this_month]
+    lm = pc[:last_month]
+  %>
+  <div class="flex items-center gap-3 mt-6 mb-3">
+    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">this month vs last month</span>
+    <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+  </div>
+
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 font-mono text-xs">
+    <% [
+      ["cost", tm[:cost], lm[:cost], pc[:cost_change], "$"],
+      ["avg cost/run", pc[:avg_cost_this], pc[:avg_cost_last], pc[:avg_cost_change], "$"],
+      ["runs", tm[:executions], lm[:executions], pc[:executions_change], ""],
+      ["tokens", tm[:tokens], lm[:tokens], pc[:tokens_change], ""]
+    ].each do |label, current, previous, change, prefix| %>
+      <div class="space-y-0.5">
+        <div class="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider"><%= label %></div>
+        <div class="text-gray-900 dark:text-gray-200">
+          <% if prefix == "$" %>
+            $<%= number_with_precision(current, precision: 4) %>
+          <% else %>
+            <%= number_with_delimiter(current) %>
+          <% end %>
+        </div>
+        <div class="flex items-center gap-1">
+          <% if change != 0 %>
+            <span class="<%= change > 0 ? 'text-red-500' : 'text-green-500' %>">
+              <%= change > 0 ? "+" : "" %><%= change %>%
+            </span>
+          <% else %>
+            <span class="text-gray-400 dark:text-gray-600">—</span>
+          <% end %>
+          <span class="text-gray-400 dark:text-gray-600">
+            vs
+            <% if prefix == "$" %>
+              $<%= number_with_precision(previous, precision: 4) %>
+            <% else %>
+              <%= number_with_delimiter(previous) %>
+            <% end %>
+          </span>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @error_count > 0 %>
+    <div class="mt-3 font-mono text-xs text-gray-500 dark:text-gray-400">
+      <span class="text-red-500">$<%= number_with_precision(@error_cost, precision: 4) %></span>
+      wasted on <span class="text-red-500"><%= number_with_delimiter(@error_count) %></span> failed executions
+      <% error_pct = total_cost.to_f > 0 ? (@error_cost.to_f / total_cost * 100).round(1) : 0 %>
+      <% if error_pct > 0 %>
+        (<%= error_pct %>% of total cost)
+      <% end %>
+    </div>
+  <% end %>
+<% end %>
+
+<!-- ── 30d cost trend ──────────────── -->
+<% if @daily_trend.present? %>
+  <div class="flex items-center gap-3 mt-6 mb-2">
+    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">last 30 days</span>
+    <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+  </div>
+  <div id="tenant-trend-chart" style="width: 100%; height: 160px;"></div>
+  <script>
+  (function() {
+    const trendData = <%= raw @daily_trend.map { |date, stats|
+      { date: date.to_s, cost: (stats[:cost] || 0).to_f.round(6),
+        tokens: (stats[:tokens] || 0).to_i, count: (stats[:count] || 0).to_i }
+    }.to_json %>;
+
+    const costData = trendData.map(d => [new Date(d.date).getTime(), d.cost]);
+    const countData = trendData.map(d => [new Date(d.date).getTime(), d.count]);
+
+    function renderChart() {
+      window.__initHighchartsDefaults && window.__initHighchartsDefaults();
+      Highcharts.chart('tenant-trend-chart', {
+        chart: { backgroundColor: 'transparent', spacing: [5, 0, 0, 0] },
+        title: { text: null },
+        xAxis: {
+          type: 'datetime',
+          labels: { style: { color: chartColor('#6B7280', '#928374'), fontSize: '9px', fontFamily: 'ui-monospace, monospace' }, format: '{value:%b %d}' },
+          lineColor: 'transparent', tickLength: 0, gridLineWidth: 0
+        },
+        yAxis: [
+          {
+            title: { text: null }, min: 0,
+            labels: { style: { color: chartColor('#6B7280', '#928374'), fontSize: '9px', fontFamily: 'ui-monospace, monospace' }, format: '${value}' },
+            gridLineColor: chartColorAlpha('rgba(107, 114, 128, 0.08)', 146, 131, 116, 0.08)
+          },
+          {
+            title: { text: null }, min: 0, opposite: true, allowDecimals: false,
+            labels: { style: { color: chartColor('#6B7280', '#928374'), fontSize: '9px', fontFamily: 'ui-monospace, monospace' } },
+            gridLineWidth: 0
+          }
+        ],
+        legend: { enabled: false },
+        credits: { enabled: false },
+        tooltip: {
+          backgroundColor: chartColorAlpha('rgba(0, 0, 0, 0.85)', 40, 40, 40, 0.95),
+          borderColor: 'transparent', borderRadius: 3,
+          style: { color: chartColor('#E5E7EB', '#ebdbb2'), fontSize: '10px', fontFamily: 'ui-monospace, monospace' },
+          shared: true,
+          formatter: function() {
+            let html = '<span style="color:' + chartColor('#9CA3AF', '#bdae93') + '">' + Highcharts.dateFormat('%b %d', this.x) + '</span>';
+            let d = trendData.find(d => new Date(d.date).getTime() === this.x);
+            if (d) {
+              html += '<br/>cost: <b>$' + d.cost.toFixed(4) + '</b>';
+              html += '<br/>runs: <b>' + d.count + '</b>';
+              html += '<br/>tokens: <b>' + d.tokens.toLocaleString() + '</b>';
+            }
+            return html;
+          }
+        },
+        series: [
+          {
+            name: 'cost', type: 'areaspline', yAxis: 0, data: costData,
+            color: chartColor('#8B5CF6', '#d3869b'),
+            lineWidth: 1.5, marker: { enabled: false, states: { hover: { enabled: true, radius: 2 } } },
+            fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 },
+              stops: [[0, chartColorAlpha('rgba(139, 92, 246, 0.12)', 211, 134, 155, 0.12)], [1, chartColorAlpha('rgba(139, 92, 246, 0)', 211, 134, 155, 0)]] }
+          },
+          {
+            name: 'runs', type: 'column', yAxis: 1, data: countData,
+            color: chartColorAlpha('rgba(107, 114, 128, 0.15)', 146, 131, 116, 0.15),
+            borderWidth: 0, pointPadding: 0.1, groupPadding: 0
+          }
+        ]
+      });
+    }
+
+    function waitForHighcharts(attempts) {
+      if (typeof Highcharts !== 'undefined') { renderChart(); }
+      else if (attempts > 0) { setTimeout(function() { waitForHighcharts(attempts - 1); }, 100); }
+    }
+
+    document.readyState === 'loading'
+      ? document.addEventListener('DOMContentLoaded', function() { waitForHighcharts(50); })
+      : waitForHighcharts(50);
+  })();
+  </script>
+<% end %>
+
 <% if has_any_limit %>
   <!-- ── budget ──────────────────────── -->
   <div class="flex items-center gap-3 mt-6 mb-3">
@@ -163,6 +310,79 @@
         </div>
       <% end %>
     </div>
+  </div>
+<% end %>
+
+<% if @usage_by_agent.present? %>
+  <!-- ── usage by agent ──────────────────── -->
+  <div class="flex items-center gap-3 mt-6 mb-3">
+    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">usage by agent</span>
+    <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+  </div>
+
+  <!-- Column headers -->
+  <div class="flex items-center gap-3 px-2 -mx-2 font-mono text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider mb-1">
+    <span class="flex-[2] min-w-0">agent</span>
+    <span class="w-16 flex-shrink-0 text-right">runs</span>
+    <span class="w-24 flex-shrink-0 text-right">cost</span>
+    <span class="w-20 flex-shrink-0 text-right">avg cost</span>
+    <span class="w-24 flex-shrink-0 text-right">tokens</span>
+    <span class="w-20 flex-shrink-0 text-right">avg tokens</span>
+  </div>
+
+  <div class="font-mono text-xs space-y-px">
+    <% @usage_by_agent.sort_by { |_, v| -v[:cost] }.each do |agent_type, stats| %>
+      <%
+        avg_cost = stats[:count] > 0 ? (stats[:cost].to_f / stats[:count]) : 0
+        avg_tokens = stats[:count] > 0 ? (stats[:tokens].to_f / stats[:count]).round : 0
+      %>
+      <div class="flex items-center gap-3 py-1 px-2 -mx-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50">
+        <span class="flex-[2] min-w-0 truncate">
+          <%= link_to agent_type.to_s.demodulize, ruby_llm_agents.agent_path(agent_type),
+              class: "text-gray-900 dark:text-gray-200 hover:text-gray-600 dark:hover:text-gray-400" %>
+        </span>
+        <span class="w-16 flex-shrink-0 text-right text-gray-500 dark:text-gray-400"><%= number_with_delimiter(stats[:count]) %></span>
+        <span class="w-24 flex-shrink-0 text-right text-gray-800 dark:text-gray-200">$<%= number_with_precision(stats[:cost], precision: 4) %></span>
+        <span class="w-20 flex-shrink-0 text-right text-gray-500 dark:text-gray-400">$<%= number_with_precision(avg_cost, precision: 4) %></span>
+        <span class="w-24 flex-shrink-0 text-right text-gray-600 dark:text-gray-400"><%= number_with_delimiter(stats[:tokens]) %></span>
+        <span class="w-20 flex-shrink-0 text-right text-gray-500 dark:text-gray-400"><%= number_with_delimiter(avg_tokens) %></span>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+
+<% if @usage_by_model.present? %>
+  <!-- ── usage by model ──────────────────── -->
+  <div class="flex items-center gap-3 mt-6 mb-3">
+    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">usage by model</span>
+    <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+  </div>
+
+  <!-- Column headers -->
+  <div class="flex items-center gap-3 px-2 -mx-2 font-mono text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider mb-1">
+    <span class="flex-[2] min-w-0">model</span>
+    <span class="w-16 flex-shrink-0 text-right">runs</span>
+    <span class="w-24 flex-shrink-0 text-right">cost</span>
+    <span class="w-20 flex-shrink-0 text-right">avg cost</span>
+    <span class="w-24 flex-shrink-0 text-right">tokens</span>
+    <span class="w-16 flex-shrink-0 text-right">% of cost</span>
+  </div>
+
+  <div class="font-mono text-xs space-y-px">
+    <% @usage_by_model.sort_by { |_, v| -v[:cost] }.each do |model_id, stats| %>
+      <%
+        avg_cost = stats[:count] > 0 ? (stats[:cost].to_f / stats[:count]) : 0
+        cost_pct = total_cost.to_f > 0 ? (stats[:cost].to_f / total_cost * 100).round(1) : 0
+      %>
+      <div class="flex items-center gap-3 py-1 px-2 -mx-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50">
+        <span class="flex-[2] min-w-0 truncate text-gray-900 dark:text-gray-200"><%= model_id %></span>
+        <span class="w-16 flex-shrink-0 text-right text-gray-500 dark:text-gray-400"><%= number_with_delimiter(stats[:count]) %></span>
+        <span class="w-24 flex-shrink-0 text-right text-gray-800 dark:text-gray-200">$<%= number_with_precision(stats[:cost], precision: 4) %></span>
+        <span class="w-20 flex-shrink-0 text-right text-gray-500 dark:text-gray-400">$<%= number_with_precision(avg_cost, precision: 4) %></span>
+        <span class="w-24 flex-shrink-0 text-right text-gray-600 dark:text-gray-400"><%= number_with_delimiter(stats[:tokens]) %></span>
+        <span class="w-16 flex-shrink-0 text-right text-gray-400 dark:text-gray-600"><%= cost_pct %>%</span>
+      </div>
+    <% end %>
   </div>
 <% end %>
 

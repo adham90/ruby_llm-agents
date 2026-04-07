@@ -51,7 +51,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_06_000001) do
 
   create_table "ruby_llm_agents_executions", force: :cascade do |t|
     t.string "agent_type", null: false
-    t.integer "attempts_count", default: 1, null: false
+    t.integer "attempts_count", default: 0, null: false
     t.boolean "cache_hit", default: false
     t.integer "cached_tokens", default: 0
     t.string "chosen_model_id"
@@ -59,27 +59,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_06_000001) do
     t.datetime "created_at", null: false
     t.integer "duration_ms"
     t.string "error_class"
-    t.string "execution_type", default: "chat", null: false
+    t.string "execution_type", default: "chat"
     t.string "finish_reason"
     t.decimal "input_cost", precision: 12, scale: 6
-    t.integer "input_tokens", default: 0
+    t.integer "input_tokens"
     t.integer "messages_count", default: 0, null: false
     t.json "metadata", default: {}, null: false
     t.string "model_id", null: false
     t.string "model_provider"
     t.decimal "output_cost", precision: 12, scale: 6
-    t.integer "output_tokens", default: 0
+    t.integer "output_tokens"
     t.bigint "parent_execution_id"
     t.string "request_id"
     t.bigint "root_execution_id"
     t.datetime "started_at", null: false
-    t.string "status", default: "running", null: false
+    t.string "status", default: "success", null: false
     t.boolean "streaming", default: false
     t.decimal "temperature", precision: 3, scale: 2
     t.string "tenant_id"
     t.integer "tool_calls_count", default: 0, null: false
     t.decimal "total_cost", precision: 12, scale: 6
-    t.integer "total_tokens", default: 0
+    t.integer "total_tokens"
     t.string "trace_id"
     t.datetime "updated_at", null: false
     t.index ["agent_type", "created_at"], name: "index_ruby_llm_agents_executions_on_agent_type_and_created_at"
