@@ -7,24 +7,44 @@
   has_total_timeout = config[:total_timeout].present?
   has_circuit_breaker = config[:circuit_breaker].present?
   has_any_reliability = has_retries || has_fallbacks || has_total_timeout || has_circuit_breaker
+
+  overridable = config[:overridable_fields] || []
+  overrides = config[:active_overrides] || {}
+  has_overrides = overrides.any?
 %>
 
-<div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 font-mono text-xs">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 font-mono text-xs" x-data="{ editing: false }">
   <!-- Basic -->
   <div>
-    <span class="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider">basic</span>
-    <div class="mt-1.5 space-y-0.5">
+    <div class="flex items-center gap-2">
+      <span class="text-[10px] text-gray-400 dark:text-gray-600 uppercase tracking-wider">basic</span>
+      <% if overridable.any? %>
+        <button @click="editing = !editing" class="text-[10px] text-gray-400 dark:text-gray-600 hover:text-gray-700 dark:hover:text-gray-300 transition-colors" x-text="editing ? 'cancel' : 'edit'"></button>
+      <% end %>
+    </div>
+
+    <%# Read-only view %>
+    <div class="mt-1.5 space-y-0.5" x-show="!editing">
       <div class="flex items-center gap-3 py-1">
         <span class="w-20 text-gray-400 dark:text-gray-600">model</span>
         <span class="text-gray-900 dark:text-gray-200"><%= config[:model] %></span>
+        <% if overrides["model"] %>
+          <span class="text-[10px] text-yellow-600 dark:text-yellow-500">overridden</span>
+        <% end %>
       </div>
       <div class="flex items-center gap-3 py-1">
         <span class="w-20 text-gray-400 dark:text-gray-600">temperature</span>
         <span class="text-gray-900 dark:text-gray-200"><%= config[:temperature] %></span>
+        <% if overrides["temperature"] %>
+          <span class="text-[10px] text-yellow-600 dark:text-yellow-500">overridden</span>
+        <% end %>
       </div>
       <div class="flex items-center gap-3 py-1">
         <span class="w-20 text-gray-400 dark:text-gray-600">timeout</span>
         <span class="text-gray-900 dark:text-gray-200"><%= config[:timeout] %>s</span>
+        <% if overrides["timeout"] %>
+          <span class="text-[10px] text-yellow-600 dark:text-yellow-500">overridden</span>
+        <% end %>
       </div>
       <div class="flex items-center gap-3 py-1">
         <span class="w-20 text-gray-400 dark:text-gray-600">cache</span>
@@ -36,6 +56,71 @@
         <% end %>
       </div>
     </div>
+
+    <%# Edit form (only shown when editing) %>
+    <% if overridable.any? %>
+      <div x-show="editing" x-cloak>
+        <%= form_tag ruby_llm_agents.agent_path(@agent_type), method: :patch, class: "mt-1.5 space-y-1.5" do %>
+          <% if overridable.include?(:model) %>
+            <div class="flex items-center gap-3 py-1">
+              <label class="w-20 text-gray-400 dark:text-gray-600" for="override_model">model</label>
+              <input type="text" name="override[model]" id="override_model"
+                     value="<%= overrides["model"] || config[:model] %>"
+                     class="bg-transparent border border-gray-300 dark:border-gray-700 rounded px-2 py-0.5 text-gray-900 dark:text-gray-200 text-xs font-mono w-48 focus:outline-none focus:border-gray-500 dark:focus:border-gray-400">
+            </div>
+          <% else %>
+            <div class="flex items-center gap-3 py-1">
+              <span class="w-20 text-gray-400 dark:text-gray-600">model</span>
+              <span class="text-gray-900 dark:text-gray-200"><%= config[:model] %></span>
+              <span class="text-[10px] text-gray-400 dark:text-gray-600">locked</span>
+            </div>
+          <% end %>
+
+          <% if overridable.include?(:temperature) %>
+            <div class="flex items-center gap-3 py-1">
+              <label class="w-20 text-gray-400 dark:text-gray-600" for="override_temperature">temperature</label>
+              <input type="number" name="override[temperature]" id="override_temperature"
+                     value="<%= overrides["temperature"] || config[:temperature] %>"
+                     step="0.1" min="0" max="2"
+                     class="bg-transparent border border-gray-300 dark:border-gray-700 rounded px-2 py-0.5 text-gray-900 dark:text-gray-200 text-xs font-mono w-24 focus:outline-none focus:border-gray-500 dark:focus:border-gray-400">
+            </div>
+          <% else %>
+            <div class="flex items-center gap-3 py-1">
+              <span class="w-20 text-gray-400 dark:text-gray-600">temperature</span>
+              <span class="text-gray-900 dark:text-gray-200"><%= config[:temperature] %></span>
+              <span class="text-[10px] text-gray-400 dark:text-gray-600">locked</span>
+            </div>
+          <% end %>
+
+          <% if overridable.include?(:timeout) %>
+            <div class="flex items-center gap-3 py-1">
+              <label class="w-20 text-gray-400 dark:text-gray-600" for="override_timeout">timeout</label>
+              <input type="number" name="override[timeout]" id="override_timeout"
+                     value="<%= overrides["timeout"] || config[:timeout] %>"
+                     min="1" max="600"
+                     class="bg-transparent border border-gray-300 dark:border-gray-700 rounded px-2 py-0.5 text-gray-900 dark:text-gray-200 text-xs font-mono w-24 focus:outline-none focus:border-gray-500 dark:focus:border-gray-400">
+              <span class="text-gray-400 dark:text-gray-600">s</span>
+            </div>
+          <% else %>
+            <div class="flex items-center gap-3 py-1">
+              <span class="w-20 text-gray-400 dark:text-gray-600">timeout</span>
+              <span class="text-gray-900 dark:text-gray-200"><%= config[:timeout] %>s</span>
+              <span class="text-[10px] text-gray-400 dark:text-gray-600">locked</span>
+            </div>
+          <% end %>
+
+          <div class="flex items-center gap-2 pt-2">
+            <button type="submit" class="text-[10px] px-2 py-0.5 rounded bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors">save overrides</button>
+            <% if has_overrides %>
+              <%= link_to "reset all", ruby_llm_agents.reset_overrides_agent_path(@agent_type),
+                    method: :delete,
+                    class: "text-[10px] text-red-500 hover:text-red-400 transition-colors",
+                    data: { confirm: "Remove all dashboard overrides for this agent?" } %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
   </div>
 
   <!-- Reliability -->
@@ -56,7 +141,7 @@
           <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= has_fallbacks ? 'bg-green-500' : 'bg-gray-400' %>"></span>
           <span class="w-16 text-gray-400 dark:text-gray-600">fallbacks</span>
           <% if has_fallbacks %>
-            <span class="text-gray-900 dark:text-gray-200 truncate"><%= fallback_models.join(" → ") %></span>
+            <span class="text-gray-900 dark:text-gray-200 truncate"><%= fallback_models.join(" &rarr; ") %></span>
           <% else %>
             <span class="text-gray-400 dark:text-gray-600">&mdash;</span>
           <% end %>

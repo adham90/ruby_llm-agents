@@ -4,7 +4,11 @@ RubyLLM::Agents::Engine.routes.draw do
   root to: "dashboard#index"
   get "chart_data", to: "dashboard#chart_data"
 
-  resources :agents, only: [:index, :show]
+  resources :agents, only: [:index, :show, :update] do
+    member do
+      delete :reset_overrides
+    end
+  end
 
   resources :executions, only: [:index, :show] do
     collection do

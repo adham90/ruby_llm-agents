@@ -235,12 +235,18 @@ module RubyLLM
         # Enables or returns streaming mode for this agent
         #
         # @param value [Boolean, nil] Whether to enable streaming
+        # @param overridable [Boolean, nil] When true, this field can be changed from the dashboard
         # @return [Boolean] The current streaming setting
-        def streaming(value = nil)
+        def streaming(value = nil, overridable: nil)
           @streaming = value unless value.nil?
-          return @streaming unless @streaming.nil?
+          register_overridable(:streaming) if overridable
+          base = if @streaming.nil?
+            superclass.respond_to?(:streaming) ? superclass.streaming : default_streaming
+          else
+            @streaming
+          end
 
-          superclass.respond_to?(:streaming) ? superclass.streaming : default_streaming
+          apply_override(:streaming, base)
         end
 
         # @!endgroup
@@ -263,10 +269,14 @@ module RubyLLM
         # Sets or returns the temperature for LLM responses
         #
         # @param value [Float, nil] Temperature value (0.0-2.0)
+        # @param overridable [Boolean, nil] When true, this field can be changed from the dashboard
         # @return [Float] The current temperature setting
-        def temperature(value = nil)
+        def temperature(value = nil, overridable: nil)
           @temperature = value if value
-          @temperature || (superclass.respond_to?(:temperature) ? superclass.temperature : default_temperature)
+          register_overridable(:temperature) if overridable
+          base = @temperature || (superclass.respond_to?(:temperature) ? superclass.temperature : default_temperature)
+
+          apply_override(:temperature, base)
         end
 
         # @!endgroup

@@ -21,6 +21,10 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
     allow(ActiveRecord::Base.connection).to receive(:table_exists?)
       .with(:ruby_llm_agents_tenant_budgets)
       .and_return(false)
+    # Default: overrides table already exists (skip migration)
+    allow(ActiveRecord::Base.connection).to receive(:table_exists?)
+      .with(:ruby_llm_agents_overrides)
+      .and_return(true)
   end
 
   describe "when executions table does not exist (fresh install needed)" do

@@ -117,6 +117,20 @@ module RubyLlmAgents
       )
     end
 
+    # Create overrides table for dashboard-managed agent settings
+    def create_overrides_migration
+      if table_exists?(:ruby_llm_agents_overrides)
+        say_status :skip, "ruby_llm_agents_overrides table already exists", :yellow
+        return
+      end
+
+      say_status :upgrade, "Creating agent overrides table", :blue
+      migration_template(
+        "create_overrides_migration.rb.tt",
+        File.join(db_migrate_path, "create_ruby_llm_agents_overrides.rb")
+      )
+    end
+
     def suggest_config_consolidation
       ruby_llm_initializer = File.join(destination_root, "config/initializers/ruby_llm.rb")
       agents_initializer = File.join(destination_root, "config/initializers/ruby_llm_agents.rb")

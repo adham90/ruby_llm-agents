@@ -43,6 +43,13 @@ module RubyLLM
       #
       #   RubyExpert.ask("What is metaprogramming?")
       #
+      # @example Dashboard-overridable settings
+      #   class SupportAgent < RubyLLM::Agents::BaseAgent
+      #     model "gpt-4o", overridable: true        # can be changed from the dashboard
+      #     temperature 0.7, overridable: true        # can be changed from the dashboard
+      #     timeout 30                                # locked to code value
+      #   end
+      #
       # @example Dynamic prompts with method overrides
       #   class SmartAgent < RubyLLM::Agents::BaseAgent
       #     def system_prompt
@@ -63,12 +70,18 @@ module RubyLLM
         # Sets or returns the LLM model for this agent class
         #
         # @param value [String, nil] The model identifier to set
+        # @param overridable [Boolean, nil] When true, this field can be changed from the dashboard
         # @return [String] The current model setting
         # @example
         #   model "gpt-4o"
-        def model(value = nil)
+        # @example Dashboard-overridable
+        #   model "gpt-4o", overridable: true
+        def model(value = nil, overridable: nil)
           @model = value if value
-          @model || inherited_or_default(:model, default_model)
+          register_overridable(:model) if overridable
+          base = @model || inherited_or_default(:model, default_model)
+
+          apply_override(:model, base)
         end
 
         # Sets the user prompt template
@@ -206,12 +219,18 @@ module RubyLLM
         # Sets or returns the timeout in seconds for LLM requests
         #
         # @param value [Integer, nil] Timeout in seconds
+        # @param overridable [Boolean, nil] When true, this field can be changed from the dashboard
         # @return [Integer] The current timeout setting
         # @example
         #   timeout 30
-        def timeout(value = nil)
+        # @example Dashboard-overridable
+        #   timeout 30, overridable: true
+        def timeout(value = nil, overridable: nil)
           @timeout = value if value
-          @timeout || inherited_or_default(:timeout, default_timeout)
+          register_overridable(:timeout) if overridable
+          base = @timeout || inherited_or_default(:timeout, default_timeout)
+
+          apply_override(:timeout, base)
         end
 
         # Enables Anthropic prompt caching for this agent
@@ -286,6 +305,47 @@ module RubyLLM
 
         # @!endgroup
 
+        # @!group Dashboard Override Support
+
+        # Returns which fields are overridable for this agent
+        #
+        # @return [Array<Symbol>] The list of overridable field names
+        def overridable_fields
+          own = @overridable_fields || []
+          inherited = superclass.respond_to?(:overridable_fields) ? superclass.overridable_fields : []
+          (own + inherited).uniq
+        end
+
+        # Returns true if any field is overridable from the dashboard
+        #
+        # @return [Boolean]
+        def overridable?
+          overridable_fields.any?
+        end
+
+        # Returns the currently active dashboard overrides for this agent
+        #
+        # Only returns overrides for fields that are declared overridable.
+        #
+        # @return [Hash{String => Object}] Active override values
+        def active_overrides
+          return {} unless overridable?
+
+          raw = load_overrides
+          raw.select { |field, _| overridable_fields.include?(field.to_sym) }
+        end
+
+        # Clears the in-memory override cache so the next access reloads from DB
+        #
+        # Called automatically by AgentOverride after_save/after_destroy callbacks.
+        #
+        # @return [void]
+        def clear_override_cache!
+          @_override_cache = nil
+        end
+
+        # @!endgroup
+
         private
 
         # Auto-registers parameters found in prompt template placeholders
@@ -336,6 +396,46 @@ module RubyLLM
           RubyLLM::Agents.configuration.default_timeout
         rescue
           120
+        end
+
+        # Registers a field as overridable from the dashboard
+        #
+        # @param field [Symbol] The field name
+        # @return [void]
+        def register_overridable(field)
+          @overridable_fields = (@overridable_fields || []) | [field]
+        end
+
+        # Applies a dashboard override if the field is overridable and an override exists
+        #
+        # @param field [Symbol] The field name
+        # @param base [Object] The code-defined value to use as fallback
+        # @return [Object] The override value, or the base value
+        def apply_override(field, base)
+          return base unless overridable_fields.include?(field)
+
+          override = resolve_override(field)
+          override.nil? ? base : override
+        end
+
+        # Fetches the override value for a single field from the cached override hash
+        #
+        # @param field [Symbol] The field name
+        # @return [Object, nil] The override value, or nil
+        def resolve_override(field)
+          @_override_cache = load_overrides unless defined?(@_override_cache) && @_override_cache
+          @_override_cache[field.to_s]
+        end
+
+        # Loads all overrides for this agent from the database
+        #
+        # @return [Hash{String => Object}] The override settings hash
+        def load_overrides
+          return {} unless defined?(RubyLLM::Agents::AgentOverride)
+
+          RubyLLM::Agents::AgentOverride.find_by(agent_type: name)&.settings || {}
+        rescue
+          {}
         end
       end
     end

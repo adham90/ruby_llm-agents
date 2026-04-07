@@ -94,6 +94,62 @@ module RubyLLM
         redirect_to ruby_llm_agents.agents_path, alert: "Error loading agent details"
       end
 
+      # Saves dashboard overrides for an agent's overridable settings
+      #
+      # Only persists values for fields the agent has declared as
+      # `overridable: true` in its DSL. Ignores all other fields.
+      #
+      # @return [void]
+      def update
+        @agent_type = CGI.unescape(params[:id])
+        @agent_class = AgentRegistry.find(@agent_type)
+
+        unless @agent_class
+          redirect_to ruby_llm_agents.agents_path, alert: "Agent not found"
+          return
+        end
+
+        allowed = @agent_class.overridable_fields.map(&:to_s)
+        if allowed.empty?
+          redirect_to agent_path(@agent_type), alert: "This agent has no overridable fields"
+          return
+        end
+
+        # Build settings hash from permitted params, only for overridable fields
+        settings = {}
+        allowed.each do |field|
+          next unless params.dig(:override, field).present?
+
+          raw = params[:override][field]
+          settings[field] = coerce_override_value(field, raw)
+        end
+
+        override = AgentOverride.find_or_initialize_by(agent_type: @agent_type)
+
+        if settings.empty?
+          # No overrides left — delete the record
+          override.destroy if override.persisted?
+          redirect_to agent_path(@agent_type), notice: "Overrides cleared"
+        else
+          override.settings = settings
+          if override.save
+            redirect_to agent_path(@agent_type), notice: "Overrides saved"
+          else
+            redirect_to agent_path(@agent_type), alert: "Failed to save overrides"
+          end
+        end
+      end
+
+      # Removes all dashboard overrides for an agent
+      #
+      # @return [void]
+      def reset_overrides
+        @agent_type = CGI.unescape(params[:id])
+        override = AgentOverride.find_by(agent_type: @agent_type)
+        override&.destroy
+        redirect_to agent_path(@agent_type), notice: "Overrides cleared"
+      end
+
       private
 
       # Loads all-time and today's statistics for the agent
@@ -293,6 +349,24 @@ module RubyLLM
         end
 
         (direction == "desc") ? sorted.reverse : sorted
+      end
+
+      # Coerces an override value from the form string to the appropriate Ruby type
+      #
+      # @param field [String] The field name
+      # @param raw [String] The raw string value from the form
+      # @return [Object] The coerced value
+      def coerce_override_value(field, raw)
+        case field
+        when "temperature"
+          raw.to_f
+        when "timeout"
+          raw.to_i
+        when "streaming"
+          ActiveModel::Type::Boolean.new.cast(raw)
+        else
+          raw.to_s
+        end
       end
     end
   end

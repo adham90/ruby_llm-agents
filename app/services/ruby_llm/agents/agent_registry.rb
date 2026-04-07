@@ -70,7 +70,14 @@ module RubyLLM
           }
 
           type = detect_agent_type(agent_class)
-          base.merge(type_config_for(agent_class, type))
+          config = base.merge(type_config_for(agent_class, type))
+
+          # Include dashboard override metadata
+          config[:overridable_fields] = safe_call(agent_class, :overridable_fields) || []
+          config[:active_overrides] = safe_call(agent_class, :active_overrides) || {}
+          config[:has_overrides] = config[:active_overrides].any?
+
+          config
         end
 
         private

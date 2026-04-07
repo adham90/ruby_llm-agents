@@ -191,4 +191,15 @@ ActiveRecord::Schema.define do
   add_index :ruby_llm_agents_tenants, :name
   add_index :ruby_llm_agents_tenants, :active
   add_index :ruby_llm_agents_tenants, [:tenant_record_type, :tenant_record_id], name: "index_tenants_on_tenant_record"
+
+  # Agent overrides table (dashboard-managed setting overrides)
+  create_table :ruby_llm_agents_overrides, force: :cascade do |t|
+    t.string :agent_type, null: false
+    t.json :settings, null: false, default: {}
+    t.string :updated_by
+
+    t.timestamps
+  end
+
+  add_index :ruby_llm_agents_overrides, :agent_type, unique: true
 end
