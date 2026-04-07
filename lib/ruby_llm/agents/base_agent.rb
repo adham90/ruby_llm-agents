@@ -47,6 +47,8 @@ module RubyLLM
       extend DSL::Reliability
       extend DSL::Caching
       extend DSL::Queryable
+      extend DSL::Knowledge
+      include DSL::Knowledge::InstanceMethods
       include CacheHelper
 
       class << self
@@ -388,13 +390,19 @@ module RubyLLM
       # System prompt for LLM instructions
       #
       # If a class-level `system` DSL is defined, it will be used.
+      # Knowledge entries declared via `knows` are auto-appended.
       #
       # @return [String, nil] System instructions, or nil for none
       def system_prompt
         system_config = self.class.system_config
-        return resolve_prompt_from_config(system_config) if system_config
+        base = system_config ? resolve_prompt_from_config(system_config) : nil
 
-        nil
+        knowledge = compiled_knowledge
+        if knowledge.present?
+          base ? "#{base}\n\n#{knowledge}" : knowledge
+        else
+          base
+        end
       end
 
       # Assistant prefill to prime the model's response

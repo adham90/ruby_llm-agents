@@ -448,7 +448,8 @@ module RubyLLM
         :helicone_pricing_enabled,
         :helicone_pricing_url,
         :llmpricing_enabled,
-        :llmpricing_url
+        :llmpricing_url,
+        :knowledge_path
 
       # Attributes with validation (readers only, custom setters below)
       attr_reader :default_temperature,
@@ -752,6 +753,9 @@ module RubyLLM
         @elevenlabs_base_cost_per_1k = nil
         # ElevenLabs models cache TTL in seconds (6 hours)
         @elevenlabs_models_cache_ttl = 21_600
+
+        # Knowledge defaults
+        @knowledge_path = nil
       end
 
       # Returns the configured cache store, falling back to Rails.cache

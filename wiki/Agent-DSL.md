@@ -330,6 +330,59 @@ end
 
 See [Tools](Tools) for details on tool definition.
 
+### knows
+
+Declare domain knowledge to be automatically injected into the system prompt. Supports static files and dynamic blocks.
+
+```ruby
+class SupportAgent < ApplicationAgent
+  knowledge_path "knowledge"   # where to find .md files (relative to Rails.root)
+
+  knows :refund_policy, :pricing, :shipping  # multiple static entries inline
+  knows :hipaa, if: -> { region == "us" }    # conditional inclusion
+
+  knows :customer_history do    # dynamic — evaluated at call time
+    Customer.find(customer_id).recent_tickets.pluck(:summary)
+  end
+end
+```
+
+**Static knowledge** loads from a file resolved via `knowledge_path`. Tries `.md` extension first, then the bare name.
+
+**Dynamic knowledge** uses a block evaluated via `instance_exec` — `self` is the agent instance, so params and methods are directly available.
+
+**Conditional inclusion** with `if:` takes a lambda (also `instance_exec`). When it returns falsy, the entry is skipped. Works with both static and dynamic entries.
+
+**Inheritance:** Subclasses inherit parent entries. Re-declaring `knows :same_name` overrides the parent's entry.
+
+**Auto-append:** When using the `system` DSL, knowledge is appended automatically. When overriding `system_prompt` as an instance method, call `compiled_knowledge` yourself:
+
+```ruby
+class MyAgent < ApplicationAgent
+  knows :domain_rules
+
+  def system_prompt
+    <<~PROMPT
+      You are an expert assistant.
+
+      #{compiled_knowledge}
+
+      Always be concise.
+    PROMPT
+  end
+end
+```
+
+**Configuration:** Set a global default path:
+
+```ruby
+RubyLLM::Agents.configure do |config|
+  config.knowledge_path = "knowledge"  # default: nil
+end
+```
+
+See [Knowledge](Knowledge) for the full guide.
+
 ### aliases
 
 Declare previous class names so execution tracking, analytics, and budget checks automatically include records from old names:

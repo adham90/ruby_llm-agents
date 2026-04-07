@@ -16,6 +16,7 @@ Welcome to the official documentation for **RubyLLM::Agents**, a production-read
 - **[Agent DSL](Agent-DSL)** - Declarative agent configuration
 - **[Parameters](Parameters)** - Required and optional parameters
 - **[Prompts and Schemas](Prompts-and-Schemas)** - Structure inputs and outputs
+- **[Knowledge](Knowledge)** - Inject domain knowledge into agents
 - **[Conversation History](Conversation-History)** - Multi-turn conversations
 - **[Result Object](Result-Object)** - Access execution metadata
 
