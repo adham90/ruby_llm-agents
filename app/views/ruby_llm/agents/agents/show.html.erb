@@ -67,6 +67,8 @@
       <span><span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(@stats[:total_cost] || 0, precision: 4) %></span> cost</span>
     </div>
     <div class="flex items-center justify-end gap-x-4 text-gray-500 dark:text-gray-600">
+      <span><span class="text-gray-600 dark:text-gray-400">$<%= number_with_precision(@stats[:avg_cost] || 0, precision: 4) %></span> avg cost</span>
+      <span><span class="text-gray-600 dark:text-gray-400"><%= number_with_delimiter(@stats[:avg_tokens] || 0) %></span> avg tokens</span>
       <span><span class="text-gray-600 dark:text-gray-400"><%= number_with_delimiter(@stats[:total_tokens] || 0) %></span> tokens</span>
       <span><span class="text-gray-600 dark:text-gray-400"><%= number_with_delimiter(@stats[:avg_duration_ms] || 0) %></span>ms avg</span>
       <% if (@config && @config[:cache_enabled]) || @cache_hit_rate > 0 %>
