@@ -30,16 +30,31 @@ module RubyLLM
           def daily_report
             scope = today
 
+            # Single aggregated query for core metrics
+            total, successful, failed, cost, tokens, avg_dur, avg_tok = scope.pick(
+              Arel.sql("COUNT(*)"),
+              Arel.sql("SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END)"),
+              Arel.sql("SUM(CASE WHEN status IN ('error','timeout') THEN 1 ELSE 0 END)"),
+              Arel.sql("COALESCE(SUM(total_cost), 0)"),
+              Arel.sql("COALESCE(SUM(total_tokens), 0)"),
+              Arel.sql("AVG(duration_ms)"),
+              Arel.sql("AVG(total_tokens)")
+            )
+
+            total = total.to_i
+            successful = successful.to_i
+            failed = failed.to_i
+
             {
               date: Date.current,
-              total_executions: scope.count,
-              successful: scope.successful.count,
-              failed: scope.failed.count,
-              total_cost: scope.total_cost_sum || 0,
-              total_tokens: scope.total_tokens_sum || 0,
-              avg_duration_ms: scope.avg_duration&.round || 0,
-              avg_tokens: scope.avg_tokens&.round || 0,
-              error_rate: calculate_error_rate(scope),
+              total_executions: total,
+              successful: successful,
+              failed: failed,
+              total_cost: cost.to_f,
+              total_tokens: tokens.to_i,
+              avg_duration_ms: avg_dur.to_i,
+              avg_tokens: avg_tok.to_i,
+              error_rate: (total > 0) ? (failed.to_f / total * 100).round(2) : 0.0,
               by_agent: scope.group(:agent_type).count,
               top_errors: scope.errors.group(:error_class).count.sort_by { |_, v| -v }.first(5).to_h
             }
@@ -89,19 +104,25 @@ module RubyLLM
           # @return [Array<Hash>] Daily metrics sorted oldest to newest
           def trend_analysis(agent_type: nil, days: 7)
             scope = agent_type ? by_agent(agent_type) : all
+            end_date = Date.current
+            start_date = end_date - (days - 1).days
 
-            (0...days).map do |days_ago|
-              date = days_ago.days.ago.to_date
-              day_scope = scope.where(created_at: date.beginning_of_day..date.end_of_day)
+            time_scope = scope.where(created_at: start_date.beginning_of_day..end_date.end_of_day)
+            results = aggregated_chart_query(time_scope, granularity: :day)
+
+            (0...days).map do |i|
+              date = start_date + i.days
+              key = date.to_s
+              row = results[key] || {success: 0, failed: 0, cost: 0.0, duration: 0, tokens: 0}
 
               {
                 date: date,
-                count: day_scope.count,
-                total_cost: day_scope.total_cost_sum || 0,
-                avg_duration_ms: day_scope.avg_duration&.round || 0,
-                error_count: day_scope.failed.count
+                count: row[:success] + row[:failed],
+                total_cost: row[:cost],
+                avg_duration_ms: row[:duration],
+                error_count: row[:failed]
               }
-            end.reverse
+            end
           end
 
           # Builds hourly activity chart data for today

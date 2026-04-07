@@ -117,14 +117,13 @@ RSpec.describe RubyLLM::Agents::AnalyticsController, type: :controller do
 
     context "savings opportunity" do
       it "identifies savings when multiple models used" do
-        create(:execution, model_id: "gpt-4o", total_cost: 0.50, total_tokens: 1000)
-        create(:execution, model_id: "gpt-4o-mini", total_cost: 0.01, total_tokens: 1000)
+        create(:execution, model_id: "gpt-4o", input_cost: 0.30, output_cost: 0.20, total_tokens: 1000)
+        create(:execution, model_id: "gpt-4o-mini", input_cost: 0.005, output_cost: 0.005, total_tokens: 1000)
         get :index
         savings = assigns(:savings)
-        if savings
-          expect(savings[:expensive_model]).to eq("gpt-4o")
-          expect(savings[:potential_savings]).to be > 0
-        end
+        expect(savings).not_to be_nil
+        expect(savings[:expensive_model]).to eq("gpt-4o")
+        expect(savings[:potential_savings]).to be > 0
       end
 
       it "returns nil savings with single model" do

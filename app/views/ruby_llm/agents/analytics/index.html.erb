@@ -23,13 +23,13 @@
 <!-- Filter data (consumed by Alpine below) -->
 <script>
   window.__analyticsFilters = {
-    agents: <%= raw @available_agents.map { |a| { value: a, label: a.to_s.split("::").last } }.to_json %>,
-    models: <%= raw @available_models.map { |m| { value: m, label: m.to_s.split("/").last } }.to_json %>,
-    tenants: <%= raw(@available_tenants.map { |tid, label| { value: tid, label: label } }.to_json) %>,
+    agents: <%= @available_agents.map { |a| { value: a, label: a.to_s.split("::").last } }.to_json.html_safe %>,
+    models: <%= @available_models.map { |m| { value: m, label: m.to_s.split("/").last } }.to_json.html_safe %>,
+    tenants: <%= @available_tenants.map { |tid, label| { value: tid, label: label } }.to_json.html_safe %>,
     selected: {
-      agent: <%= raw @filter_agent.to_s.to_json %>,
-      model: <%= raw @filter_model.to_s.to_json %>,
-      tenant: <%= raw @filter_tenant.to_s.to_json %>
+      agent: <%= @filter_agent.to_s.to_json.html_safe %>,
+      model: <%= @filter_model.to_s.to_json.html_safe %>,
+      tenant: <%= @filter_tenant.to_s.to_json.html_safe %>
     }
   };
   window.__searchSelect = function(dataKey, paramName, placeholder) {

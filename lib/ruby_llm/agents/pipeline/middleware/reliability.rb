@@ -223,7 +223,7 @@ module RubyLLM
             return unless deadline && Time.current > deadline
 
             elapsed = Time.current - started_at
-            timeout_value = deadline - started_at + elapsed
+            timeout_value = deadline - started_at
             raise Agents::Reliability::TotalTimeoutError.new(timeout_value, elapsed)
           end
 

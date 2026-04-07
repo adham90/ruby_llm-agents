@@ -12,7 +12,6 @@ module RubyLLM
     class AnalyticsController < ApplicationController
       VALID_RANGES = %w[7d 30d 90d custom].freeze
       DEFAULT_RANGE = "30d"
-      CHART_AGENT_LIMIT = 8
 
       def index
         @selected_range = sanitize_range(params[:range])
@@ -99,7 +98,7 @@ module RubyLLM
           prior_start = prior_end - duration.days + 1.day
           scope.where(created_at: prior_start.beginning_of_day..prior_end.end_of_day)
         else
-          scope.where(created_at: (@days * 2).days.ago..@days.days.ago)
+          scope.where(created_at: (@days * 2).days.ago...@days.days.ago)
         end
       end
 

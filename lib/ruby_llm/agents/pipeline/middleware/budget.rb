@@ -33,15 +33,18 @@ module RubyLLM
             return @app.call(context) unless budgets_enabled?
 
             trace(context) do
+              # Resolve tenant once for both check and record
+              tenant = resolve_tenant(context)
+
               # Check budget before execution
-              check_budget!(context)
+              check_budget!(context, tenant)
 
               # Execute the chain
               @app.call(context)
 
               # Record spend after successful execution (if not cached)
               if context.success? && !context.cached?
-                record_spend!(context)
+                record_spend!(context, tenant)
                 emit_budget_notification("ruby_llm_agents.budget.record", context,
                   total_cost: context.total_cost,
                   total_tokens: context.total_tokens)
@@ -80,22 +83,33 @@ module RubyLLM
             false
           end
 
+          # Resolves the tenant record once for reuse across check and record
+          #
+          # @param context [Context] The execution context
+          # @return [Tenant, nil] The tenant record or nil
+          def resolve_tenant(context)
+            return nil unless context.tenant_id.present?
+
+            RubyLLM::Agents::Tenant.find_by(tenant_id: context.tenant_id)
+          rescue => e
+            debug("Tenant lookup failed: #{e.message}", context)
+            nil
+          end
+
           # Checks budget before execution
           #
           # For tenants, checks budget via counter columns on the tenant model.
           # For non-tenant usage, falls back to BudgetTracker (cache-based).
           #
           # @param context [Context] The execution context
+          # @param tenant [Tenant, nil] Pre-resolved tenant record
           # @raise [BudgetExceededError] If budget exceeded with hard enforcement
-          def check_budget!(context)
+          def check_budget!(context, tenant = nil)
             emit_budget_notification("ruby_llm_agents.budget.check", context)
 
-            if context.tenant_id.present?
-              tenant = RubyLLM::Agents::Tenant.find_by(tenant_id: context.tenant_id)
-              if tenant
-                tenant.check_budget!(context.agent_class&.name)
-                return
-              end
+            if tenant
+              tenant.check_budget!(context.agent_class&.name)
+              return
             end
 
             # Fallback to cache-based checking (non-tenant or no tenant record)
@@ -117,17 +131,15 @@ module RubyLLM
           # For non-tenant usage, falls back to BudgetTracker (cache-based).
           #
           # @param context [Context] The execution context
-          def record_spend!(context)
-            if context.tenant_id.present?
-              tenant = RubyLLM::Agents::Tenant.find_by(tenant_id: context.tenant_id)
-              if tenant
-                tenant.record_execution!(
-                  cost: context.total_cost || 0,
-                  tokens: context.total_tokens || 0,
-                  error: context.failed?
-                )
-                return
-              end
+          # @param tenant [Tenant, nil] Pre-resolved tenant record
+          def record_spend!(context, tenant = nil)
+            if tenant
+              tenant.record_execution!(
+                cost: context.total_cost || 0,
+                tokens: context.total_tokens || 0,
+                error: context.failed?
+              )
+              return
             end
 
             # Fallback for non-tenant usage
