@@ -278,6 +278,7 @@ module RubyLLM
             data = {
               agent_type: context.agent_class&.name,
               model_id: context.model,
+              model_provider: resolve_model_provider(context.model),
               status: "running",
               started_at: context.started_at,
               input_tokens: 0,
@@ -339,7 +340,9 @@ module RubyLLM
               input_tokens: context.input_tokens || 0,
               output_tokens: context.output_tokens || 0,
               total_cost: context.total_cost || 0,
-              attempts_count: context.attempts_made
+              attempts_count: context.attempts_made,
+              chosen_model_id: context.model_used,
+              finish_reason: context.finish_reason
             }
 
             # Merge metadata: agent metadata (base) < middleware metadata (overlay)
@@ -534,6 +537,24 @@ module RubyLLM
           rescue => e
             debug("Failed to retrieve agent metadata: #{e.message}", context)
             {}
+          end
+
+          # Resolves the provider name for a given model ID
+          #
+          # Uses RubyLLM::Models.find which is an in-process registry lookup
+          # (no API keys or network calls needed).
+          #
+          # @param model_id [String, nil] The model identifier
+          # @return [String, nil] Provider name (e.g., "openai", "anthropic") or nil
+          def resolve_model_provider(model_id)
+            return nil unless model_id
+            return nil unless defined?(RubyLLM::Models)
+
+            model_info = RubyLLM::Models.find(model_id)
+            provider = model_info&.provider
+            provider&.to_s.presence
+          rescue
+            nil
           end
 
           # Injects tracker request_id and tags into execution data

@@ -1185,4 +1185,157 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
       expect(execution.request_id).to eq("req-xyz-789")
     end
   end
+
+  describe "model_provider population (issue #23)" do
+    before do
+      RubyLLM::Agents.configuration.track_embeddings = true
+      RubyLLM::Agents.configuration.multi_tenancy_enabled = false
+    end
+
+    it "resolves model_provider from model registry on running record" do
+      model_info = double("ModelInfo", provider: "openai")
+      allow(RubyLLM::Models).to receive(:find).with("test-model").and_return(model_info)
+
+      context = build_context
+      allow(app).to receive(:call) do |ctx|
+        ctx.output = "result"
+        ctx
+      end
+
+      middleware.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.model_provider).to eq("openai")
+    end
+
+    it "resolves model_provider for anthropic models" do
+      model_info = double("ModelInfo", provider: "anthropic")
+      allow(RubyLLM::Models).to receive(:find).with("test-model").and_return(model_info)
+
+      context = build_context
+      allow(app).to receive(:call) do |ctx|
+        ctx.output = "result"
+        ctx
+      end
+
+      middleware.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.model_provider).to eq("anthropic")
+    end
+
+    it "leaves model_provider nil when model registry lookup fails" do
+      allow(RubyLLM::Models).to receive(:find).and_raise(StandardError, "Model not found")
+
+      context = build_context
+      allow(app).to receive(:call) do |ctx|
+        ctx.output = "result"
+        ctx
+      end
+
+      middleware.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.model_provider).to be_nil
+    end
+
+    it "leaves model_provider nil when model info has no provider" do
+      model_info = double("ModelInfo", provider: nil)
+      allow(RubyLLM::Models).to receive(:find).with("test-model").and_return(model_info)
+
+      context = build_context
+      allow(app).to receive(:call) do |ctx|
+        ctx.output = "result"
+        ctx
+      end
+
+      middleware.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.model_provider).to be_nil
+    end
+  end
+
+  describe "chosen_model_id population" do
+    before do
+      RubyLLM::Agents.configuration.track_embeddings = true
+      RubyLLM::Agents.configuration.multi_tenancy_enabled = false
+    end
+
+    it "records chosen_model_id when model_used differs from model" do
+      context = build_context
+      allow(app).to receive(:call) do |ctx|
+        ctx.model_used = "gpt-4o-mini"
+        ctx.output = "result"
+        ctx
+      end
+
+      middleware.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.chosen_model_id).to eq("gpt-4o-mini")
+    end
+
+    it "records chosen_model_id same as model when no fallback" do
+      context = build_context
+      allow(app).to receive(:call) do |ctx|
+        ctx.model_used = "test-model"
+        ctx.output = "result"
+        ctx
+      end
+
+      middleware.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.chosen_model_id).to eq("test-model")
+    end
+  end
+
+  describe "finish_reason population" do
+    before do
+      RubyLLM::Agents.configuration.track_embeddings = true
+      RubyLLM::Agents.configuration.multi_tenancy_enabled = false
+    end
+
+    it "records finish_reason on completion" do
+      context = build_context
+      allow(app).to receive(:call) do |ctx|
+        ctx.finish_reason = "stop"
+        ctx.output = "result"
+        ctx
+      end
+
+      middleware.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.finish_reason).to eq("stop")
+    end
+
+    it "records tool_calls finish_reason" do
+      context = build_context
+      allow(app).to receive(:call) do |ctx|
+        ctx.finish_reason = "tool_calls"
+        ctx.output = "result"
+        ctx
+      end
+
+      middleware.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.finish_reason).to eq("tool_calls")
+    end
+
+    it "leaves finish_reason nil when not set" do
+      context = build_context
+      allow(app).to receive(:call) do |ctx|
+        ctx.output = "result"
+        ctx
+      end
+
+      middleware.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.finish_reason).to be_nil
+    end
+  end
 end
