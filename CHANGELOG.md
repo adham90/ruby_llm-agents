@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.12.0] - 2026-04-08
+
+### Added
+
+- **Knowledge DSL** — Inject domain knowledge into agent system prompts with `knows :refund_policy` (static files) or `knows(:data) { ... }` (dynamic blocks). Supports conditional inclusion via `if:` option, multi-entry `knows :a, :b, :c`, and automatic `## Heading` formatting. Default `knowledge_path` is `app/agents/knowledge`
+- **Analytics page** — Filterable cost intelligence dashboard with period-over-period comparison, daily cost chart overlay, model efficiency table, error cost breakdown, monthly projection, and savings opportunity detection
+- **Dashboard-overridable agent settings** — Mark DSL fields with `overridable: true` (e.g., `model "gpt-4o", overridable: true`) to allow tuning from the dashboard without code deploys. Stored in `agent_overrides` table
+- **Tenant dashboard enhancements** — Analytics section with trend chart, usage breakdowns by model/agent, and refresh counters button on tenant show page
+- **Average cost/tokens per call** — Agent show page now displays average cost and token usage per execution
+
+### Fixed
+
+- **Instrumentation middleware** — `model_provider`, `chosen_model_id`, and `finish_reason` now correctly populate on execution records (fixes #23)
+- **`check_total_timeout!` math bug** — Timeout error now reports the configured timeout value instead of an inflated number
+- **Prior period boundary overlap** — Analytics prior period scope uses exclusive range to prevent boundary-day double-counting
+- **Budget middleware double tenant lookup** — Tenant record is now resolved once per request instead of twice (check + record)
+- **`trend_analysis` N+1 queries** — Replaced 28 individual queries (4 per day x 7 days) with a single GROUP BY query
+- **`daily_report` excessive queries** — Consolidated 11 individual count/sum queries into a single aggregated query
+- **Analytics view XSS hardening** — Replaced `raw` helper with `.to_json.html_safe` for data injection in JavaScript blocks
+- **Analytics savings spec** — Fixed test that silently passed due to conditional assertion and `before_save` callback overriding `total_cost`
+
+### Removed
+
+- **Orchestration/sub-agents feature** — Removed as out of scope for this gem
+
 ## [3.11.0] - 2026-03-14
 
 ### Added
@@ -886,4 +911,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.2.3]: https://github.com/adham90/ruby_llm-agents/compare/v0.2.1...v0.2.3
 [0.2.1]: https://github.com/adham90/ruby_llm-agents/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/adham90/ruby_llm-agents/compare/v0.1.0...v0.2.0
+[3.12.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.11.0...v3.12.0
 [0.1.0]: https://github.com/adham90/ruby_llm-agents/releases/tag/v0.1.0
