@@ -755,7 +755,7 @@ module RubyLLM
         @elevenlabs_models_cache_ttl = 21_600
 
         # Knowledge defaults
-        @knowledge_path = nil
+        @knowledge_path = "app/agents/knowledge"
       end
 
       # Returns the configured cache store, falling back to Rails.cache

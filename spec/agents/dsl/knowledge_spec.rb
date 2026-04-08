@@ -60,11 +60,11 @@ RSpec.describe RubyLLM::Agents::DSL::Knowledge do
       expect(klass.knowledge_path).to eq("custom/knowledge")
     end
 
-    it "defaults to nil when not configured" do
+    it "defaults to app/agents/knowledge when not configured" do
       klass = Class.new(RubyLLM::Agents::Base)
 
       RubyLLM::Agents.reset_configuration!
-      expect(klass.knowledge_path).to be_nil
+      expect(klass.knowledge_path).to eq("app/agents/knowledge")
     end
 
     it "inherits knowledge_path from parent class" do
@@ -156,7 +156,7 @@ RSpec.describe RubyLLM::Agents::DSL::Knowledge do
       expect(agent.compiled_knowledge).to eq("")
     end
 
-    it "returns empty string when knowledge_path is nil for static entry" do
+    it "returns empty string when knowledge file does not exist at default path" do
       RubyLLM::Agents.reset_configuration!
       klass = Class.new(RubyLLM::Agents::Base) do
         knows :some_file
