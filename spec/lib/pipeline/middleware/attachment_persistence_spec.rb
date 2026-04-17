@@ -44,12 +44,14 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::AttachmentPersistence do
     )
   end
 
-  def build_context(agent_class:, execution_id: nil, with: nil, error: nil)
-    ctx = RubyLLM::Agents::Pipeline::Context.new(
-      input: "test",
-      agent_class: agent_class,
-      with: with
-    )
+  def build_context(agent_class:, execution_id: nil, with: nil, error: nil, nest: false)
+    ctx_args = {input: "test", agent_class: agent_class}
+    if nest
+      ctx_args[:options] = {attachments: with}
+    else
+      ctx_args[:with] = with
+    end
+    ctx = RubyLLM::Agents::Pipeline::Context.new(**ctx_args)
     ctx.execution_id = execution_id
     ctx.error = error
     ctx
@@ -69,6 +71,15 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::AttachmentPersistence do
         expect(detail).not_to be_nil
         expect(detail.user_attachments.count).to eq(1)
         expect(detail.user_attachments.first.filename.to_s).to eq(File.basename(file_path))
+      end
+
+      it "reads the file from execution_options[:attachments] (as BaseAgent nests it)" do
+        execution = build_execution
+        context = build_context(agent_class: enabled_agent_class, execution_id: execution.id, with: file_path, nest: true)
+
+        described_class.new(downstream_app, enabled_agent_class).call(context)
+
+        expect(execution.reload.detail.user_attachments.count).to eq(1)
       end
 
       it "accepts an array of file paths" do

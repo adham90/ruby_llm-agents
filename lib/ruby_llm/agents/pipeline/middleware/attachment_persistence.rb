@@ -48,8 +48,17 @@ module RubyLLM
             error("Failed to persist user attachments: #{e.message}", context)
           end
 
+          # Reads the caller's `with:` argument from the context.
+          #
+          # BaseAgent#build_context nests the raw `with:` value under
+          # `context.options[:options][:attachments]` (see
+          # BaseAgent#execution_options). We look there, and also fall back
+          # to `context.options[:with]` for any caller that builds a
+          # Context directly.
           def attachment_inputs(context)
-            Array(context.options[:with]).compact
+            nested = context.options.dig(:options, :attachments)
+            direct = context.options[:with]
+            Array(nested || direct).compact
           end
 
           def attach(detail, input)
