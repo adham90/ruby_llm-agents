@@ -933,14 +933,21 @@ module RubyLLM
         context.total_cost = (context.input_cost + context.output_cost).round(6)
       end
 
-      # Finds model pricing info
+      # Finds model pricing info.
+      #
+      # Providers often return dated model variants (e.g.
+      # "anthropic/claude-4.6-sonnet-20260217") that aren't in the
+      # RubyLLM::Models registry, while the agent is configured with a
+      # stable alias (e.g. "anthropic/claude-sonnet-4.6") that is. When the
+      # response's model_id misses, fall back to the agent's configured
+      # model so cost calculation still finds pricing.
       #
       # @param model_id [String] The model ID
       # @return [Hash, nil] Model info with pricing
       def find_model_info(model_id)
         return nil unless defined?(RubyLLM::Models)
 
-        RubyLLM::Models.find(model_id)
+        RubyLLM::Models.find(model_id) || RubyLLM::Models.find(model)
       rescue
         nil
       end
