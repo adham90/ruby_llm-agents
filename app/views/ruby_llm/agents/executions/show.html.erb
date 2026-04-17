@@ -75,6 +75,9 @@
   <%= render "ruby_llm/agents/executions/audio_player" %>
 <% end %>
 
+<!-- ── user attachments ──────────────── -->
+<%= render "ruby_llm/agents/executions/user_attachments" %>
+
 <!-- ── tokens ──────────────────────── -->
 <%
   input_tokens = @execution.input_tokens || 0
