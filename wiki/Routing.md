@@ -97,6 +97,73 @@ result.delegated_result # => full Result from BillingAgent
 
 When a route has an `agent:` mapping, the router automatically classifies and then invokes that agent, returning the delegated agent's response as the result content. Routes without `agent:` just classify.
 
+### Disabling Auto-Delegation
+
+Pass `auto_delegate: false` to classify only and skip the downstream call. The mapped `agent_class` is still exposed on the result so you can invoke it yourself — useful when you want to log, enrich params, or conditionally dispatch:
+
+```ruby
+result = AppRouter.call(message: "I was charged twice", auto_delegate: false)
+
+result.route         # => :billing
+result.delegated?    # => false
+result.agent_class   # => BillingAgent  (still populated for manual dispatch)
+
+# Do something before dispatching...
+AuditLog.record(user: current_user, route: result.route)
+
+# ...then invoke the mapped agent manually with extra context
+result.agent_class.call(
+  message: "I was charged twice",
+  user_tier: current_user.tier,
+  locale: I18n.locale
+)
+```
+
+Auto-delegation defaults to `true`, so existing callers are unaffected.
+
+### Streaming Through Delegation
+
+When the caller passes a block and the delegated agent has `streaming true`, chunks from the delegated agent flow through the caller's block — streaming works end-to-end:
+
+```ruby
+class BillingAgent < ApplicationAgent
+  model "gpt-4o"
+  streaming true
+
+  system "You are a billing support specialist."
+  user   "{message}"
+end
+
+class SupportRouter < ApplicationAgent
+  include RubyLLM::Agents::Routing
+
+  model "gpt-4o-mini"
+  temperature 0.0
+
+  route :billing, "Billing questions", agent: BillingAgent
+  default_route :general
+end
+
+SupportRouter.call(message: "I was charged twice") do |chunk|
+  print chunk.content
+end
+# Chunks from BillingAgent stream live into the block.
+# The final RoutingResult is returned once delegation completes.
+```
+
+The router itself does not need to have streaming enabled — the block is forwarded to the delegated agent regardless. Whether the block fires depends on the **delegated** agent's `streaming` setting.
+
+Combine with `auto_delegate: false` for fully manual streaming dispatch:
+
+```ruby
+result = SupportRouter.call(message: msg, auto_delegate: false)
+log_classification(result.route)
+
+result.agent_class.call(message: msg) do |chunk|
+  stream_to_browser(chunk)
+end
+```
+
 ## RoutingResult
 
 `RoutingResult` extends the standard `Result` with routing-specific fields:
@@ -412,6 +479,18 @@ end
 | `system_prompt` | Returns routing system prompt (overridable) |
 | `user_prompt` | Returns the message parameter |
 | `process_response(response)` | Parses LLM output to route hash |
+| `auto_delegate?` | Whether this call will auto-invoke the mapped agent (default `true`) |
+
+**Call-time Options:**
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `message:` | String | The message to classify |
+| `auto_delegate:` | Boolean | Skip auto-delegation when `false` (default `true`) |
+| `tenant:` | Object | Tenant context — standard BaseAgent option |
+| `dry_run:` | Boolean | Preview prompts without calling the LLM |
+
+When a block is passed, it is forwarded to the delegated agent. Streaming fires when the delegated agent declares `streaming true`.
 
 **Class Method:**
 

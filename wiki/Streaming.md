@@ -296,3 +296,4 @@ end
 - [Agent DSL](Agent-DSL) - Configuration options
 - [Execution Tracking](Execution-Tracking) - TTFT analytics
 - [Dashboard](Dashboard) - Monitoring streaming metrics
+- [Routing](Routing#streaming-through-delegation) - Streaming from routed agents
