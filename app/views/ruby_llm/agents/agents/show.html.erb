@@ -8,10 +8,11 @@
   <div class="flex items-center gap-2 px-3 py-1.5 mb-4 rounded border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 font-mono text-xs text-yellow-700 dark:text-yellow-400">
     <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path></svg>
     <span>dashboard overrides active: <strong><%= @config[:active_overrides].keys.join(", ") %></strong></span>
-    <%= link_to "reset", ruby_llm_agents.reset_overrides_agent_path(@agent_type),
+    <%= button_to "reset", ruby_llm_agents.reset_overrides_agent_path(@agent_type),
           method: :delete,
           class: "ml-auto text-yellow-600 dark:text-yellow-500 hover:text-yellow-800 dark:hover:text-yellow-300",
-          data: { confirm: "Remove all dashboard overrides?" } %>
+          form: { style: "display:inline" },
+          data: { turbo_confirm: "Remove all dashboard overrides?" } %>
   </div>
 <% end %>
 
@@ -293,8 +294,8 @@
   <% end %>
 <% end %>
 
-<!-- ── config (non-agent types only) ── -->
-<% if @config && @agent_type_kind && @agent_type_kind != "agent" %>
+<!-- ── config ── -->
+<% if @config && @agent_type_kind %>
   <div class="flex items-center gap-3 mt-6 mb-3">
     <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">config</span>
     <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>

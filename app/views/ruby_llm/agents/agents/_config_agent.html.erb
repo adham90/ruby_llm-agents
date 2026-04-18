@@ -111,12 +111,16 @@
 
           <div class="flex items-center gap-2 pt-2">
             <button type="submit" class="text-[10px] px-2 py-0.5 rounded bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors">save overrides</button>
-            <% if has_overrides %>
-              <%= link_to "reset all", ruby_llm_agents.reset_overrides_agent_path(@agent_type),
-                    method: :delete,
-                    class: "text-[10px] text-red-500 hover:text-red-400 transition-colors",
-                    data: { confirm: "Remove all dashboard overrides for this agent?" } %>
-            <% end %>
+          </div>
+        <% end %>
+
+        <% if has_overrides %>
+          <div class="mt-1.5">
+            <%= button_to "reset all", ruby_llm_agents.reset_overrides_agent_path(@agent_type),
+                  method: :delete,
+                  class: "text-[10px] text-red-500 hover:text-red-400 transition-colors",
+                  form: { style: "display:inline" },
+                  data: { turbo_confirm: "Remove all dashboard overrides for this agent?" } %>
           </div>
         <% end %>
       </div>

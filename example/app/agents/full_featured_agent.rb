@@ -39,9 +39,9 @@ class FullFeaturedAgent < ApplicationAgent
   # ===========================================
   # Model Configuration
   # ===========================================
-  model "gpt-4o"
+  model "gpt-4o", overridable: true
   description "Complete showcase of all agent DSL features - the kitchen sink agent"
-  temperature 0.5
+  temperature 0.5, overridable: true
   timeout 60
 
   # ===========================================

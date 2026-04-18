@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_06_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_18_125530) do
   create_table "organizations", force: :cascade do |t|
     t.boolean "active", default: true
     t.string "anthropic_api_key"
@@ -96,6 +96,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_06_000001) do
     t.index ["tenant_id", "created_at"], name: "index_ruby_llm_agents_executions_on_tenant_id_and_created_at"
     t.index ["tenant_id", "status"], name: "index_ruby_llm_agents_executions_on_tenant_id_and_status"
     t.index ["trace_id"], name: "index_ruby_llm_agents_executions_on_trace_id"
+  end
+
+  create_table "ruby_llm_agents_overrides", force: :cascade do |t|
+    t.string "agent_type", null: false
+    t.datetime "created_at", null: false
+    t.json "settings", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.string "updated_by"
+    t.index ["agent_type"], name: "index_ruby_llm_agents_overrides_on_agent_type", unique: true
   end
 
   create_table "ruby_llm_agents_tenants", force: :cascade do |t|

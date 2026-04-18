@@ -1,0 +1,28 @@
+# frozen_string_literal: true
+
+# Migration to create the agent overrides table for dashboard-managed settings
+#
+# This table stores per-agent setting overrides that are managed through
+# the dashboard UI. Only fields declared as `overridable: true` in the
+# agent DSL can be overridden.
+#
+# Run with: rails db:migrate
+class CreateRubyLLMAgentsOverrides < ActiveRecord::Migration[8.1]
+  def change
+    create_table :ruby_llm_agents_overrides do |t|
+      # The agent class name (e.g., "SupportAgent")
+      t.string :agent_type, null: false
+
+      # JSON hash of overridden settings
+      # Format: { "model" => "gpt-4o-mini", "temperature" => 0.5 }
+      t.json :settings, null: false, default: {}
+
+      # Who last changed the override (optional audit trail)
+      t.string :updated_by
+
+      t.timestamps
+    end
+
+    add_index :ruby_llm_agents_overrides, :agent_type, unique: true
+  end
+end
