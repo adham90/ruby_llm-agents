@@ -33,6 +33,7 @@ module RubyLLM
       # @api private
       config.to_prepare do
         require_relative "../infrastructure/execution_logger_job"
+        require_relative "../infrastructure/retention_job"
         require_relative "../core/instrumentation"
         require_relative "../core/base"
 

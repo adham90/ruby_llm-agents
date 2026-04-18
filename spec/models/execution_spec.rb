@@ -353,4 +353,73 @@ RSpec.describe RubyLLM::Agents::Execution, type: :model do
       end
     end
   end
+
+  describe "soft-purge helpers" do
+    let(:execution) { create(:execution) }
+
+    describe "#soft_purged?" do
+      it "is false when metadata has no soft_purged_at key" do
+        expect(execution.soft_purged?).to be false
+      end
+
+      it "is true once soft_purged_at is stamped into metadata" do
+        execution.update!(metadata: execution.metadata.merge("soft_purged_at" => Time.current.iso8601))
+        expect(execution.soft_purged?).to be true
+      end
+    end
+
+    describe "#soft_purged_at" do
+      it "returns nil when not stamped" do
+        expect(execution.soft_purged_at).to be_nil
+      end
+
+      it "parses an ISO8601 timestamp out of metadata" do
+        ts = Time.current.utc.change(usec: 0)
+        execution.update!(metadata: execution.metadata.merge("soft_purged_at" => ts.iso8601))
+        expect(execution.soft_purged_at).to eq(ts)
+      end
+
+      it "returns nil for an unparseable timestamp" do
+        execution.update!(metadata: execution.metadata.merge("soft_purged_at" => "garbage"))
+        expect(execution.soft_purged_at).to be_nil
+      end
+    end
+
+    describe "#error_message" do
+      it "delegates to detail.error_message when detail is present" do
+        execution.detail.update!(error_message: "live error")
+        expect(execution.error_message).to eq("live error")
+      end
+
+      it "falls back to metadata error_message after soft purge" do
+        execution.update!(metadata: execution.metadata.merge("error_message" => "preserved error"))
+        execution.detail.destroy!
+        expect(execution.reload.error_message).to eq("preserved error")
+      end
+    end
+  end
+
+  describe "#response_hash" do
+    let(:execution) { create(:execution) }
+
+    it "returns the response when it is already a Hash" do
+      execution.detail.update!(response: {"audio_url" => "https://x"})
+      expect(execution.response_hash).to eq({"audio_url" => "https://x"})
+    end
+
+    it "returns an empty hash when the response is a plain String" do
+      execution.detail.update!(response: "just some text output")
+      expect(execution.response_hash).to eq({})
+    end
+
+    it "returns an empty hash when the response is an Array" do
+      execution.detail.update!(response: [0.1, 0.2, 0.3])
+      expect(execution.response_hash).to eq({})
+    end
+
+    it "returns an empty hash when detail is missing" do
+      execution.detail.destroy!
+      expect(execution.reload.response_hash).to eq({})
+    end
+  end
 end

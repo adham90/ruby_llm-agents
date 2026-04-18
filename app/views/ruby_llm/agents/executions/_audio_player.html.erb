@@ -1,5 +1,5 @@
 <%
-  response = @execution.response || {}
+  response = @execution.response_hash
   audio_src = response["audio_url"] || response[:audio_url] ||
               response["audio_data_uri"] || response[:audio_data_uri]
   audio_format = response["format"] || response[:format] ||

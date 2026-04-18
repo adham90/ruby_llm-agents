@@ -96,6 +96,7 @@ if defined?(Rails)
   require_relative "agents/core/inflections"
   require_relative "agents/core/instrumentation"
   require_relative "agents/infrastructure/execution_logger_job"
+  require_relative "agents/infrastructure/retention_job"
 end
 require_relative "agents/rails/engine" if defined?(Rails::Engine)
 

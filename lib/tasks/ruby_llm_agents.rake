@@ -7,6 +7,13 @@ namespace :ruby_llm_agents do
     RubyLlmAgents::DoctorGenerator.start([])
   end
 
+  desc "Run the retention job synchronously (soft + hard purges per configuration)"
+  task purge: :environment do
+    result = RubyLLM::Agents::RetentionJob.new.perform
+    puts "Soft purged: #{result[:soft_purged]} executions (details destroyed)"
+    puts "Hard purged: #{result[:hard_purged]} executions (rows destroyed)"
+  end
+
   desc "Rename an agent type in execution records. Usage: rake ruby_llm_agents:rename_agent FROM=OldName TO=NewName [DRY_RUN=1]"
   task rename_agent: :environment do
     from = ENV["FROM"]

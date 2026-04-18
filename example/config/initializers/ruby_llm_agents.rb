@@ -54,7 +54,26 @@ RubyLLM::Agents.configure do |config|
   # Number of retry attempts for the async logging job on failure
   # config.job_retry_attempts = 3
 
-  # Retention period for execution records (used by cleanup tasks)
+  # ============================================
+  # Data Retention
+  # ============================================
+  #
+  # Two-tier purge of execution records. Run the retention job on a schedule:
+  #
+  #   RubyLLM::Agents::RetentionJob.perform_later
+  #   # or: rake ruby_llm_agents:purge
+  #
+  # Soft purge deletes prompts, responses, tool calls, and other large payloads
+  # (execution_details + tool_executions rows) while preserving the executions
+  # row for analytics. Hard purge deletes the executions row entirely.
+  #
+  # Set either to nil to disable. soft_purge_after must be less than
+  # hard_purge_after when both are set.
+  #
+  # config.soft_purge_after = 30.days
+  # config.hard_purge_after = 365.days
+  #
+  # Deprecated alias (maps to hard_purge_after):
   # config.retention_period = 30.days
 
   # ============================================

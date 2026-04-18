@@ -79,11 +79,23 @@ module RubyLLM
         foreign_key: :execution_id, dependent: :destroy
 
       # Delegations so existing code keeps working transparently
-      delegate :system_prompt, :user_prompt, :assistant_prompt, :response, :error_message,
+      delegate :system_prompt, :user_prompt, :assistant_prompt, :response,
         :messages_summary, :tool_calls, :attempts, :fallback_chain,
         :parameters, :routed_to, :classification_result,
         :cached_at, :cache_creation_tokens,
         to: :detail, prefix: false, allow_nil: true
+
+      # Error message reader that survives soft purge.
+      #
+      # Prefers detail.error_message when the detail row still exists, otherwise
+      # falls back to the truncated copy stored in metadata by the retention
+      # job. This lets error-rate trend analysis continue working past the
+      # soft-purge window.
+      #
+      # @return [String, nil]
+      def error_message
+        detail&.error_message || metadata&.dig("error_message")
+      end
 
       # Validations
       validates :agent_type, :model_id, :started_at, presence: true
@@ -213,6 +225,44 @@ module RubyLLM
       # @return [Boolean] true if rate limiting occurred
       def rate_limited?
         metadata&.dig("rate_limited") == true
+      end
+
+      # Returns the response payload as a Hash, regardless of how agents wrote it.
+      #
+      # The `execution_details.response` column is declared as JSON, but agents
+      # may write plain strings (chat text), arrays (embeddings), or nil. Views
+      # that want to look up specific keys (audio_url, image_url, etc.) need a
+      # Hash they can safely `.dig` into. This reader returns an empty hash when
+      # the stored response isn't a Hash, so callers don't need type guards.
+      #
+      # @return [Hash] Parsed response hash, or empty hash if not hash-shaped
+      def response_hash
+        raw = response
+        raw.is_a?(Hash) ? raw : {}
+      end
+
+      # Returns whether this execution has had its detail payload soft-purged.
+      #
+      # Soft-purged executions retain all analytics columns (cost, tokens,
+      # timing, status) but the large payloads (prompts, responses, tool
+      # calls, attempts) stored in execution_details and tool_executions
+      # have been destroyed by the retention job.
+      #
+      # @return [Boolean] true if the retention job has soft-purged this execution
+      def soft_purged?
+        metadata&.key?("soft_purged_at") == true
+      end
+
+      # Returns when this execution was soft-purged, if ever.
+      #
+      # @return [Time, nil] Parsed timestamp or nil if not soft-purged
+      def soft_purged_at
+        raw = metadata&.dig("soft_purged_at")
+        return nil if raw.blank?
+
+        Time.iso8601(raw)
+      rescue ArgumentError
+        nil
       end
 
       # Convenience accessors for niche fields stored in metadata JSON

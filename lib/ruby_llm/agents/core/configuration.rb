@@ -50,9 +50,26 @@ module RubyLLM
       #   When false, executions are logged synchronously.
       #   @return [Boolean] Enable async logging (default: true)
 
+      # @!attribute [rw] soft_purge_after
+      #   How long to keep full execution details (prompts, responses, tool calls,
+      #   attempts) before the retention job destroys them. The executions row is
+      #   preserved so cost, token, and latency analytics remain intact. A
+      #   truncated copy of the error message is stamped into metadata for
+      #   long-term error-rate trend analysis.
+      #   Set to nil to disable soft purging.
+      #   @return [ActiveSupport::Duration, nil] Soft-purge window (default: 30.days)
+
+      # @!attribute [rw] hard_purge_after
+      #   How long to keep the executions row itself before the retention job
+      #   destroys it entirely. Must be greater than soft_purge_after when both
+      #   are set. Set to nil to retain executions indefinitely.
+      #   @return [ActiveSupport::Duration, nil] Hard-purge window (default: 365.days)
+
       # @!attribute [rw] retention_period
-      #   How long to retain execution records before cleanup.
-      #   @return [ActiveSupport::Duration] Retention period (default: 30.days)
+      #   Deprecated. Alias for hard_purge_after, kept for backward compatibility.
+      #   Prefer configuring soft_purge_after and hard_purge_after explicitly.
+      #   @return [ActiveSupport::Duration, nil] Hard-purge window
+      #   @deprecated Use {#hard_purge_after} instead.
 
       # @!attribute [rw] anomaly_cost_threshold
       #   Cost threshold in dollars that triggers anomaly logging.
@@ -379,7 +396,6 @@ module RubyLLM
       # Attributes without validation (simple accessors)
       attr_accessor :default_model,
         :async_logging,
-        :retention_period,
         :dashboard_parent_controller,
         :basic_auth_username,
         :basic_auth_password,
@@ -464,7 +480,9 @@ module RubyLLM
         :tenant_resolver,
         :tenant_config_resolver,
         :default_retries,
-        :budgets
+        :budgets,
+        :soft_purge_after,
+        :hard_purge_after
 
       attr_writer :cache_store
 
@@ -594,6 +612,44 @@ module RubyLLM
         @default_embedding_batch_size = value
       end
 
+      # Sets soft_purge_after with validation
+      #
+      # @param value [ActiveSupport::Duration, Numeric, nil] Window or nil to disable
+      # @raise [ArgumentError] If value is not a Duration/Numeric or nil, or is negative
+      def soft_purge_after=(value)
+        validate_purge_window!(:soft_purge_after, value)
+        @soft_purge_after = value
+        validate_purge_ordering!
+      end
+
+      # Sets hard_purge_after with validation
+      #
+      # @param value [ActiveSupport::Duration, Numeric, nil] Window or nil to disable
+      # @raise [ArgumentError] If value is not a Duration/Numeric or nil, or is negative
+      def hard_purge_after=(value)
+        validate_purge_window!(:hard_purge_after, value)
+        @hard_purge_after = value
+        validate_purge_ordering!
+      end
+
+      # Deprecated alias for hard_purge_after.
+      #
+      # @return [ActiveSupport::Duration, nil]
+      # @deprecated Use {#hard_purge_after} instead.
+      def retention_period
+        hard_purge_after
+      end
+
+      # Deprecated setter for retention_period (maps to hard_purge_after).
+      #
+      # @param value [ActiveSupport::Duration, Numeric, nil]
+      # @deprecated Use {#hard_purge_after=} instead.
+      def retention_period=(value)
+        warn "[DEPRECATION] RubyLLM::Agents config.retention_period is deprecated. " \
+          "Use config.hard_purge_after instead (and set config.soft_purge_after for two-tier retention)."
+        self.hard_purge_after = value
+      end
+
       # Sets default_embedding_dimensions with validation
       #
       # @param value [Integer, nil] Dimensions (must be nil or > 0)
@@ -616,7 +672,8 @@ module RubyLLM
         @default_timeout = 60
         @cache_store = nil
         @async_logging = true
-        @retention_period = 30.days
+        @soft_purge_after = 30.days
+        @hard_purge_after = 365.days
         @anomaly_cost_threshold = 5.00
         @anomaly_duration_threshold = 10_000
         @dashboard_auth = ->(_controller) { true }
@@ -960,7 +1017,8 @@ module RubyLLM
           },
           logging: {
             async_logging: async_logging,
-            retention_period: retention_period,
+            soft_purge_after: soft_purge_after,
+            hard_purge_after: hard_purge_after,
             job_retry_attempts: job_retry_attempts,
             track_executions: track_executions,
             track_cache_hits: track_cache_hits,
@@ -1160,6 +1218,30 @@ module RubyLLM
         if value.key?(:enforcement) && ![:none, :soft, :hard].include?(value[:enforcement])
           raise ArgumentError, "budgets[:enforcement] must be :none, :soft, or :hard"
         end
+      end
+
+      # Validates a purge-window value (Duration, Numeric seconds, or nil).
+      #
+      # @param attr [Symbol] Attribute name for error messages
+      # @param value [ActiveSupport::Duration, Numeric, nil] Value to validate
+      # @raise [ArgumentError] If value is neither nil nor a non-negative duration/number
+      def validate_purge_window!(attr, value)
+        return if value.nil?
+        return if value.is_a?(ActiveSupport::Duration) && value.to_i >= 0
+        return if value.is_a?(Numeric) && value >= 0
+
+        raise ArgumentError, "#{attr} must be an ActiveSupport::Duration, non-negative Numeric, or nil"
+      end
+
+      # Ensures soft_purge_after is strictly less than hard_purge_after when both are set.
+      #
+      # @raise [ArgumentError] If ordering is violated
+      def validate_purge_ordering!
+        return if @soft_purge_after.nil? || @hard_purge_after.nil?
+        return if @soft_purge_after.to_i < @hard_purge_after.to_i
+
+        raise ArgumentError, "soft_purge_after (#{@soft_purge_after.inspect}) must be less than " \
+          "hard_purge_after (#{@hard_purge_after.inspect})"
       end
     end
   end

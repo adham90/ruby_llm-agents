@@ -22,8 +22,16 @@ RSpec.describe RubyLLM::Agents::Configuration do
       expect(config.async_logging).to be true
     end
 
-    it "sets retention_period to 30 days" do
-      expect(config.retention_period).to eq(30.days)
+    it "sets soft_purge_after to 30 days" do
+      expect(config.soft_purge_after).to eq(30.days)
+    end
+
+    it "sets hard_purge_after to 365 days" do
+      expect(config.hard_purge_after).to eq(365.days)
+    end
+
+    it "aliases retention_period to hard_purge_after for backward compatibility" do
+      expect(config.retention_period).to eq(365.days)
     end
 
     it "sets anomaly thresholds" do
@@ -195,7 +203,8 @@ RSpec.describe RubyLLM::Agents::Configuration do
       config.default_temperature = 0.7
       config.default_timeout = 120
       config.async_logging = false
-      config.retention_period = 60.days
+      config.soft_purge_after = 45.days
+      config.hard_purge_after = 60.days
       config.anomaly_cost_threshold = 10.0
       config.anomaly_duration_threshold = 20_000
       config.dashboard_parent_controller = "AdminController"
@@ -220,7 +229,8 @@ RSpec.describe RubyLLM::Agents::Configuration do
       expect(config.default_temperature).to eq(0.7)
       expect(config.default_timeout).to eq(120)
       expect(config.async_logging).to be false
-      expect(config.retention_period).to eq(60.days)
+      expect(config.soft_purge_after).to eq(45.days)
+      expect(config.hard_purge_after).to eq(60.days)
       expect(config.anomaly_cost_threshold).to eq(10.0)
       expect(config.anomaly_duration_threshold).to eq(20_000)
       expect(config.dashboard_parent_controller).to eq("AdminController")
@@ -240,6 +250,71 @@ RSpec.describe RubyLLM::Agents::Configuration do
       expect(config.default_embedding_dimensions).to eq(512)
       expect(config.default_embedding_batch_size).to eq(50)
       expect(config.track_embeddings).to be false
+    end
+  end
+
+  describe "data retention" do
+    describe "#soft_purge_after=" do
+      it "accepts a Duration" do
+        config.soft_purge_after = 7.days
+        expect(config.soft_purge_after).to eq(7.days)
+      end
+
+      it "accepts a non-negative Numeric (seconds)" do
+        config.soft_purge_after = 0
+        expect(config.soft_purge_after).to eq(0)
+      end
+
+      it "accepts nil to disable the tier" do
+        config.soft_purge_after = nil
+        expect(config.soft_purge_after).to be_nil
+      end
+
+      it "raises for non-Duration/non-Numeric values" do
+        expect { config.soft_purge_after = "thirty days" }.to raise_error(ArgumentError, /must be/)
+      end
+
+      it "raises when set equal to hard_purge_after" do
+        config.hard_purge_after = 60.days
+        expect { config.soft_purge_after = 60.days }.to raise_error(ArgumentError, /must be less than/)
+      end
+
+      it "raises when set greater than hard_purge_after" do
+        config.hard_purge_after = 60.days
+        expect { config.soft_purge_after = 90.days }.to raise_error(ArgumentError, /must be less than/)
+      end
+    end
+
+    describe "#hard_purge_after=" do
+      it "accepts a Duration" do
+        config.hard_purge_after = 2.years
+        expect(config.hard_purge_after).to eq(2.years)
+      end
+
+      it "accepts nil to retain indefinitely" do
+        config.hard_purge_after = nil
+        expect(config.hard_purge_after).to be_nil
+      end
+
+      it "raises when set less than soft_purge_after" do
+        config.soft_purge_after = 30.days
+        expect { config.hard_purge_after = 10.days }.to raise_error(ArgumentError, /must be less than/)
+      end
+    end
+
+    describe "#retention_period" do
+      it "reads back through to hard_purge_after" do
+        config.hard_purge_after = 90.days
+        expect(config.retention_period).to eq(90.days)
+      end
+
+      it "writes through to hard_purge_after and emits a deprecation warning" do
+        expect {
+          config.retention_period = 180.days
+        }.to output(/deprecated.*hard_purge_after/m).to_stderr
+
+        expect(config.hard_purge_after).to eq(180.days)
+      end
     end
   end
 

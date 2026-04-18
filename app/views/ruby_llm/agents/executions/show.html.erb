@@ -57,6 +57,16 @@
   </div>
 <% end %>
 
+<!-- Soft-purge banner -->
+<% if @execution.soft_purged? %>
+  <div class="flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded px-3 py-2 mb-2">
+    <span class="text-amber-600 dark:text-amber-400 text-xs font-mono leading-5">
+      &#9888; Execution details were purged<% if @execution.soft_purged_at %> on <%= @execution.soft_purged_at.strftime("%b %d, %Y") %><% end %>.
+      Cost, token, and timing analytics are preserved.
+    </span>
+  </div>
+<% end %>
+
 <!-- Stats inline row -->
 <div class="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-gray-400 dark:text-gray-500 mb-2">
   <span><span class="text-gray-800 dark:text-gray-200"><%= number_to_human_short(@execution.duration_ms || 0) %>ms</span> duration</span>
@@ -70,8 +80,8 @@
 <!-- ── audio player ──────────────────── -->
 <% if @execution.agent_type.to_s.match?(/Speaker|Narrator|Transcriber/i) ||
       @execution.metadata&.dig("audio_duration_seconds").present? ||
-      @execution.response&.dig("audio_data_uri").present? ||
-      @execution.response&.dig("audio_url").present? %>
+      @execution.response_hash["audio_data_uri"].present? ||
+      @execution.response_hash["audio_url"].present? %>
   <%= render "ruby_llm/agents/executions/audio_player" %>
 <% end %>
 
@@ -254,16 +264,18 @@
 <% end %>
 
 <!-- ── parameters ──────────────────── -->
-<div class="flex items-center gap-3 mt-6 mb-3">
-  <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">parameters</span>
-  <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
-  <button
-    type="button"
-    data-copy-json="<%= Base64.strict_encode64(JSON.pretty_generate(@execution.parameters || {})) %>"
-    class="copy-json-btn font-mono text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-  >copy</button>
-</div>
-<pre class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded p-4 text-xs overflow-x-auto font-mono"><%= highlight_json(@execution.parameters || {}) %></pre>
+<% if @execution.detail && @execution.parameters.present? %>
+  <div class="flex items-center gap-3 mt-6 mb-3">
+    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">parameters</span>
+    <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
+    <button
+      type="button"
+      data-copy-json="<%= Base64.strict_encode64(JSON.pretty_generate(@execution.parameters)) %>"
+      class="copy-json-btn font-mono text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+    >copy</button>
+  </div>
+  <pre class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded p-4 text-xs overflow-x-auto font-mono"><%= highlight_json(@execution.parameters) %></pre>
+<% end %>
 
 <!-- ── response ──────────────────────── -->
 <% if @execution.response.present? %>
@@ -280,6 +292,7 @@
 <% end %>
 
 <!-- ── tool calls ──────────────────── -->
+<% if @execution.detail %>
 <% tool_calls = @execution.tool_calls || [] %>
 <% tool_call_count = tool_calls.size %>
 <div x-data="{ expanded: <%= tool_call_count <= 3 && tool_call_count > 0 %> }">
@@ -374,6 +387,7 @@
     <p class="text-xs text-gray-400 dark:text-gray-600 font-mono italic">no tool calls</p>
   <% end %>
 </div>
+<% end %>
 
 <!-- ── metadata ──────────────────────── -->
 <% if @execution.metadata.present? && @execution.metadata.any? %>
