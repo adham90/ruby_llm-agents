@@ -237,7 +237,7 @@ RSpec.describe RubyLLM::Agents::ImagePipeline::Execution do
     let(:step_instance) { step_test_class.new }
 
     let(:mock_result) do
-      double("Result", success?: true, error?: false)
+      Struct.new(:success?, :error?, keyword_init: true).new(success?: true, error?: false)
     end
 
     it "executes generator step" do
@@ -338,18 +338,13 @@ RSpec.describe RubyLLM::Agents::ImagePipeline::Execution do
     let(:extraction_instance) { extraction_test_class.new }
 
     it "extracts URL from result" do
-      result = double("Result", url: "https://example.com/image.png", data: nil)
-      allow(result).to receive(:respond_to?).with(:url).and_return(true)
+      result = Struct.new(:url, :data).new("https://example.com/image.png", nil)
 
       expect(extraction_instance.test_extract_image(result)).to eq("https://example.com/image.png")
     end
 
     it "extracts data from result when no URL" do
-      result = double("Result")
-      allow(result).to receive(:respond_to?).with(:url).and_return(true)
-      allow(result).to receive(:url).and_return(nil)
-      allow(result).to receive(:respond_to?).with(:data).and_return(true)
-      allow(result).to receive(:data).and_return("base64data")
+      result = Struct.new(:url, :data).new(nil, "base64data")
 
       expect(extraction_instance.test_extract_image(result)).to eq("base64data")
     end

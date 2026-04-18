@@ -36,10 +36,6 @@ RSpec.describe RubyLLM::Agents::ImageTransformer::Execution do
 
   describe "#execute" do
     context "with valid inputs" do
-      before do
-        allow(RubyLLM::Agents::Execution).to receive(:create!)
-      end
-
       it "returns an ImageTransformResult" do
         result = test_transformer_class.call(
           image: "https://example.com/source.jpg",
@@ -60,10 +56,6 @@ RSpec.describe RubyLLM::Agents::ImageTransformer::Execution do
     end
 
     context "with validation errors" do
-      before do
-        allow(RubyLLM::Agents::Execution).to receive(:create!)
-      end
-
       it "returns error result when image is nil" do
         result = test_transformer_class.call(image: nil, prompt: "Transform")
 
@@ -102,10 +94,6 @@ RSpec.describe RubyLLM::Agents::ImageTransformer::Execution do
     end
 
     context "with error handling" do
-      before do
-        allow(RubyLLM::Agents::Execution).to receive(:create!)
-      end
-
       it "returns error result when transformation fails" do
         allow(RubyLLM).to receive(:paint).and_raise(StandardError.new("API Error"))
 

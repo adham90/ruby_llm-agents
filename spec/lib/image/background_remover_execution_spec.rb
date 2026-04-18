@@ -38,10 +38,6 @@ RSpec.describe RubyLLM::Agents::BackgroundRemover::Execution do
 
   describe "#execute" do
     context "with valid inputs" do
-      before do
-        allow(RubyLLM::Agents::Execution).to receive(:create!)
-      end
-
       it "returns a BackgroundRemovalResult" do
         result = test_remover_class.call(image: "https://example.com/source.jpg")
 
@@ -56,10 +52,6 @@ RSpec.describe RubyLLM::Agents::BackgroundRemover::Execution do
     end
 
     context "with validation errors" do
-      before do
-        allow(RubyLLM::Agents::Execution).to receive(:create!)
-      end
-
       it "returns error result when image is nil" do
         result = test_remover_class.call(image: nil)
 
@@ -76,10 +68,6 @@ RSpec.describe RubyLLM::Agents::BackgroundRemover::Execution do
     end
 
     context "with error handling" do
-      before do
-        allow(RubyLLM::Agents::Execution).to receive(:create!)
-      end
-
       it "returns error result when removal fails" do
         allow(RubyLLM).to receive(:paint).and_raise(StandardError.new("API Error"))
 

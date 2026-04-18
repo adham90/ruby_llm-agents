@@ -41,6 +41,11 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
   before do
     RubyLLM::Agents.reset_configuration!
+    # Circuit breakers read from the configured cache store; use an in-memory
+    # store so real CircuitBreaker instances behave deterministically in tests.
+    RubyLLM::Agents.configure do |c|
+      c.cache_store = ActiveSupport::Cache::MemoryStore.new
+    end
     # Speed up tests by stubbing sleep
     allow(middleware).to receive(:sleep)
   end
@@ -322,13 +327,15 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
         allow(cb_middleware).to receive(:sleep)
         context = build_context
 
-        breaker = instance_double(RubyLLM::Agents::CircuitBreaker)
+        breaker = RubyLLM::Agents::CircuitBreaker.new(
+          "CBAgent", "primary-model", errors: 3, within: 60, cooldown: 300
+        )
         allow(RubyLLM::Agents::CircuitBreaker).to receive(:from_config).and_return(breaker)
-        allow(breaker).to receive(:open?).and_return(false)
         allow(app).to receive(:call).and_raise(ArgumentError, "bad args")
 
-        expect(breaker).to receive(:record_failure!)
-        expect { cb_middleware.call(context) }.to raise_error(ArgumentError)
+        expect {
+          expect { cb_middleware.call(context) }.to raise_error(ArgumentError)
+        }.to change { breaker.failure_count }.by_at_least(1)
       end
     end
 
@@ -433,7 +440,11 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
       end
 
       let(:middleware) { described_class.new(app, agent_class_with_circuit_breaker) }
-      let(:breaker) { instance_double(RubyLLM::Agents::CircuitBreaker) }
+      let(:breaker) do
+        RubyLLM::Agents::CircuitBreaker.new(
+          "CircuitBreakerAgent", "primary-model", errors: 3, within: 60, cooldown: 300
+        )
+      end
 
       before do
         allow(RubyLLM::Agents::CircuitBreaker).to receive(:from_config).and_return(breaker)
@@ -446,8 +457,15 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
           model: "primary-model"
         )
 
-        primary_breaker = instance_double(RubyLLM::Agents::CircuitBreaker)
-        fallback_breaker = instance_double(RubyLLM::Agents::CircuitBreaker)
+        primary_breaker = RubyLLM::Agents::CircuitBreaker.new(
+          "CircuitBreakerAgent", "primary-model", errors: 3, within: 60, cooldown: 300
+        )
+        fallback_breaker = RubyLLM::Agents::CircuitBreaker.new(
+          "CircuitBreakerAgent", "fallback-model", errors: 3, within: 60, cooldown: 300
+        )
+
+        # Trip the primary breaker so it's open
+        3.times { primary_breaker.record_failure! }
 
         allow(RubyLLM::Agents::CircuitBreaker).to receive(:from_config)
           .with("CircuitBreakerAgent", "primary-model", anything, tenant_id: nil)
@@ -456,19 +474,18 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
           .with("CircuitBreakerAgent", "fallback-model", anything, tenant_id: nil)
           .and_return(fallback_breaker)
 
-        allow(primary_breaker).to receive(:open?).and_return(true)
-        allow(fallback_breaker).to receive(:open?).and_return(false)
-
         allow(app).to receive(:call) do |ctx|
           ctx.output = "fallback result"
           ctx
         end
 
-        expect(fallback_breaker).to receive(:record_success!)
+        expect(primary_breaker).to be_open
 
         result = middleware.call(context)
 
         expect(result.output).to eq("fallback result")
+        # Fallback breaker was exercised with a success — counter reset to 0
+        expect(fallback_breaker.failure_count).to eq(0)
       end
 
       it "records success in circuit breaker" do
@@ -478,15 +495,18 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
           model: "primary-model"
         )
 
-        allow(breaker).to receive(:open?).and_return(false)
+        # Pre-load one failure so we can observe the reset
+        breaker.record_failure!
+        expect(breaker.failure_count).to eq(1)
+
         allow(app).to receive(:call) do |ctx|
           ctx.output = "success"
           ctx
         end
 
-        expect(breaker).to receive(:record_success!)
-
         middleware.call(context)
+
+        expect(breaker.failure_count).to eq(0)
       end
 
       it "records failure in circuit breaker" do
@@ -496,12 +516,11 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
           model: "primary-model"
         )
 
-        allow(breaker).to receive(:open?).and_return(false)
         allow(app).to receive(:call).and_raise(StandardError, "error")
 
-        expect(breaker).to receive(:record_failure!).at_least(:once)
-
         expect { middleware.call(context) }.to raise_error(RubyLLM::Agents::Reliability::AllModelsExhaustedError)
+
+        expect(breaker.failure_count).to be >= 1
       end
     end
 
@@ -962,8 +981,15 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
         cb_middleware = described_class.new(app, agent_cb)
         allow(cb_middleware).to receive(:sleep)
 
-        primary_breaker = instance_double(RubyLLM::Agents::CircuitBreaker)
-        fallback_breaker = instance_double(RubyLLM::Agents::CircuitBreaker)
+        primary_breaker = RubyLLM::Agents::CircuitBreaker.new(
+          "CBTrackAgent", "primary-model", errors: 3, within: 60, cooldown: 300
+        )
+        fallback_breaker = RubyLLM::Agents::CircuitBreaker.new(
+          "CBTrackAgent", "fallback-model", errors: 3, within: 60, cooldown: 300
+        )
+
+        # Trip primary breaker so it short-circuits
+        3.times { primary_breaker.record_failure! }
 
         allow(RubyLLM::Agents::CircuitBreaker).to receive(:from_config)
           .with("CBTrackAgent", "primary-model", anything, tenant_id: nil)
@@ -971,9 +997,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
         allow(RubyLLM::Agents::CircuitBreaker).to receive(:from_config)
           .with("CBTrackAgent", "fallback-model", anything, tenant_id: nil)
           .and_return(fallback_breaker)
-
-        allow(primary_breaker).to receive(:open?).and_return(true)
-        allow(fallback_breaker).to receive(:open?).and_return(false)
 
         context = RubyLLM::Agents::Pipeline::Context.new(
           input: "test", agent_class: agent_cb, model: "primary-model"
@@ -984,7 +1007,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
           ctx
         end
 
-        expect(fallback_breaker).to receive(:record_success!)
+        expect(primary_breaker).to be_open
 
         result = cb_middleware.call(context)
         attempts = result[:reliability_attempts]

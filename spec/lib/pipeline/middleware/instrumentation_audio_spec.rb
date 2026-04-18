@@ -22,16 +22,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation, "audio pe
   let(:app) { double("app") }
   let(:middleware) { described_class.new(app, agent_class) }
 
-  let(:mock_execution) do
-    double("RubyLLM::Agents::Execution",
-      id: 456,
-      status: "running",
-      detail: nil,
-      class: RubyLLM::Agents::Execution,
-      parent_execution_id: nil,
-      root_execution_id: nil)
-  end
-
   def build_context(options = {})
     RubyLLM::Agents::Pipeline::Context.new(
       input: "Hello world",
@@ -52,11 +42,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation, "audio pe
       c.persist_responses = false
       c.multi_tenancy_enabled = false
     end
-
-    allow(RubyLLM::Agents::Execution).to receive(:create!).and_return(mock_execution)
-    allow(mock_execution).to receive(:update!)
-    allow(mock_execution).to receive(:create_detail!)
-    allow(mock_execution).to receive(:update_column)
   end
 
   after do
@@ -88,21 +73,17 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation, "audio pe
         ctx
       end
 
-      expect(mock_execution).to receive(:create_detail!).with(
-        hash_including(
-          response: hash_including(
-            audio_data_uri: start_with("data:audio/mpeg;base64,"),
-            audio_url: "https://example.com/audio.mp3",
-            format: "mp3",
-            duration: 2.5,
-            file_size: 12_345,
-            voice_id: "nova",
-            provider: "openai"
-          )
-        )
-      )
-
       middleware.call(context)
+
+      detail = RubyLLM::Agents::Execution.last.detail
+      response = detail.response.deep_symbolize_keys
+      expect(response[:audio_data_uri]).to start_with("data:audio/mpeg;base64,")
+      expect(response[:audio_url]).to eq("https://example.com/audio.mp3")
+      expect(response[:format]).to eq("mp3")
+      expect(response[:duration]).to eq(2.5)
+      expect(response[:file_size]).to eq(12_345)
+      expect(response[:voice_id]).to eq("nova")
+      expect(response[:provider]).to eq("openai")
     end
 
     it "includes all audio metadata fields" do
@@ -113,14 +94,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation, "audio pe
         ctx
       end
 
-      saved_detail = nil
-      allow(mock_execution).to receive(:create_detail!) do |data|
-        saved_detail = data
-      end
-
       middleware.call(context)
 
-      response = saved_detail[:response]
+      response = RubyLLM::Agents::Execution.last.detail.response.deep_symbolize_keys
       expect(response[:audio_data_uri]).to start_with("data:audio/mpeg;base64,")
       expect(response[:format]).to eq("mp3")
       expect(response[:duration]).to eq(2.5)
@@ -152,15 +128,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation, "audio pe
         ctx
       end
 
-      saved_detail = nil
-      allow(mock_execution).to receive(:create_detail!) do |data|
-        saved_detail = data
-      end
-
       middleware.call(context)
 
-      response = saved_detail&.dig(:response)
-      expect(response).not_to have_key(:audio_data_uri) if response
+      response = RubyLLM::Agents::Execution.last.detail&.response
+      expect(response).not_to have_key("audio_data_uri") if response.present?
     end
 
     it "still stores audio_url when present" do
@@ -178,15 +149,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation, "audio pe
         ctx
       end
 
-      saved_detail = nil
-      allow(mock_execution).to receive(:create_detail!) do |data|
-        saved_detail = data
-      end
-
       middleware.call(context)
 
-      response = saved_detail[:response]
-      expect(response).to include(audio_url: "https://example.com/audio.mp3")
+      response = RubyLLM::Agents::Execution.last.detail.response
+      expect(response).to include("audio_url" => "https://example.com/audio.mp3")
     end
 
     it "does not create response if no audio_url" do
@@ -203,16 +169,11 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation, "audio pe
         ctx
       end
 
-      saved_detail = nil
-      allow(mock_execution).to receive(:create_detail!) do |data|
-        saved_detail = data
-      end
-
       middleware.call(context)
 
       # With persist_audio_data off and no audio_url, response should be absent or empty
-      response = saved_detail&.dig(:response)
-      expect(response).to be_nil
+      response = RubyLLM::Agents::Execution.last.detail&.response
+      expect(response.presence).to be_nil
     end
   end
 
@@ -250,15 +211,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation, "audio pe
         ctx
       end
 
-      saved_detail = nil
-      allow(mock_execution).to receive(:create_detail!) do |data|
-        saved_detail = data
-      end
-
       text_middleware.call(context)
 
-      response = saved_detail&.dig(:response)
-      expect(response).to be_nil
+      response = RubyLLM::Agents::Execution.last.detail&.response
+      expect(response.presence).to be_nil
     end
   end
 
@@ -301,15 +257,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation, "audio pe
         ctx
       end
 
-      saved_detail = nil
-      allow(mock_execution).to receive(:create_detail!) do |data|
-        saved_detail = data
-      end
-
       middleware.call(context)
 
-      response = saved_detail[:response]
-      expect(response).to include(audio_url: "https://example.com/audio.mp3")
+      response = RubyLLM::Agents::Execution.last.detail.response
+      expect(response).to include("audio_url" => "https://example.com/audio.mp3")
     end
   end
 end

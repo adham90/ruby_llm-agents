@@ -38,10 +38,6 @@ RSpec.describe RubyLLM::Agents::ImageAnalyzer::Execution do
 
   describe "#execute" do
     context "with valid image URL" do
-      before do
-        allow(RubyLLM::Agents::Execution).to receive(:create!)
-      end
-
       it "returns an ImageAnalysisResult" do
         result = test_analyzer_class.call(image: "https://example.com/test.jpg")
 
@@ -62,10 +58,6 @@ RSpec.describe RubyLLM::Agents::ImageAnalyzer::Execution do
     end
 
     context "with validation errors" do
-      before do
-        allow(RubyLLM::Agents::Execution).to receive(:create!)
-      end
-
       it "returns error result when image is nil" do
         result = test_analyzer_class.call(image: nil)
 
@@ -82,10 +74,6 @@ RSpec.describe RubyLLM::Agents::ImageAnalyzer::Execution do
     end
 
     context "with error handling" do
-      before do
-        allow(RubyLLM::Agents::Execution).to receive(:create!)
-      end
-
       it "returns error result when analysis fails" do
         allow(mock_chat).to receive(:ask).and_raise(StandardError.new("API Error"))
 

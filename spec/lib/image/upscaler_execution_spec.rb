@@ -37,10 +37,6 @@ RSpec.describe RubyLLM::Agents::ImageUpscaler::Execution do
 
   describe "#execute" do
     context "with valid inputs" do
-      before do
-        allow(RubyLLM::Agents::Execution).to receive(:create!)
-      end
-
       it "returns an ImageUpscaleResult" do
         result = test_upscaler_class.call(image: "https://example.com/source.jpg")
 
@@ -55,10 +51,6 @@ RSpec.describe RubyLLM::Agents::ImageUpscaler::Execution do
     end
 
     context "with validation errors" do
-      before do
-        allow(RubyLLM::Agents::Execution).to receive(:create!)
-      end
-
       it "returns error result when image is nil" do
         result = test_upscaler_class.call(image: nil)
 
@@ -75,10 +67,6 @@ RSpec.describe RubyLLM::Agents::ImageUpscaler::Execution do
     end
 
     context "with error handling" do
-      before do
-        allow(RubyLLM::Agents::Execution).to receive(:create!)
-      end
-
       it "returns error result when upscaling fails" do
         allow(RubyLLM).to receive(:paint).and_raise(StandardError.new("API Error"))
 

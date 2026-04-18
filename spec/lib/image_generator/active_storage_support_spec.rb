@@ -22,31 +22,59 @@ RSpec.describe RubyLLM::Agents::ImageGenerator::ActiveStorageSupport do
       photos: mock_attachments)
   end
 
-  # Mock successful image result
+  # Simple Image stand-in mirroring the RubyLLM::Image interface
+  image_struct = Struct.new(:url, :data, :mime_type, :blob, keyword_init: true) do
+    def base64?
+      !data.nil?
+    end
+
+    def to_blob
+      blob
+    end
+
+    def revised_prompt
+      nil
+    end
+
+    def save(_path)
+    end
+  end
+
+  def build_result(images:)
+    RubyLLM::Agents::ImageGenerationResult.new(
+      images: images,
+      prompt: "test",
+      model_id: "gpt-image-1",
+      size: "1024x1024",
+      quality: "standard",
+      style: "vivid",
+      started_at: Time.current,
+      completed_at: Time.current,
+      tenant_id: nil,
+      generator_class: "TestGenerator"
+    )
+  end
+
   let(:successful_result) do
-    mock_result = double("ImageGenerationResult")
-    allow(mock_result).to receive(:success?).and_return(true)
-    allow(mock_result).to receive(:base64?).and_return(false)
-    allow(mock_result).to receive(:url).and_return("https://example.com/image.png")
-    allow(mock_result).to receive(:mime_type).and_return("image/png")
-    allow(mock_result).to receive(:to_blob).and_return("\x89PNG\r\n")
-    mock_result
+    build_result(images: [image_struct.new(
+      url: "https://example.com/image.png",
+      data: nil,
+      mime_type: "image/png",
+      blob: "\x89PNG\r\n"
+    )])
   end
 
   let(:base64_result) do
-    mock_result = double("ImageGenerationResult")
-    allow(mock_result).to receive(:success?).and_return(true)
-    allow(mock_result).to receive(:base64?).and_return(true)
-    allow(mock_result).to receive(:url).and_return(nil)
-    allow(mock_result).to receive(:mime_type).and_return("image/png")
-    allow(mock_result).to receive(:to_blob).and_return("\x89PNG\r\n")
-    mock_result
+    build_result(images: [image_struct.new(
+      url: nil,
+      data: "base64encoded",
+      mime_type: "image/png",
+      blob: "\x89PNG\r\n"
+    )])
   end
 
   let(:failed_result) do
-    mock_result = double("ImageGenerationResult")
-    allow(mock_result).to receive(:success?).and_return(false)
-    mock_result
+    build_result(images: [])
   end
 
   describe ".generate_and_attach" do
@@ -163,26 +191,25 @@ RSpec.describe RubyLLM::Agents::ImageGenerator::ActiveStorageSupport do
 
   describe ".generate_and_attach_multiple" do
     let(:mock_image_1) do
-      double("Image1",
-        data: "base64data1",
+      image_struct.new(
         url: "https://example.com/1.png",
-        to_blob: "\x89PNG1",
-        mime_type: "image/png")
+        data: "base64data1",
+        mime_type: "image/png",
+        blob: "\x89PNG1"
+      )
     end
 
     let(:mock_image_2) do
-      double("Image2",
-        data: nil,
+      image_struct.new(
         url: "https://example.com/2.png",
-        to_blob: "\x89PNG2",
-        mime_type: "image/png")
+        data: nil,
+        mime_type: "image/png",
+        blob: "\x89PNG2"
+      )
     end
 
     let(:multi_image_result) do
-      mock_result = double("MultiImageResult")
-      allow(mock_result).to receive(:success?).and_return(true)
-      allow(mock_result).to receive(:images).and_return([mock_image_1, mock_image_2])
-      mock_result
+      build_result(images: [mock_image_1, mock_image_2])
     end
 
     before do

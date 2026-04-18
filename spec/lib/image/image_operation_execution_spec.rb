@@ -270,9 +270,7 @@ RSpec.describe RubyLLM::Agents::Concerns::ImageOperationExecution do
   end
 
   describe "#write_cache" do
-    let(:mock_result) do
-      double("Result", success?: true, to_cache: {data: "cached"})
-    end
+    result_struct = Struct.new(:success?, :to_cache, keyword_init: true)
 
     context "when Rails.cache is available" do
       let(:memory_store) { ActiveSupport::Cache::MemoryStore.new }
@@ -282,16 +280,18 @@ RSpec.describe RubyLLM::Agents::Concerns::ImageOperationExecution do
       end
 
       it "writes successful result to cache" do
-        test_instance.test_write_cache(mock_result)
+        successful = result_struct.new(success?: true, to_cache: {data: "cached"})
+
+        test_instance.test_write_cache(successful)
 
         cached = memory_store.read(test_instance.test_cache_key)
         expect(cached).to eq({data: "cached"})
       end
 
       it "does not write failed result to cache" do
-        failed_result = double("Result", success?: false, to_cache: {data: "cached"})
+        failed = result_struct.new(success?: false, to_cache: {data: "cached"})
 
-        test_instance.test_write_cache(failed_result)
+        test_instance.test_write_cache(failed)
 
         cached = memory_store.read(test_instance.test_cache_key)
         expect(cached).to be_nil
@@ -318,14 +318,20 @@ RSpec.describe RubyLLM::Agents::Concerns::ImageOperationExecution do
   end
 
   describe "#record_execution" do
+    result_struct = Struct.new(
+      :model_id, :total_cost, :duration_ms, :started_at, :completed_at, :count,
+      keyword_init: true
+    )
+
     let(:mock_result) do
-      double("Result",
+      result_struct.new(
         model_id: "dall-e-3",
         total_cost: 0.04,
         duration_ms: 1500,
         started_at: 2.seconds.ago,
         completed_at: Time.current,
-        count: 1)
+        count: 1
+      )
     end
 
     before do
@@ -338,18 +344,16 @@ RSpec.describe RubyLLM::Agents::Concerns::ImageOperationExecution do
       instance = test_class.new(tenant: "tenant-123")
       instance.test_resolve_tenant_context!
 
-      # Stub to avoid schema mismatch issues with execution_type
-      allow(RubyLLM::Agents::Execution).to receive(:create!).and_call_original
+      expect {
+        instance.test_record_execution(mock_result)
+      }.to change(RubyLLM::Agents::Execution, :count).by(1)
 
-      expect(RubyLLM::Agents::Execution).to receive(:create!) do |data|
-        expect(data[:agent_type]).to eq("TestImageOperation")
-        expect(data[:status]).to eq("success")
-        expect(data[:total_cost]).to eq(0.04)
-        expect(data[:tenant_id]).to eq("tenant-123")
-        expect(data[:execution_type]).to eq("test_image_operation")
-      end
-
-      instance.test_record_execution(mock_result)
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.agent_type).to eq("TestImageOperation")
+      expect(execution.status).to eq("success")
+      expect(execution.total_cost).to eq(0.04)
+      expect(execution.tenant_id).to eq("tenant-123")
+      expect(execution.execution_type).to eq("test_image_operation")
     end
 
     it "uses async logging when configured" do
@@ -387,31 +391,28 @@ RSpec.describe RubyLLM::Agents::Concerns::ImageOperationExecution do
     end
 
     it "creates execution record with error status" do
-      expect(RubyLLM::Agents::Execution).to receive(:create!) do |data|
-        expect(data[:status]).to eq("error")
-        expect(data[:error_class]).to eq("StandardError")
-        expect(data[:error_message]).to include("Test error")
-      end
+      expect {
+        test_instance.test_record_failed_execution(error, started_at)
+      }.to change(RubyLLM::Agents::Execution, :count).by(1)
 
-      test_instance.test_record_failed_execution(error, started_at)
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.status).to eq("error")
+      expect(execution.error_class).to eq("StandardError")
+      expect(execution.detail.error_message).to include("Test error")
     end
 
     it "calculates duration_ms" do
-      expect(RubyLLM::Agents::Execution).to receive(:create!) do |data|
-        expect(data[:duration_ms]).to be > 0
-      end
-
       test_instance.test_record_failed_execution(error, started_at)
+
+      expect(RubyLLM::Agents::Execution.last.duration_ms).to be > 0
     end
 
     it "truncates long error messages" do
       long_error = StandardError.new("x" * 2000)
 
-      expect(RubyLLM::Agents::Execution).to receive(:create!) do |data|
-        expect(data[:error_message].length).to be <= 1000
-      end
-
       test_instance.test_record_failed_execution(long_error, started_at)
+
+      expect(RubyLLM::Agents::Execution.last.detail.error_message.length).to be <= 1000
     end
   end
 

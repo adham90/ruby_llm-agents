@@ -74,7 +74,7 @@ RSpec.describe "Anthropic prompt caching" do
         mock_client
       end
 
-      allow_any_instance_of(klass).to receive(:find_model_info).and_return(claude_model_info)
+      allow(RubyLLM::Models).to receive(:find).and_return(claude_model_info)
 
       klass.call
 
@@ -104,7 +104,7 @@ RSpec.describe "Anthropic prompt caching" do
 
       # Model info returns OpenAI provider
       openai_info = double("ModelInfo", provider: "openai", pricing: nil)
-      allow_any_instance_of(klass).to receive(:find_model_info).and_return(openai_info)
+      allow(RubyLLM::Models).to receive(:find).and_return(openai_info)
 
       klass.call
 
@@ -182,7 +182,7 @@ RSpec.describe "Anthropic prompt caching" do
       end
       allow(mock_client).to receive(:tools).and_return(tools_hash)
       stub_ruby_llm_chat(mock_client)
-      allow_any_instance_of(klass).to receive(:find_model_info).and_return(claude_model_info)
+      allow(RubyLLM::Models).to receive(:find).and_return(claude_model_info)
 
       klass.call
 
@@ -243,7 +243,7 @@ RSpec.describe "Anthropic prompt caching" do
       text_tokens = double("TextTokens", input: 3.0, output: 15.0)
       pricing = double("Pricing", text_tokens: text_tokens)
       allow(claude_info).to receive(:pricing).and_return(pricing)
-      allow_any_instance_of(klass).to receive(:find_model_info).and_return(claude_info)
+      allow(RubyLLM::Models).to receive(:find).and_return(claude_info)
 
       result = klass.call
       # The result itself doesn't expose cache tokens, but the context metadata does.
@@ -272,7 +272,7 @@ RSpec.describe "Anthropic prompt caching" do
       text_tokens = double("TextTokens", input: 3.0, output: 15.0)
       pricing = double("Pricing", text_tokens: text_tokens)
       allow(claude_info).to receive(:pricing).and_return(pricing)
-      allow_any_instance_of(klass).to receive(:find_model_info).and_return(claude_info)
+      allow(RubyLLM::Models).to receive(:find).and_return(claude_info)
 
       result = klass.call
       expect(result).to be_a(RubyLLM::Agents::Result)

@@ -635,22 +635,21 @@ RSpec.describe RubyLLM::Agents::Transcriber do
     end
 
     it "stores transcription metadata on context for instrumentation" do
-      captured_context = nil
-      allow(RubyLLM::Agents::Pipeline::Executor).to receive(:execute).and_wrap_original do |m, ctx|
-        result = m.call(ctx)
-        captured_context = result
-        result
+      RubyLLM::Agents.configure do |c|
+        c.track_audio = true
+        c.async_logging = false
       end
 
       test_transcriber.call(audio: audio_file_path)
 
-      expect(captured_context[:language]).to eq("en")
-      expect(captured_context[:detected_language]).to eq("en")
-      expect(captured_context[:audio_duration_seconds]).to eq(5.5)
-      expect(captured_context[:audio_minutes]).to be_within(0.001).of(5.5 / 60.0)
-      expect(captured_context[:output_format]).to eq("text")
-      expect(captured_context[:timestamp_granularity]).to eq("segment")
-      expect(captured_context[:word_count]).to eq(6) # "Hello, this is a test transcription."
+      metadata = RubyLLM::Agents::Execution.last.metadata
+      expect(metadata["language"]).to eq("en")
+      expect(metadata["detected_language"]).to eq("en")
+      expect(metadata["audio_duration_seconds"]).to eq(5.5)
+      expect(metadata["audio_minutes"]).to be_within(0.001).of(5.5 / 60.0)
+      expect(metadata["output_format"]).to eq("text")
+      expect(metadata["timestamp_granularity"]).to eq("segment")
+      expect(metadata["word_count"]).to eq(6) # "Hello, this is a test transcription."
     end
 
     context "with tracking enabled" do

@@ -95,12 +95,13 @@ module RubyLLM
         def record_failed_execution(error, started_at)
           return unless defined?(RubyLLM::Agents::Execution)
 
-          execution_data = build_failed_execution_data(error, started_at)
+          execution_data, detail_data = build_failed_execution_data(error, started_at)
 
           if config.async_logging && defined?(ExecutionLoggerJob)
-            ExecutionLoggerJob.perform_later(execution_data)
+            ExecutionLoggerJob.perform_later(execution_data.merge(_detail_data: detail_data))
           else
-            RubyLLM::Agents::Execution.create!(execution_data)
+            execution = RubyLLM::Agents::Execution.create!(execution_data)
+            execution.create_detail!(detail_data) if detail_data.present?
           end
         rescue => e
           Rails.logger.error("[RubyLLM::Agents] Failed to record failed #{execution_type} execution: #{e.message}") if defined?(Rails)
@@ -124,7 +125,7 @@ module RubyLLM
         end
 
         def build_failed_execution_data(error, started_at)
-          {
+          execution_data = {
             agent_type: self.class.name,
             tenant_id: @tenant_id,
             execution_type: execution_type,
@@ -137,9 +138,12 @@ module RubyLLM
             started_at: started_at,
             completed_at: Time.current,
             error_class: error.class.name,
-            error_message: error.message.truncate(1000),
             metadata: {}
           }
+
+          detail_data = {error_message: error.message.to_s.truncate(1000)}
+
+          [execution_data, detail_data]
         end
 
         def build_metadata(result)

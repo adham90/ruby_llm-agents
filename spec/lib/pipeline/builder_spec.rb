@@ -232,20 +232,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Builder do
       end
 
       it "always includes Tenant middleware" do
-        # Allow Middleware classes to be available
-        stub_const("RubyLLM::Agents::Pipeline::Middleware::Tenant",
-          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-            def call(context)
-              @app.call(context)
-            end
-          end)
-        stub_const("RubyLLM::Agents::Pipeline::Middleware::Instrumentation",
-          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-            def call(context)
-              @app.call(context)
-            end
-          end)
-
         builder = described_class.for(minimal_agent)
 
         expect(builder.include?(RubyLLM::Agents::Pipeline::Middleware::Tenant)).to be true
@@ -267,25 +253,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Builder do
       end
 
       it "includes Cache middleware" do
-        stub_const("RubyLLM::Agents::Pipeline::Middleware::Tenant",
-          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-            def call(context)
-              @app.call(context)
-            end
-          end)
-        stub_const("RubyLLM::Agents::Pipeline::Middleware::Cache",
-          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-            def call(context)
-              @app.call(context)
-            end
-          end)
-        stub_const("RubyLLM::Agents::Pipeline::Middleware::Instrumentation",
-          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-            def call(context)
-              @app.call(context)
-            end
-          end)
-
         builder = described_class.for(cached_agent)
 
         expect(builder.include?(RubyLLM::Agents::Pipeline::Middleware::Cache)).to be true
@@ -310,25 +277,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Builder do
       end
 
       it "includes Reliability middleware when retries > 0" do
-        stub_const("RubyLLM::Agents::Pipeline::Middleware::Tenant",
-          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-            def call(context)
-              @app.call(context)
-            end
-          end)
-        stub_const("RubyLLM::Agents::Pipeline::Middleware::Instrumentation",
-          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-            def call(context)
-              @app.call(context)
-            end
-          end)
-        stub_const("RubyLLM::Agents::Pipeline::Middleware::Reliability",
-          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-            def call(context)
-              @app.call(context)
-            end
-          end)
-
         builder = described_class.for(reliable_agent)
 
         expect(builder.include?(RubyLLM::Agents::Pipeline::Middleware::Reliability)).to be true
@@ -348,25 +296,6 @@ RSpec.describe RubyLLM::Agents::Pipeline::Builder do
             ["gpt-3.5-turbo"]
           end
         end
-
-        stub_const("RubyLLM::Agents::Pipeline::Middleware::Tenant",
-          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-            def call(context)
-              @app.call(context)
-            end
-          end)
-        stub_const("RubyLLM::Agents::Pipeline::Middleware::Instrumentation",
-          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-            def call(context)
-              @app.call(context)
-            end
-          end)
-        stub_const("RubyLLM::Agents::Pipeline::Middleware::Reliability",
-          Class.new(RubyLLM::Agents::Pipeline::Middleware::Base) do
-            def call(context)
-              @app.call(context)
-            end
-          end)
 
         builder = described_class.for(fallback_only_agent)
 

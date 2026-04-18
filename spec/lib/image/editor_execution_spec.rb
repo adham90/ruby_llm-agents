@@ -36,10 +36,6 @@ RSpec.describe RubyLLM::Agents::ImageEditor::Execution do
 
   describe "#execute" do
     context "with valid inputs" do
-      before do
-        allow(RubyLLM::Agents::Execution).to receive(:create!)
-      end
-
       it "returns an ImageEditResult" do
         result = test_editor_class.call(
           image: "https://example.com/source.jpg",
@@ -62,10 +58,6 @@ RSpec.describe RubyLLM::Agents::ImageEditor::Execution do
     end
 
     context "with validation errors" do
-      before do
-        allow(RubyLLM::Agents::Execution).to receive(:create!)
-      end
-
       it "returns error result when image is nil" do
         result = test_editor_class.call(image: nil, mask: "https://example.com/mask.png", prompt: "Edit")
 
@@ -110,10 +102,6 @@ RSpec.describe RubyLLM::Agents::ImageEditor::Execution do
     end
 
     context "with error handling" do
-      before do
-        allow(RubyLLM::Agents::Execution).to receive(:create!)
-      end
-
       it "returns error result when editing fails" do
         allow(RubyLLM).to receive(:paint).and_raise(StandardError.new("API Error"))
 

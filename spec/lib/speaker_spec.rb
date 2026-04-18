@@ -682,21 +682,19 @@ RSpec.describe RubyLLM::Agents::Speaker do
     end
 
     it "stores audio metadata on context for instrumentation" do
-      # Capture the context after execution by intercepting Pipeline::Executor
-      captured_context = nil
-      allow(RubyLLM::Agents::Pipeline::Executor).to receive(:execute).and_wrap_original do |m, ctx|
-        result = m.call(ctx)
-        captured_context = result
-        result
+      RubyLLM::Agents.configure do |c|
+        c.track_audio = true
+        c.async_logging = false
       end
 
       test_speaker.call(text: "Hello world")
 
-      expect(captured_context[:provider]).to eq("openai")
-      expect(captured_context[:voice_id]).to eq("nova")
-      expect(captured_context[:characters]).to eq(11)
-      expect(captured_context[:output_format]).to eq("mp3")
-      expect(captured_context[:file_size]).to eq(fake_audio_data.bytesize)
+      metadata = RubyLLM::Agents::Execution.last.metadata
+      expect(metadata["provider"]).to eq("openai")
+      expect(metadata["voice_id"]).to eq("nova")
+      expect(metadata["characters"]).to eq(11)
+      expect(metadata["output_format"]).to eq("mp3")
+      expect(metadata["file_size"]).to eq(fake_audio_data.bytesize)
     end
 
     context "with ElevenLabs provider" do
@@ -722,20 +720,19 @@ RSpec.describe RubyLLM::Agents::Speaker do
       end
 
       it "stores provider and voice_id on context" do
-        captured_context = nil
-        allow(RubyLLM::Agents::Pipeline::Executor).to receive(:execute).and_wrap_original do |m, ctx|
-          result = m.call(ctx)
-          captured_context = result
-          result
+        RubyLLM::Agents.configure do |c|
+          c.track_audio = true
+          c.async_logging = false
         end
 
         el_speaker.call(text: "Test")
 
-        expect(captured_context[:provider]).to eq("elevenlabs")
-        expect(captured_context[:voice_id]).to eq("21m00Tcm4TlvDq8ikWAM")
-        expect(captured_context[:characters]).to eq(4)
-        expect(captured_context[:output_format]).to eq("mp3")
-        expect(captured_context[:file_size]).to be_a(Integer)
+        metadata = RubyLLM::Agents::Execution.last.metadata
+        expect(metadata["provider"]).to eq("elevenlabs")
+        expect(metadata["voice_id"]).to eq("21m00Tcm4TlvDq8ikWAM")
+        expect(metadata["characters"]).to eq(4)
+        expect(metadata["output_format"]).to eq("mp3")
+        expect(metadata["file_size"]).to be_a(Integer)
       end
     end
 
