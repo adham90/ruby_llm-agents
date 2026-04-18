@@ -527,19 +527,28 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
       end
     end
 
-    context "when model info is not available for either model" do
+    context "when neither the response model_id nor the configured model is registered" do
+      let(:agent) do
+        Class.new(RubyLLM::Agents::BaseAgent) { model "nonexistent-configured-model" }.new
+      end
       let(:response) { build_real_response(model_id: "nonexistent-response-model") }
-
-      before do
-        # Both the response model and the agent's configured model miss the registry.
-        allow(RubyLLM::Models).to receive(:find).with("nonexistent-response-model").and_return(nil)
-        allow(RubyLLM::Models).to receive(:find).with("gpt-4o").and_return(nil)
+      let(:context) do
+        ctx = RubyLLM::Agents::Pipeline::Context.new(
+          input: "test query",
+          agent_class: agent.class,
+          agent_instance: agent,
+          model: "nonexistent-configured-model"
+        )
+        ctx.input_tokens = 1000
+        ctx.output_tokens = 500
+        ctx
       end
 
       it "does not calculate costs" do
+        # Real RubyLLM::Models.find raises ModelNotFoundError for both lookups;
+        # find_model_info rescues each, so costs stay at the default 0.0.
         agent.send(:calculate_costs, response, context)
 
-        # find_model_info returns nil — costs stay at default 0.0
         expect(context.input_cost).to eq(0.0)
         expect(context.output_cost).to eq(0.0)
         expect(context.total_cost).to eq(0.0)
@@ -547,16 +556,12 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
     end
 
     context "when the response model_id is not registered but the configured model is" do
-      let(:response) { build_real_response(model_id: "anthropic/claude-4.6-sonnet-20260217-dated") }
+      let(:response) { build_real_response(model_id: "gpt-4o-2099-dated-variant") }
       let(:model_info) { RubyLLM::Models.find("gpt-4o") }
 
-      before do
-        # Dated variant returns nil; let the configured-model lookup pass through.
-        allow(RubyLLM::Models).to receive(:find).and_call_original
-        allow(RubyLLM::Models).to receive(:find).with("anthropic/claude-4.6-sonnet-20260217-dated").and_return(nil)
-      end
-
       it "falls back to the agent's configured model and still calculates costs" do
+        # No stubbing — let RubyLLM::Models.find raise for the bogus dated variant
+        # and resolve for real for the configured "gpt-4o".
         agent.send(:calculate_costs, response, context)
 
         expected_input = (1000 / 1_000_000.0) * model_info.pricing.text_tokens.input
