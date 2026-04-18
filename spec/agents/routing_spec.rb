@@ -531,6 +531,157 @@ RSpec.describe RubyLLM::Agents::Routing do
       expect(result.content[:system_prompt]).to include("message classifier")
       expect(result.content[:user_prompt]).to eq("test")
     end
+
+    # --- Auto-delegation opt-out (issue #24) ---
+
+    context "with auto_delegate: false" do
+      let(:billing_agent) do
+        Class.new(RubyLLM::Agents::BaseAgent) do
+          def self.name = "OptOutBillingAgent"
+          model "gpt-4o"
+          param :message, required: false
+          def user_prompt
+            message || "default"
+          end
+        end
+      end
+
+      let(:router_with_agents) do
+        billing_ref = billing_agent
+        Class.new(RubyLLM::Agents::BaseAgent) do
+          include RubyLLM::Agents::Routing
+
+          model "gpt-4o-mini"
+          temperature 0.0
+
+          route :billing, "Billing, charges, refunds", agent: billing_ref
+          default_route :general
+        end
+      end
+
+      before do
+        mock_response = build_mock_response(
+          content: "billing",
+          input_tokens: 85,
+          output_tokens: 3,
+          model_id: "gpt-4o-mini"
+        )
+        stub_ruby_llm_chat(build_mock_chat_client(response: mock_response))
+      end
+
+      it "skips delegation and returns classification only" do
+        expect(billing_agent).not_to receive(:call)
+
+        result = router_with_agents.call(message: "I was charged twice", auto_delegate: false)
+
+        expect(result).to be_a(RubyLLM::Agents::Routing::RoutingResult)
+        expect(result.route).to eq(:billing)
+        expect(result.delegated?).to be false
+        expect(result.delegated_to).to be_nil
+      end
+
+      it "still exposes the mapped agent_class so callers can invoke it manually" do
+        result = router_with_agents.call(message: "I was charged twice", auto_delegate: false)
+
+        expect(result.agent_class).to eq(billing_agent)
+      end
+
+      it "still delegates when auto_delegate is true (default)" do
+        expect(billing_agent).to receive(:call).and_call_original
+
+        result = router_with_agents.call(message: "I was charged twice", auto_delegate: true)
+
+        expect(result.delegated?).to be true
+      end
+
+      it "does not forward :auto_delegate as a param to the delegated agent" do
+        captured_kwargs = nil
+        allow(billing_agent).to receive(:call).and_wrap_original do |original, **kwargs, &blk|
+          captured_kwargs = kwargs
+          original.call(**kwargs, &blk)
+        end
+
+        router_with_agents.call(message: "test", auto_delegate: true)
+
+        expect(captured_kwargs).to include(:message)
+        expect(captured_kwargs).not_to have_key(:auto_delegate)
+      end
+    end
+
+    # --- Streaming forwarding to delegated agent (issue #24) ---
+
+    describe "streaming forwarding to delegated agents" do
+      let(:streaming_billing_agent) do
+        Class.new(RubyLLM::Agents::BaseAgent) do
+          def self.name = "StreamingBillingAgent"
+          model "gpt-4o"
+          streaming true
+          param :message, required: false
+          def user_prompt
+            message || "default"
+          end
+        end
+      end
+
+      let(:streaming_router) do
+        billing_ref = streaming_billing_agent
+        Class.new(RubyLLM::Agents::BaseAgent) do
+          include RubyLLM::Agents::Routing
+
+          model "gpt-4o-mini"
+          temperature 0.0
+
+          route :billing, "Billing, charges, refunds", agent: billing_ref
+          default_route :general
+        end
+      end
+
+      it "forwards the caller's stream block to the delegated agent" do
+        delegated_chunk = double("DelegatedChunk", content: "token from billing")
+        mock_client = build_mock_streaming_chat(
+          chunks: [delegated_chunk],
+          final_response: build_mock_response(
+            content: "billing",
+            input_tokens: 85,
+            output_tokens: 3,
+            model_id: "gpt-4o-mini"
+          )
+        )
+        stub_ruby_llm_chat(mock_client)
+
+        received = []
+        streaming_router.call(message: "I was charged twice") do |chunk|
+          received << chunk
+        end
+
+        # The router itself has streaming off, so its .ask call passes no
+        # block to the mock — the mock yields nothing for that call.
+        # The delegated billing agent has streaming on. With the fix, our
+        # block propagates through so the delegated agent's streaming
+        # .ask call yields chunks to us. Without the fix, `received` stays
+        # empty because the block is never forwarded.
+        expect(received).to include(delegated_chunk)
+      end
+
+      it "does not yield delegated chunks when auto_delegate: false" do
+        delegated_chunk = double("DelegatedChunk", content: "token from billing")
+        mock_client = build_mock_streaming_chat(
+          chunks: [delegated_chunk],
+          final_response: build_mock_response(
+            content: "billing",
+            model_id: "gpt-4o-mini"
+          )
+        )
+        stub_ruby_llm_chat(mock_client)
+
+        received = []
+        streaming_router.call(message: "test", auto_delegate: false) do |chunk|
+          received << chunk
+        end
+
+        expect(received).to be_empty
+      end
+    end
   end
 
   # --- Context injection ---

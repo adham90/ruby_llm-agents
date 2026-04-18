@@ -115,6 +115,15 @@ module RubyLLM
         @ask_message || options[:message] || super
       end
 
+      # Override call to capture the caller's stream block so it can be
+      # forwarded to the delegated agent. Without this, chunks from the
+      # delegated agent are swallowed because build_result has no access
+      # to the original block.
+      def call(&block)
+        @delegation_stream_block = block
+        super
+      end
+
       # Override process_response to parse the route from LLM output.
       def process_response(response)
         raw = response.content.to_s.strip.downcase.gsub(/[^a-z0-9_]/, "")
@@ -131,17 +140,31 @@ module RubyLLM
       end
 
       # Override build_result to return a RoutingResult.
-      # Auto-delegates to the mapped agent when the route has an `agent:` mapping.
+      # Auto-delegates to the mapped agent when the route has an `agent:` mapping,
+      # unless the caller opts out with `auto_delegate: false`.
       def build_result(content, response, context)
         base = super
 
-        # Auto-delegate to the mapped agent
         agent_class = content[:agent_class]
-        if agent_class
-          content[:delegated_result] = agent_class.call(**delegation_params)
+        if agent_class && auto_delegate?
+          content[:delegated_result] = if @delegation_stream_block
+            agent_class.call(**delegation_params, &@delegation_stream_block)
+          else
+            agent_class.call(**delegation_params)
+          end
         end
 
         RoutingResult.new(base_result: base, route_data: content)
+      end
+
+      # Whether auto-delegation to the mapped agent is enabled for this call.
+      # Defaults to true. Pass `auto_delegate: false` to receive a
+      # classification-only RoutingResult with `delegated? == false` and
+      # `agent_class` set so the caller can invoke it manually.
+      #
+      # @return [Boolean]
+      def auto_delegate?
+        @options.fetch(:auto_delegate, true)
       end
 
       # Builds params to forward to the delegated agent.
@@ -149,7 +172,7 @@ module RubyLLM
       #
       # @return [Hash] Params for the delegated agent
       def delegation_params
-        forward = @options.except(:dry_run, :skip_cache, :debug, :stream_events)
+        forward = @options.except(:dry_run, :skip_cache, :debug, :stream_events, :auto_delegate)
         forward[:_parent_execution_id] = @parent_execution_id if @parent_execution_id
         forward[:_root_execution_id] = @root_execution_id if @root_execution_id
         forward
