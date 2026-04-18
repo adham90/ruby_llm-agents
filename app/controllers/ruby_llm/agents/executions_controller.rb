@@ -203,6 +203,11 @@ module RubyLLM
         model_ids = parse_array_param(:model_ids)
         scope = scope.where(model_id: model_ids) if model_ids.any?
 
+        # Apply tenant filter (multi-select). Narrows further within any
+        # auto-scope already applied by tenant_scoped_executions.
+        tenant_ids = parse_array_param(:tenant_ids)
+        scope = scope.where(tenant_id: tenant_ids) if tenant_ids.any?
+
         # Apply retries filter (show only executions with multiple attempts)
         scope = scope.where("attempts_count > 1") if params[:has_retries].present?
 

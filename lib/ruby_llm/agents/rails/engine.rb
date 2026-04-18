@@ -154,18 +154,33 @@ module RubyLLM
           end
           helper_method :tenant_scoped_executions
 
-          # Returns list of available tenants for filtering dropdown
+          # Returns the list of tenants for the dropdown as label/value pairs.
           #
-          # @return [Array<String>] Unique tenant IDs from executions
+          # Tenants that have a matching row in ruby_llm_agents_tenants get their
+          # configured name; legacy or string-only tenants fall back to the raw
+          # tenant_id so nothing disappears from the filter.
+          #
+          # Two queries total — one DISTINCT pluck on executions, one pluck on
+          # tenants — regardless of how many tenant_ids exist.
+          #
+          # @return [Array<Hash>] Entries shaped as { value:, label: }
           # @api public
           def available_tenants
             return @available_tenants if defined?(@available_tenants)
 
-            @available_tenants = RubyLLM::Agents::Execution
+            tenant_ids = RubyLLM::Agents::Execution
               .where.not(tenant_id: nil)
               .distinct
               .pluck(:tenant_id)
-              .sort
+
+            names_by_id = RubyLLM::Agents::Tenant
+              .where(tenant_id: tenant_ids)
+              .pluck(:tenant_id, :name)
+              .to_h
+
+            @available_tenants = tenant_ids
+              .map { |id| {value: id, label: (names_by_id[id].presence || id).to_s} }
+              .sort_by { |t| t[:label].downcase }
           end
           helper_method :available_tenants
         end)

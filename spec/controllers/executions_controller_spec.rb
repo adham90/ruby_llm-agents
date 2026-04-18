@@ -92,6 +92,34 @@ RSpec.describe RubyLLM::Agents::ExecutionsController, type: :controller do
       end
     end
 
+    context "with tenant_ids filter" do
+      before do
+        create(:execution, tenant_id: "tenant-a")
+        create(:execution, tenant_id: "tenant-b")
+        create(:execution, tenant_id: "tenant-c")
+      end
+
+      it "filters by a single tenant id passed as array" do
+        get :index, params: {tenant_ids: ["tenant-a"]}
+        expect(assigns(:executions).pluck(:tenant_id)).to eq(["tenant-a"])
+      end
+
+      it "filters by multiple tenant ids" do
+        get :index, params: {tenant_ids: ["tenant-a", "tenant-c"]}
+        expect(assigns(:executions).pluck(:tenant_id)).to match_array(["tenant-a", "tenant-c"])
+      end
+
+      it "accepts a comma-separated string" do
+        get :index, params: {tenant_ids: "tenant-a,tenant-b"}
+        expect(assigns(:executions).pluck(:tenant_id)).to match_array(["tenant-a", "tenant-b"])
+      end
+
+      it "returns all executions when the filter is empty" do
+        get :index, params: {tenant_ids: []}
+        expect(assigns(:executions).count).to eq(3)
+      end
+    end
+
     context "with days filter" do
       before do
         create(:execution, created_at: Time.current)

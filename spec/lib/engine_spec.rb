@@ -464,25 +464,39 @@ RSpec.describe RubyLLM::Agents::Engine do
     end
 
     describe "#available_tenants" do
-      let(:mock_query) { double("ActiveRecord::Relation") }
-      let(:distinct_query) { double("Distinct Query") }
-
       before do
-        allow(RubyLLM::Agents::Execution).to receive(:where).and_return(mock_query)
-        allow(mock_query).to receive(:not).and_return(mock_query)
-        allow(mock_query).to receive(:distinct).and_return(distinct_query)
-        allow(distinct_query).to receive(:pluck).with(:tenant_id).and_return(["tenant-b", "tenant-a", "tenant-c"])
+        create(:execution, tenant_id: "tenant-b")
+        create(:execution, tenant_id: "tenant-a")
+        create(:execution, tenant_id: "tenant-c")
+        create(:execution, tenant_id: nil)
       end
 
-      it "returns sorted unique tenant IDs" do
+      it "returns {value:, label:} pairs sorted by label" do
         result = controller.send(:available_tenants)
-        expect(result).to eq(["tenant-a", "tenant-b", "tenant-c"])
+        expect(result).to eq([
+          {value: "tenant-a", label: "tenant-a"},
+          {value: "tenant-b", label: "tenant-b"},
+          {value: "tenant-c", label: "tenant-c"}
+        ])
+      end
+
+      it "uses the tenant name when a Tenant record exists" do
+        RubyLLM::Agents::Tenant.create!(tenant_id: "tenant-a", name: "Acme Corp")
+        result = controller.send(:available_tenants)
+        acme = result.find { |t| t[:value] == "tenant-a" }
+        expect(acme[:label]).to eq("Acme Corp")
+      end
+
+      it "falls back to the raw id when Tenant record has a blank name" do
+        RubyLLM::Agents::Tenant.create!(tenant_id: "tenant-a", name: "")
+        result = controller.send(:available_tenants)
+        entry = result.find { |t| t[:value] == "tenant-a" }
+        expect(entry[:label]).to eq("tenant-a")
       end
 
       it "excludes nil tenant IDs" do
-        expect(RubyLLM::Agents::Execution).to receive(:where).and_return(mock_query)
-        expect(mock_query).to receive(:not).with(tenant_id: nil)
-        controller.send(:available_tenants)
+        result = controller.send(:available_tenants)
+        expect(result.map { |t| t[:value] }).to match_array(%w[tenant-a tenant-b tenant-c])
       end
 
       it "memoizes the result" do

@@ -10,11 +10,13 @@
   #       { value: "success", label: "Success", color: "bg-green-500" },
   #       { value: "error", label: "Error", color: "bg-red-500" }
   #     ],
-  #     selected: ["success"]
+  #     selected: ["success"],
+  #     searchable: true # renders a client-side search input above the options
 
   selected = local_assigns[:selected] || []
   show_all = local_assigns.fetch(:show_all_option, true)
   all_label = local_assigns[:all_label] || "All"
+  searchable = local_assigns.fetch(:searchable, false)
 
   current_label = if selected.empty?
     label
@@ -32,8 +34,31 @@
 
   has_selection = selected.any?
 %>
-<div class="relative" x-data="{ open: false }" @click.outside="open = false" data-filter="<%= filter_id %>">
-  <button type="button" @click="open = !open"
+<%#
+  Multi-select behavior:
+  - Checkbox click: toggle that option, mark dirty, keep dropdown open.
+  - Label click: clear other selections, check only this one, close, submit.
+  - Close dropdown (outside click, button toggle, Escape): if dirty, submit.
+  This batches checkbox picks into a single request when the user closes
+  the dropdown — no reliance on persisting open state across reload.
+%>
+<div class="relative"
+     x-data="{
+       open: false,
+       query: '',
+       dirty: false,
+       closeAndApply() {
+         this.open = false;
+         if (this.dirty) {
+           this.dirty = false;
+           this.$el.closest('form').requestSubmit();
+         }
+       }
+     }"
+     @click.outside="closeAndApply()"
+     @keydown.escape.window="if (open) closeAndApply()"
+     data-filter="<%= filter_id %>">
+  <button type="button" @click="open ? closeAndApply() : open = true"
     class="flex items-center gap-1.5 px-2 py-1 font-mono text-xs rounded
            hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors
            <%= has_selection ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500' %>">
@@ -50,7 +75,19 @@
        x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
        x-transition:leave="transition ease-in duration-75"
        x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-       class="absolute z-20 mt-1 min-w-max bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 max-h-64 overflow-y-auto">
+       class="absolute z-20 mt-1 min-w-max w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
+
+    <% if searchable %>
+      <div class="px-2 py-1.5 border-b border-gray-100 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800">
+        <input type="text" x-model="query" @click.stop
+               placeholder="Search…"
+               x-ref="<%= filter_id %>_search"
+               x-effect="if (open) $nextTick(() => $refs['<%= filter_id %>_search']?.focus())"
+               class="w-full px-2 py-1 text-xs font-mono rounded border border-gray-200 dark:border-gray-700 bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+      </div>
+    <% end %>
+
+    <div class="max-h-56 overflow-y-auto">
 
     <% if show_all %>
       <div class="px-3 py-1.5 border-b border-gray-100 dark:border-gray-700">
@@ -60,7 +97,7 @@
                  <%= selected.empty? ? 'checked' : '' %>
                  @change="
                    $el.closest('[data-filter]').querySelectorAll('.filter-cb').forEach(c => c.checked = false);
-                   $el.closest('form').requestSubmit();
+                   dirty = true;
                  ">
           <span class="text-gray-700 dark:text-gray-200"><%= all_label %></span>
         </label>
@@ -68,13 +105,14 @@
     <% end %>
 
     <% options.each do |option| %>
-      <div class="flex items-center gap-2 px-3 py-1.5 font-mono text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+      <div class="flex items-center gap-2 px-3 py-1.5 font-mono text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+           <% if searchable %>x-show="query === '' || '<%= j(option[:label].to_s.downcase) %>'.includes(query.toLowerCase())"<% end %>>
         <input type="checkbox"
                name="<%= name %>"
                value="<%= option[:value] %>"
                class="filter-cb rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
                <%= selected.include?(option[:value].to_s) ? 'checked' : '' %>
-               @change="$el.closest('form').requestSubmit()">
+               @change="dirty = true">
         <span class="flex-1 flex items-center gap-1.5 cursor-pointer"
               @click.prevent="
                 $el.closest('[data-filter]').querySelectorAll('.filter-cb').forEach(c => c.checked = false);
@@ -89,5 +127,6 @@
         </span>
       </div>
     <% end %>
+    </div>
   </div>
 </div>

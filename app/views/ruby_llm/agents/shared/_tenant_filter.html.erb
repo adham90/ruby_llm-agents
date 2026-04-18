@@ -6,8 +6,8 @@
               class="bg-transparent border border-gray-200 dark:border-gray-800 rounded px-2 py-0.5 text-xs font-mono text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-gray-400 dark:focus:ring-gray-600 focus:border-gray-400 dark:focus:border-gray-600">
         <option value="">all tenants</option>
         <% available_tenants.each do |tenant| %>
-          <option value="<%= tenant %>" <%= 'selected' if tenant == current_tenant_id %>>
-            <%= tenant %>
+          <option value="<%= tenant[:value] %>" <%= 'selected' if tenant[:value] == current_tenant_id %>>
+            <%= tenant[:label] %>
           </option>
         <% end %>
       </select>
