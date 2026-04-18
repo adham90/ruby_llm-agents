@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.13.0] - 2026-04-18
+
+### Added
+
+- **Two-tier data retention** — `soft_purge_after` (default 30 days) and `hard_purge_after` (default 365 days) config options with a new `RetentionJob` and `rake ruby_llm_agents:purge` task. Soft pass destroys `execution_details` and `tool_executions` while preserving execution records (and a truncated `error_message` in metadata) so error-rate trends survive the purge; hard pass destroys executions in batches with cascading deletes. Either tier can be set to `nil` to disable it
+- **Searchable multi-select tenant filter** — Executions page tenant filter now supports multi-select with a client-side search input. `_filter_dropdown` partial gains an opt-in `searchable: true` flag; dropdown stays open while selecting and batches submissions on close
+- **Routing `auto_delegate: false`** — Opt out of router auto-delegation to return a classification-only `RoutingResult` with `agent_class` populated for manual dispatch (fixes #24)
+- **Soft-purge execution UI** — Banner on execution show page; detail-backed sections hide silently after purge; system config page surfaces both purge windows
+
+### Changed
+
+- **Bumped `ruby_llm` dependency** to `>= 1.14.1`
+- **Deprecated `retention_period`** — Now an alias for `hard_purge_after`
+- **Dashboard override UI now renders for regular agents** — `show.html.erb` renders `config_<kind>` for all agent kinds instead of skipping `"agent"`
+- **Replaced internal-class mocks in specs** — Image execution, reliability, builder, speaker, transcriber, and instrumentation specs now exercise real code paths; mocks retained only at external boundaries (LLM APIs, DB error injection, Rails cache edges)
+
+### Fixed
+
+- **Router stream block forwarding** — Caller's stream block is now captured and forwarded to the delegated agent so streaming flows end-to-end (fixes #24)
+- **Failed image executions not persisted** — `ImageOperationExecution#record_failed_execution` passed `error_message:` to `Execution.create!`, raising `ActiveModel::UnknownAttributeError` that was silently swallowed. Split into `Execution.create!` + `execution.create_detail!(error_message:)` to match the instrumentation middleware pattern
+- **Audio player `response.dig` on String** — Added `Execution#response_hash` normalizer that returns `{}` when the response is a `String`, `Array`, or `nil`; fixes `undefined method 'dig' for String` when agents write plain-text responses to the JSON column
+- **Override reset button** — Reset controls use `button_to` with `turbo_confirm`; "reset all" moved outside the save-overrides form to stop submitting the outer PATCH
+
 ## [3.12.0] - 2026-04-08
 
 ### Added
@@ -868,6 +891,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[3.13.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.12.0...v3.13.0
 [3.9.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.8.0...v3.9.0
 [3.8.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.7.2...v3.8.0
 [3.7.2]: https://github.com/adham90/ruby_llm-agents/compare/v3.7.1...v3.7.2
