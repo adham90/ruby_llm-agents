@@ -5,6 +5,7 @@ require_relative "boot"
 require "rails"
 require "active_model/railtie"
 require "active_record/railtie"
+require "active_storage/engine"
 require "action_controller/railtie"
 require "action_view/railtie"
 require "active_job/railtie"
@@ -28,5 +29,11 @@ module Dummy
     config.active_record.encryption.primary_key = "test-primary-key-that-is-at-least-32-bytes-long"
     config.active_record.encryption.deterministic_key = "test-deterministic-key-32-bytes!"
     config.active_record.encryption.key_derivation_salt = "test-key-derivation-salt-value!"
+
+    # Active Storage uses an in-memory test service
+    config.active_storage.service = :test
+    config.active_storage.service_configurations = {
+      "test" => {"service" => "Disk", "root" => Rails.root.join("tmp/storage").to_s}
+    }
   end
 end
