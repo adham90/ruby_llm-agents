@@ -738,6 +738,7 @@ module RubyLLM
       def execute(context)
         @context = context
         client = build_client(context)
+        @client = client
 
         # Make context available to Tool instances during tool execution
         previous_context = Thread.current[:ruby_llm_agents_caller_context]
@@ -891,27 +892,57 @@ module RubyLLM
 
       # Captures response metadata to the context
       #
-      # @param response [RubyLLM::Message] The response
+      # When a tool returns RubyLLM::Tool::Halt, the response is a Halt
+      # instance with no token metadata. In that case we pull metadata from
+      # the last assistant message in the client's history.
+      #
+      # @param response [RubyLLM::Message, RubyLLM::Tool::Halt] The response
       # @param context [Pipeline::Context] The context
       def capture_response(response, context)
-        context.input_tokens = response.input_tokens
-        context.output_tokens = response.output_tokens
-        context.model_used = response.model_id || model
-        # finish_reason may not be available on all RubyLLM::Message versions
-        context.finish_reason = response.respond_to?(:finish_reason) ? response.finish_reason : nil
+        is_halt = response.is_a?(RubyLLM::Tool::Halt)
+        metadata = is_halt ? last_assistant_message_from_client : response
+
+        if metadata
+          context.input_tokens = metadata.input_tokens if metadata.respond_to?(:input_tokens)
+          context.output_tokens = metadata.output_tokens if metadata.respond_to?(:output_tokens)
+          context.model_used = (metadata.respond_to?(:model_id) && metadata.model_id) || model
+
+          # Capture Anthropic prompt caching metrics
+          if metadata.respond_to?(:cached_tokens) && metadata.cached_tokens&.positive?
+            context[:cached_tokens] = metadata.cached_tokens
+          end
+          if metadata.respond_to?(:cache_creation_tokens) && metadata.cache_creation_tokens&.positive?
+            context[:cache_creation_tokens] = metadata.cache_creation_tokens
+          end
+        else
+          context.model_used = model
+        end
+
+        context.finish_reason = if is_halt
+          "halt"
+        elsif response.respond_to?(:finish_reason)
+          response.finish_reason
+        end
 
         # Store tracked tool calls in context for instrumentation
         context[:tool_calls] = @tracked_tool_calls if @tracked_tool_calls.any?
 
-        # Capture Anthropic prompt caching metrics
-        if response.respond_to?(:cached_tokens) && response.cached_tokens&.positive?
-          context[:cached_tokens] = response.cached_tokens
-        end
-        if response.respond_to?(:cache_creation_tokens) && response.cache_creation_tokens&.positive?
-          context[:cache_creation_tokens] = response.cache_creation_tokens
-        end
+        calculate_costs(metadata, context) if metadata && context.input_tokens
+      end
 
-        calculate_costs(response, context) if context.input_tokens
+      # Finds the most recent assistant message with usage metadata in
+      # the active client's history. Used to recover token/model metadata
+      # when the LLM call short-circuits via Tool::Halt.
+      #
+      # @return [RubyLLM::Message, nil]
+      def last_assistant_message_from_client
+        messages = @client&.messages
+        return nil unless messages
+
+        messages.reverse_each.find do |m|
+          m.respond_to?(:role) && m.role == :assistant &&
+            m.respond_to?(:input_tokens) && m.input_tokens
+        end
       end
 
       # Calculates costs for the response.

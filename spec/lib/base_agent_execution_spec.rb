@@ -418,6 +418,44 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "execution methods" do
 
       expect(context.finish_reason).to eq("stop")
     end
+
+    context "when response is a RubyLLM::Tool::Halt" do
+      let(:halt) { RubyLLM::Tool::Halt.new("stopped via halt") }
+
+      it "does not raise NoMethodError on input_tokens" do
+        expect {
+          agent.send(:capture_response, halt, context)
+        }.not_to raise_error
+      end
+
+      it "recovers token metadata from the last assistant message in the client" do
+        prior_assistant = build_real_response(
+          content: "previous",
+          input_tokens: 42,
+          output_tokens: 7,
+          model_id: "gpt-4o"
+        )
+        client = instance_double(RubyLLM::Chat, messages: [prior_assistant])
+        agent.instance_variable_set(:@client, client)
+
+        agent.send(:capture_response, halt, context)
+
+        expect(context.input_tokens).to eq(42)
+        expect(context.output_tokens).to eq(7)
+        expect(context.model_used).to eq("gpt-4o")
+        expect(context.finish_reason).to eq("halt")
+      end
+
+      it "falls back to the configured model when no assistant message is available" do
+        client = instance_double(RubyLLM::Chat, messages: [])
+        agent.instance_variable_set(:@client, client)
+
+        agent.send(:capture_response, halt, context)
+
+        expect(context.model_used).to eq("gpt-4o")
+        expect(context.finish_reason).to eq("halt")
+      end
+    end
   end
 
   describe "#calculate_costs" do
