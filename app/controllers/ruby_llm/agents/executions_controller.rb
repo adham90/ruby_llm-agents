@@ -214,8 +214,9 @@ module RubyLLM
         # Only show root executions - children are nested under parents
         scope = scope.where(parent_execution_id: nil)
 
-        # Eager load children for grouping
-        scope.includes(:child_executions)
+        # Eager load children for grouping and detail for error_message, which
+        # the list renders per row (otherwise an N+1 on error rows).
+        scope.includes(:child_executions, :detail)
       end
 
       # Checks whether turbo-rails is available in the host application

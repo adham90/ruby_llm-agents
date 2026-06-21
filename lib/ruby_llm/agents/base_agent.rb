@@ -981,11 +981,13 @@ module RubyLLM
       # response's model_id misses, fall back to the agent's configured
       # model so cost calculation still finds pricing.
       #
-      # Text input/output are priced from the context's token counts, which
-      # are authoritative (they may aggregate across retry/fallback attempts).
-      # On top of that, cache reads/writes and reasoning tokens — which only
-      # exist on the response and are billed at their own rates — are priced
-      # via RubyLLM's first-class cost helper (RubyLLM::Cost) and added in.
+      # Text input/output are priced from the context's token counts. These
+      # reflect the final attempt's usage (a retry/fallback overwrites them per
+      # attempt); failed attempts that erred at the provider are typically not
+      # billed, so the final attempt is the charged one. On top of the text
+      # cost, cache reads/writes and reasoning tokens — which exist on the
+      # response and are billed at their own rates — are priced via RubyLLM's
+      # first-class cost helper (RubyLLM::Cost) and added in.
       #
       # @param response [RubyLLM::Message] The response
       # @param context [Pipeline::Context] The context
@@ -1000,34 +1002,36 @@ module RubyLLM
         output_price = model_info.pricing&.text_tokens&.output || 0
 
         context.input_cost = (input_tokens / 1_000_000.0) * input_price
-        billable_output = billable_output_tokens(output_tokens, response, model_info)
-        context.output_cost = (billable_output / 1_000_000.0) * output_price
 
+        # Price cache/reasoning extras first so we know whether reasoning was
+        # actually billed at the reasoning rate. Only then exclude those tokens
+        # from the output charge — never subtract tokens that weren't charged
+        # elsewhere, or a degraded cost helper would make reasoning vanish.
         extra = extra_token_costs(response, model_info, context)
+        billable_output = output_tokens - reasoning_tokens_charged(response, context)
+        context.output_cost = ([billable_output, 0].max / 1_000_000.0) * output_price
+
         context.total_cost = (context.input_cost + context.output_cost + extra).round(6)
       end
 
-      # Output tokens to charge at the output rate.
+      # Number of reasoning (thinking) tokens that were actually charged at the
+      # reasoning rate, recorded in the cost breakdown by +extra_token_costs+.
       #
-      # Reasoning providers fold reasoning (thinking) tokens into the reported
-      # output_tokens. When the model prices reasoning separately,
-      # +extra_token_costs+ charges those tokens at the reasoning rate, so they
-      # must be removed here to avoid billing them at the output rate as well.
-      # Models that don't price reasoning apart from output are unaffected.
+      # Reasoning providers fold reasoning tokens into the reported
+      # output_tokens, so when they are billed separately they must be removed
+      # from the output-rate charge to avoid double billing. Returns 0 when no
+      # reasoning was charged (non-reasoning model, or a degraded cost helper),
+      # so reasoning tokens are never silently dropped from the output charge.
       #
-      # @param output_tokens [Integer] Total reported output tokens
       # @param response [Object] The response (RubyLLM::Message in production)
-      # @param model_info [RubyLLM::Model::Info] Resolved pricing source
-      # @return [Integer] Output tokens to charge at the output rate
-      def billable_output_tokens(output_tokens, response, model_info)
-        text = model_info.pricing&.text_tokens
-        return output_tokens unless text.respond_to?(:reasoning_output)
+      # @param context [Pipeline::Context] The context
+      # @return [Integer] Reasoning tokens to exclude from the output charge
+      def reasoning_tokens_charged(response, context)
+        breakdown = context[:cost_breakdown]
+        return 0 unless breakdown.is_a?(Hash) && breakdown.key?(:thinking)
+        return 0 unless response.respond_to?(:reasoning_tokens)
 
-        reasoning_price = text.reasoning_output
-        return output_tokens unless reasoning_price && reasoning_price != text.output
-        return output_tokens unless response.respond_to?(:reasoning_tokens)
-
-        [output_tokens - response.reasoning_tokens.to_i, 0].max
+        response.reasoning_tokens.to_i
       end
 
       # Prices the non-text token components (cache reads/writes, reasoning)

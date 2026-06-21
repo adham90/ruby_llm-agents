@@ -46,44 +46,38 @@ RSpec.describe RubyLLM::Agents::Execution, type: :model do
       expect(execution.total_tokens).to eq(150)
     end
 
-    it "calculates total_cost before save" do
+    it "derives total_cost from components when no explicit total is given" do
       execution = build(:execution, input_cost: 0.001, output_cost: 0.002, total_cost: nil)
       execution.save!
       expect(execution.total_cost).to eq(0.003)
     end
 
-    it "adds metadata cost_breakdown components on top of input/output" do
+    it "preserves an explicit cache-aware total_cost when components also change" do
+      # The pipeline records a total that exceeds input + output (it includes
+      # cache/reasoning extras); the callback must not collapse it to 0.003.
+      execution = build(:execution, input_cost: 0.001, output_cost: 0.002, total_cost: 0.0045)
+      execution.save!
+      expect(execution.total_cost).to eq(0.0045)
+    end
+
+    it "re-derives total on update when only components change" do
+      execution = create(:execution, input_cost: 0.001, output_cost: 0.002, total_cost: 0.003)
+      execution.update!(input_cost: 0.004, output_cost: 0.001)
+      expect(execution.total_cost).to eq(0.005)
+    end
+
+    it "does not read total_cost from user-controllable metadata" do
+      # A user agent's metadata could collide on the cost_breakdown key; it must
+      # never be summed into the persisted total.
       execution = build(
         :execution,
         input_cost: 0.001,
         output_cost: 0.002,
         total_cost: nil,
-        metadata: {"cost_breakdown" => {"cache_read" => 0.0004, "cache_write" => 0.0006}}
+        metadata: {"cost_breakdown" => {"foo" => 99.0}}
       )
-      execution.save!
-
-      # 0.001 + 0.002 + (0.0004 + 0.0006)
-      expect(execution.total_cost).to eq(0.004)
-    end
-
-    it "leaves total_cost as the plain sum when no cost_breakdown is present" do
-      execution = build(:execution, input_cost: 0.001, output_cost: 0.002, total_cost: nil, metadata: {})
       execution.save!
       expect(execution.total_cost).to eq(0.003)
-    end
-
-    it "ignores non-numeric cost_breakdown values instead of raising on save" do
-      execution = build(
-        :execution,
-        input_cost: 0.001,
-        output_cost: 0.002,
-        total_cost: nil,
-        # user-supplied agent metadata could shadow the key with junk
-        metadata: {"cost_breakdown" => {"cache_read" => 0.0005, "bogus" => {"nested" => 1}, "label" => "x"}}
-      )
-
-      expect { execution.save! }.not_to raise_error
-      expect(execution.total_cost).to eq(0.0035) # 0.001 + 0.002 + 0.0005
     end
   end
 

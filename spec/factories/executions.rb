@@ -15,7 +15,11 @@ FactoryBot.define do
     cached_tokens { 0 }
     input_cost { 0.003 }
     output_cost { 0.006 }
-    total_cost { 0.009 }
+    # total_cost is derived from input_cost + output_cost by the model's
+    # before_save callback, so it stays consistent when a test overrides the
+    # component costs. Pass total_cost explicitly to set a cache/reasoning-aware
+    # total, which the callback then preserves.
+    total_cost { nil }
     tool_calls_count { 0 }
     metadata { {query: "test query"} }
 

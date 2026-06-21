@@ -35,6 +35,7 @@ module RubyLLM
         @days = range_to_days(@selected_range)
         parse_custom_dates if @selected_range == "custom"
 
+        set_active_filters
         current_scope = apply_filters(time_scoped(tenant_scoped_executions))
         prior_scope = apply_filters(prior_period_scope(tenant_scoped_executions))
 
@@ -114,6 +115,13 @@ module RubyLLM
           []
         end
 
+        set_active_filters
+      end
+
+      # Resolves the active agent/model/tenant filters from request params.
+      # Shared by index (which also loads dropdown options) and chart_data
+      # (JSON only) so apply_filters behaves consistently on both endpoints.
+      def set_active_filters
         @filter_agent = params[:agent].presence
         @filter_model = params[:model].presence
         @filter_tenant = params[:filter_tenant].presence

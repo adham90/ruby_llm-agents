@@ -152,9 +152,10 @@ RSpec.describe RubyLLM::Agents::AnalyticsController, type: :controller do
       create(:execution, agent_type: "AgentB", total_cost: 0.50, created_at: 2.days.ago)
       get analytics_chart_data_path(range: "7d", agent: "AgentA")
       data = JSON.parse(response.body)
-      # Should only have AgentA data
+      # The agent filter must apply: only AgentA's 0.10 is counted, not the
+      # combined 0.60 (regression guard for chart_data ignoring @filter_agent).
       total = data["series"][0]["data"].sum { |d| d[1] }
-      expect(total).to be <= 0.11
+      expect(total).to be_within(1e-9).of(0.10)
     end
   end
 end

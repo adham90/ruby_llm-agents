@@ -168,8 +168,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           context.output_tokens = 500
           context.input_cost = 0.003
           context.output_cost = 0.0075
-          # The pipeline records the cache/reasoning extra in the breakdown, so
-          # the persisted total exceeds the text-only input+output (0.0105).
+          # The pipeline's total exceeds the text-only input+output (0.0105)
+          # because it includes the cache/reasoning extra; visibility breakdown
+          # is recorded in metadata but the total itself is authoritative.
           context[:cost_breakdown] = {cache_read: 0.0015}
           context.total_cost = 0.012
 
@@ -183,9 +184,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           execution = RubyLLM::Agents::Execution.last
           expect(execution.input_cost).to eq(0.003)
           expect(execution.output_cost).to eq(0.0075)
-          # total = input + output + breakdown (0.003 + 0.0075 + 0.0015); the
-          # callback must include the extra instead of collapsing to 0.0105.
+          # The before_save callback must NOT collapse the explicit total to the
+          # text-only input+output (0.0105); the cache-aware 0.012 is preserved.
           expect(execution.total_cost).to eq(0.012)
+          expect(execution.metadata["cost_breakdown"]).to eq("cache_read" => 0.0015)
         end
 
         it "updates record on failure with error details" do

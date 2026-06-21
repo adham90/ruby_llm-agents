@@ -107,7 +107,13 @@ module RubyLLM
       validates :finish_reason, inclusion: {in: FINISH_REASONS}, allow_nil: true
 
       before_save :calculate_total_tokens, if: -> { input_tokens_changed? || output_tokens_changed? }
-      before_save :calculate_total_cost, if: -> { input_cost_changed? || output_cost_changed? }
+      # Derive total_cost from its components only when the caller did not set an
+      # explicit total in the same save. The pipeline records a
+      # cache/reasoning-aware total alongside input_cost/output_cost, and that
+      # richer value must not be overwritten with the text-only input+output sum.
+      # (Deriving from metadata is unsafe — metadata merges user-supplied agent
+      # data and a colliding key would corrupt the total.)
+      before_save :calculate_total_cost, if: -> { (input_cost_changed? || output_cost_changed?) && !total_cost_changed? }
 
       # Aggregates costs from all attempts using each attempt's model pricing
       #
@@ -474,28 +480,15 @@ module RubyLLM
         self.total_tokens = (input_tokens || 0) + (output_tokens || 0)
       end
 
-      # Calculates and sets total_cost from input and output costs, plus any
-      # non-text components (cache reads/writes, reasoning) the pipeline
-      # recorded in metadata. Without a breakdown this is the plain
-      # input + output sum, so existing text-only executions are unchanged.
+      # Calculates and sets total_cost from input and output costs.
+      #
+      # Only runs when the caller did not provide an explicit total_cost (see
+      # the before_save guard), so a cache/reasoning-aware total supplied by the
+      # pipeline is preserved rather than collapsed to the text-only sum.
       #
       # @return [BigDecimal] The calculated total
       def calculate_total_cost
-        self.total_cost = (input_cost || 0) + (output_cost || 0) + extra_component_cost
-      end
-
-      # Sum of the cache/reasoning cost components stored under
-      # metadata["cost_breakdown"], or 0 when none were recorded.
-      #
-      # @return [Float] Combined extra-component cost
-      def extra_component_cost
-        breakdown = metadata.is_a?(Hash) ? (metadata["cost_breakdown"] || metadata[:cost_breakdown]) : nil
-        return 0 unless breakdown.is_a?(Hash)
-
-        # Only sum numeric components — metadata is merged from user-defined
-        # agent metadata, so a stray non-numeric "cost_breakdown" must never
-        # raise and break execution persistence in this before_save callback.
-        breakdown.values.grep(Numeric).sum
+        self.total_cost = (input_cost || 0) + (output_cost || 0)
       end
 
       # Resolves model info for cost calculation
