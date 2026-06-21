@@ -317,7 +317,7 @@ mount RubyLLM::Agents::Engine => "/agents"
 
 - **Ruby** >= 3.1.0
 - **Rails** >= 7.0
-- **RubyLLM** >= 1.12.0
+- **RubyLLM** >= 1.16.0
 
 ## Contributing
 

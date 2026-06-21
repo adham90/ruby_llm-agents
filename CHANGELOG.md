@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Cache- and reasoning-aware costs** — `total_cost` now prices prompt-cache reads, cache writes, and reasoning/thinking tokens via `RubyLLM::Cost` (1.16) on top of the text input/output cost, instead of text-only pricing. The per-component breakdown is recorded in `executions.metadata["cost_breakdown"]`. No migration required
+- **`tool_concurrency` DSL** — Run the tool calls in a single LLM response concurrently. Set per-agent (`tool_concurrency :threads`, `:fibers`, `true`, or `false`; inheritable) or globally via `config.tool_concurrency`. Mirrors RubyLLM 1.16's tool concurrency
+- **HTTP-level latency capture** — The instrumentation middleware subscribes to RubyLLM 1.16's `request.ruby_llm` events and records real provider latency and request count into `executions.metadata` as `llm_request_ms` and `llm_request_count` (distinct from total pipeline duration; retries/fallbacks accumulate)
+- **New forwarded config knobs** — `bedrock_api_base`, `mistral_api_base`, `perplexity_api_base`, `vertexai_api_base`, `xai_api_base`, `faraday_adapter`, `deprecation_behavior`, and `tool_concurrency` are forwarded to `RubyLLM.config`
+
+### Changed
+
+- **Bumped `ruby_llm` dependency** to `>= 1.16.0`
+
 ## [3.13.0] - 2026-04-18
 
 ### Added

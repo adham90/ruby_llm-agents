@@ -22,6 +22,24 @@ All events use the `ruby_llm_agents.` prefix and are organized by domain:
 | `ruby_llm_agents.reliability.fallback_used` | Reliability | Fallback model succeeded after primary failed |
 | `ruby_llm_agents.reliability.all_models_exhausted` | Reliability | All models (primary + fallbacks) failed |
 
+## RubyLLM Library Events
+
+Underneath the agent pipeline, RubyLLM 1.16 emits its own `ActiveSupport::Notifications` events for the raw LLM calls — `request.ruby_llm` (per HTTP request), `chat.ruby_llm`, `tool_call.ruby_llm`, `embedding.ruby_llm`, and `models.refresh.ruby_llm`. RubyLLM's Railtie wires `ActiveSupport::Notifications` as the instrumenter automatically in Rails, so you can subscribe to these directly for low-level HTTP/provider observability:
+
+```ruby
+ActiveSupport::Notifications.subscribe("request.ruby_llm") do |*args|
+  event = ActiveSupport::Notifications::Event.new(*args)
+  StatsD.timing("llm.http", event.duration, tags: ["provider:#{event.payload[:provider]}"])
+end
+```
+
+The agents pipeline also captures real provider latency from these events into each execution's metadata, distinct from the total pipeline duration (which includes middleware and tool execution):
+
+```ruby
+execution.metadata["llm_request_ms"]     # => 842   (sum of HTTP request durations)
+execution.metadata["llm_request_count"]  # => 1     (retries/fallbacks accumulate)
+```
+
 ## Execution Events
 
 ### `execution.start`
