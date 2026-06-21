@@ -79,4 +79,50 @@ RSpec.describe "LLM HTTP request capture", type: :model do
     execution = RubyLLM::Agents::Execution.find(context.execution_id)
     expect(execution.metadata["llm_request_count"]).to eq(1)
   end
+
+  describe "attribution scope (no cross-execution contamination)" do
+    let(:middleware) { build_middleware(->(ctx) { ctx }) }
+
+    it "attributes nested sub-agent requests to the innermost execution only" do
+      outer = build_context
+      inner = build_context
+
+      middleware.send(:capture_llm_requests, outer) do
+        emit_request # belongs to outer
+        middleware.send(:capture_llm_requests, inner) do
+          emit_request # belongs to inner, not outer
+        end
+        emit_request # belongs to outer again
+      end
+
+      expect(outer[:llm_request_count]).to eq(2)
+      expect(inner[:llm_request_count]).to eq(1)
+    end
+
+    it "does not count request.ruby_llm events emitted on other threads" do
+      other = build_context
+      subscribed = Queue.new
+      may_emit = Queue.new
+
+      worker = Thread.new do
+        middleware.send(:capture_llm_requests, other) do
+          subscribed << true   # subscription is now active
+          may_emit.pop         # wait until the main thread has emitted
+        end
+      end
+
+      subscribed.pop
+      # A different execution on the main thread fires its own LLM request.
+      emit_request
+      may_emit << true
+      worker.join
+
+      # `other` made no requests of its own, so a leaked global subscription
+      # would wrongly attribute the main thread's request to it.
+      expect(other[:llm_request_count]).to be_nil
+    ensure
+      may_emit << true # avoid hanging the worker if an assertion fails early
+      worker&.join
+    end
+  end
 end

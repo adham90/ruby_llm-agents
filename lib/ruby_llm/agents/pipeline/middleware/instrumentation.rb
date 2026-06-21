@@ -84,6 +84,9 @@ module RubyLLM
 
           private
 
+          # Fiber-local stack of in-flight request accumulators, innermost last.
+          REQUEST_CAPTURE_STACK = :ruby_llm_agents_request_capture
+
           # Captures real HTTP-level provider latency for the LLM call(s) made
           # while running the rest of the pipeline.
           #
@@ -95,23 +98,38 @@ module RubyLLM
           # also includes middleware and tool execution. The values are stored
           # in context metadata and persisted with the execution.
           #
+          # AS::Notifications subscriptions are process-global, so a naive
+          # subscriber would also see events from other executions running
+          # concurrently (other threads) or nested inside this one (agent-as-
+          # tool). To attribute each request to exactly one execution, we keep
+          # a fiber-local stack of accumulators and only credit the innermost
+          # one on the thread that actually emitted the event — the callback
+          # runs synchronously on the emitting thread, so its top-of-stack is
+          # the execution whose LLM call fired.
+          #
           # @param context [Context] The execution context
           # @return [Object] The downstream call's return value
           def capture_llm_requests(context)
             return yield unless defined?(ActiveSupport::Notifications)
 
-            total_ms = 0.0
-            count = 0
+            accumulator = {ms: 0.0, count: 0}
+            stack = (Thread.current[REQUEST_CAPTURE_STACK] ||= [])
+            stack.push(accumulator)
+
             callback = lambda do |_name, started, finished, _id, _payload|
-              total_ms += (finished - started) * 1000.0
-              count += 1
+              top = Thread.current[REQUEST_CAPTURE_STACK]&.last
+              next unless top.equal?(accumulator)
+
+              accumulator[:ms] += (finished - started) * 1000.0
+              accumulator[:count] += 1
             end
 
             ActiveSupport::Notifications.subscribed(callback, "request.ruby_llm") { yield }
           ensure
-            if count&.positive?
-              context[:llm_request_ms] = total_ms.round
-              context[:llm_request_count] = count
+            stack&.pop
+            if accumulator && accumulator[:count].positive?
+              context[:llm_request_ms] = accumulator[:ms].round
+              context[:llm_request_count] = accumulator[:count]
             end
           end
 
@@ -370,6 +388,8 @@ module RubyLLM
               cache_hit: context.cached?,
               input_tokens: context.input_tokens || 0,
               output_tokens: context.output_tokens || 0,
+              input_cost: context.input_cost,
+              output_cost: context.output_cost,
               total_cost: context.total_cost || 0,
               attempts_count: context.attempts_made,
               chosen_model_id: context.model_used,

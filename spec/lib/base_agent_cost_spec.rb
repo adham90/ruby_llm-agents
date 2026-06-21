@@ -120,4 +120,67 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "cost calculation" do
       expect(context[:cost_breakdown]).to be_nil
     end
   end
+
+  describe "#calculate_costs when reasoning is priced separately" do
+    # Providers fold reasoning tokens into output_tokens, so pricing the full
+    # output at the output rate AND adding the reasoning component would charge
+    # those tokens twice. Use a registry model that prices reasoning apart from
+    # output (output != reasoning_output).
+    let(:model_id) { "perplexity/sonar-deep-research" }
+    let(:pricing) { RubyLLM::Models.find(model_id).pricing.text_tokens }
+
+    let(:reasoning_agent_class) do
+      Class.new(described_class) do
+        def self.name
+          "ReasoningCostAgent"
+        end
+
+        model "perplexity/sonar-deep-research"
+      end
+    end
+
+    let(:reasoning_agent) do
+      reasoning_agent_class.allocate.tap { |a| a.instance_variable_set(:@options, {}) }
+    end
+
+    let(:reasoning_context) do
+      ctx = RubyLLM::Agents::Pipeline::Context.new(
+        input: "hi",
+        agent_class: reasoning_agent_class,
+        agent_instance: reasoning_agent
+      )
+      ctx.input_tokens = 1000
+      ctx.output_tokens = 500 # of which 300 are reasoning tokens
+      ctx
+    end
+
+    it "excludes reasoning tokens from the output charge so they aren't billed twice" do
+      expect(pricing.reasoning_output).to be_present
+      expect(pricing.reasoning_output).not_to eq(pricing.output)
+
+      extra = build_cost(
+        thinking: 300,
+        prices: {
+          input: pricing.input,
+          output: pricing.output,
+          cache_read_input: pricing.cache_read_input,
+          cache_write_input: pricing.cache_write_input,
+          reasoning_output: pricing.reasoning_output
+        }
+      )
+      response = double("RubyLLM::Message", model_id: model_id, reasoning_tokens: 300)
+      allow(response).to receive(:cost).and_return(extra)
+
+      reasoning_agent.send(:calculate_costs, response, reasoning_context)
+
+      # 300 of the 500 output tokens are reasoning -> priced only at the
+      # reasoning rate, so output cost covers the remaining 200 tokens.
+      expected_output = ((500 - 300) / 1_000_000.0) * pricing.output
+      expect(reasoning_context.output_cost).to be_within(1e-12).of(expected_output)
+
+      reasoning_cost = (300 / 1_000_000.0) * pricing.reasoning_output
+      expected_total = (reasoning_context.input_cost + expected_output + reasoning_cost).round(6)
+      expect(reasoning_context.total_cost).to be_within(1e-9).of(expected_total)
+    end
+  end
 end

@@ -1000,10 +1000,34 @@ module RubyLLM
         output_price = model_info.pricing&.text_tokens&.output || 0
 
         context.input_cost = (input_tokens / 1_000_000.0) * input_price
-        context.output_cost = (output_tokens / 1_000_000.0) * output_price
+        billable_output = billable_output_tokens(output_tokens, response, model_info)
+        context.output_cost = (billable_output / 1_000_000.0) * output_price
 
         extra = extra_token_costs(response, model_info, context)
         context.total_cost = (context.input_cost + context.output_cost + extra).round(6)
+      end
+
+      # Output tokens to charge at the output rate.
+      #
+      # Reasoning providers fold reasoning (thinking) tokens into the reported
+      # output_tokens. When the model prices reasoning separately,
+      # +extra_token_costs+ charges those tokens at the reasoning rate, so they
+      # must be removed here to avoid billing them at the output rate as well.
+      # Models that don't price reasoning apart from output are unaffected.
+      #
+      # @param output_tokens [Integer] Total reported output tokens
+      # @param response [Object] The response (RubyLLM::Message in production)
+      # @param model_info [RubyLLM::Model::Info] Resolved pricing source
+      # @return [Integer] Output tokens to charge at the output rate
+      def billable_output_tokens(output_tokens, response, model_info)
+        text = model_info.pricing&.text_tokens
+        return output_tokens unless text.respond_to?(:reasoning_output)
+
+        reasoning_price = text.reasoning_output
+        return output_tokens unless reasoning_price && reasoning_price != text.output
+        return output_tokens unless response.respond_to?(:reasoning_tokens)
+
+        [output_tokens - response.reasoning_tokens.to_i, 0].max
       end
 
       # Prices the non-text token components (cache reads/writes, reasoning)
@@ -1029,11 +1053,15 @@ module RubyLLM
         }.compact.reject { |_, value| value.zero? }
         return 0.0 if components.empty?
 
-        context[:cost_breakdown] = components.transform_values { |value| value.round(6) }
-        components.values.sum
-      rescue
+        # Round per component and sum the rounded values so the stored
+        # breakdown reconciles exactly with the amount added to total_cost.
+        breakdown = components.transform_values { |value| value.round(6) }
+        context[:cost_breakdown] = breakdown
+        breakdown.values.sum
+      rescue => e
         # Non-standard pricing shapes can't price these components; degrade to
         # text-only rather than failing the cost calculation.
+        log_cost_warning("extra_token_costs", e)
         0.0
       end
 
@@ -1049,6 +1077,22 @@ module RubyLLM
         return nil unless response.respond_to?(:cost)
 
         response.cost(model: model_info)
+      rescue => e
+        log_cost_warning("response_cost", e)
+        nil
+      end
+
+      # Leaves a debug breadcrumb for a swallowed cost-calculation error.
+      # Cost components are best-effort, so we degrade gracefully rather than
+      # raise, but record why instead of failing silently. Logging itself must
+      # never break cost handling.
+      #
+      # @param source [String] The method that degraded
+      # @param error [Exception] The swallowed error
+      def log_cost_warning(source, error)
+        return unless defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+
+        Rails.logger.debug("[RubyLLM::Agents] #{source} skipped: #{error.class}: #{error.message}")
       rescue
         nil
       end

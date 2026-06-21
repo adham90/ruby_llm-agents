@@ -144,6 +144,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           context = build_context
           context.input_tokens = 100
           context.output_tokens = 50
+          context.input_cost = 0.0007
+          context.output_cost = 0.0003
           context.total_cost = 0.001
 
           allow(app).to receive(:call) do |ctx|
@@ -158,6 +160,32 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
           expect(execution.input_tokens).to eq(100)
           expect(execution.output_tokens).to eq(50)
           expect(execution.total_cost).to eq(0.001)
+        end
+
+        it "persists input_cost/output_cost and preserves a cache-aware total" do
+          context = build_context
+          context.input_tokens = 1000
+          context.output_tokens = 500
+          context.input_cost = 0.003
+          context.output_cost = 0.0075
+          # The pipeline records the cache/reasoning extra in the breakdown, so
+          # the persisted total exceeds the text-only input+output (0.0105).
+          context[:cost_breakdown] = {cache_read: 0.0015}
+          context.total_cost = 0.012
+
+          allow(app).to receive(:call) do |ctx|
+            ctx.output = "result"
+            ctx
+          end
+
+          middleware.call(context)
+
+          execution = RubyLLM::Agents::Execution.last
+          expect(execution.input_cost).to eq(0.003)
+          expect(execution.output_cost).to eq(0.0075)
+          # total = input + output + breakdown (0.003 + 0.0075 + 0.0015); the
+          # callback must include the extra instead of collapsing to 0.0105.
+          expect(execution.total_cost).to eq(0.012)
         end
 
         it "updates record on failure with error details" do
@@ -265,6 +293,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         context = build_context
         context.input_tokens = 500
         context.output_tokens = 200
+        context.input_cost = 0.0025
+        context.output_cost = 0.001
         context.total_cost = 0.0035
 
         allow(app).to receive(:call) { |ctx|

@@ -474,11 +474,28 @@ module RubyLLM
         self.total_tokens = (input_tokens || 0) + (output_tokens || 0)
       end
 
-      # Calculates and sets total_cost from input and output costs
+      # Calculates and sets total_cost from input and output costs, plus any
+      # non-text components (cache reads/writes, reasoning) the pipeline
+      # recorded in metadata. Without a breakdown this is the plain
+      # input + output sum, so existing text-only executions are unchanged.
       #
       # @return [BigDecimal] The calculated total
       def calculate_total_cost
-        self.total_cost = (input_cost || 0) + (output_cost || 0)
+        self.total_cost = (input_cost || 0) + (output_cost || 0) + extra_component_cost
+      end
+
+      # Sum of the cache/reasoning cost components stored under
+      # metadata["cost_breakdown"], or 0 when none were recorded.
+      #
+      # @return [Float] Combined extra-component cost
+      def extra_component_cost
+        breakdown = metadata.is_a?(Hash) ? (metadata["cost_breakdown"] || metadata[:cost_breakdown]) : nil
+        return 0 unless breakdown.is_a?(Hash)
+
+        # Only sum numeric components — metadata is merged from user-defined
+        # agent metadata, so a stray non-numeric "cost_breakdown" must never
+        # raise and break execution persistence in this before_save callback.
+        breakdown.values.grep(Numeric).sum
       end
 
       # Resolves model info for cost calculation
