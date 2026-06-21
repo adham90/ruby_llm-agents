@@ -262,6 +262,24 @@ module RubyLLM
           @tools || (superclass.respond_to?(:tools) ? superclass.tools : [])
         end
 
+        # Sets or returns how this agent runs multiple tool calls returned in
+        # a single LLM response.
+        #
+        # Mirrors RubyLLM's tool_concurrency: +false+ runs them sequentially,
+        # +true+ or +:threads+ runs them in Ruby threads, and +:fibers+ runs
+        # them in fibers (requires the async gem). When unset, the agent
+        # inherits its superclass value and ultimately the global
+        # RubyLLM tool_concurrency configuration.
+        #
+        # @param value [Boolean, Symbol] Concurrency mode (omit to read)
+        # @return [Boolean, Symbol, nil] Configured mode, or nil when unset
+        def tool_concurrency(*value)
+          @tool_concurrency = value.first unless value.empty?
+          return @tool_concurrency if instance_variable_defined?(:@tool_concurrency)
+
+          superclass.respond_to?(:tool_concurrency) ? superclass.tool_concurrency : nil
+        end
+
         # @!endgroup
 
         # @!group Temperature DSL
@@ -789,7 +807,16 @@ module RubyLLM
         end
 
         client = client.with_schema(schema) if schema
-        client = client.with_tools(*resolved_tools) if resolved_tools.any?
+        if resolved_tools.any?
+          # Only pass concurrency when the agent overrides it; otherwise let
+          # RubyLLM apply its globally configured tool_concurrency default.
+          concurrency = self.class.tool_concurrency
+          client = if concurrency.nil?
+            client.with_tools(*resolved_tools)
+          else
+            client.with_tools(*resolved_tools, concurrency: concurrency)
+          end
+        end
         apply_tool_prompt_caching(client) if use_prompt_caching && resolved_tools.any?
         client = setup_tool_tracking(client) if resolved_tools.any?
         client = apply_messages(client, resolved_messages) if resolved_messages.any?
@@ -954,6 +981,12 @@ module RubyLLM
       # response's model_id misses, fall back to the agent's configured
       # model so cost calculation still finds pricing.
       #
+      # Text input/output are priced from the context's token counts, which
+      # are authoritative (they may aggregate across retry/fallback attempts).
+      # On top of that, cache reads/writes and reasoning tokens — which only
+      # exist on the response and are billed at their own rates — are priced
+      # via RubyLLM's first-class cost helper (RubyLLM::Cost) and added in.
+      #
       # @param response [RubyLLM::Message] The response
       # @param context [Pipeline::Context] The context
       def calculate_costs(response, context)
@@ -968,7 +1001,56 @@ module RubyLLM
 
         context.input_cost = (input_tokens / 1_000_000.0) * input_price
         context.output_cost = (output_tokens / 1_000_000.0) * output_price
-        context.total_cost = (context.input_cost + context.output_cost).round(6)
+
+        extra = extra_token_costs(response, model_info, context)
+        context.total_cost = (context.input_cost + context.output_cost + extra).round(6)
+      end
+
+      # Prices the non-text token components (cache reads/writes, reasoning)
+      # that RubyLLM::Cost exposes on a response, records them in metadata for
+      # visibility, and returns their sum to add on top of text input/output.
+      #
+      # Returns 0.0 for responses that don't expose cost (plain structs/mocks)
+      # or when the registry lacks the relevant prices, so cache/reasoning
+      # accuracy is additive and never regresses text pricing.
+      #
+      # @param response [Object] The response (RubyLLM::Message in production)
+      # @param model_info [RubyLLM::Model::Info] Resolved pricing source
+      # @param context [Pipeline::Context] The context
+      # @return [Float] Combined cache + reasoning cost, or 0.0
+      def extra_token_costs(response, model_info, context)
+        cost = response_cost(response, model_info)
+        return 0.0 unless cost
+
+        components = {
+          cache_read: cost.cache_read,
+          cache_write: cost.cache_write,
+          thinking: cost.thinking
+        }.compact.reject { |_, value| value.zero? }
+        return 0.0 if components.empty?
+
+        context[:cost_breakdown] = components.transform_values { |value| value.round(6) }
+        components.values.sum
+      rescue
+        # Non-standard pricing shapes can't price these components; degrade to
+        # text-only rather than failing the cost calculation.
+        0.0
+      end
+
+      # Returns a RubyLLM::Cost for the response, priced against the resolved
+      # model_info (which may differ from the response's own dated model
+      # variant). Returns nil for responses that don't expose cost — e.g.
+      # simple structs/mocks in tests — so callers skip the extra components.
+      #
+      # @param response [Object] The response (RubyLLM::Message in production)
+      # @param model_info [RubyLLM::Model::Info] Resolved pricing source
+      # @return [RubyLLM::Cost, nil]
+      def response_cost(response, model_info)
+        return nil unless response.respond_to?(:cost)
+
+        response.cost(model: model_info)
+      rescue
+        nil
       end
 
       # Finds model pricing info.

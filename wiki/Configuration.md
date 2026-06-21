@@ -80,8 +80,16 @@ These attributes are set on `RubyLLM::Agents.configure` but forwarded to `RubyLL
 | `ollama_api_base` | Ollama server URL |
 | `vertexai_project_id` | Google Vertex AI project ID |
 | `vertexai_location` | Google Vertex AI location |
+| `bedrock_api_base` | Custom AWS Bedrock endpoint |
+| `mistral_api_base` | Custom Mistral endpoint |
+| `perplexity_api_base` | Custom Perplexity endpoint |
+| `vertexai_api_base` | Custom Google Vertex AI endpoint |
+| `xai_api_base` | Custom xAI (Grok) endpoint |
 | `request_timeout` | HTTP request timeout for RubyLLM |
 | `max_retries` | HTTP-level retries for RubyLLM |
+| `faraday_adapter` | Faraday HTTP adapter (e.g. `:net_http`, `:typhoeus`, `:async_http`) |
+| `deprecation_behavior` | How RubyLLM handles deprecations (`:warn`, `:silence`, `:raise`) |
+| `tool_concurrency` | Global default for running tool calls concurrently (see [Agent DSL](Agent-DSL#tool_concurrency)) |
 
 ### Migrating from Separate Configuration
 

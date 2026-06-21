@@ -330,6 +330,39 @@ end
 
 See [Tools](Tools) for details on tool definition.
 
+### tool_concurrency
+
+Control how the agent runs multiple tool calls returned in a single LLM response. By default they run sequentially; set `tool_concurrency` to run them in parallel:
+
+```ruby
+class ResearchAgent < ApplicationAgent
+  tools WeatherTool, StockTool, NewsTool
+  tool_concurrency :threads   # run concurrent tool calls in Ruby threads
+end
+```
+
+Accepted values mirror RubyLLM's `tool_concurrency`:
+
+| Value | Behavior |
+|-------|----------|
+| `false` | Run tool calls sequentially (default) |
+| `true` / `:threads` | Run concurrent tool calls in Ruby threads |
+| `:fibers` | Run concurrent tool calls in fibers (requires the `async` gem) |
+
+When unset, the agent inherits its superclass value and ultimately the global `config.tool_concurrency` (see [Configuration](Configuration)). A subclass can override an inherited value, including forcing sequential execution with `tool_concurrency false`:
+
+```ruby
+class FastAgent < ApplicationAgent
+  tool_concurrency :threads
+end
+
+class CarefulAgent < FastAgent
+  tool_concurrency false   # override back to sequential
+end
+```
+
+`:fibers` pairs well with `config.faraday_adapter = :async_http` for non-blocking HTTP. See [Async/Fiber](Async-Fiber).
+
 ### knows
 
 Declare domain knowledge to be automatically injected into the system prompt. Supports static files and dynamic blocks.

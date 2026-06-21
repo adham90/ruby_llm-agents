@@ -73,6 +73,9 @@ These fields are stored in the `metadata` JSON column with getter/setter methods
 | `fallback_reason` | Why fallback was triggered |
 | `span_id` | Span ID for tracing |
 | `response_cache_key` | Cache key used |
+| `cost_breakdown` | Per-component cache/reasoning costs, when present (see [Pricing](Pricing#cache--reasoning-token-costs)) |
+| `llm_request_ms` | Real provider HTTP latency, summed across requests (see [AS::Notifications](ActiveSupport-Notifications#rubyllm-library-events)) |
+| `llm_request_count` | Number of LLM HTTP requests made (retries/fallbacks accumulate) |
 
 ## Execution Hierarchy (Agent-as-Tool)
 

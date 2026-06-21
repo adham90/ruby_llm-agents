@@ -143,6 +143,19 @@ User Request
 Final Response
 ```
 
+## Concurrent Tool Execution
+
+When the LLM returns several tool calls in one response, they run sequentially by default. Set `tool_concurrency` on the agent to run them in parallel — results stream back as each tool finishes:
+
+```ruby
+class ResearchAgent < ApplicationAgent
+  tools WeatherTool, StockTool, NewsTool
+  tool_concurrency :threads   # :threads, :fibers, true, or false
+end
+```
+
+The setting is inheritable and falls back to the global `config.tool_concurrency` when unset. Tool-execution tracking (per-tool `ToolExecution` records, durations, statuses) works unchanged under concurrency. Use `:fibers` (with the `async` gem and `config.faraday_adapter = :async_http`) for non-blocking I/O. See [tool_concurrency](Agent-DSL#tool_concurrency) and [Async/Fiber](Async-Fiber).
+
 ## Accessing Tool Calls
 
 After execution, you can inspect which tools were called:

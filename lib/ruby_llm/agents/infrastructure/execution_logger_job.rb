@@ -37,8 +37,10 @@ module RubyLLM
           execution.create_detail!(detail_data)
         end
 
-        # Calculate costs if token data is available
-        if execution.input_tokens && execution.output_tokens
+        # Calculate costs if token data is available. Skip when the pipeline
+        # already supplied an accurate total (RubyLLM::Cost, which prices cache
+        # and reasoning tokens) so we don't downgrade it to text-only pricing.
+        if execution.input_tokens && execution.output_tokens && !execution.total_cost&.positive?
           execution.calculate_costs!
           execution.save!
         end

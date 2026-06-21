@@ -18,6 +18,22 @@ When calculating costs, the system cascades through pricing sources in priority 
 
 This lazy cascade means if LiteLLM has the price, no other API is ever called.
 
+## Cache & Reasoning Token Costs
+
+Text input/output are priced from the execution's token counts (which aggregate across retry/fallback attempts). On top of that, RubyLLM 1.16's `RubyLLM::Cost` prices the **prompt-cache reads, cache writes, and reasoning/thinking tokens** at their own rates and folds them into `total_cost`, so cached and reasoning-heavy requests are billed accurately rather than at the plain input rate.
+
+When a response includes any of these components, the per-component breakdown is recorded on the execution:
+
+```ruby
+execution.total_cost
+# => 0.00306  (text input/output + cache read/write + reasoning)
+
+execution.metadata["cost_breakdown"]
+# => { "cache_read" => 0.00016, "cache_write" => 0.0001 }
+```
+
+If the registry is missing a price for one of these components, that component is skipped (text pricing is never affected), so cost calculation degrades gracefully.
+
 ## Coverage Matrix
 
 | Source | Text LLM | Transcription | TTS | Image | Embedding | Fetch Style |
