@@ -19,7 +19,9 @@ module RubyLLM
       # @return [void]
       def index
         @sort_params = parse_tenant_sort_params
-        scope = TenantBudget.all
+        # Eager-load tenant_record so display_name's live name resolution does
+        # not issue a query per row.
+        scope = TenantBudget.all.includes(:tenant_record)
 
         if params[:q].present?
           @search_query = params[:q].to_s.strip
@@ -67,7 +69,11 @@ module RubyLLM
       # @return [void]
       def update
         @tenant = TenantBudget.find(params[:id])
-        if @tenant.update(tenant_params)
+        attrs = tenant_params
+        # Linked tenants derive their name live from the host record, so ignore
+        # any submitted name — it would be overwritten on the next record sync.
+        attrs = attrs.except(:name) if @tenant.linked?
+        if @tenant.update(attrs)
           redirect_to tenant_path(@tenant), notice: "Tenant updated successfully"
         else
           render :edit, status: :unprocessable_entity

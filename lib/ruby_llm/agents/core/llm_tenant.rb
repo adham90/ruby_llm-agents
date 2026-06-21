@@ -113,6 +113,11 @@ module RubyLLM
 
           # Auto-create tenant record callback
           after_create :create_default_llm_tenant if llm_tenant_options[:budget]
+
+          # Keep the denormalized Tenant#name column fresh so the dashboard's
+          # SQL search/sort by name keeps working for linked tenants. Display
+          # already resolves the name live, so this only powers SQL.
+          after_update :sync_llm_tenant_name
         end
 
         private
@@ -141,6 +146,17 @@ module RubyLLM
       def llm_tenant_id
         id_method = self.class.llm_tenant_options[:id] || :id
         send(id_method).to_s
+      end
+
+      # Returns this model's tenant display name, resolved live from the
+      # configured name method (`llm_tenant name: :company_name`). Resolving on
+      # read means the tenant always reflects the current value instead of the
+      # snapshot taken when its Tenant record was first created.
+      #
+      # @return [String] The current display name
+      def llm_tenant_name
+        name_method = self.class.llm_tenant_options[:name] || :to_s
+        send(name_method).to_s
       end
 
       # Returns API keys resolved from the DSL configuration
@@ -353,6 +369,30 @@ module RubyLLM
 
         tenant.tenant_record = self
         tenant.save!
+      end
+
+      # Pushes the current name into the linked Tenant row when the source
+      # column changed, keeping the denormalized copy fresh for the dashboard's
+      # SQL search/sort. Display already resolves live, so this is best-effort
+      # and never raises. Only runs when the name is backed by a column we can
+      # detect a change on (method-based names are skipped — display stays
+      # correct via live resolution, only SQL search/sort may lag for those).
+      #
+      # @return [void]
+      def sync_llm_tenant_name
+        name_method = self.class.llm_tenant_options[:name]
+        return unless name_method
+
+        change_predicate = "saved_change_to_#{name_method}?"
+        return unless respond_to?(change_predicate) && public_send(change_predicate)
+
+        record = llm_tenant_record
+        return unless record&.persisted?
+        return if record.read_attribute(:name) == llm_tenant_name
+
+        record.update_column(:name, llm_tenant_name)
+      rescue
+        nil
       end
     end
   end

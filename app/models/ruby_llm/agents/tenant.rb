@@ -145,11 +145,17 @@ module RubyLLM
         alias_method :for_tenant!, :for!
       end
 
-      # Display name (name or tenant_id fallback)
+      # Display name.
+      #
+      # For tenants linked to a host model (Account, Organization, ...) the name
+      # is resolved live from that record, so a renamed record is reflected
+      # immediately instead of showing the snapshot taken when the tenant was
+      # created. Unlinked (string-id) tenants fall back to the stored name
+      # column, and tenant_id is the final fallback so this is never blank.
       #
       # @return [String]
       def display_name
-        name.presence || tenant_id
+        linked_record_name.presence || name.presence || tenant_id
       end
 
       # Check if tenant is linked to a user model
@@ -178,6 +184,28 @@ module RubyLLM
       # @return [Boolean]
       def activate!
         update!(active: true)
+      end
+
+      private
+
+      # Live display name from the linked host record (Account/Organization),
+      # or nil when this tenant is unlinked or the record is unavailable.
+      # Prefers the model's llm_tenant_name (which honours the configured name
+      # method), falling back to a plain #name. Never raises — name resolution
+      # must not break rendering.
+      #
+      # @return [String, nil]
+      def linked_record_name
+        record = tenant_record
+        return nil unless record
+
+        if record.respond_to?(:llm_tenant_name)
+          record.llm_tenant_name
+        elsif record.respond_to?(:name)
+          record.name
+        end
+      rescue
+        nil
       end
     end
   end
