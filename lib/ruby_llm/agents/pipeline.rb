@@ -36,6 +36,7 @@ require_relative "pipeline/middleware/budget"
 require_relative "pipeline/middleware/cache"
 require_relative "pipeline/middleware/instrumentation"
 require_relative "pipeline/middleware/reliability"
+require_relative "pipeline/middleware/attachment_persistence"
 
 module RubyLLM
   module Agents

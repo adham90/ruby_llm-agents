@@ -139,6 +139,10 @@ module RubyLLM
               # Instrumentation (always - for tracking, must be before Cache)
               builder.use(Middleware::Instrumentation)
 
+              # Attachment persistence (if agent opts in via store_attachments)
+              # Runs after Instrumentation so execution_id is available.
+              builder.use(Middleware::AttachmentPersistence) if attachments_enabled?(agent_class)
+
               # Caching (if enabled on the agent)
               builder.use(Middleware::Cache) if cache_enabled?(agent_class)
 
@@ -211,6 +215,18 @@ module RubyLLM
             RubyLLM::Agents.configuration.budgets_enabled?
           rescue => e
             Rails.logger.debug("[RubyLLM::Agents::Pipeline] Failed to check budgets_enabled: #{e.message}") if defined?(Rails) && Rails.logger
+            false
+          end
+
+          # Check if attachment persistence is enabled for an agent
+          #
+          # @param agent_class [Class] The agent class
+          # @return [Boolean]
+          def attachments_enabled?(agent_class)
+            return false unless agent_class
+
+            agent_class.respond_to?(:store_attachments_enabled?) && agent_class.store_attachments_enabled?
+          rescue
             false
           end
 

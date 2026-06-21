@@ -48,6 +48,7 @@ module RubyLLM
       extend DSL::Caching
       extend DSL::Queryable
       extend DSL::Knowledge
+      extend DSL::Attachments
       include DSL::Knowledge::InstanceMethods
       include CacheHelper
 
