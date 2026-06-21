@@ -253,6 +253,40 @@ RSpec.describe RubyLLM::Agents::Configuration do
     end
   end
 
+  describe "RubyLLM forwarded attributes" do
+    # The new 1.16 knobs write through to the global RubyLLM.config so the
+    # providers and chat layer pick them up. Save/restore around the example
+    # so we don't leak global state into other specs.
+    let(:forwarded) do
+      {
+        bedrock_api_base: "https://bedrock.example.test",
+        mistral_api_base: "https://mistral.example.test",
+        perplexity_api_base: "https://pplx.example.test",
+        vertexai_api_base: "https://vertex.example.test",
+        xai_api_base: "https://xai.example.test",
+        faraday_adapter: :typhoeus,
+        deprecation_behavior: :raise,
+        tool_concurrency: :threads
+      }
+    end
+
+    around do |example|
+      saved = forwarded.keys.to_h { |attr| [attr, RubyLLM.config.public_send(attr)] }
+      example.run
+    ensure
+      saved&.each { |attr, value| RubyLLM.config.public_send(:"#{attr}=", value) }
+    end
+
+    it "writes 1.16 provider/runtime knobs through to RubyLLM.config" do
+      forwarded.each do |attr, value|
+        config.public_send(:"#{attr}=", value)
+
+        expect(config.public_send(attr)).to eq(value)
+        expect(RubyLLM.config.public_send(attr)).to eq(value)
+      end
+    end
+  end
+
   describe "data retention" do
     describe "#soft_purge_after=" do
       it "accepts a Duration" do

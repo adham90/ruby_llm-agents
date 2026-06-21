@@ -61,6 +61,20 @@ RSpec.describe RubyLLM::Agents::ExecutionLoggerJob, type: :job do
         expect(execution.output_cost).to be_nil
       end
     end
+
+    context "when an accurate total_cost was already provided" do
+      let(:execution_data_with_total) do
+        # The pipeline already priced cache/reasoning tokens via RubyLLM::Cost.
+        execution_data.merge(total_cost: 0.123456)
+      end
+
+      it "preserves the provided total instead of recomputing text-only pricing" do
+        described_class.new.perform(execution_data_with_total)
+        execution = RubyLLM::Agents::Execution.last
+
+        expect(execution.total_cost).to eq(0.123456)
+      end
+    end
   end
 
   describe "anomaly detection" do

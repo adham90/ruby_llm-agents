@@ -48,7 +48,7 @@ module RubyLLM
               raised_exception = nil
 
               begin
-                @app.call(context)
+                capture_llm_requests(context) { @app.call(context) }
                 context.completed_at = Time.current
 
                 begin
@@ -83,6 +83,37 @@ module RubyLLM
           end
 
           private
+
+          # Captures real HTTP-level provider latency for the LLM call(s) made
+          # while running the rest of the pipeline.
+          #
+          # ruby_llm 1.16 emits a "request.ruby_llm" event per HTTP request and
+          # its Railtie wires ActiveSupport::Notifications as the instrumenter
+          # in Rails, so we subscribe for the duration of the downstream call
+          # and accumulate provider time and request count (retries/fallbacks
+          # add up). This is distinct from the total pipeline duration, which
+          # also includes middleware and tool execution. The values are stored
+          # in context metadata and persisted with the execution.
+          #
+          # @param context [Context] The execution context
+          # @return [Object] The downstream call's return value
+          def capture_llm_requests(context)
+            return yield unless defined?(ActiveSupport::Notifications)
+
+            total_ms = 0.0
+            count = 0
+            callback = lambda do |_name, started, finished, _id, _payload|
+              total_ms += (finished - started) * 1000.0
+              count += 1
+            end
+
+            ActiveSupport::Notifications.subscribed(callback, "request.ruby_llm") { yield }
+          ensure
+            if count&.positive?
+              context[:llm_request_ms] = total_ms.round
+              context[:llm_request_count] = count
+            end
+          end
 
           # Creates initial execution record with 'running' status
           #

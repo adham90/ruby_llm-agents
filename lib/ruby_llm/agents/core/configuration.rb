@@ -373,10 +373,18 @@ module RubyLLM
         gemini_api_base
         gpustack_api_base
         ollama_api_base
+        bedrock_api_base
+        mistral_api_base
+        perplexity_api_base
+        vertexai_api_base
         vertexai_project_id
         vertexai_location
+        xai_api_base
         request_timeout
         max_retries
+        faraday_adapter
+        deprecation_behavior
+        tool_concurrency
       ].freeze
 
       FORWARDED_RUBY_LLM_ATTRIBUTES.each do |attr|

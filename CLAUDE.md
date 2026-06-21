@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 RubyLLM::Agents is a Rails engine gem for building, managing, and monitoring LLM-powered AI agents. It provides a DSL for agent configuration, a middleware pipeline for execution, automatic tracking with cost analytics, and a mountable dashboard UI.
 
-**Requirements:** Ruby >= 3.1, Rails >= 7.0, RubyLLM >= 1.12.0
+**Requirements:** Ruby >= 3.1, Rails >= 7.0, RubyLLM >= 1.16.0
 
 ## Common Commands
 
