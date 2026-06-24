@@ -203,6 +203,7 @@ puts run.summary
 | **Alerts** | Slack, webhook, and custom notifications | [Alerts](https://github.com/adham90/ruby_llm-agents/wiki/Alerts) |
 | **AS::Notifications** | 11 instrumentation events across execution, cache, budget, and reliability | [Events](https://github.com/adham90/ruby_llm-agents/wiki/ActiveSupport-Notifications) |
 | **Custom Middleware** | Inject custom middleware globally or per-agent with positioning control | [Middleware](https://github.com/adham90/ruby_llm-agents/wiki/Custom-Middleware) |
+| **Governed Endpoints** | Route agents through OpenAI-compatible gateways for centralized policy, audit, and cost controls | [Governed Endpoints](https://github.com/adham90/ruby_llm-agents/wiki/Governed-Endpoints) |
 
 ## Quick Start
 
