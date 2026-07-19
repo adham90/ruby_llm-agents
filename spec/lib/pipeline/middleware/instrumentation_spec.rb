@@ -605,6 +605,71 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
     end
   end
 
+  describe "tracker tags on completion" do
+    before do
+      RubyLLM::Agents.configuration.track_embeddings = true
+      RubyLLM::Agents.configuration.multi_tenancy_enabled = false
+    end
+
+    let(:tracked_agent) do
+      Object.new.tap do |agent|
+        agent.instance_variable_set(:@_track_tags, {"device_id" => "7", "chat_id" => "3"})
+      end
+    end
+
+    it "keeps tracker tags when the completion rebuild produces metadata" do
+      context = build_context(agent_instance: tracked_agent)
+
+      allow(app).to receive(:call) do |ctx|
+        ctx[:llm_request_count] = 1
+        ctx.output = "result"
+        ctx
+      end
+
+      middleware.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.metadata["tags"]).to eq("device_id" => "7", "chat_id" => "3")
+      expect(execution.metadata["llm_request_count"]).to eq(1)
+    end
+
+    it "keeps tracker tags on failed executions" do
+      context = build_context(agent_instance: tracked_agent)
+
+      allow(app).to receive(:call).and_raise(StandardError, "boom")
+
+      expect { middleware.call(context) }.to raise_error(StandardError)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.metadata["tags"]).to eq("device_id" => "7", "chat_id" => "3")
+    end
+
+    it "does not add tags when no tracker was active" do
+      context = build_context(agent_instance: Object.new)
+
+      allow(app).to receive(:call) do |ctx|
+        ctx[:llm_request_count] = 1
+        ctx.output = "result"
+        ctx
+      end
+
+      middleware.call(context)
+
+      execution = RubyLLM::Agents::Execution.last
+      expect(execution.metadata).not_to have_key("tags")
+      expect(execution.metadata["llm_request_count"]).to eq(1)
+    end
+
+    it "leaves completion metadata unset when the rebuild is empty, preserving the running record's metadata" do
+      context = build_context(agent_instance: tracked_agent)
+      context.completed_at = Time.current
+
+      data = middleware.send(:build_completion_data, context, "success")
+
+      expect(data).not_to have_key(:metadata)
+    end
+  end
+
   describe "agent metadata merging" do
     before do
       RubyLLM::Agents.reset_configuration!

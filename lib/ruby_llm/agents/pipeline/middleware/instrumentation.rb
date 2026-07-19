@@ -429,6 +429,13 @@ module RubyLLM
               data[:attempts_count] = context[:reliability_attempts].size
             end
 
+            # Carry the tracker request_id/tags that
+            # build_running_execution_data injected through the metadata
+            # rebuild — otherwise a completed execution loses them. Only
+            # merge into a rebuild that actually produced metadata: when
+            # none did, the running record's metadata stays untouched.
+            inject_tracker_data(context, data) if data[:metadata]
+
             data
           end
 
