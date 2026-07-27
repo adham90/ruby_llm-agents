@@ -51,7 +51,7 @@ module RubyLLM
           @retries_config = builder.retries_config if builder.retries_config
           @fallback_models = builder.fallback_models_list if builder.fallback_models_list.any?
           @fallback_providers = builder.fallback_providers_list if builder.fallback_providers_list.any?
-          @total_timeout = builder.total_timeout_value if builder.total_timeout_value
+          @total_timeout = builder.total_timeout_value unless builder.total_timeout_value.nil?
           @circuit_breaker_config = builder.circuit_breaker_config if builder.circuit_breaker_config
           @retryable_patterns = builder.retryable_patterns_list if builder.retryable_patterns_list
           @non_fallback_errors = builder.non_fallback_errors_list if builder.non_fallback_errors_list
@@ -80,7 +80,7 @@ module RubyLLM
           @retries_config = builder.retries_config if builder.retries_config
           @fallback_models = builder.fallback_models_list if builder.fallback_models_list.any?
           @fallback_providers = builder.fallback_providers_list if builder.fallback_providers_list.any?
-          @total_timeout = builder.total_timeout_value if builder.total_timeout_value
+          @total_timeout = builder.total_timeout_value unless builder.total_timeout_value.nil?
           @circuit_breaker_config = builder.circuit_breaker_config if builder.circuit_breaker_config
           @retryable_patterns = builder.retryable_patterns_list if builder.retryable_patterns_list
           @non_fallback_errors = builder.non_fallback_errors_list if builder.non_fallback_errors_list
@@ -186,9 +186,25 @@ module RubyLLM
         # @return [Integer, nil] The current total timeout
         # @example
         #   total_timeout 30
+        # Wall-clock budget for ALL attempts combined, across every model.
+        #
+        # Falls back to config.default_total_timeout rather than "unbounded":
+        # retries and fallbacks multiply, and the product is easy to miss.
+        # `retries times: 5` with three fallbacks is 24 attempts — at the
+        # default 60s per-call timeout plus backoff that is over 20 minutes of
+        # one caller waiting. Pass `total_timeout false` to opt out.
+        #
+        # @param seconds [Integer, Float, false, nil] Budget in seconds, or
+        #   false for no bound
+        # @return [Integer, Float, nil] The effective budget, nil when unbounded
         def total_timeout(seconds = nil)
-          @total_timeout = seconds if seconds
-          @total_timeout || inherited_total_timeout
+          @total_timeout = seconds unless seconds.nil?
+          configured = defined?(@total_timeout) ? @total_timeout : nil
+          effective = configured.nil? ? inherited_total_timeout : configured
+
+          return nil if effective == false
+
+          effective || default_total_timeout_from_config
         end
 
         # Configures circuit breaker for this agent
@@ -264,6 +280,12 @@ module RubyLLM
           return nil unless superclass.respond_to?(:total_timeout)
 
           superclass.total_timeout
+        end
+
+        def default_total_timeout_from_config
+          RubyLLM::Agents.configuration.default_total_timeout
+        rescue
+          nil
         end
 
         def inherited_circuit_breaker_config
@@ -436,7 +458,11 @@ module RubyLLM
           #
           def timeout(duration)
             # Handle ActiveSupport::Duration
-            @total_timeout_value = duration.respond_to?(:to_i) ? duration.to_i : duration
+            @total_timeout_value = if duration == false
+              false
+            else
+              duration.respond_to?(:to_i) ? duration.to_i : duration
+            end
           end
 
           # Also support total_timeout for compatibility

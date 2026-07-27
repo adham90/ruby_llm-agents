@@ -142,9 +142,14 @@ module RubyLLM
       #   @return [Array<String>] List of model identifiers to try on failure
 
       # @!attribute [rw] default_total_timeout
-      #   Default total timeout across all retry attempts.
-      #   Can be overridden per-agent using the `total_timeout` DSL method.
-      #   @return [Integer, nil] Total timeout in seconds, or nil for no limit
+      #   Wall-clock budget for ALL attempts combined, across every model, for
+      #   agents that configure reliability without naming their own
+      #   `total_timeout`. Retries and fallbacks multiply into an attempt matrix
+      #   that is easy to under-estimate — `retries times: 5` with three
+      #   fallbacks is 24 attempts, which at the default 60s per-call timeout
+      #   plus backoff is over 20 minutes of one caller waiting.
+      #   Set to nil (or `total_timeout false` on an agent) for no limit.
+      #   @return [Integer, nil] Total timeout in seconds (default: 300)
 
       # @!attribute [rw] default_streaming
       #   Whether streaming mode is enabled by default for all agents.
@@ -201,6 +206,13 @@ module RubyLLM
       # @!attribute [rw] persist_prompts
       #   Whether to persist system and user prompts in execution records.
       #   Set to false to reduce storage or for privacy compliance.
+      #
+      #   Note that prompts are stored as RENDERED — parameter redaction covers
+      #   execution_details.parameters, not the prompt those parameters were
+      #   interpolated into. A secret passed as `api_key:` shows up as
+      #   "[REDACTED]" in parameters while still appearing verbatim in
+      #   user_prompt. Do not interpolate credentials into prompts, or disable
+      #   this.
       #   @return [Boolean] Enable prompt persistence (default: true)
 
       # @!attribute [rw] persist_responses
@@ -695,7 +707,7 @@ module RubyLLM
         # Reliability defaults (all disabled by default for backward compatibility)
         @default_retries = {max: 0, backoff: :exponential, base: 0.4, max_delay: 3.0, on: []}
         @default_fallback_models = []
-        @default_total_timeout = nil
+        @default_total_timeout = 300
         @default_retryable_patterns = {
           rate_limiting: ["rate limit", "rate_limit", "too many requests", "429", "quota"],
           server_errors: ["500", "502", "503", "504", "service unavailable",

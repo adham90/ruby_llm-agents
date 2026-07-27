@@ -143,6 +143,22 @@ module RubyLLM
             # Store attempts even on total failure
             context[:reliability_attempts] = tracker.to_json_array
 
+            # Nothing was ever attempted — every model was short-circuited by an
+            # open breaker. That is a distinct condition from "we tried and they
+            # all failed", and it has a distinct error class; raising
+            # AllModelsExhaustedError here handed back a nil last_error and left
+            # CircuitBreakerOpenError impossible to rescue.
+            if context.attempts_made.zero?
+              emit_reliability_notification(
+                "ruby_llm_agents.reliability.circuit_open",
+                models_tried: models_to_try
+              )
+
+              raise Agents::Reliability::CircuitBreakerOpenError.new(
+                @agent_class&.name, models_to_try.join(", ")
+              )
+            end
+
             # All models exhausted
             emit_reliability_notification(
               "ruby_llm_agents.reliability.all_models_exhausted",

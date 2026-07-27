@@ -60,13 +60,40 @@ RSpec.describe RubyLLM::Agents::DSL::Reliability do
   end
 
   describe "#total_timeout" do
-    it "returns nil when not set" do
-      expect(test_class.total_timeout).to be_nil
+    # Unset means "use the configured default", not "unbounded": retries and
+    # fallbacks multiply into an attempt matrix with no ceiling of its own.
+    it "falls back to the configured default when not set" do
+      expect(test_class.total_timeout).to eq(RubyLLM::Agents.configuration.default_total_timeout)
     end
 
     it "sets total timeout" do
       test_class.total_timeout(30)
       expect(test_class.total_timeout).to eq(30)
+    end
+
+    it "treats false as an explicit opt-out" do
+      test_class.total_timeout(false)
+      expect(test_class.total_timeout).to be_nil
+    end
+
+    it "is unbounded when the global default is cleared" do
+      RubyLLM::Agents.configure { |c| c.default_total_timeout = nil }
+      expect(test_class.total_timeout).to be_nil
+    ensure
+      RubyLLM::Agents.reset_configuration!
+    end
+
+    it "applies the default through on_failure blocks that omit it" do
+      test_class.on_failure { retries times: 2 }
+      expect(test_class.reliability_config[:total_timeout]).to eq(300)
+    end
+
+    it "lets an on_failure block opt out with timeout false" do
+      test_class.on_failure {
+        retries times: 2
+        timeout false
+      }
+      expect(test_class.reliability_config[:total_timeout]).to be_nil
     end
   end
 

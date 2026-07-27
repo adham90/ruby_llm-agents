@@ -140,3 +140,57 @@ the call that originally produced the response, matching the existing
 `Cached*Result` classes used by the image agents; `#cached?` is what makes
 correct aggregation possible. Cache entries written before this change are
 returned untouched rather than raising, so a mid-deploy rollout is safe.
+
+---
+
+## Addendum 2: the deferred findings
+
+The five items reported but not changed in the second pass, now fixed.
+
+- **`TrackReport` under-reported call count and could not see cache hits.** A
+  cached result is deserialized then duped, so `Result#initialize` never runs and
+  it never registered with the active Tracker — `call_count` said 1 for a block
+  that made 3 calls. Registration moved into `as_cache_hit`, and `TrackReport`
+  gains `cached_count`, `billable_count` and `cache_savings`. Costs and token
+  totals now cover only the calls that hit a provider, so they reconcile with
+  the execution records instead of replaying spend that was never incurred.
+
+- **Cache marking only worked for conversation agents.** `#cached?` /
+  `#as_cache_hit` lived on `Results::Result`, but the result classes are
+  siblings, not subclasses — so embedders, speakers, transcribers and image
+  agents were unaffected, despite an embedder with `cache_for` being the Cache
+  middleware's own documented example. Both moved to `Results::Trackable`, the
+  one module all 13 result classes include.
+
+- **Streaming agents went silent on a cache hit.** The stream block never fired,
+  even though the content was in the return value. The cached response is now
+  replayed through the block as a single chunk (the cache stores the finished
+  response, not chunk boundaries).
+
+- **`CircuitBreakerOpenError` was impossible to rescue.** When every model was
+  short-circuited the middleware raised `AllModelsExhaustedError` with a nil
+  `last_error`, conflating "never attempted" with "tried and failed". That case
+  now raises the dedicated error and emits
+  `ruby_llm_agents.reliability.circuit_open`.
+
+- **The attempt matrix had no ceiling.** `retries times: 5` with three fallbacks
+  is 24 attempts; at the default 60s per-call timeout plus backoff that is over
+  20 minutes of one caller waiting, and `total_timeout` defaulted to unbounded.
+  It now falls back to `config.default_total_timeout`, which was already a
+  documented config attribute that nothing read — now defaulting to 300s. Opt
+  out per-agent with `total_timeout false`, or globally by setting it to nil.
+
+- **`persist_prompts` documents its own caveat.** Parameter redaction covers
+  `execution_details.parameters`, not the prompt those parameters were
+  interpolated into — a secret passed as `api_key:` reads `[REDACTED]` in
+  parameters while appearing verbatim in `user_prompt`.
+
+### Consequences
+
+- Agents configuring reliability without their own `total_timeout` gain a 300s
+  ceiling and will now raise `TotalTimeoutError` on pathological retry storms
+  that previously ran to completion.
+- `TrackReport#total_cost` **drops** for blocks containing cache hits — it was
+  over-reporting. `call_count` **rises** for the same blocks.
+- Streaming agents with `cache_for` start emitting one chunk on hits where they
+  previously emitted none.

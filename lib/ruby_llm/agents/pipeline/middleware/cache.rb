@@ -40,6 +40,7 @@ module RubyLLM
                 # Try to read from cache
                 if (cached = cache_read(cache_key))
                   context.output = mark_cached(cached, context)
+                  replay_to_stream(context)
                   context.cached = true
                   context[:cache_key] = cache_key
                   cache_action = "hit"
@@ -100,6 +101,34 @@ module RubyLLM
           rescue => e
             debug("Failed to mark result as cached: #{e.message}", context)
             cached
+          end
+
+          # Stand-in for a provider chunk when replaying a cached response.
+          ReplayChunk = Struct.new(:content)
+
+          # Feeds a cached response through the caller's stream block.
+          #
+          # A streaming agent with `cache_for` used to go silent on a hit: the
+          # block never fired and the caller saw an empty stream, even though
+          # the content was sitting in the return value.
+          #
+          # ponytail: replays as a single chunk, not token-by-token. The cache
+          # stores the finished response, not the chunk boundaries — recreating
+          # them would mean caching the stream itself.
+          #
+          # @param context [Context] The execution context
+          def replay_to_stream(context)
+            block = context.stream_block
+            return unless block
+
+            content = context.output.try(:content)
+            return if content.nil?
+
+            block.call(
+              context.stream_events? ? StreamEvent.new(:chunk, {content: content}) : ReplayChunk.new(content)
+            )
+          rescue => e
+            debug("Failed to replay cached response to stream: #{e.message}", context)
           end
 
           # Emits an AS::Notification for cache events

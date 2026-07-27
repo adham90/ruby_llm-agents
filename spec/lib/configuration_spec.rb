@@ -54,7 +54,8 @@ RSpec.describe RubyLLM::Agents::Configuration do
     it "sets reliability defaults" do
       expect(config.default_retries).to eq({max: 0, backoff: :exponential, base: 0.4, max_delay: 3.0, on: []})
       expect(config.default_fallback_models).to eq([])
-      expect(config.default_total_timeout).to be_nil
+      # Bounds the retries x fallbacks attempt matrix; nil means unbounded.
+      expect(config.default_total_timeout).to eq(300)
     end
 
     it "sets streaming and tools defaults" do

@@ -37,32 +37,63 @@ module RubyLLM
         !successful?
       end
 
+      # Every agent call made in the block, including ones served from cache.
       def call_count
         @results.size
       end
 
+      # Calls served from the response cache — no API call, no spend.
+      def cached_count
+        cached_results.size
+      end
+
+      # Calls that actually hit a provider.
+      def billable_count
+        billable_results.size
+      end
+
+      # Costs and token counts cover only the calls that actually hit a
+      # provider. A cached result replays the ORIGINAL call's figures, so
+      # including them would report spend that was never incurred — the
+      # execution records for cache hits are written with zero cost, and these
+      # totals reconcile with them.
       def total_cost
-        @results.sum { |r| r.total_cost || 0 }
+        billable_results.sum { |r| r.total_cost || 0 }
       end
 
       def input_cost
-        @results.sum { |r| r.input_cost || 0 }
+        billable_results.sum { |r| r.input_cost || 0 }
       end
 
       def output_cost
-        @results.sum { |r| r.output_cost || 0 }
+        billable_results.sum { |r| r.output_cost || 0 }
       end
 
       def total_tokens
-        @results.sum { |r| r.total_tokens }
+        billable_results.sum { |r| r.total_tokens || 0 }
       end
 
       def input_tokens
-        @results.sum { |r| r.input_tokens || 0 }
+        billable_results.sum { |r| r.input_tokens || 0 }
       end
 
       def output_tokens
-        @results.sum { |r| r.output_tokens || 0 }
+        billable_results.sum { |r| r.output_tokens || 0 }
+      end
+
+      # What the cached calls would have cost at the original calls' prices.
+      def cache_savings
+        cached_results.sum { |r| r.total_cost || 0 }
+      end
+
+      # Results that hit a provider (everything except cache replays).
+      def billable_results
+        @billable_results ||= @results.reject { |r| cached_result?(r) }
+      end
+
+      # Results replayed from the response cache.
+      def cached_results
+        @cached_results ||= @results.select { |r| cached_result?(r) }
       end
 
       def duration_ms
@@ -95,8 +126,9 @@ module RubyLLM
           {
             agent: r.respond_to?(:agent_class_name) ? r.agent_class_name : nil,
             model: r.chosen_model_id,
-            cost: r.total_cost || 0,
-            tokens: r.total_tokens,
+            cost: cached_result?(r) ? 0 : (r.total_cost || 0),
+            tokens: cached_result?(r) ? 0 : (r.total_tokens || 0),
+            cached: cached_result?(r),
             duration_ms: r.duration_ms
           }
         end
@@ -109,7 +141,10 @@ module RubyLLM
           error: error&.message,
           request_id: request_id,
           call_count: call_count,
+          cached_count: cached_count,
+          billable_count: billable_count,
           total_cost: total_cost,
+          cache_savings: cache_savings,
           input_cost: input_cost,
           output_cost: output_cost,
           total_tokens: total_tokens,
@@ -121,6 +156,13 @@ module RubyLLM
           models_used: models_used,
           cost_breakdown: cost_breakdown
         }
+      end
+
+      private
+
+      # Older result types may predate #cached?; treat those as billable.
+      def cached_result?(result)
+        result.respond_to?(:cached?) && result.cached?
       end
     end
   end
