@@ -45,6 +45,29 @@ RSpec.describe RubyLLM::Agents::DashboardController, type: :controller do
       expect(assigns(:model_stats)).to be_an(Array)
     end
 
+    describe "@model_stats attribution" do
+      # Spend belongs to the model that actually ran. Grouping by model_id
+      # billed a fallback's cost to the primary it fell back from.
+      it "attributes cost to the model that actually ran" do
+        create(:execution, model_id: "gpt-4.1", chosen_model_id: "gpt-4.1-mini")
+          .update_column(:total_cost, 0.25)
+
+        get :index
+
+        stats = assigns(:model_stats)
+        expect(stats.map { |s| s[:model_id] }).to include("gpt-4.1-mini")
+        expect(stats.find { |s| s[:model_id] == "gpt-4.1-mini" }[:total_cost]).to be_within(0.001).of(0.25)
+      end
+
+      it "falls back to model_id for rows recorded before chosen_model_id existed" do
+        create(:execution, model_id: "gpt-4.1", chosen_model_id: nil)
+
+        get :index
+
+        expect(assigns(:model_stats).map { |s| s[:model_id] }).to include("gpt-4.1")
+      end
+    end
+
     describe "@cache_savings" do
       it "returns zeros when no executions exist" do
         get :index
@@ -66,15 +89,27 @@ RSpec.describe RubyLLM::Agents::DashboardController, type: :controller do
         expect(savings[:hit_rate]).to eq(40.0)
       end
 
-      it "sums total_cost of cached executions as estimated savings" do
-        e1 = create(:execution, cache_hit: true)
-        e1.update_column(:total_cost, 0.05)
-        e2 = create(:execution, cache_hit: true)
-        e2.update_column(:total_cost, 0.10)
-        create(:execution)
+      # A cache hit makes no API call, so its own total_cost is 0 — summing the
+      # cached rows reported "$0.00 saved" forever. Savings are the cost the
+      # hits AVOIDED, estimated from the misses in the same scope.
+      it "estimates savings as hits times the average cost of a miss" do
+        [0.05, 0.10, 0.15].each do |cost|
+          create(:execution).update_column(:total_cost, cost)
+        end
+        create_list(:execution, 2, :cached)
+
         get :index
-        savings = assigns(:cache_savings)
-        expect(savings[:estimated_savings].to_f).to be_within(0.001).of(0.15)
+
+        # mean miss = 0.10; 2 hits avoided ~0.20
+        expect(assigns(:cache_savings)[:estimated_savings].to_f).to be_within(0.001).of(0.20)
+      end
+
+      it "reports zero savings when nothing has missed yet" do
+        create_list(:execution, 2, :cached)
+
+        get :index
+
+        expect(assigns(:cache_savings)[:estimated_savings].to_f).to eq(0.0)
       end
     end
 

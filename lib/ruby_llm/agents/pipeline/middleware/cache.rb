@@ -113,6 +113,14 @@ module RubyLLM
             config(:cache_ttl)
           end
 
+          # Execution options that change the response and must therefore change
+          # the cache key. Anything omitted here is a silent stale-result bug:
+          # attachments especially, since two calls with the same text prompt
+          # and different images used to collide.
+          KEYED_OPTIONS = %i[
+            system_prompt assistant_prefill temperature schema messages thinking attachments
+          ].freeze
+
           # Generates a cache key for the context
           #
           # Cache keys are content-based, including:
@@ -120,7 +128,9 @@ module RubyLLM
           # - Agent type
           # - Agent class name
           # - Model
+          # - Tenant (caches are never shared across tenants)
           # - SHA256 hash of input
+          # - SHA256 hash of the response-affecting execution options
           #
           # This means caches automatically invalidate when inputs change.
           #
@@ -132,10 +142,32 @@ module RubyLLM
               context.agent_type,
               context.agent_class&.name,
               context.model,
-              hash_input(context.input)
+              context.tenant_id,
+              hash_input(context.input),
+              hash_options(context)
             ].compact
 
             components.join("/")
+          end
+
+          # Hashes the response-affecting execution options.
+          #
+          # Tools are reduced to their names: they arrive as classes or
+          # instances whose default JSON encoding is neither stable nor
+          # meaningful, and the name is what actually shapes the request.
+          #
+          # @param context [Context] The execution context
+          # @return [String, nil] SHA256 hash, or nil when there are no options
+          def hash_options(context)
+            opts = context.options[:options]
+            return nil unless opts.is_a?(Hash)
+
+            keyed = opts.slice(*KEYED_OPTIONS)
+            tools = Array(opts[:tools]).map { |t| t.respond_to?(:name) ? t.name : t.class.name }
+            keyed[:tools] = tools if tools.any?
+            return nil if keyed.empty?
+
+            hash_input(keyed)
           end
 
           # Hashes the input for cache key

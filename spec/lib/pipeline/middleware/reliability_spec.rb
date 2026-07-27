@@ -120,8 +120,12 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
       end
     end
 
-    context "retry behavior (with fallback models - skips retries)" do
-      it "does not retry retryable errors when fallbacks exist" do
+    # Configuring fallbacks does not cancel the configured retries: each model
+    # exhausts its own retries before the next is tried, which is what
+    # `retries times: N` plainly means and what the wiki documents. Previously
+    # the presence of any fallback silently discarded the retry setting.
+    context "retry behavior (with fallback models)" do
+      it "exhausts the primary's retries before moving to the fallback" do
         context = build_context
         models_tried = []
 
@@ -136,13 +140,13 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
         result = middleware.call(context)
 
-        # With fallbacks, should skip retries and move to fallback
-        expect(models_tried.count("primary-model")).to eq(1)
+        # retries max: 2 => 1 initial attempt + 2 retries on the primary
+        expect(models_tried.count("primary-model")).to eq(3)
         expect(models_tried).to include("fallback-model")
         expect(result.output).to eq("fallback success")
       end
 
-      it "does not retry on message pattern match when fallbacks exist" do
+      it "retries on message pattern match before moving to the fallback" do
         context = build_context
         models_tried = []
 
@@ -151,6 +155,41 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
           if ctx.model == "primary-model"
             raise StandardError, "rate limit exceeded"
           end
+          ctx.output = "fallback success"
+          ctx
+        end
+
+        result = middleware.call(context)
+
+        expect(models_tried.count("primary-model")).to eq(3)
+        expect(result.output).to eq("fallback success")
+      end
+
+      it "gives the fallback its own retries too" do
+        context = build_context
+        models_tried = []
+
+        allow(app).to receive(:call) do |ctx|
+          models_tried << ctx.model
+          raise Timeout::Error, "timed out" if models_tried.count("fallback-model") < 2
+          ctx.output = "fallback success"
+          ctx
+        end
+
+        result = middleware.call(context)
+
+        expect(models_tried.count("primary-model")).to eq(3)
+        expect(models_tried.count("fallback-model")).to eq(2)
+        expect(result.output).to eq("fallback success")
+      end
+
+      it "does not retry a non-retryable error, moving straight to the fallback" do
+        context = build_context
+        models_tried = []
+
+        allow(app).to receive(:call) do |ctx|
+          models_tried << ctx.model
+          raise StandardError, "Primary model failed" if ctx.model == "primary-model"
           ctx.output = "fallback success"
           ctx
         end
@@ -240,7 +279,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
         expect(result.attempts_made).to eq(2)
       end
 
-      it "skips retries and falls back immediately when fallback models exist" do
+      it "retries the primary on quota errors before falling back" do
         context = build_context
         models_tried = []
 
@@ -255,8 +294,9 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
         result = middleware.call(context)
 
-        # Should NOT retry primary — fallback models exist, so move immediately
-        expect(models_tried.count("primary-model")).to eq(1)
+        # A quota error is retryable, so the primary gets its configured
+        # retries (1 initial + 2) before the fallback is tried.
+        expect(models_tried.count("primary-model")).to eq(3)
         expect(models_tried).to include("fallback-model")
         expect(result.output).to eq("fallback success")
       end
@@ -340,7 +380,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
     end
 
     context "retry behavior with fallback models" do
-      it "skips retries when fallback models exist" do
+      it "retries the primary before moving to the fallback" do
         context = build_context
         models_tried = []
 
@@ -355,8 +395,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
         result = middleware.call(context)
 
-        # With fallback models, should NOT retry primary — move to fallback immediately
-        expect(models_tried.count("primary-model")).to eq(1)
+        expect(models_tried.count("primary-model")).to eq(3)
         expect(models_tried).to include("fallback-model")
         expect(result.output).to eq("fallback success")
       end
@@ -540,7 +579,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
     end
 
     context "attempt tracking" do
-      it "tracks total attempts across models (with fallbacks, no retries)" do
+      it "tracks total attempts across models and retries" do
         context = build_context
         attempts_seen = []
 
@@ -555,8 +594,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
         result = middleware.call(context)
 
-        # Primary fails (1 attempt), fallback succeeds (1 attempt) = 2 total
-        expect(result.attempts_made).to eq(2)
+        # Primary exhausts its retries (1 + 2), then fallback succeeds (1) = 4
+        expect(result.attempts_made).to eq(4)
       end
 
       it "tracks total attempts with retries (without fallbacks)" do
@@ -665,8 +704,10 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
         result = three_model_middleware.call(context)
 
+        # Both quota/rate-limit errors are retryable, so each of the first two
+        # models burns 1 + 2 attempts before the third succeeds on its first.
         expect(result.output).to eq("third model success")
-        expect(result.attempts_made).to eq(3)
+        expect(result.attempts_made).to eq(7)
       end
 
       it "stops at the second model when it succeeds" do
@@ -684,7 +725,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
         result = three_model_middleware.call(context)
 
-        expect(models_tried).to eq(["gemini-2.5-flash", "gpt-4.1-mini"])
+        expect(models_tried.uniq).to eq(["gemini-2.5-flash", "gpt-4.1-mini"])
+        expect(models_tried.count("gemini-2.5-flash")).to eq(3)
         expect(models_tried).not_to include("claude-haiku-4-5")
         expect(result.output).to eq("second model success")
       end
@@ -786,7 +828,8 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
           result = middleware.call(context)
 
           # The fallback attempt must have context.model set to fallback-model
-          expect(models_used_for_embedding).to eq(["primary-model", "fallback-model"])
+          expect(models_used_for_embedding.uniq).to eq(["primary-model", "fallback-model"])
+          expect(models_used_for_embedding.last).to eq("fallback-model")
           expect(result.output).to eq("embedded with fallback")
         end
       end
@@ -828,16 +871,19 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
         attempts = result[:reliability_attempts]
         expect(attempts).to be_an(Array)
-        expect(attempts.length).to eq(2)
+        # A quota error is retryable: the primary burns 1 + 2 attempts, then
+        # the fallback succeeds on its first.
+        expect(attempts.length).to eq(4)
 
-        # First attempt: primary model failed
-        expect(attempts[0]["model_id"]).to eq("primary-model")
-        expect(attempts[0]["error_class"]).to eq("StandardError")
-        expect(attempts[0]["error_message"]).to include("Gemini quota exceeded")
+        # Every primary attempt failed
+        primary = attempts.select { |a| a["model_id"] == "primary-model" }
+        expect(primary.length).to eq(3)
+        expect(primary.map { |a| a["error_class"] }).to all(eq("StandardError"))
+        expect(primary.map { |a| a["error_message"] }).to all(include("Gemini quota exceeded"))
 
-        # Second attempt: fallback model succeeded
-        expect(attempts[1]["model_id"]).to eq("fallback-model")
-        expect(attempts[1]["error_class"]).to be_nil
+        # Final attempt: fallback model succeeded
+        expect(attempts.last["model_id"]).to eq("fallback-model")
+        expect(attempts.last["error_class"]).to be_nil
       end
 
       it "stores attempt data in context when all models fail" do
@@ -857,15 +903,18 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
 
         attempts = context[:reliability_attempts]
         expect(attempts).to be_an(Array)
-        expect(attempts.length).to eq(2)
+        # Primary's quota error is retryable (3 attempts); the fallback's
+        # "API key invalid" is not, so it gets exactly one.
+        expect(attempts.length).to eq(4)
 
-        expect(attempts[0]["model_id"]).to eq("primary-model")
-        expect(attempts[0]["error_class"]).to eq("StandardError")
-        expect(attempts[0]["error_message"]).to include("Gemini quota exceeded")
+        primary = attempts.select { |a| a["model_id"] == "primary-model" }
+        expect(primary.length).to eq(3)
+        expect(primary.map { |a| a["error_class"] }).to all(eq("StandardError"))
+        expect(primary.map { |a| a["error_message"] }).to all(include("Gemini quota exceeded"))
 
-        expect(attempts[1]["model_id"]).to eq("fallback-model")
-        expect(attempts[1]["error_class"]).to eq("StandardError")
-        expect(attempts[1]["error_message"]).to include("OpenAI API key invalid")
+        expect(attempts.last["model_id"]).to eq("fallback-model")
+        expect(attempts.last["error_class"]).to eq("StandardError")
+        expect(attempts.last["error_message"]).to include("OpenAI API key invalid")
       end
 
       it "records each attempt with timing data" do
@@ -938,11 +987,12 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Reliability do
         expect { middleware.call(context) }.to raise_error(
           RubyLLM::Agents::Reliability::AllModelsExhaustedError
         ) do |error|
-          expect(error.errors.length).to eq(2)
+          # 3 retryable attempts on the primary + 1 non-retryable on the fallback
+          expect(error.errors.length).to eq(4)
           expect(error.errors[0]).to include(model: "primary-model", error_class: "StandardError", error_message: "Gemini quota exceeded")
           expect(error.errors[0][:error_backtrace]).to be_an(Array)
-          expect(error.errors[1]).to include(model: "fallback-model", error_class: "StandardError", error_message: "OpenAI API key invalid")
-          expect(error.errors[1][:error_backtrace]).to be_an(Array)
+          expect(error.errors.last).to include(model: "fallback-model", error_class: "StandardError", error_message: "OpenAI API key invalid")
+          expect(error.errors.last[:error_backtrace]).to be_an(Array)
         end
       end
 

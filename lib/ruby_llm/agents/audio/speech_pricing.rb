@@ -121,6 +121,9 @@ module RubyLLM
             return (data[:output_cost_per_character] * 1000).round(6)
           end
 
+          # Estimate only: audio-token-priced models publish no per-character
+          # rate, so convert at ~4 characters per audio token (1000 / 4 = 250).
+          # Set config.tts_model_pricing for a model where this matters.
           if data[:output_cost_per_audio_token]
             return (data[:output_cost_per_audio_token] * 250).round(6)
           end

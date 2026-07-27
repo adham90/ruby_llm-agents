@@ -259,47 +259,57 @@ RSpec.describe RubyLLM::Agents::Pipeline::Builder do
       end
     end
 
+    # These use real agent classes with the real DSL rather than hand-rolled
+    # doubles. Doubles that returned an Integer from .retries are what let the
+    # builder's gate drift out of sync with the DSL (which returns the retry
+    # config Hash) — under those doubles the broken gate passed, while every
+    # real `on_failure { retries times: N }` agent silently lost the middleware.
     context "with reliability enabled" do
-      let(:reliable_agent) do
-        Class.new do
+      def agent_with(&blk)
+        Class.new(RubyLLM::Agents::Base) do
           def self.name
             "ReliableAgent"
           end
-
-          def self.retries
-            3
-          end
-
-          def self.fallback_models
-            ["gpt-3.5-turbo"]
-          end
-        end
+          model "gpt-4.1"
+        end.tap { |k| k.class_eval(&blk) }
       end
 
-      it "includes Reliability middleware when retries > 0" do
-        builder = described_class.for(reliable_agent)
+      it "includes Reliability middleware for a retries-only agent" do
+        builder = described_class.for(agent_with { on_failure { retries times: 3 } })
 
         expect(builder.include?(RubyLLM::Agents::Pipeline::Middleware::Reliability)).to be true
       end
 
       it "includes Reliability middleware when fallback_models present" do
-        fallback_only_agent = Class.new do
-          def self.name
-            "FallbackAgent"
-          end
-
-          def self.retries
-            0
-          end
-
-          def self.fallback_models
-            ["gpt-3.5-turbo"]
-          end
-        end
-
-        builder = described_class.for(fallback_only_agent)
+        builder = described_class.for(agent_with { on_failure { fallback to: "gpt-4.1-mini" } })
 
         expect(builder.include?(RubyLLM::Agents::Pipeline::Middleware::Reliability)).to be true
+      end
+
+      it "includes Reliability middleware for a circuit-breaker-only agent" do
+        builder = described_class.for(agent_with { on_failure { circuit_breaker after: 5, cooldown: 60 } })
+
+        expect(builder.include?(RubyLLM::Agents::Pipeline::Middleware::Reliability)).to be true
+      end
+
+      it "includes Reliability middleware for the legacy class-level retries DSL" do
+        builder = described_class.for(agent_with { retries max: 3 })
+
+        expect(builder.include?(RubyLLM::Agents::Pipeline::Middleware::Reliability)).to be true
+      end
+
+      it "omits Reliability middleware when nothing is configured" do
+        builder = described_class.for(agent_with {})
+
+        expect(builder.include?(RubyLLM::Agents::Pipeline::Middleware::Reliability)).to be false
+      end
+
+      it "agrees with the middleware's own enablement check" do
+        agent = agent_with { on_failure { retries times: 3 } }
+        middleware = RubyLLM::Agents::Pipeline::Middleware::Reliability.new(->(ctx) { ctx }, agent)
+
+        expect(described_class.for(agent).include?(RubyLLM::Agents::Pipeline::Middleware::Reliability))
+          .to eq(middleware.send(:reliability_enabled?))
       end
     end
   end

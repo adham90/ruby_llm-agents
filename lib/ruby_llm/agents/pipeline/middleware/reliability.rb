@@ -183,6 +183,13 @@ module RubyLLM
                 original_model = context.model
                 context.model = model
 
+                # Clear any error left by a previous attempt. Context#success?
+                # requires #error to be nil, and every middleware outside this
+                # one keys off it — a stale error made a recovered retry look
+                # like a failure, so Budget skipped recording the spend and
+                # Cache skipped writing the result.
+                context.error = nil
+
                 @app.call(context)
 
                 # Success - record in circuit breaker and tracker
@@ -238,9 +245,11 @@ module RubyLLM
           def should_retry?(error, config, attempt_index, max_retries, total_deadline)
             return false if attempt_index >= max_retries
             return false if total_deadline && Time.current > total_deadline
-            # Don't retry if fallback models are available — move to next model instead
-            return false if fallback_models?(config)
 
+            # Configuring fallbacks does NOT cancel the configured retries: each
+            # model exhausts its own retries before the next one is tried. A
+            # transient 429 on the primary should not immediately burn the
+            # fallback. `total_timeout` is the bound on total attempts.
             retryable_error?(error, config)
           end
 
@@ -252,15 +261,6 @@ module RubyLLM
           def non_fallback_error?(error, config)
             custom_errors = config[:non_fallback_errors] || []
             Agents::Reliability.non_fallback_error?(error, custom_errors: custom_errors)
-          end
-
-          # Returns whether fallback models are configured
-          #
-          # @param config [Hash] The reliability configuration
-          # @return [Boolean]
-          def fallback_models?(config)
-            fallbacks = config[:fallback_models]
-            fallbacks.is_a?(Array) && fallbacks.any?
           end
 
           # Checks if an error is retryable

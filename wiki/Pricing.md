@@ -20,7 +20,11 @@ This lazy cascade means if LiteLLM has the price, no other API is ever called.
 
 ## Cache & Reasoning Token Costs
 
-Text input/output are priced from the execution's token counts (which aggregate across retry/fallback attempts). On top of that, RubyLLM 1.16's `RubyLLM::Cost` prices the **prompt-cache reads, cache writes, and reasoning/thinking tokens** at their own rates and folds them into `total_cost`, so cached and reasoning-heavy requests are billed accurately rather than at the plain input rate.
+Text input/output are priced from the token counts of the attempt that actually succeeded. On top of that, RubyLLM 1.16's `RubyLLM::Cost` prices the **prompt-cache reads, cache writes, and reasoning/thinking tokens** at their own rates and folds them into `total_cost`, so cached and reasoning-heavy requests are billed accurately rather than at the plain input rate.
+
+Cache reads are always **additive** to the input charge. Every provider RubyLLM supports reports `input_tokens` already net of the cache reads — Anthropic natively, and OpenAI, Gemini, Bedrock and OpenRouter by subtracting the cache counters while parsing usage. So the total is `input_tokens` at the full rate **plus** `cached_tokens` at the cache-read rate; the cached portion is never deducted from the input charge.
+
+If the registry publishes no cache-read price for a model, those tokens are billed at the full input rate rather than for free.
 
 When a response includes any of these components, the per-component breakdown is recorded on the execution:
 

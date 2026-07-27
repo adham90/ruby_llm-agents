@@ -534,16 +534,22 @@ module RubyLLM
           # @param scope [ActiveRecord::Relation] Pre-filtered scope
           # @return [Array<Hash>] Model stats sorted by total cost descending
           def model_stats(scope: all)
+            # Attribute spend to the model that actually ran, not the one that
+            # was configured — otherwise a fallback's cost is billed to the
+            # primary in the comparison table. Older rows predate
+            # chosen_model_id, so fall back to model_id for those.
+            billed_model = Arel.sql("COALESCE(chosen_model_id, model_id)")
+
             rows = scope.where.not(model_id: nil)
               .select(
-                :model_id,
+                Arel.sql("#{billed_model} AS billed_model_id"),
                 Arel.sql("COUNT(*) AS exec_count"),
                 Arel.sql("COALESCE(SUM(total_cost), 0) AS sum_cost"),
                 Arel.sql("COALESCE(SUM(total_tokens), 0) AS sum_tokens"),
                 Arel.sql("AVG(duration_ms) AS avg_dur"),
                 Arel.sql("SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS success_cnt")
               )
-              .group(:model_id)
+              .group(billed_model)
 
             total_cost = rows.sum { |r| r["sum_cost"].to_f }
 
@@ -554,7 +560,7 @@ module RubyLLM
               successful = row["success_cnt"].to_i
 
               {
-                model_id: row.model_id,
+                model_id: row["billed_model_id"],
                 executions: count,
                 total_cost: model_cost,
                 total_tokens: model_tokens,
@@ -596,20 +602,31 @@ module RubyLLM
           # @return [Hash] Cache savings data
           def cache_savings(scope: all)
             cond = cache_hit_condition
-            total_count, cache_count, cache_cost = scope.pick(
+            total_count, cache_count, miss_count, miss_cost = scope.pick(
               Arel.sql("COUNT(*)"),
               Arel.sql("SUM(CASE WHEN #{cond} THEN 1 ELSE 0 END)"),
-              Arel.sql("COALESCE(SUM(CASE WHEN #{cond} THEN total_cost ELSE 0 END), 0)")
+              Arel.sql("SUM(CASE WHEN #{cond} THEN 0 ELSE 1 END)"),
+              Arel.sql("COALESCE(SUM(CASE WHEN #{cond} THEN 0 ELSE total_cost END), 0)")
             )
 
             total_count = total_count.to_i
             cache_count = cache_count.to_i
+            miss_count = miss_count.to_i
 
             return {count: 0, estimated_savings: 0, hit_rate: 0, total_executions: 0} if total_count.zero?
 
+            # Savings are the cost AVOIDED, not the cost recorded: a cache hit
+            # makes no API call, so its own total_cost is always 0 and summing
+            # those rows reported $0.00 saved forever. Estimate each hit at the
+            # mean cost of the misses in this same scope.
+            #
+            # ponytail: scope-wide mean, not per-agent. Group by agent_type if
+            # a mixed dashboard scope ever skews this enough to matter.
+            avg_miss_cost = miss_count.positive? ? (miss_cost.to_f / miss_count) : 0.0
+
             {
               count: cache_count,
-              estimated_savings: cache_cost.to_f,
+              estimated_savings: (cache_count * avg_miss_cost).round(6),
               hit_rate: (cache_count.to_f / total_count * 100).round(1),
               total_executions: total_count
             }

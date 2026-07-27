@@ -388,6 +388,7 @@ module RubyLLM
               cache_hit: context.cached?,
               input_tokens: context.input_tokens || 0,
               output_tokens: context.output_tokens || 0,
+              cached_tokens: context.cached_tokens || 0,
               input_cost: context.input_cost,
               output_cost: context.output_cost,
               total_cost: context.total_cost || 0,
@@ -455,6 +456,10 @@ module RubyLLM
 
             if context[:reliability_attempts].present?
               detail_data[:attempts] = context[:reliability_attempts]
+            end
+
+            if context.cache_creation_tokens.to_i.positive?
+              detail_data[:cache_creation_tokens] = context.cache_creation_tokens
             end
 
             if global_config.persist_responses && context.output.respond_to?(:content)

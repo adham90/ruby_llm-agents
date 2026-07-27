@@ -52,7 +52,7 @@ Before creating a new class, module, concern, or middleware, answer:
 | Layer | Deep | Shallow |
 |-------|------|---------|
 | **Middleware** | `Reliability` — hides retries, exponential backoff, fallback model switching, circuit breaker state machine | A middleware that just logs and delegates |
-| **DSL Module** | `Dsl::Reliability` — simple `on_failure { retries 3 }` hides complex config normalization and validation | A DSL module that wraps a single `attr_accessor` |
+| **DSL Module** | `Dsl::Reliability` — simple `on_failure { retries times: 3 }` hides complex config normalization and validation | A DSL module that wraps a single `attr_accessor` |
 | **Concern** | `Execution::Analytics` — hides aggregate queries, trend calculations, grouping logic | `Execution::Timestamps` — just reformats `created_at` |
 | **Infrastructure** | `BudgetTracker` — facade hiding query/record/forecast/alert subsystems | A class that just calls `update_column` |
 | **Pipeline::Context** | Explicit data carrier — all middleware reads/writes named attributes | Would be shallow if it were just a hash wrapper |
@@ -122,8 +122,8 @@ Agent execution flows through a middleware stack assembled by `Pipeline::Builder
 
 1. **Tenant** → resolves tenant context
 2. **Budget** → checks spending limits, records costs after
-3. **Cache** → returns cached result or stores new one
-4. **Instrumentation** → logs execution to DB via `ExecutionLoggerJob`
+3. **Instrumentation** → logs execution to DB via `ExecutionLoggerJob` (must be outside Cache so cache hits are still tracked)
+4. **Cache** → returns cached result or stores new one
 5. **Reliability** → retries, fallback models, circuit breakers
 6. **Core executor** → calls the agent's `execute` method (builds messages, calls LLM)
 
@@ -245,9 +245,9 @@ DSL modules provide the declarative interface for agent authors. Each module sho
 # GOOD: Simple declaration hides complex configuration normalization
 class MyAgent < Base
   on_failure {
-    retries 3, backoff: :exponential
-    fallback "gpt-4o-mini"
-    circuit_breaker threshold: 5, reset_after: 60
+    retries times: 3, backoff: :exponential
+    fallback to: "gpt-4o-mini"
+    circuit_breaker after: 5, cooldown: 60
   }
 end
 

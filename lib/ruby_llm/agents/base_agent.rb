@@ -1008,7 +1008,12 @@ module RubyLLM
         input_price = model_info.pricing&.text_tokens&.input || 0
         output_price = model_info.pricing&.text_tokens&.output || 0
 
-        context.input_cost = input_cost_for(input_tokens, input_price, model_info, context)
+        # input_tokens is always the UNCACHED input: every RubyLLM provider
+        # reports it net of the cache reads (Anthropic natively; OpenAI, Gemini,
+        # Bedrock and OpenRouter subtract them when parsing usage). So the cache
+        # is purely additive and #extra_token_costs prices it on top — see
+        # #cache_read_cost.
+        context.input_cost = (input_tokens / 1_000_000.0) * input_price
 
         # Price cache/reasoning extras first so we know whether reasoning was
         # actually billed at the reasoning rate. Only then exclude those tokens
@@ -1021,73 +1026,31 @@ module RubyLLM
         context.total_cost = (context.input_cost + context.output_cost + extra).round(6)
       end
 
-      # Input charge, with cache reads billed at the cached rate rather than the
-      # full one.
+      # Charge for tokens served from the provider's prompt cache.
       #
-      # Providers disagree on whether the reported input_tokens ALREADY contains
-      # the cache reads, and the difference decides who has a bug:
+      # Cache reads are ALWAYS additive to input_tokens. Every provider RubyLLM
+      # supports reports input_tokens net of them — Anthropic natively, and
+      # OpenAI/Gemini/Bedrock/OpenRouter by subtracting the cache counters while
+      # parsing usage. So the read is never already paid for by the input
+      # charge, and must be added here or it is billed at zero.
       #
-      #   OpenAI    prompt_tokens       INCLUDES prompt_tokens_details.cached_tokens
-      #   Gemini    promptTokenCount    INCLUDES cachedContentTokenCount
-      #   Anthropic input_tokens        EXCLUDES cache_read_input_tokens
+      # Prefers RubyLLM::Cost's own cache_read (registry cache-read rate). When
+      # the registry publishes no cache-read price for the model, RubyLLM::Cost
+      # returns nil rather than guessing — bill those tokens at the full input
+      # rate instead, so an unpriced model is never under-billed.
       #
-      # On Anthropic the cache read is genuinely additive, so charging the full
-      # input_tokens at full rate and letting #extra_token_costs add cache_read
-      # on top is already correct — that path is left untouched.
-      #
-      # On OpenAI and Gemini the cached tokens are sitting inside input_tokens,
-      # so charging them at the full rate overstates spend by 2-3x on exactly
-      # the workload caching exists for (a long stable system prompt replayed
-      # every turn) — and would double-charge outright once the provider also
-      # reports a cache_read cost component. Those get split here instead.
-      #
-      # Falls back to the full input rate whenever the split can't be made
-      # safely (no cache reported, or no cached price in the registry), so an
-      # unknown model is never under-billed.
-      #
-      # @return [Float] The input cost in USD
-      def input_cost_for(input_tokens, input_price, model_info, context)
-        full_rate_charge = (input_tokens / 1_000_000.0) * input_price
+      # @param cost [RubyLLM::Cost] The response's cost helper
+      # @param model_info [RubyLLM::Model::Info] Resolved pricing source
+      # @param context [Pipeline::Context] The execution context
+      # @return [Float, nil] Cache-read cost in USD, or nil when nothing to bill
+      def cache_read_cost(cost, model_info, context)
+        priced = cost.cache_read
+        return priced if priced
 
         cached_tokens = context.cached_tokens.to_i
-        return full_rate_charge unless cached_tokens.positive?
-        return full_rate_charge unless cached_tokens_included_in_input?(model_info)
+        return nil unless cached_tokens.positive?
 
-        cached_price = cached_input_price(model_info)
-        return full_rate_charge unless cached_price
-
-        # Tells extra_token_costs not to charge these same reads a second time.
-        context[:cache_read_priced] = true
-
-        uncached_tokens = [input_tokens - cached_tokens, 0].max
-        (uncached_tokens / 1_000_000.0) * input_price +
-          (cached_tokens / 1_000_000.0) * cached_price
-      end
-
-      # Per-million price for a cache read, or nil when the model registry
-      # doesn't publish one. Pricing shapes vary by source (and are stubbed with
-      # partial doubles in tests), so an absent field degrades to "unknown" —
-      # callers then charge the full input rate rather than guessing a discount.
-      #
-      # @return [Float, nil]
-      def cached_input_price(model_info)
-        tier = model_info.pricing&.text_tokens
-        return nil unless tier.respond_to?(:cached_input)
-
-        tier.cached_input
-      rescue
-        nil
-      end
-
-      # Whether this provider's reported input_tokens already contains the cache
-      # reads. See #input_cost_for for the per-provider breakdown. Anthropic is
-      # the exception; defaulting the unknown case to "included" matches every
-      # other provider RubyLLM supports.
-      #
-      # @return [Boolean]
-      def cached_tokens_included_in_input?(model_info)
-        provider = model_info.respond_to?(:provider) ? model_info.provider.to_s : ""
-        !provider.include?("anthropic")
+        (cached_tokens / 1_000_000.0) * (model_info.pricing&.text_tokens&.input || 0)
       end
 
       # Number of reasoning (thinking) tokens that were actually charged at the
@@ -1126,12 +1089,10 @@ module RubyLLM
         cost = response_cost(response, model_info)
         return 0.0 unless cost
 
-        # Skip cache_read when #input_cost_for already billed the cache at the
-        # cached rate — otherwise the same tokens are charged twice (once inside
-        # input_tokens at full rate, once here). Cache WRITES are always extra:
-        # no provider folds them into input_tokens.
+        # Cache reads and writes are both additive: no provider folds either
+        # into the input_tokens RubyLLM reports. See #cache_read_cost.
         components = {
-          cache_read: (cost.cache_read unless context[:cache_read_priced]),
+          cache_read: cache_read_cost(cost, model_info, context),
           cache_write: cost.cache_write,
           thinking: cost.thinking
         }.compact.reject { |_, value| value.zero? }

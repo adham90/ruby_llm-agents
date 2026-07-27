@@ -228,29 +228,20 @@ module RubyLLM
 
           # Check if reliability features are enabled for an agent
           #
-          # An agent has reliability enabled if it has:
-          # - retries > 0, OR
-          # - fallback_models configured
+          # Delegates to the same predicate the Reliability middleware itself
+          # uses (#reliability_config), so the builder gate and the middleware
+          # gate can never disagree. They previously did: this method tested
+          # `agent_class.retries` for a positive Integer, but that DSL reader
+          # returns the retry config Hash — so `on_failure { retries times: 3 }`
+          # never installed the middleware and retries silently never ran.
           #
           # @param agent_class [Class] The agent class
           # @return [Boolean]
           def reliability_enabled?(agent_class)
             return false unless agent_class
+            return false unless agent_class.respond_to?(:reliability_config)
 
-            retries = if agent_class.respond_to?(:retries)
-              agent_class.retries
-            else
-              0
-            end
-
-            fallbacks = if agent_class.respond_to?(:fallback_models)
-              agent_class.fallback_models
-            else
-              []
-            end
-
-            (retries.is_a?(Integer) && retries.positive?) ||
-              (fallbacks.is_a?(Array) && fallbacks.any?)
+            agent_class.reliability_config.present?
           rescue => e
             Rails.logger.debug("[RubyLLM::Agents::Pipeline] Failed to check reliability_enabled: #{e.message}") if defined?(Rails) && Rails.logger
             false
