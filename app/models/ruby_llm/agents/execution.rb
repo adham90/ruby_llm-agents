@@ -120,6 +120,13 @@ module RubyLLM
       # Used for multi-attempt executions (retries/fallbacks) where different models
       # may have been used. Calculates total cost by summing individual attempt costs.
       #
+      # Prompt-cache reads and writes are billed alongside the plain input: every
+      # provider reports input_tokens NET of the cache, so the cached portion is
+      # additive and pricing text tokens alone silently under-bills a cached
+      # request — the same defect the pipeline's cost path carried. Cache reads
+      # fall back to the full input rate when the registry publishes no cached
+      # price, so an unpriced model is never billed at zero.
+      #
       # @return [void]
       def aggregate_attempt_costs!
         return if attempts.blank?
@@ -134,13 +141,15 @@ module RubyLLM
           model_info = resolve_model_info(attempt["model_id"])
           next unless model_info&.pricing
 
-          input_price = model_info.pricing.text_tokens&.input || 0
-          output_price = model_info.pricing.text_tokens&.output || 0
+          tier = model_info.pricing.text_tokens
+          input_price = tier&.input || 0
+          output_price = tier&.output || 0
 
           input_tokens = attempt["input_tokens"] || 0
           output_tokens = attempt["output_tokens"] || 0
 
           total_input_cost += (input_tokens / 1_000_000.0) * input_price
+          total_input_cost += attempt_cache_cost(attempt, tier, input_price)
           total_output_cost += (output_tokens / 1_000_000.0) * output_price
         end
 
@@ -508,6 +517,31 @@ module RubyLLM
       rescue => e
         Rails.logger.debug("[RubyLLM::Agents] Model lookup failed for #{lookup_model_id}: #{e.message}") if defined?(Rails) && Rails.logger
         nil
+      end
+
+      # Prompt-cache charge for a single attempt, in USD.
+      #
+      # Reads bill at the registry's cached rate, falling back to the full input
+      # rate when it publishes none — never free. Writes bill at the cache-write
+      # rate, and are skipped entirely when unpriced, since no provider charges
+      # a write at the plain input rate.
+      #
+      # @param attempt [Hash] One entry from the attempts JSON
+      # @param tier [RubyLLM::Model::PricingCategory, nil] Text-token pricing
+      # @param input_price [Float] Per-million input rate, used as the read fallback
+      # @return [Float] Cache cost for this attempt
+      def attempt_cache_cost(attempt, tier, input_price)
+        read_tokens = attempt["cached_tokens"].to_i
+        write_tokens = attempt["cache_creation_tokens"].to_i
+        return 0.0 if read_tokens.zero? && write_tokens.zero?
+
+        read_price = (tier.respond_to?(:cache_read_input) ? tier.cache_read_input : nil) || input_price
+        write_price = (tier.respond_to?(:cache_write_input) ? tier.cache_write_input : nil) || 0
+
+        (read_tokens / 1_000_000.0) * read_price +
+          (write_tokens / 1_000_000.0) * write_price
+      rescue
+        0.0
       end
     end
   end

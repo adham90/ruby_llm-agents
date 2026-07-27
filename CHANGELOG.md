@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.15.0] - 2026-07-28
+
+A deep review of cost accounting, prompt caching, and the middleware pipeline.
+Several fixes change existing behaviour — read **Changed** before upgrading.
+
+### Security
+
+- **Per-tenant API keys were persisted in plaintext** — The Tenant middleware stored provider keys in the context metadata bag, which the instrumentation middleware copies onto the execution record and the execution page renders as JSON with a copy button. Every execution for a tenant wrote that tenant's live key into `ruby_llm_agents_executions.metadata` and displayed it to anyone with dashboard access. Keys now live on a dedicated `Pipeline::Context#tenant_api_keys` accessor that is never persisted, and credential-shaped metadata keys are redacted before the column is written as defence in depth.
+
+  **Upgrading:** rotate any key that reached a persisted execution, then run `rake ruby_llm_agents:redact_metadata_secrets` (supports `DRY_RUN=1`) to scrub the rows already on disk. Redaction does not un-expose a key that was already displayed.
+
+### Fixed
+
+- **`retries` never ran** — `Pipeline::Builder` gated the Reliability middleware on `agent_class.retries` being a positive Integer, but that DSL reader returns the retry config Hash. Only a configured `fallback` pulled the middleware into the stack, so `on_failure { retries times: 3 }`, circuit-breaker-only, and `total_timeout`-only agents ran with no reliability layer at all. The gate now delegates to `reliability_config`, the same predicate the middleware uses on itself
+- **Prompt-cache reads under-billed on every non-Anthropic provider** — The cost path assumed OpenAI and Gemini fold cache reads *into* `input_tokens` and split them back out, but RubyLLM 1.16 already reports `input_tokens` net of them for every provider. Subtracting a second time clamped the remainder to zero and billed real uncached input at $0 — measured at **−23.8%** on `gpt-4.1` and **−26.1%** on Bedrock-hosted Claude against `RubyLLM::Cost`. Cache reads are now purely additive, falling back to the full input rate when the registry publishes no cached price. This reverses the 3.14.1 fix, which was correct for the raw provider APIs but not for what RubyLLM hands back
+- **A recovered retry was recorded as a failure** — The Reliability middleware set `context.error` on a failed attempt and never cleared it, while `Context#success?` requires it to be nil. Budget skipped recording the spend (limits were bypassable by any agent that blipped), Cache skipped writing the result (`cache_for` silently stopped working), and the row was saved green but stamped with an `error_class`
+- **`cached_tokens` never reached its column** — Prompt-cache counts landed only in the metadata JSON, so the execution page rendered "0 cached" for a call that read thousands of tokens from cache. Now persisted to `executions.cached_tokens` and `execution_details.cache_creation_tokens`
+- **Cache savings were structurally always $0** — A cache hit makes no API call, so its `total_cost` is zero; the dashboard summed exactly those rows. Savings are now the cost *avoided*, estimated from the misses in the same scope
+- **The response cache key ignored everything but the user prompt** — The same text prompt with a different attachment returned the wrong cached result, an edited system prompt served stale answers for the whole TTL, and entries were shared across tenants. The key now covers `tenant_id` plus the response-affecting execution options
+- **Cache hits returned an unmarked result** — No way to tell a replayed response from a fresh one, the original call's `execution_id`, and the original's cost replayed, so `results.sum(&:total_cost)` double-counted spend. Results gain `#cached?` and `#cached_at`; `execution_id` points at the current call's row
+- **Streaming agents went silent on a cache hit** — The stream block never fired even though the content was in the return value. Cached responses now replay through the block as a single chunk
+- **`CircuitBreakerOpenError` was impossible to rescue** — When every model was short-circuited the middleware raised `AllModelsExhaustedError` with a nil `last_error`, conflating "never attempted" with "tried and failed"
+- **A routed call was reported at double its spend** — `RoutingResult` summed the costs of the classification and delegation but counted only the classification's tokens, and registered itself with the Tracker on top of the two results it wraps. Every figure now covers both calls, and `call_count` for a delegated route drops from 3 to 2
+- **`model_stats` billed fallbacks to the primary** — Now attributes spend to `COALESCE(chosen_model_id, model_id)`
+- **`Execution#aggregate_attempt_costs!` priced text tokens only** — Cache reads and writes are now billed alongside the plain input
+
+### Changed
+
+- **`retries` and `fallback` compose instead of cancelling** — Each model exhausts its own retries before the next is tried, matching what `wiki/Automatic-Retries.md` has always documented. Previously the mere presence of a fallback discarded the retry setting silently. **This increases API calls on failure**
+- **`total_timeout` defaults to 300 seconds** — via `config.default_total_timeout`, an already-documented config attribute that nothing read. Retries and fallbacks multiply into an attempt matrix with no ceiling of its own: `retries times: 5` with three fallbacks is 24 attempts. Opt out with `total_timeout false` per agent, or set the config to `nil` globally. **Pathological retry storms that previously ran to completion now raise `TotalTimeoutError`**
+- **Reported costs rise** for anyone using prompt caching on OpenAI, Gemini, Bedrock or OpenRouter. The old figures were too low; historical rows are not backfilled
+- **`TrackReport` totals cover only calls that hit a provider** — `total_cost` and the token counts **drop** for blocks containing cache hits (they were over-reporting) while `call_count` **rises** for the same blocks. New: `cached_count`, `billable_count`, `cache_savings`
+- **Cache keys change shape**, so every existing entry misses once after upgrade and is rewritten. No action needed
+- **Agents with `retries` or `circuit_breaker` but no `fallback` gain a middleware layer they never had** — their executions now record `attempts_count: 1` instead of `0`, and transient failures are retried rather than raised
+- Budget counters start incrementing for recovered executions that previously slipped through unrecorded
+
+### Added
+
+- `rake ruby_llm_agents:redact_metadata_secrets` — scrubs credential-shaped keys from historical execution metadata
+- `Result#cached?`, `#cached_at` on every result type, via `Results::Trackable`
+- `RoutingResult#routing_tokens`, mirroring the existing `#routing_cost`
+- `TrackReport#cached_count`, `#billable_count`, `#cache_savings`
+- `ruby_llm_agents.reliability.circuit_open` notification
+
 ## [3.14.1] - 2026-07-27
 
 ### Fixed
