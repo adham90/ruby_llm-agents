@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.14.1] - 2026-07-27
+
+### Fixed
+
+- **`cached_tokens` never persisted** — `Pipeline::Context` now carries `cached_tokens`/`cache_creation_tokens` as first-class accessors and `build_result` copies them into the Result, so attempts and executions record the provider-reported cache hits instead of always `0`
+- **Cache reads billed at the full input rate** — On OpenAI and Gemini, whose reported input token counts *include* cache reads, cached tokens were charged at the full input price (~4x their real cost, overstating spend ~2.7x on cached workloads). Cache reads are now split out and billed at the provider's cached rate. Anthropic is unaffected (its `input_tokens` is already net of cache reads)
+
 ## [3.14.0] - 2026-06-22
 
 ### Added
@@ -904,6 +911,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[3.14.1]: https://github.com/adham90/ruby_llm-agents/compare/v3.14.0...v3.14.1
 [3.14.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.13.0...v3.14.0
 [3.13.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.12.0...v3.13.0
 [3.9.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.8.0...v3.9.0
