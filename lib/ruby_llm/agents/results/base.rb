@@ -188,7 +188,10 @@ module RubyLLM
         # Debug trace
         @trace = options[:trace]
 
-        register_with_tracker
+        # Wrapper results (RoutingResult) opt out: the results they wrap have
+        # already registered, and registering the wrapper too would report its
+        # combined cost on top of its own parts.
+        register_with_tracker unless options[:register_with_tracker] == false
       end
 
       # Loads the associated Execution record from the database

@@ -194,3 +194,42 @@ The five items reported but not changed in the second pass, now fixed.
   over-reporting. `call_count` **rises** for the same blocks.
 - Streaming agents with `cache_for` start emitting one chunk on hits where they
   previously emitted none.
+
+---
+
+## Addendum 3: routing
+
+A routed call with an `agent:` mapping is two LLM calls — classify, then
+delegate — and `RoutingResult` reported them inconsistently.
+
+- **Cost summed both calls; tokens counted only the classification.** So
+  `total_cost / total_tokens` was roughly double the real cost per token, and
+  `input_cost + output_cost` did not equal `total_cost`. Every figure now covers
+  both calls; the classification alone is available via `#routing_cost` and the
+  new `#routing_tokens`.
+
+- **Every routed call was reported to `RubyLLM::Agents.track` at double its
+  spend.** Three results registered with the Tracker — the classification, the
+  delegated call, and the `RoutingResult` wrapping them — and the wrapper's cost
+  is already the sum of the other two. `RoutingResult` no longer self-registers
+  (`Result.new(..., register_with_tracker: false)`); the two real calls do.
+  `call_count` for a delegated route drops from 3 to 2, and the totals now
+  reconcile exactly with the execution records.
+
+### Also reviewed, no changes
+
+- SQL: every interpolation into `order`/`where`/`select` is an internal constant
+  or an allowlisted sort column; user values are bound parameters.
+- Eval scoring, budget forecasting, and nested agent-as-tool cost rollup
+  (parent and child are separate LLM calls; summing them is correct).
+- The metadata bag now carries only benign telemetry.
+
+### Known inconsistency, left alone
+
+Two cost-attribution policies coexist. The pipeline path bills the attempt that
+succeeded; the audio/image path (`Execution#aggregate_attempt_costs!`) bills
+every non-short-circuited attempt. Both are defensible — providers usually do
+not bill a failed request, but partial failures exist — and no agent uses both.
+`aggregate_attempt_costs!` also prices text tokens only, with no cache or
+reasoning components; harmless while only audio and image agents reach it, but
+it would silently under-bill a text agent routed through that path.

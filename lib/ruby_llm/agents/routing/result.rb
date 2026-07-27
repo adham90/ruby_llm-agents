@@ -47,13 +47,14 @@ module RubyLLM
         def initialize(base_result:, route_data:)
           @delegated_result = route_data[:delegated_result]
           @routing_cost = base_result.total_cost
+          @routing_tokens = base_result.total_tokens
 
-          # When delegated, merge costs from both classification and delegation
-          total = if @delegated_result
-            (base_result.total_cost || 0) + (@delegated_result.respond_to?(:total_cost) ? @delegated_result.total_cost || 0 : 0)
-          else
-            base_result.total_cost
-          end
+          # A routed call is two LLM calls: classify, then delegate. Every
+          # figure on this result covers BOTH, so they stay consistent with each
+          # other — total_cost used to include the delegation while the token
+          # counts did not, which made cost-per-token nonsense. Classification
+          # alone is still available via #routing_cost / #routing_tokens.
+          total = combine(base_result, :total_cost)
 
           # Use delegated content when available
           effective_content = if @delegated_result
@@ -64,11 +65,15 @@ module RubyLLM
 
           super(
             content: effective_content,
-            input_tokens: base_result.input_tokens,
-            output_tokens: base_result.output_tokens,
-            input_cost: base_result.input_cost,
-            output_cost: base_result.output_cost,
+            input_tokens: combine(base_result, :input_tokens),
+            output_tokens: combine(base_result, :output_tokens),
+            input_cost: combine(base_result, :input_cost),
+            output_cost: combine(base_result, :output_cost),
             total_cost: total,
+            # The wrapped results already registered with the active Tracker;
+            # registering this wrapper too reported the combined figures on top
+            # of the parts, doubling the cost of every routed call.
+            register_with_tracker: false,
             model_id: base_result.model_id,
             chosen_model_id: base_result.chosen_model_id,
             temperature: base_result.temperature,
@@ -108,6 +113,13 @@ module RubyLLM
           @routing_cost || 0
         end
 
+        # Tokens used by the classification step only (excluding delegation)
+        #
+        # @return [Integer]
+        def routing_tokens
+          @routing_tokens || 0
+        end
+
         # Converts the result to a hash including routing fields.
         #
         # @return [Hash] All result data plus route, agent_class, raw_response
@@ -118,6 +130,20 @@ module RubyLLM
             raw_response: raw_response,
             delegated: delegated?
           )
+        end
+
+        private
+
+        # Sums a numeric field across the classification and the delegated call.
+        #
+        # @param base_result [Result] The classification result
+        # @param field [Symbol] The field to read from both
+        # @return [Numeric, nil] The combined value
+        def combine(base_result, field)
+          base = base_result.public_send(field)
+          return base unless @delegated_result&.respond_to?(field)
+
+          (base || 0) + (@delegated_result.public_send(field) || 0)
         end
       end
     end
