@@ -246,10 +246,11 @@ RSpec.describe "Anthropic prompt caching" do
       allow(RubyLLM::Models).to receive(:find).and_return(claude_info)
 
       result = klass.call
-      # The result itself doesn't expose cache tokens, but the context metadata does.
-      # We verify via the execution pipeline — the context[:cached_tokens] is set.
-      # Since we disabled track_executions, we verify indirectly through the response capture.
+      # The Result carries the cache metrics through from the response — without
+      # this they were captured onto the context and then silently dropped by
+      # #build_result, landing as 0 in every persisted execution row.
       expect(result).to be_a(RubyLLM::Agents::Result)
+      expect(result.cached_tokens).to eq(1500)
     end
 
     it "captures cache_creation_tokens when present" do
@@ -276,6 +277,7 @@ RSpec.describe "Anthropic prompt caching" do
 
       result = klass.call
       expect(result).to be_a(RubyLLM::Agents::Result)
+      expect(result.cache_creation_tokens).to eq(2000)
     end
   end
 

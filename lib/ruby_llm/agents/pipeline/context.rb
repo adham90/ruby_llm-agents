@@ -43,6 +43,11 @@ module RubyLLM
         # Cost tracking
         attr_accessor :input_tokens, :output_tokens, :input_cost, :output_cost, :total_cost
 
+        # Prompt-cache usage. First-class accessors, not metadata keys: these
+        # feed both the persisted execution record and the input-cost split, so
+        # a generic bag entry would be silently droppable (it was).
+        attr_accessor :cached_tokens, :cache_creation_tokens
+
         # Response metadata
         attr_accessor :model_used, :finish_reason, :time_to_first_token_ms
 
