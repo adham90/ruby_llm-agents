@@ -413,6 +413,7 @@ module RubyLLM
             if context.cached? && context[:cache_key]
               merged_metadata["response_cache_key"] = context[:cache_key]
             end
+            merged_metadata = redact_secrets(merged_metadata)
             data[:metadata] = merged_metadata if merged_metadata.any?
 
             # Error class on execution (error_message goes to detail)
@@ -646,6 +647,30 @@ module RubyLLM
             password token api_key secret credential auth key
             access_token refresh_token private_key secret_key
           ].freeze
+
+          # Credential-shaped metadata keys. The execution's metadata column is
+          # rendered verbatim (with a copy button) on the execution page, so
+          # anything secret-looking is redacted before it is written.
+          #
+          # Deliberately word-bounded on `token` so the legitimate token
+          # counters — cached_tokens, token_count, thinking_tokens — survive.
+          SECRET_METADATA_PATTERN = /
+            api_?keys? | secret | password | credential |
+            private_key | access_token | refresh_token | auth_token | \btokens?\b
+          /xi
+
+          # Redacts credential-shaped entries from metadata before persistence.
+          #
+          # @param metadata [Hash] Metadata about to be written
+          # @return [Hash] Metadata with secret-shaped values replaced
+          def redact_secrets(metadata)
+            metadata.to_h do |key, value|
+              [key, key.to_s.match?(SECRET_METADATA_PATTERN) ? "[REDACTED]" : value]
+            end
+          rescue => e
+            debug("Failed to redact metadata: #{e.message}")
+            metadata
+          end
 
           # Internal keys that should be stripped from persisted parameters
           INTERNAL_KEYS = %w[

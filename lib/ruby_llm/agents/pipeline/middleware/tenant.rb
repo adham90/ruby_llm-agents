@@ -199,6 +199,10 @@ module RubyLLM
           # thread-safe), keys are stored on the context. The Pipeline::Context#llm
           # method creates a scoped RubyLLM::Context with these keys when needed.
           #
+          # Written to the dedicated accessor, never to context[...]: the
+          # metadata bag is persisted onto the execution record and rendered by
+          # the dashboard, so a credential placed there leaks.
+          #
           # @param context [Context] The execution context
           def apply_tenant_object_api_keys!(context)
             tenant_object = context.tenant_object
@@ -207,7 +211,7 @@ module RubyLLM
             api_keys = tenant_object.llm_api_keys
             return if api_keys.blank?
 
-            context[:tenant_api_keys] = api_keys
+            context.tenant_api_keys = api_keys
           rescue => e
             # Log but don't fail if API key extraction fails
             warn_api_key_error("tenant object", e)

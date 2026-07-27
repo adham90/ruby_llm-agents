@@ -251,7 +251,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Context do
 
     it "returns a RubyLLM::Context with tenant-specific keys when set" do
       context = described_class.new(input: "hello", agent_class: agent_class)
-      context[:tenant_api_keys] = {openai: "sk-tenant-key"}
+      context.tenant_api_keys = {openai: "sk-tenant-key"}
 
       llm = context.llm
 
@@ -264,7 +264,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Context do
       RubyLLM.configure { |c| c.anthropic_api_key = "sk-global-anthropic" }
 
       context = described_class.new(input: "hello", agent_class: agent_class)
-      context[:tenant_api_keys] = {openai: "sk-tenant-openai"}
+      context.tenant_api_keys = {openai: "sk-tenant-openai"}
 
       llm = context.llm
 
@@ -278,7 +278,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Context do
       saved_openai = RubyLLM.config.openai_api_key
 
       context = described_class.new(input: "hello", agent_class: agent_class)
-      context[:tenant_api_keys] = {openai: "sk-tenant-key"}
+      context.tenant_api_keys = {openai: "sk-tenant-key"}
 
       context.llm
 
@@ -287,7 +287,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Context do
 
     it "caches the RubyLLM::Context instance" do
       context = described_class.new(input: "hello", agent_class: agent_class)
-      context[:tenant_api_keys] = {openai: "sk-tenant-key"}
+      context.tenant_api_keys = {openai: "sk-tenant-key"}
 
       first_call = context.llm
       second_call = context.llm
@@ -297,7 +297,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Context do
 
     it "skips blank API keys" do
       context = described_class.new(input: "hello", agent_class: agent_class)
-      context[:tenant_api_keys] = {openai: "sk-valid", anthropic: nil, gemini: ""}
+      context.tenant_api_keys = {openai: "sk-valid", anthropic: nil, gemini: ""}
 
       llm = context.llm
 

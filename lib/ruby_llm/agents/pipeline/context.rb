@@ -48,6 +48,16 @@ module RubyLLM
         # a generic bag entry would be silently droppable (it was).
         attr_accessor :cached_tokens, :cache_creation_tokens
 
+        # Per-tenant provider API keys, set by the Tenant middleware.
+        #
+        # A first-class accessor for the opposite reason to the above: the
+        # metadata bag is copied wholesale onto the persisted execution record
+        # and rendered by the dashboard, so a credential stored there leaked
+        # into the database in plaintext and onto the execution page (it did).
+        # Keeping it off the bag makes that leak structurally impossible rather
+        # than dependent on a redaction list.
+        attr_accessor :tenant_api_keys
+
         # Response metadata
         attr_accessor :model_used, :finish_reason, :time_to_first_token_ms
 
@@ -185,7 +195,7 @@ module RubyLLM
         #
         # @return [RubyLLM::Context, RubyLLM] Scoped context or global module
         def llm
-          api_keys = self[:tenant_api_keys]
+          api_keys = @tenant_api_keys
           return RubyLLM if api_keys.nil? || api_keys.empty?
 
           @llm_context ||= build_llm_context(api_keys)

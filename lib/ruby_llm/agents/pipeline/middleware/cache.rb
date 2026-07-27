@@ -39,7 +39,7 @@ module RubyLLM
               unless context.skip_cache
                 # Try to read from cache
                 if (cached = cache_read(cache_key))
-                  context.output = cached
+                  context.output = mark_cached(cached, context)
                   context.cached = true
                   context[:cache_key] = cache_key
                   cache_action = "hit"
@@ -74,6 +74,33 @@ module RubyLLM
           end
 
           private
+
+          # Marks a cache-read result as cached and re-points its execution_id
+          # at the row being written for THIS call.
+          #
+          # Without this, a cache hit returned the original result verbatim: it
+          # reported no way to tell it was cached, carried the original's
+          # execution_id (so it could not be correlated with the execution just
+          # created), and replayed the original's cost — double-counting for
+          # anyone summing #total_cost across calls.
+          #
+          # Results that predate #as_cache_hit (older cache entries mid-deploy)
+          # are returned untouched rather than raising.
+          #
+          # @param cached [Object] The value read from the cache store
+          # @param context [Context] The execution context
+          # @return [Object] The marked result, or the original value
+          def mark_cached(cached, context)
+            return cached unless cached.respond_to?(:as_cache_hit)
+
+            cached.as_cache_hit(
+              execution_id: context.execution_id,
+              cached_at: cached.try(:completed_at) || Time.current
+            )
+          rescue => e
+            debug("Failed to mark result as cached: #{e.message}", context)
+            cached
+          end
 
           # Emits an AS::Notification for cache events
           #

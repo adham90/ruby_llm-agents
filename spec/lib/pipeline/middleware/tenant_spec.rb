@@ -218,7 +218,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Tenant do
           middleware.call(context)
 
           # Keys are stored on context, NOT on global config
-          expect(context[:tenant_api_keys]).to eq({openai: "sk-resolved-key"})
+          expect(context.tenant_api_keys).to eq({openai: "sk-resolved-key"})
           expect(RubyLLM.config.openai_api_key).to eq(saved_openai)
         end
       end
@@ -347,7 +347,7 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Tenant do
 
         middleware.call(context)
 
-        expect(context[:tenant_api_keys]).to eq({openai: "sk-tenant-object-key"})
+        expect(context.tenant_api_keys).to eq({openai: "sk-tenant-object-key"})
       end
 
       it "does not mutate global RubyLLM configuration" do

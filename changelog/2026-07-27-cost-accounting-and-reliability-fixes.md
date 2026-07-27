@@ -94,3 +94,49 @@ a fallback's cost is no longer billed to the primary it fell back from.
   and is rewritten. No action needed.
 - Budget counters will start incrementing for recovered executions that
   previously slipped through unrecorded.
+
+---
+
+## Addendum: second review pass
+
+Two further defects found reviewing the areas the first pass had not covered.
+
+### Tenant API keys were written to the database in plaintext
+
+`Middleware::Tenant` stored per-tenant provider keys in
+`context[:tenant_api_keys]`, and `Instrumentation` copies the whole metadata bag
+onto the execution record — which `executions/show` renders as pretty-printed
+JSON with a copy-to-clipboard button. Every execution for a tenant therefore
+wrote that tenant's live API key into `ruby_llm_agents_executions.metadata` and
+displayed it to anyone with dashboard access. In a multi-tenant app that is
+cross-tenant credential disclosure.
+
+Fixed structurally: keys move to a dedicated `Context#tenant_api_keys` accessor,
+following the precedent already set for `cached_tokens`, so they are never in
+the bag that gets persisted. As defence in depth, credential-shaped metadata
+keys are redacted before the column is written — word-bounded on `token` so the
+legitimate counters (`cached_tokens`, `token_count`, `thinking_tokens`) survive.
+
+**Operators upgrading should treat any key that appeared in a persisted
+execution as exposed and rotate it, then purge historical metadata**, e.g.:
+
+```ruby
+RubyLLM::Agents::Execution
+  .where("metadata LIKE '%tenant_api_keys%'")
+  .find_each { |e| e.update_column(:metadata, e.metadata.except("tenant_api_keys")) }
+```
+
+### A cache hit returned an unmarked result with a stale execution_id
+
+`Middleware::Cache` returned the stored `Result` verbatim, so a replayed
+response had no way to identify itself as cached, carried the *original* call's
+`execution_id` (making it impossible to correlate with the execution row just
+written), and replayed the original's cost — `results.sum(&:total_cost)`
+double-counted spend that was never incurred.
+
+`Result` gains `#cached?` and `#cached_at`, and the middleware re-points
+`execution_id` at the current call's row. Token and cost fields still describe
+the call that originally produced the response, matching the existing
+`Cached*Result` classes used by the image agents; `#cached?` is what makes
+correct aggregation possible. Cache entries written before this change are
+returned untouched rather than raising, so a mid-deploy rollout is safe.
