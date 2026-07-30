@@ -277,6 +277,62 @@ RSpec.describe RubyLLM::Agents::Pipeline::Middleware::Instrumentation do
         end
       end
 
+      describe "concurrent status transitions" do
+        it "does not overwrite a terminal status written while the pipeline ran" do
+          context = build_context
+
+          allow(app).to receive(:call) do |ctx|
+            # A concurrent transition (e.g. a timeout sweep or operator
+            # cancellation) lands while the pipeline is still running
+            RubyLLM::Agents::Execution.where(id: ctx.execution_id).update_all(
+              status: "timeout",
+              error_class: "Timeout::Error",
+              completed_at: Time.current
+            )
+            ctx.output = "result"
+            ctx
+          end
+
+          middleware.call(context)
+
+          execution = RubyLLM::Agents::Execution.find(context.execution_id)
+          expect(execution.status).to eq("timeout")
+          expect(execution.error_class).to eq("Timeout::Error")
+        end
+
+        it "skips the completion when the held instance is stale and the row is already terminal" do
+          stale = create(:execution, :running, agent_type: "TestAgent", model_id: "test-model")
+          # The row transitioned behind the instance's back
+          RubyLLM::Agents::Execution.where(id: stale.id)
+            .update_all(status: "error", error_class: "StandardError")
+
+          context = build_context
+          context.completed_at = Time.current
+          context.input_tokens = 999
+
+          middleware.send(:complete_execution, stale, context, status: "success")
+
+          stale.reload
+          expect(stale.status).to eq("error")
+          expect(stale.error_class).to eq("StandardError")
+          expect(stale.input_tokens).to eq(100)
+        end
+
+        it "still updates the row when it is still running" do
+          running = create(:execution, :running, agent_type: "TestAgent", model_id: "test-model")
+
+          context = build_context
+          context.completed_at = Time.current
+          context.input_tokens = 999
+
+          middleware.send(:complete_execution, running, context, status: "success")
+
+          running.reload
+          expect(running.status).to eq("success")
+          expect(running.input_tokens).to eq(999)
+        end
+      end
+
       it "truncates long error messages" do
         context = build_context
         long_message = "x" * 2000

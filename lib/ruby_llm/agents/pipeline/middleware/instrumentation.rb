@@ -172,6 +172,12 @@ module RubyLLM
           # Falls back to creating a new record if the initial record is nil.
           # Errors are re-raised to allow the ensure block to handle them.
           #
+          # The record is locked and reloaded before updating: the instance
+          # held here was created when the pipeline started and may be stale —
+          # a concurrent transition (e.g. operator cancellation or a timeout
+          # sweep) can have written a terminal status in the meantime, and the
+          # completion must not overwrite it.
+          #
           # @param execution [Execution, nil] The execution record to update
           # @param context [Context] The execution context
           # @param status [String] Final status ("success", "error", "timeout")
@@ -188,13 +194,38 @@ module RubyLLM
             end
 
             update_data = build_completion_data(context, status)
-            execution.update!(update_data)
+            return unless complete_running_execution(execution, update_data)
 
             # Save detail data (prompts, responses, tool calls, etc.)
             save_execution_details(execution, context, status)
           rescue => e
             error("Failed to complete execution record: #{e.message}", context)
             raise # Re-raise for ensure block to handle via mark_execution_failed!
+          end
+
+          # Applies the completion update unless the execution already left
+          # "running" state.
+          #
+          # Locks the row and reloads it, so the status check and the update
+          # are atomic with respect to concurrent status transitions: whichever
+          # side wins the row lock first keeps the row. A completion that finds
+          # a terminal status is dropped instead of overwriting it.
+          #
+          # @param execution [Execution] The execution record to update
+          # @param update_data [Hash] The completion attributes
+          # @return [Boolean] Whether the completion update was applied
+          def complete_running_execution(execution, update_data)
+            return execution.update!(update_data) unless execution.persisted?
+
+            execution.with_lock do
+              if execution.status == "running"
+                execution.update!(update_data)
+                true
+              else
+                debug("Skipped completion for execution #{execution.id}: already #{execution.status}")
+                false
+              end
+            end
           end
 
           # Emergency fallback to mark execution as failed
