@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.15.1] - 2026-07-30
+
+### Fixed
+
+- **Every Transcriber with `reliability` crashed at runtime** — `Transcriber` shadowed the shared reliability DSL with its own `ReliabilityConfig` object, but the Reliability middleware expects the Hash produced by `DSL::Reliability`, so declaring `reliability do ... end` on a transcriber raised `NoMethodError: undefined method '[]' for ReliabilityConfig` on every call. The shadowing DSL and the transcriber's duplicated internal retry/fallback loop are removed; the middleware is now the single owner of retries, fallbacks, and circuit breakers, and fallback models actually switch the model used for the API call
+
+### Changed
+
+- **`Transcriber.reliability_config` returns the shared Hash shape** (`{retries: {max:, ...}, fallback_models: [...], ...}`) instead of a `ReliabilityConfig` object, and `nil` when nothing is configured. The `reliability do ... end` block syntax is unchanged and gains `circuit_breaker` / `on_failure` support
+- **Transcribers no longer silently retry 3 times by default** when no reliability is configured — consistent with every other agent type. Opt in with `reliability { retries max: 3 }`
+
 ## [3.15.0] - 2026-07-28
 
 A deep review of cost accounting, prompt caching, and the middleware pipeline.
@@ -955,6 +966,8 @@ Several fixes change existing behaviour — read **Changed** before upgrading.
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[3.15.1]: https://github.com/adham90/ruby_llm-agents/compare/v3.15.0...v3.15.1
+[3.15.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.14.1...v3.15.0
 [3.14.1]: https://github.com/adham90/ruby_llm-agents/compare/v3.14.0...v3.14.1
 [3.14.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.13.0...v3.14.0
 [3.13.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.12.0...v3.13.0
