@@ -117,37 +117,10 @@ module RubyLLM
 
         # @!endgroup
 
-        # @!group Reliability DSL
-
-        # Configures reliability options (retries, fallbacks)
-        #
-        # @yield Block for configuring reliability options
-        # @return [ReliabilityConfig] The reliability configuration
-        def reliability(&block)
-          @reliability_config ||= ReliabilityConfig.new
-          @reliability_config.instance_eval(&block) if block_given?
-          @reliability_config
-        end
-
-        # Returns reliability configuration
-        #
-        # @return [ReliabilityConfig, nil] The reliability configuration
-        def reliability_config
-          @reliability_config || inherited_or_default(:reliability_config, nil)
-        end
-
-        # Sets fallback models directly (shorthand for reliability block)
-        #
-        # @param models [Array<String>] Model identifiers to try on failure
-        # @return [Array<String>] The fallback models
-        def fallback_models(*models)
-          if models.any?
-            @fallback_models = models.flatten
-          end
-          @fallback_models || inherited_or_default(:fallback_models, [])
-        end
-
-        # @!endgroup
+        # Reliability (retries, fallbacks, circuit breakers) comes from the
+        # shared DSL::Reliability on BaseAgent and is executed by the
+        # Reliability middleware — the middleware expects the Hash config that
+        # DSL produces, so Transcriber must not shadow it with its own object.
 
         # Factory method to instantiate and execute transcription
         #
@@ -193,40 +166,6 @@ module RubyLLM
             max_duration: max_duration,
             overlap: overlap,
             parallel: parallel
-          }
-        end
-      end
-
-      # Configuration class for reliability options
-      class ReliabilityConfig
-        attr_accessor :max_retries, :backoff, :fallback_models_list, :total_timeout_seconds
-
-        def initialize
-          @max_retries = 3
-          @backoff = :exponential
-          @fallback_models_list = []
-          @total_timeout_seconds = nil
-        end
-
-        def retries(max: 3, backoff: :exponential)
-          @max_retries = max
-          @backoff = backoff
-        end
-
-        def fallback_models(*models)
-          @fallback_models_list = models.flatten
-        end
-
-        def total_timeout(seconds)
-          @total_timeout_seconds = seconds
-        end
-
-        def to_h
-          {
-            max_retries: max_retries,
-            backoff: backoff,
-            fallback_models: fallback_models_list,
-            total_timeout: total_timeout_seconds
           }
         end
       end
@@ -308,8 +247,9 @@ module RubyLLM
         audio_input = normalize_audio_input(@audio, @audio_format)
         validate_audio_input!(audio_input)
 
-        # Execute transcription with reliability (retries, fallbacks)
-        raw_result = execute_with_reliability(audio_input)
+        # context.model is set per-attempt by the Reliability middleware, so
+        # fallback models actually take effect here
+        raw_result = execute_transcription(audio_input, context.model || resolved_model)
 
         execution_completed_at = Time.current
         duration_ms = ((execution_completed_at - execution_started_at) * 1000).to_i
@@ -453,37 +393,6 @@ module RubyLLM
             raise ArgumentError, "Binary audio data cannot be empty"
           end
         end
-      end
-
-      # Executes transcription with reliability features
-      #
-      # @param audio_input [Hash] Normalized audio input
-      # @return [Hash] Raw transcription result
-      def execute_with_reliability(audio_input)
-        models_to_try = [resolved_model] + self.class.fallback_models
-        last_error = nil
-
-        models_to_try.each do |model|
-          retries = 0
-          max_retries = reliability_max_retries
-
-          begin
-            return execute_transcription(audio_input, model)
-          rescue => e
-            last_error = e
-            retries += 1
-
-            if retryable_error?(e) && retries < max_retries
-              sleep(calculate_backoff(retries))
-              retry
-            end
-
-            # Try next model
-            next
-          end
-        end
-
-        raise last_error || StandardError.new("All transcription models exhausted")
       end
 
       # Executes the actual transcription API call
@@ -662,29 +571,6 @@ module RubyLLM
       # Resolves the language to use
       def resolved_language
         @runtime_language || self.class.language
-      end
-
-      # Returns max retries from reliability config
-      def reliability_max_retries
-        config = self.class.reliability_config
-        config&.max_retries || 3
-      end
-
-      # Checks if error is retryable
-      def retryable_error?(error)
-        message = error.message.to_s.downcase
-        retryable_patterns = ["rate limit", "timeout", "503", "502", "429", "overloaded"]
-        retryable_patterns.any? { |pattern| message.include?(pattern) }
-      end
-
-      # Calculates exponential backoff delay
-      def calculate_backoff(attempt)
-        config = self.class.reliability_config
-        base = (config&.backoff == :constant) ? 1.0 : 0.4
-        max_delay = 10.0
-
-        delay = base * (2**(attempt - 1))
-        [delay, max_delay].min
       end
     end
   end

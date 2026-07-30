@@ -131,7 +131,7 @@ RSpec.describe RubyLLM::Agents::Transcriber do
   end
 
   describe ".reliability" do
-    it "configures reliability with DSL" do
+    it "produces the middleware-compatible hash config from the shared DSL" do
       transcriber_class.reliability do
         retries max: 5, backoff: :constant
         fallback_models "backup-model"
@@ -139,20 +139,15 @@ RSpec.describe RubyLLM::Agents::Transcriber do
       end
 
       config = transcriber_class.reliability_config
-      expect(config.max_retries).to eq(5)
-      expect(config.backoff).to eq(:constant)
-      expect(config.fallback_models_list).to eq(["backup-model"])
-      expect(config.total_timeout_seconds).to eq(120)
+      expect(config[:retries][:max]).to eq(5)
+      expect(config[:retries][:backoff]).to eq(:constant)
+      expect(config[:fallback_models]).to eq(["backup-model"])
+      expect(config[:total_timeout]).to eq(120)
     end
 
-    it "provides default reliability values" do
+    it "returns nil when nothing is configured" do
       transcriber_class.reliability {}
-      config = transcriber_class.reliability_config
-
-      expect(config.max_retries).to eq(3)
-      expect(config.backoff).to eq(:exponential)
-      expect(config.fallback_models_list).to eq([])
-      expect(config.total_timeout_seconds).to be_nil
+      expect(transcriber_class.reliability_config).to be_nil
     end
   end
 
@@ -177,46 +172,6 @@ RSpec.describe RubyLLM::Agents::Transcriber do
         expect(config.enabled?).to be false
         config.enabled = true
         expect(config.enabled?).to be true
-      end
-    end
-  end
-
-  describe "ReliabilityConfig" do
-    let(:config) { described_class::ReliabilityConfig.new }
-
-    describe "#retries" do
-      it "sets max retries and backoff" do
-        config.retries(max: 10, backoff: :linear)
-        expect(config.max_retries).to eq(10)
-        expect(config.backoff).to eq(:linear)
-      end
-    end
-
-    describe "#fallback_models" do
-      it "sets fallback models list" do
-        config.fallback_models("model1", "model2")
-        expect(config.fallback_models_list).to eq(["model1", "model2"])
-      end
-    end
-
-    describe "#total_timeout" do
-      it "sets total timeout" do
-        config.total_timeout(60)
-        expect(config.total_timeout_seconds).to eq(60)
-      end
-    end
-
-    describe "#to_h" do
-      it "returns hash with all settings" do
-        config.retries(max: 5, backoff: :constant)
-        config.fallback_models("backup")
-        config.total_timeout(120)
-
-        hash = config.to_h
-        expect(hash[:max_retries]).to eq(5)
-        expect(hash[:backoff]).to eq(:constant)
-        expect(hash[:fallback_models]).to eq(["backup"])
-        expect(hash[:total_timeout]).to eq(120)
       end
     end
   end

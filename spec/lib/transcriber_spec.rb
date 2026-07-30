@@ -180,7 +180,7 @@ RSpec.describe RubyLLM::Agents::Transcriber do
     end
 
     describe ".reliability" do
-      it "configures reliability via block" do
+      it "configures reliability via block using the shared hash config" do
         base_transcriber.reliability do
           retries max: 5, backoff: :constant
           fallback_models "whisper-1", "gpt-4o-mini-transcribe"
@@ -188,18 +188,15 @@ RSpec.describe RubyLLM::Agents::Transcriber do
         end
 
         config = base_transcriber.reliability_config
-        expect(config.max_retries).to eq(5)
-        expect(config.backoff).to eq(:constant)
-        expect(config.fallback_models_list).to eq(["whisper-1", "gpt-4o-mini-transcribe"])
-        expect(config.total_timeout_seconds).to eq(300)
+        expect(config[:retries][:max]).to eq(5)
+        expect(config[:retries][:backoff]).to eq(:constant)
+        expect(config[:fallback_models]).to eq(["whisper-1", "gpt-4o-mini-transcribe"])
+        expect(config[:total_timeout]).to eq(300)
       end
 
-      it "has sensible defaults" do
+      it "returns nil when nothing is configured" do
         base_transcriber.reliability {}
-        config = base_transcriber.reliability_config
-        expect(config.max_retries).to eq(3)
-        expect(config.backoff).to eq(:exponential)
-        expect(config.fallback_models_list).to be_empty
+        expect(base_transcriber.reliability_config).to be_nil
       end
     end
 
@@ -288,6 +285,46 @@ RSpec.describe RubyLLM::Agents::Transcriber do
           .and_return(mock_response)
 
         test_transcriber.call(audio: audio_url)
+      end
+    end
+
+    context "with reliability configured" do
+      # Regression: Transcriber used to shadow the shared reliability DSL with
+      # an object config, which crashed the Reliability middleware
+      # (undefined method `[]` for ReliabilityConfig) on every call.
+      let(:reliable_transcriber) do
+        Class.new(described_class) do
+          def self.name
+            "ReliableTranscriber"
+          end
+
+          model "whisper-1"
+
+          reliability do
+            fallback_models "gpt-4o-mini-transcribe"
+          end
+        end
+      end
+
+      it "executes through the Reliability middleware without error" do
+        allow(RubyLLM).to receive(:transcribe).and_return(mock_response)
+
+        result = reliable_transcriber.call(audio: audio_file_path)
+        expect(result.text).to eq("Hello, this is a test transcription.")
+      end
+
+      it "falls back to the next model when the primary fails" do
+        allow(RubyLLM).to receive(:transcribe)
+          .with(audio_file_path, hash_including(model: "whisper-1"))
+          .and_raise(RuntimeError, "boom")
+        allow(RubyLLM).to receive(:transcribe)
+          .with(audio_file_path, hash_including(model: "gpt-4o-mini-transcribe"))
+          .and_return(mock_response)
+
+        result = reliable_transcriber.call(audio: audio_file_path)
+
+        expect(result.text).to eq("Hello, this is a test transcription.")
+        expect(result.model_id).to eq("gpt-4o-mini-transcribe")
       end
     end
 
@@ -707,48 +744,6 @@ RSpec.describe RubyLLM::Agents::Transcriber do
       expect(hash[:max_duration]).to eq(300)
       expect(hash[:overlap]).to eq(5)
       expect(hash[:parallel]).to be false
-    end
-  end
-
-  describe "ReliabilityConfig" do
-    let(:config) { RubyLLM::Agents::Transcriber::ReliabilityConfig.new }
-
-    it "has default values" do
-      expect(config.max_retries).to eq(3)
-      expect(config.backoff).to eq(:exponential)
-      expect(config.fallback_models_list).to be_empty
-      expect(config.total_timeout_seconds).to be_nil
-    end
-
-    it "configures retries" do
-      config.retries(max: 5, backoff: :constant)
-
-      expect(config.max_retries).to eq(5)
-      expect(config.backoff).to eq(:constant)
-    end
-
-    it "configures fallback models" do
-      config.fallback_models("whisper-1", "gpt-4o-mini-transcribe")
-
-      expect(config.fallback_models_list).to eq(["whisper-1", "gpt-4o-mini-transcribe"])
-    end
-
-    it "configures total timeout" do
-      config.total_timeout(300)
-
-      expect(config.total_timeout_seconds).to eq(300)
-    end
-
-    it "converts to hash" do
-      config.retries(max: 5)
-      config.fallback_models("whisper-1")
-      config.total_timeout(120)
-
-      hash = config.to_h
-      expect(hash[:max_retries]).to eq(5)
-      expect(hash[:backoff]).to eq(:exponential)
-      expect(hash[:fallback_models]).to eq(["whisper-1"])
-      expect(hash[:total_timeout]).to eq(120)
     end
   end
 end
