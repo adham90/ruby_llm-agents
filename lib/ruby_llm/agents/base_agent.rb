@@ -831,10 +831,19 @@ module RubyLLM
       # (user, then assistant) before calling complete, so the model
       # continues from the prefill. Otherwise, uses the standard .ask flow.
       #
+      # The client history is baselined before the call so usage accounting
+      # can tell which assistant responses this attempt appends (see
+      # #billed_messages_this_attempt). When the call raises after one or
+      # more responses completed — e.g. a tool error inside a tool loop —
+      # the usage billed up to that point is recovered onto the context
+      # before the error propagates, instead of being discarded.
+      #
       # @param client [RubyLLM::Chat] The configured client
       # @param context [Pipeline::Context] The execution context
       # @return [RubyLLM::Message] The response
       def execute_llm_call(client, context)
+        @usage_history_baseline = history_size(client)
+
         timeout = self.class.timeout
         prefill = resolved_assistant_prefill
 
@@ -849,6 +858,9 @@ module RubyLLM
             client.ask(user_prompt, **ask_opts)
           end
         end
+      rescue
+        recover_usage_from_history(context)
+        raise
       end
 
       # Executes with assistant prefill
@@ -962,6 +974,11 @@ module RubyLLM
         context[:tool_calls] = @tracked_tool_calls if @tracked_tool_calls.any?
 
         calculate_costs(metadata, context) if metadata && context.input_tokens
+
+        # A multi-round tool loop bills every round, not just the final
+        # response captured above. Sum usage across the assistant responses
+        # this attempt appended so tokens and costs reflect the real spend.
+        accumulate_attempt_usage(context)
       end
 
       # Finds the most recent assistant message with usage metadata in
@@ -977,6 +994,86 @@ module RubyLLM
           m.respond_to?(:role) && m.role == :assistant &&
             m.respond_to?(:input_tokens) && m.input_tokens
         end
+      end
+
+      # Recovers the usage billed by this attempt when the LLM call raised
+      # before #capture_response could run.
+      #
+      # Runs #capture_response on the last billed response (the same pattern
+      # Tool::Halt recovery uses); accumulation then replaces its
+      # single-response numbers with the attempt's sums. Best-effort:
+      # recovery must never mask the original failure.
+      #
+      # @param context [Pipeline::Context] The execution context
+      def recover_usage_from_history(context)
+        recovered = billed_messages_this_attempt.last
+        capture_response(recovered, context) if recovered
+      rescue => e
+        log_cost_warning("recover_usage_from_history", e)
+      end
+
+      # Replaces the final response's usage with the sums across every
+      # assistant response this attempt appended to the client history.
+      #
+      # A tool loop bills one request per round, so the final response alone
+      # undercounts the real spend; summing the history reflects what the
+      # provider actually charged. The last request's own usage is stashed
+      # in metadata (the prompt size of the final request is the current
+      # context fill), and costs are recalculated from the sums.
+      #
+      # Retries and fallbacks re-baseline per attempt (see
+      # #execute_llm_call), so the numbers always describe the last attempt
+      # — the billed one — never a cross-attempt double count.
+      #
+      # No-op when the history is unreadable or nothing was appended; the
+      # single-response numbers from #capture_response then stand.
+      #
+      # @param context [Pipeline::Context] The execution context
+      def accumulate_attempt_usage(context)
+        billed = billed_messages_this_attempt
+        return if billed.empty?
+
+        last = billed.last
+        context.input_tokens = billed.sum { |message| message.input_tokens.to_i }
+        context.output_tokens = billed.sum { |message| message.output_tokens.to_i }
+        context[:llm_usage] = {
+          "requests" => billed.size,
+          "last_input_tokens" => last.input_tokens.to_i,
+          "last_output_tokens" => last.output_tokens.to_i
+        }
+        calculate_costs(last, context)
+      rescue => e
+        log_cost_warning("accumulate_attempt_usage", e)
+      end
+
+      # Assistant messages with usage appended to the client history after
+      # the baseline captured by #execute_llm_call — the responses this
+      # attempt was billed for.
+      #
+      # Conversation history (the messages option) is seeded into the client
+      # before the call, so only post-baseline entries are eligible;
+      # otherwise a failed attempt would bill a previous turn's usage.
+      #
+      # @return [Array] Billed assistant messages, empty when unknown
+      def billed_messages_this_attempt
+        baseline = @usage_history_baseline
+        return [] unless baseline
+
+        Array(@client&.messages).drop(baseline).select do |message|
+          message.respond_to?(:role) && message.role == :assistant &&
+            message.respond_to?(:input_tokens) && message.input_tokens
+        end
+      end
+
+      # Number of messages in the client history, or nil when it is
+      # unreadable — usage recovery/accumulation are then skipped.
+      #
+      # @param client [RubyLLM::Chat] The configured client
+      # @return [Integer, nil]
+      def history_size(client)
+        Array(client&.messages).size
+      rescue
+        nil
       end
 
       # Calculates costs for the response.
