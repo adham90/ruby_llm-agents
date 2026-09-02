@@ -92,6 +92,50 @@ RSpec.describe RubyLLM::Agents::Execution::Analytics do
         expect(stats[:avg_cost]).to eq(0)
       end
     end
+
+    # Regression: the agents index calls this once per agent, and it used to
+    # run eight separate count/sum/avg scans of that agent's history each time.
+    it "runs a single aggregate query" do
+      expect(capture_sql { execution_class.stats_for("TestAgent", period: :today) }.size).to eq(1)
+    end
+
+    it "computes rates from the same query" do
+      create(:execution, :failed)
+      create(:execution, :timeout)
+
+      stats = execution_class.stats_for("TestAgent", period: :today)
+      expect(stats[:count]).to eq(4)
+      expect(stats[:success_rate]).to eq(50.0)
+      expect(stats[:error_rate]).to eq(50.0)
+    end
+  end
+
+  describe ".avg_time_to_first_token" do
+    it "returns nil when no streaming execution recorded a value" do
+      create(:execution, streaming: true, metadata: {})
+      expect(execution_class.avg_time_to_first_token).to be_nil
+    end
+
+    it "averages the value from metadata across streaming executions only" do
+      create(:execution, streaming: true, metadata: {time_to_first_token_ms: 100})
+      create(:execution, streaming: true, metadata: {time_to_first_token_ms: 300})
+      create(:execution, streaming: true, metadata: {})
+      create(:execution, streaming: false, metadata: {time_to_first_token_ms: 900})
+
+      expect(execution_class.avg_time_to_first_token).to eq(200)
+    end
+
+    # Regression: this used to pluck every streaming execution's metadata
+    # blob into Ruby to average one key.
+    it "aggregates in SQL rather than loading metadata rows" do
+      create(:execution, streaming: true, metadata: {time_to_first_token_ms: 100})
+
+      queries = capture_sql { execution_class.avg_time_to_first_token }
+
+      expect(queries.size).to eq(1)
+      expect(queries.first).to include("AVG(")
+      expect(queries.first).not_to match(/SELECT "ruby_llm_agents_executions"\."metadata"/)
+    end
   end
 
   describe ".trend_analysis" do

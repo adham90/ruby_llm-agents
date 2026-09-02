@@ -74,6 +74,18 @@ module RubyLLM
       has_one :detail, class_name: "RubyLLM::Agents::ExecutionDetail",
         foreign_key: :execution_id, dependent: :destroy
 
+      # Same row as :detail, but selecting only error_message.
+      #
+      # List and CSV views read nothing but the error message, while the full
+      # detail row carries prompts and response JSON that routinely run to
+      # hundreds of kilobytes each. Preloading :detail for a page of rows drags
+      # all of that into memory; preloading :error_detail costs a few bytes per
+      # row. Never use this association for anything but error_message — the
+      # other attributes are not selected and will raise.
+      has_one :error_detail, -> { select(:id, :execution_id, :error_message) },
+        class_name: "RubyLLM::Agents::ExecutionDetail",
+        foreign_key: :execution_id, inverse_of: false
+
       # Individual tool call records (real-time tracking)
       has_many :tool_executions, class_name: "RubyLLM::Agents::ToolExecution",
         foreign_key: :execution_id, dependent: :destroy
@@ -94,7 +106,8 @@ module RubyLLM
       #
       # @return [String, nil]
       def error_message
-        detail&.error_message || metadata&.dig("error_message")
+        row = association(:detail).loaded? ? detail : error_detail
+        row&.error_message || metadata&.dig("error_message")
       end
 
       # Validations

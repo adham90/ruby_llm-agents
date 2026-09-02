@@ -57,6 +57,46 @@ RSpec.describe RubyLLM::Agents::ExecutionsController, type: :controller do
       expect(assigns(:filter_stats)).to include(:total_count, :total_cost, :total_tokens)
     end
 
+    # Regression: filter_stats used to be summed on a scope carrying
+    # `includes(:child_executions, :detail)`. ActiveRecord turns a sum on an
+    # includes-relation into a LEFT JOIN without DISTINCT, so every child row
+    # multiplied its parent's cost and tokens into the total.
+    it "does not inflate @filter_stats when root executions have children" do
+      parent = create(:execution, input_cost: 1, output_cost: 0, total_tokens: 100)
+      3.times { create(:execution, parent_execution_id: parent.id, input_cost: 5, output_cost: 0, total_tokens: 999) }
+
+      get :index
+
+      expect(assigns(:filter_stats)[:total_count]).to eq(1)
+      expect(assigns(:filter_stats)[:total_cost]).to eq(1)
+      expect(assigns(:filter_stats)[:total_tokens]).to eq(150)
+    end
+
+    # Regression: the page ran four scans of the same filtered set — one COUNT
+    # for pagination, then COUNT + two SUMs for the stats strip.
+    it "aggregates count and sums in a single query" do
+      create_list(:execution, 3)
+
+      aggregates = capture_sql { get :index }.grep(/COUNT\(\*\)|SUM\(/)
+
+      expect(aggregates.size).to eq(1)
+    end
+
+    # Regression: the list preloaded the full detail row to render error
+    # messages, dragging every prompt and response payload — hundreds of KB per
+    # row for image and audio agents — into memory for a whole page of results.
+    it "loads only error_message from execution details" do
+      create(:execution, :failed)
+
+      get :index
+
+      row = assigns(:executions).first
+      expect(row.association(:error_detail)).to be_loaded
+      expect(row.error_detail.attributes.keys).to contain_exactly("id", "execution_id", "error_message")
+      expect(row.association(:detail)).not_to be_loaded
+      expect(row.error_message).to eq("Something went wrong")
+    end
+
     context "with agent_types filter" do
       before do
         create(:execution, agent_type: "AgentA")

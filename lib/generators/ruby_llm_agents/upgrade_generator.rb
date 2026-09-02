@@ -117,6 +117,25 @@ module RubyLlmAgents
       )
     end
 
+    # Add the composite index behind the executions dashboard list
+    def create_add_root_execution_list_index_migration
+      unless table_exists?(:ruby_llm_agents_executions)
+        say_status :skip, "executions table does not exist yet", :yellow
+        return
+      end
+
+      if index_exists?(:ruby_llm_agents_executions, [:parent_execution_id, :created_at])
+        say_status :skip, "root execution list index already exists", :yellow
+        return
+      end
+
+      say_status :upgrade, "Adding root execution list index", :blue
+      migration_template(
+        "add_root_execution_list_index_migration.rb.tt",
+        File.join(db_migrate_path, "add_root_execution_list_index.rb")
+      )
+    end
+
     # Create overrides table for dashboard-managed agent settings
     def create_overrides_migration
       if table_exists?(:ruby_llm_agents_overrides)

@@ -39,7 +39,7 @@ module RubyLLM
       #
       # @return [void]
       def show
-        @execution = tenant_scoped_executions.includes(:detail, :child_executions).find(params[:id])
+        @execution = tenant_scoped_executions.includes(:detail).find(params[:id])
       end
 
       # Handles filter search requests via Turbo Stream
@@ -83,7 +83,7 @@ module RubyLLM
         self.response_body = Enumerator.new do |yielder|
           yielder << CSV.generate_line(CSV_COLUMNS)
 
-          filtered_executions.find_each(batch_size: 1000) do |execution|
+          filtered_executions.preload(:error_detail).find_each(batch_size: 1000) do |execution|
             yielder << generate_csv_row(execution)
           end
         end
@@ -124,26 +124,6 @@ module RubyLLM
         @statuses = Execution.statuses.keys
       end
 
-      # Returns distinct agent types from execution history
-      #
-      # Memoized to avoid duplicate queries within a request.
-      # Uses tenant_scoped_executions to respect multi-tenancy filtering.
-      #
-      # @return [Array<String>] Agent type names
-      def available_agent_types
-        @available_agent_types ||= tenant_scoped_executions.distinct.pluck(:agent_type)
-      end
-
-      # Returns distinct model IDs from execution history
-      #
-      # Memoized to avoid duplicate queries within a request.
-      # Uses tenant_scoped_executions to respect multi-tenancy filtering.
-      #
-      # @return [Array<String>] Model IDs
-      def available_model_ids
-        @available_model_ids ||= tenant_scoped_executions.where.not(model_id: nil).distinct.pluck(:model_id).sort
-      end
-
       # Loads paginated executions and associated statistics
       #
       # Sets @executions, @pagination, @sort_params, and @filter_stats instance variables
@@ -152,22 +132,17 @@ module RubyLLM
       # @return [void]
       def load_executions_with_stats
         @sort_params = parse_sort_params
-        result = paginate(filtered_executions, sort_params: @sort_params)
+        scope = filtered_executions
+
+        # One aggregate query for the stats strip; its count is reused for
+        # pagination, so the page costs one aggregate query instead of four.
+        @filter_stats = scope.totals
+
+        result = paginate(scope.preload(:error_detail),
+          sort_params: @sort_params,
+          total_count: @filter_stats[:total_count])
         @executions = result[:records]
         @pagination = result[:pagination]
-        load_filter_stats
-      end
-
-      # Calculates aggregate statistics for the current filter
-      #
-      # @return [void]
-      def load_filter_stats
-        scope = filtered_executions
-        @filter_stats = {
-          total_count: scope.count,
-          total_cost: scope.sum(:total_cost) || 0,
-          total_tokens: scope.sum(:total_tokens) || 0
-        }
       end
 
       # Builds a filtered execution scope based on request params
@@ -212,11 +187,7 @@ module RubyLLM
         scope = scope.where("attempts_count > 1") if params[:has_retries].present?
 
         # Only show root executions - children are nested under parents
-        scope = scope.where(parent_execution_id: nil)
-
-        # Eager load children for grouping and detail for error_message, which
-        # the list renders per row (otherwise an N+1 on error rows).
-        scope.includes(:child_executions, :detail)
+        scope.where(parent_execution_id: nil)
       end
 
       # Checks whether turbo-rails is available in the host application

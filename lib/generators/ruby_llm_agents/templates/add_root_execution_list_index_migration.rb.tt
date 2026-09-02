@@ -1,0 +1,16 @@
+# frozen_string_literal: true
+
+# Migration to add the index behind the executions dashboard list
+#
+# The list page runs `WHERE parent_execution_id IS NULL ORDER BY created_at DESC`
+# plus a COUNT over the same predicate. With only the single-column
+# parent_execution_id and created_at indexes available, the planner has to pick
+# one and filter the rest, which degrades to a sequential scan once child
+# executions make up a meaningful share of the table.
+class AddRootExecutionListIndex < ActiveRecord::Migration<%= migration_version %>
+  def change
+    add_index :ruby_llm_agents_executions, [:parent_execution_id, :created_at],
+              name: "idx_executions_parent_created_at",
+              if_not_exists: true
+  end
+end

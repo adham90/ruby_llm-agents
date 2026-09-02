@@ -78,6 +78,7 @@ ActiveRecord::Schema.define do
   add_index :ruby_llm_agents_executions, :trace_id
   add_index :ruby_llm_agents_executions, :request_id
   add_index :ruby_llm_agents_executions, :parent_execution_id
+  add_index :ruby_llm_agents_executions, [:parent_execution_id, :created_at]
   add_index :ruby_llm_agents_executions, :root_execution_id
   add_index :ruby_llm_agents_executions, [:status, :created_at]
   add_index :ruby_llm_agents_executions, [:model_id, :status]

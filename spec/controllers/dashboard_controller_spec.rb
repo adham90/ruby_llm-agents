@@ -30,6 +30,19 @@ RSpec.describe RubyLLM::Agents::DashboardController, type: :controller do
       expect(assigns(:recent_executions)).to be_present
     end
 
+    # Regression: the recent-executions strip preloaded the full detail row
+    # (prompts, response JSON) for every entry to show an error message.
+    it "loads recent executions without the detail payload columns" do
+      create(:execution, :failed)
+
+      get :index
+
+      row = assigns(:recent_executions).to_a.first
+      expect(row.association(:error_detail)).to be_loaded
+      expect(row.error_detail.attributes.keys).to contain_exactly("id", "execution_id", "error_message")
+      expect(row.association(:detail)).not_to be_loaded
+    end
+
     it "assigns @agent_stats" do
       get :index
       expect(assigns(:agent_stats)).to be_an(Array)
