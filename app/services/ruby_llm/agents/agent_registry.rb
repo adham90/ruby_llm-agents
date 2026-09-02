@@ -183,9 +183,15 @@ module RubyLLM
 
         # Finds agent types from execution history
         #
+        # Cached briefly: this is an unbounded DISTINCT scan of the executions
+        # table, and it only exists to keep deleted agents visible, so a few
+        # minutes of staleness is invisible.
+        #
         # @return [Array<String>] Agent class names with execution records
         def execution_agents
-          Execution.distinct.pluck(:agent_type).compact
+          Rails.cache.fetch(["ruby_llm_agents", "agent_registry", "execution_agents"], expires_in: 5.minutes) do
+            Execution.distinct.pluck(:agent_type).compact
+          end
         rescue => e
           Rails.logger.error("[RubyLLM::Agents] Error loading agents from executions: #{e.message}")
           []

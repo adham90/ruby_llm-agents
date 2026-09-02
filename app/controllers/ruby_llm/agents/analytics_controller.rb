@@ -106,9 +106,8 @@ module RubyLLM
       # ── Filters ──────────────────────────
 
       def load_filter_options
-        base = tenant_scoped_executions
-        @available_agents = base.where.not(agent_type: nil).distinct.pluck(:agent_type).sort
-        @available_models = base.where.not(model_id: nil).distinct.pluck(:model_id).sort
+        @available_agents = available_agent_types
+        @available_models = available_model_ids
         @available_tenants = if tenant_filter_enabled? && Tenant.table_exists?
           Tenant.pluck(:tenant_id, :name).map { |tid, name| [tid, name.presence || tid] }.sort_by(&:last)
         else

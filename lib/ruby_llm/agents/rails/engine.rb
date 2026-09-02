@@ -168,10 +168,12 @@ module RubyLLM
           def available_tenants
             return @available_tenants if defined?(@available_tenants)
 
-            tenant_ids = RubyLLM::Agents::Execution
-              .where.not(tenant_id: nil)
-              .distinct
-              .pluck(:tenant_id)
+            tenant_ids = cached_filter_options(:tenant_ids) do
+              RubyLLM::Agents::Execution
+                .where.not(tenant_id: nil)
+                .distinct
+                .pluck(:tenant_id)
+            end
 
             names_by_id = RubyLLM::Agents::Tenant
               .where(tenant_id: tenant_ids)
@@ -183,6 +185,44 @@ module RubyLLM
               .sort_by { |t| t[:label].downcase }
           end
           helper_method :available_tenants
+
+          # Distinct agent types in the tenant-scoped execution history, sorted
+          #
+          # @return [Array<String>]
+          # @api public
+          def available_agent_types
+            cached_filter_options(:agent_types) do
+              tenant_scoped_executions.distinct.pluck(:agent_type).compact.sort
+            end
+          end
+
+          # Distinct model IDs in the tenant-scoped execution history, sorted
+          #
+          # @return [Array<String>]
+          # @api public
+          def available_model_ids
+            cached_filter_options(:model_ids) do
+              tenant_scoped_executions.where.not(model_id: nil).distinct.pluck(:model_id).sort
+            end
+          end
+
+          # Caches one of the DISTINCT scans behind the dashboard's filter
+          # dropdowns.
+          #
+          # These scans have no WHERE clause an index can serve, so on a large
+          # executions table each is a full index scan, and several dashboard
+          # pages run two or three of them per request. The lists only change
+          # when a brand-new agent, model or tenant appears, so a short TTL is
+          # a fair trade: a new value shows up in the dropdown within five
+          # minutes, and filtering by it via URL params works immediately.
+          #
+          # @param key [Symbol] Which option list
+          # @return [Array]
+          # @api private
+          def cached_filter_options(key, &block)
+            Rails.cache.fetch(["ruby_llm_agents", "filter_options", key, current_tenant_id],
+              expires_in: 5.minutes, &block)
+          end
         end)
       end
 

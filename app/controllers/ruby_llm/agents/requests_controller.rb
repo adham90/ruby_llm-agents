@@ -28,8 +28,8 @@ module RubyLLM
             "MIN(started_at) AS started_at",
             "MAX(completed_at) AS completed_at",
             "SUM(duration_ms) AS total_duration_ms",
-            "GROUP_CONCAT(DISTINCT agent_type) AS agent_types_list",
-            "GROUP_CONCAT(DISTINCT status) AS statuses_list",
+            "#{distinct_list_sql("agent_type")} AS agent_types_list",
+            "#{distinct_list_sql("status")} AS statuses_list",
             "MAX(created_at) AS latest_created_at"
           )
           .group(:request_id)
@@ -38,16 +38,16 @@ module RubyLLM
         days = params[:days].to_i
         scope = scope.where("created_at >= ?", days.days.ago) if days > 0
 
-        result = paginate_requests(scope)
+        # One query for the distinct request count and total cost; the count
+        # is shared with pagination instead of being run a second time.
+        total_requests, total_cost = Execution
+          .where.not(request_id: [nil, ""])
+          .pick(Arel.sql("COUNT(DISTINCT request_id)"), Arel.sql("COALESCE(SUM(total_cost), 0)"))
+        @stats = {total_requests: total_requests.to_i, total_cost: (total_cost || 0).to_d.round(6)}
+
+        result = paginate_requests(scope, total_count: @stats[:total_requests])
         @requests = result[:records]
         @pagination = result[:pagination]
-
-        # Stats
-        total_scope = Execution.where.not(request_id: [nil, ""])
-        @stats = {
-          total_requests: total_scope.distinct.count(:request_id),
-          total_cost: total_scope.sum(:total_cost) || 0
-        }
       end
 
       # Shows a single tracked request with all its executions
@@ -90,14 +90,19 @@ module RubyLLM
         ALLOWED_SORT_COLUMNS.include?(column) ? column : "latest_created_at"
       end
 
-      def paginate_requests(scope)
+      # Comma-separated DISTINCT values of a column per group.
+      # GROUP_CONCAT exists on SQLite and MySQL; PostgreSQL spells it STRING_AGG.
+      def distinct_list_sql(column)
+        if Execution.connection.adapter_name.downcase.include?("postg")
+          "STRING_AGG(DISTINCT #{column}, ',')"
+        else
+          "GROUP_CONCAT(DISTINCT #{column})"
+        end
+      end
+
+      def paginate_requests(scope, total_count:)
         page = [(params[:page] || 1).to_i, 1].max
         per_page = RubyLLM::Agents.configuration.per_page
-
-        total_count = Execution
-          .where.not(request_id: [nil, ""])
-          .distinct
-          .count(:request_id)
 
         sorted = scope.order("#{@sort_column} #{@sort_direction.upcase}")
         offset = (page - 1) * per_page

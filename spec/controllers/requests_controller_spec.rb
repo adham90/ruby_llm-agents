@@ -18,6 +18,18 @@ RSpec.describe RubyLLM::Agents::RequestsController, type: :request do
       expect(response).to have_http_status(:ok)
     end
 
+    # Regression: the distinct request count ran twice — once for pagination,
+    # once for the stats strip — alongside a separate SUM.
+    it "computes the stats strip and pagination count in one query" do
+      create(:execution, request_id: "req_001")
+      create(:execution, request_id: "req_002")
+
+      queries = capture_sql { get engine_routes.url_helpers.requests_path }
+
+      expect(queries.grep(/COUNT\(DISTINCT/).size).to eq(1)
+      expect(queries.grep(/SELECT SUM\(/)).to be_empty
+    end
+
     it "lists requests grouped by request_id" do
       create(:execution, request_id: "req_001", agent_type: "AgentA")
       create(:execution, request_id: "req_001", agent_type: "AgentB")

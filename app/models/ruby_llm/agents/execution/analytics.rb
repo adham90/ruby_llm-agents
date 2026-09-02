@@ -79,8 +79,22 @@ module RubyLLM
           # @return [Hash] Statistics including count, costs, tokens, duration, rates
           def stats_for(agent_type, period: :today)
             scope = by_agent(agent_type).public_send(period)
-            count = scope.count
-            total_cost = scope.total_cost_sum || 0
+
+            # One aggregate query. The agents index calls this once per agent,
+            # so the eight separate count/sum/avg scans it used to run became
+            # eight full scans of that agent's history per row.
+            count, cost, tokens, avg_tok, avg_dur, successful, failed = scope.pick(
+              Arel.sql("COUNT(*)"),
+              Arel.sql("COALESCE(SUM(total_cost), 0)"),
+              Arel.sql("COALESCE(SUM(total_tokens), 0)"),
+              Arel.sql("AVG(total_tokens)"),
+              Arel.sql("AVG(duration_ms)"),
+              Arel.sql("SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END)"),
+              Arel.sql("SUM(CASE WHEN status IN ('error', 'timeout') THEN 1 ELSE 0 END)")
+            )
+
+            count = count.to_i
+            total_cost = (cost || 0).to_d.round(6)
 
             {
               agent_type: agent_type,
@@ -88,12 +102,25 @@ module RubyLLM
               count: count,
               total_cost: total_cost,
               avg_cost: (count > 0) ? (total_cost / count).round(6) : 0,
-              total_tokens: scope.total_tokens_sum || 0,
-              avg_tokens: scope.avg_tokens&.round || 0,
-              avg_duration_ms: scope.avg_duration&.round || 0,
-              success_rate: calculate_success_rate(scope),
-              error_rate: calculate_error_rate(scope)
+              total_tokens: tokens.to_i,
+              avg_tokens: avg_tok&.round || 0,
+              avg_duration_ms: avg_dur&.round || 0,
+              success_rate: (count > 0) ? (successful.to_f / count * 100).round(2) : 0.0,
+              error_rate: (count > 0) ? (failed.to_f / count * 100).round(2) : 0.0
             }
+          end
+
+          # Count, cost and token totals for the current scope in one query
+          #
+          # @return [Hash] :total_count, :total_cost (BigDecimal), :total_tokens
+          def totals
+            count, cost, tokens = pick(
+              Arel.sql("COUNT(*)"),
+              Arel.sql("COALESCE(SUM(total_cost), 0)"),
+              Arel.sql("COALESCE(SUM(total_tokens), 0)")
+            )
+
+            {total_count: count.to_i, total_cost: (cost || 0).to_d.round(6), total_tokens: tokens.to_i}
           end
 
           # Compares performance between two agent versions
@@ -470,36 +497,33 @@ module RubyLLM
           #
           # @return [Float] Percentage of executions that were cache hits (0.0-100.0)
           def cache_hit_rate
-            total = count
-            return 0.0 if total.zero?
-
-            (cached.count.to_f / total * 100).round(1)
+            boolean_rate("cache_hit")
           end
 
           # Streaming execution rate percentage
           #
           # @return [Float] Percentage of executions that used streaming (0.0-100.0)
           def streaming_rate
-            total = count
-            return 0.0 if total.zero?
-
-            (streaming.count.to_f / total * 100).round(1)
+            boolean_rate("streaming")
           end
 
           # Average time to first token for streaming executions
           #
-          # time_to_first_token_ms is stored in metadata JSON, so we use
-          # Ruby-level calculation instead of SQL aggregation.
+          # time_to_first_token_ms lives in the metadata JSON column, so the
+          # average is computed from a JSON extract in SQL rather than by
+          # loading every streaming execution's metadata into Ruby.
           #
           # @return [Integer, nil] Average TTFT in milliseconds, or nil if no data
           def avg_time_to_first_token
-            ttft_values = streaming
-              .where("metadata IS NOT NULL")
-              .pluck(:metadata)
-              .filter_map { |m| m&.dig("time_to_first_token_ms") }
-            return nil if ttft_values.empty?
+            ttft = if connection.adapter_name.downcase.include?("sqlite")
+              "json_extract(metadata, '$.time_to_first_token_ms')"
+            else
+              "(metadata->>'time_to_first_token_ms')::numeric"
+            end
 
-            (ttft_values.sum.to_f / ttft_values.size).round(0)
+            streaming.metadata_present("time_to_first_token_ms")
+              .pick(Arel.sql("AVG(#{ttft})"))
+              &.round
           end
 
           # Finish reason distribution
@@ -790,15 +814,41 @@ module RubyLLM
 
           # SQL condition for boolean cache_hit column
           #
-          # SQLite stores booleans as 1/0, PostgreSQL as TRUE/FALSE.
-          #
           # @return [String] SQL condition fragment
           def cache_hit_condition
+            true_condition("cache_hit")
+          end
+
+          # SQL condition for a boolean column being true
+          #
+          # SQLite stores booleans as 1/0, PostgreSQL as TRUE/FALSE.
+          #
+          # @param column [String] Column name (internal literal, never user input)
+          # @return [String] SQL condition fragment
+          def true_condition(column)
             if connection.adapter_name.downcase.include?("sqlite")
-              "cache_hit = 1"
+              "#{column} = 1"
             else
-              "cache_hit = TRUE"
+              "#{column} = TRUE"
             end
+          end
+
+          # Percentage of the current scope where a boolean column is true
+          #
+          # One query (count plus conditional sum) rather than a count of the
+          # scope followed by a count of the filtered scope.
+          #
+          # @param column [String] Column name (internal literal, never user input)
+          # @return [Float] 0.0-100.0
+          def boolean_rate(column)
+            total, hits = pick(
+              Arel.sql("COUNT(*)"),
+              Arel.sql("SUM(CASE WHEN #{true_condition(column)} THEN 1 ELSE 0 END)")
+            )
+            total = total.to_i
+            return 0.0 if total.zero?
+
+            (hits.to_f / total * 100).round(1)
           end
         end
       end

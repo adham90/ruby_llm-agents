@@ -174,11 +174,13 @@ module RubyLLM
       #
       # @return [void]
       def load_filter_options
-        # Single query to get all filter options (fixes N+1)
+        # Single DISTINCT query for all filter options. Without DISTINCT this
+        # plucked one row per execution the agent has ever run.
         base = tenant_scoped_executions.by_agent(@agent_type)
         filter_data = base
           .where.not(model_id: nil)
           .or(base.where.not(temperature: nil))
+          .distinct
           .pluck(:model_id, :temperature)
 
         @models = filter_data.map(&:first).compact.uniq.sort
@@ -192,15 +194,14 @@ module RubyLLM
       # @return [void]
       def load_filtered_executions
         base_scope = build_filtered_scope
-        result = paginate(base_scope)
+        @filter_stats = base_scope.totals
+
+        # error_detail: the table renders error_message per row, and the full
+        # detail row carries every prompt and response payload.
+        result = paginate(base_scope.preload(:error_detail),
+          total_count: @filter_stats[:total_count])
         @executions = result[:records]
         @pagination = result[:pagination]
-
-        @filter_stats = {
-          total_count: result[:pagination][:total_count],
-          total_cost: base_scope.sum(:total_cost),
-          total_tokens: base_scope.sum(:total_tokens)
-        }
       end
 
       # Builds a filtered scope for the current agent's executions

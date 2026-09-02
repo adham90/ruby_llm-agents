@@ -132,6 +132,37 @@ RSpec.describe RubyLLM::Agents::AgentsController, type: :controller do
   end
 
   describe "GET #show" do
+    # Regressions for the per-agent page's query shape.
+    context "query shape" do
+      before { create_list(:execution, 3, agent_type: "TestAgent") }
+
+      it "loads filter options with a DISTINCT query instead of one row per execution" do
+        queries = capture_sql { get :show, params: {id: "TestAgent"} }
+
+        expect(queries.grep(/SELECT DISTINCT .*"temperature"/)).to be_present
+      end
+
+      it "runs one totals query and no standalone COUNT or SUM scans of the agent's history" do
+        queries = capture_sql { get :show, params: {id: "TestAgent"} }
+
+        totals = queries.grep(/COUNT\(\*\), COALESCE\(SUM\(total_cost\), 0\), COALESCE\(SUM\(total_tokens\), 0\) FROM/)
+        expect(totals.size).to eq(1)
+        expect(queries.grep(/SELECT SUM\(/)).to be_empty
+        expect(queries.grep(/SELECT COUNT\(\*\) FROM/)).to be_empty
+      end
+
+      it "preloads only error_message for the executions table" do
+        create(:execution, :failed, agent_type: "TestAgent")
+
+        get :show, params: {id: "TestAgent"}
+
+        row = assigns(:executions).find(&:status_error?)
+        expect(row.association(:error_detail)).to be_loaded
+        expect(row.error_detail.attributes.keys).to contain_exactly("id", "execution_id", "error_message")
+        expect(row.association(:detail)).not_to be_loaded
+      end
+    end
+
     let!(:execution) { create(:execution, agent_type: "TestAgent") }
 
     it "returns http success" do
