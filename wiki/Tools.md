@@ -372,6 +372,7 @@ param :count, desc: "Number of items", type: :integer
 
 ## Related Pages
 
+- [Parallel Search MCP example](https://github.com/adham90/ruby_llm-agents/tree/main/examples/parallel_search) - Opt-in anonymous web search and page extraction with a runnable research agent
 - [Agent DSL](Agent-DSL) - Full agent configuration reference
 - [Result Object](Result-Object) - Accessing tool call data
 - [Execution Tracking](Execution-Tracking) - Tool calls in execution logs

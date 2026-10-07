@@ -35,3 +35,6 @@ ruby_llm-agents.wiki/
 
 # Internal plan files
 /plans/
+
+# Optional example bundle configuration
+/examples/*/.bundle/
