@@ -53,6 +53,7 @@ module RubyLLM
           layout "ruby_llm/agents/application"
           helper RubyLLM::Agents::ApplicationHelper
           before_action :authenticate_dashboard!
+          around_action :limit_query_time, if: -> { request.get? }
 
           rescue_from ::ActiveRecord::StatementInvalid do |e|
             if e.message.include?("ruby_llm_agents_")
@@ -65,7 +66,53 @@ module RubyLLM
             end
           end
 
+          # Declared after the StatementInvalid handler so it wins: a cancelled
+          # query is a StatementInvalid too, and must not be reported as a
+          # pending migration.
+          rescue_from ::ActiveRecord::QueryCanceled do
+            @query_timeout = RubyLLM::Agents.configuration.dashboard_query_timeout
+
+            if request.format.json?
+              render json: {error: "query_timeout"}, status: :service_unavailable
+            else
+              render "ruby_llm/agents/shared/query_timeout", formats: [:html], status: :service_unavailable
+            end
+          end
+
           private
+
+          # Runs the page under config.dashboard_query_timeout
+          #
+          # Every dashboard page aggregates over a user-chosen window of the
+          # executions table. Without a ceiling, a wide window on a large
+          # table keeps running after the web server has timed the request
+          # out — the user sees a 500 and the database keeps scanning. With
+          # it, the database cancels the query and the QueryCanceled handler
+          # above explains what to narrow.
+          #
+          # @return [void]
+          # @api private
+          def limit_query_time(&block)
+            RubyLLM::Agents::Execution.with_statement_timeout(
+              RubyLLM::Agents.configuration.dashboard_query_timeout, &block
+            )
+          end
+
+          # Caches an expensive dashboard aggregate for a short while
+          #
+          # Dashboard figures are read far more often than they meaningfully
+          # change (reloads, pagination, several people watching the same
+          # page), and each one is a scan of a time window. The current
+          # tenant is always part of the key.
+          #
+          # @param key [Array] Identifies the figure and its filters
+          # @param expires_in [ActiveSupport::Duration] How stale it may get
+          # @return [Object] The block's value (nil is cached too)
+          # @api private
+          def cached_stats(*key, expires_in: 1.minute, &block)
+            Rails.cache.fetch(["ruby_llm_agents", "stats", current_tenant_id, *key],
+              expires_in: expires_in, race_condition_ttl: 10.seconds, &block)
+          end
 
           # Authenticates dashboard access using configured method
           #
@@ -160,20 +207,12 @@ module RubyLLM
           # configured name; legacy or string-only tenants fall back to the raw
           # tenant_id so nothing disappears from the filter.
           #
-          # Two queries total — one DISTINCT pluck on executions, one pluck on
-          # tenants — regardless of how many tenant_ids exist.
-          #
           # @return [Array<Hash>] Entries shaped as { value:, label: }
           # @api public
           def available_tenants
             return @available_tenants if defined?(@available_tenants)
 
-            tenant_ids = cached_filter_options(:tenant_ids) do
-              RubyLLM::Agents::Execution
-                .where.not(tenant_id: nil)
-                .distinct
-                .pluck(:tenant_id)
-            end
+            tenant_ids = cached_filter_options(:tenant_id)
 
             names_by_id = RubyLLM::Agents::Tenant
               .where(tenant_id: tenant_ids)
@@ -186,42 +225,43 @@ module RubyLLM
           end
           helper_method :available_tenants
 
-          # Distinct agent types in the tenant-scoped execution history, sorted
+          # Distinct agent types in the execution history, sorted
           #
           # @return [Array<String>]
           # @api public
           def available_agent_types
-            cached_filter_options(:agent_types) do
-              tenant_scoped_executions.distinct.pluck(:agent_type).compact.sort
-            end
+            cached_filter_options(:agent_type)
           end
 
-          # Distinct model IDs in the tenant-scoped execution history, sorted
+          # Distinct model IDs in the execution history, sorted
           #
           # @return [Array<String>]
           # @api public
           def available_model_ids
-            cached_filter_options(:model_ids) do
-              tenant_scoped_executions.where.not(model_id: nil).distinct.pluck(:model_id).sort
-            end
+            cached_filter_options(:model_id)
           end
 
-          # Caches one of the DISTINCT scans behind the dashboard's filter
-          # dropdowns.
+          # Distinct values of an executions column, for a filter dropdown
           #
-          # These scans have no WHERE clause an index can serve, so on a large
-          # executions table each is a full index scan, and several dashboard
-          # pages run two or three of them per request. The lists only change
-          # when a brand-new agent, model or tenant appears, so a short TTL is
-          # a fair trade: a new value shows up in the dropdown within five
-          # minutes, and filtering by it via URL params works immediately.
+          # Read with Execution.distinct_values, which walks the column's
+          # index rather than scanning the table, and cached on top of that:
+          # the lists only change when a brand-new agent, model or tenant
+          # appears, and several pages need two or three of them per request.
+          # A new value shows up in the dropdown within five minutes;
+          # filtering by it via URL params works immediately.
           #
-          # @param key [Symbol] Which option list
-          # @return [Array]
+          # The lists are deliberately not narrowed to the current tenant.
+          # Doing so means reading every one of that tenant's executions, and
+          # agent and model names are application configuration rather than
+          # tenant data.
+          #
+          # @param column [Symbol] :agent_type, :model_id or :tenant_id
+          # @return [Array<String>]
           # @api private
-          def cached_filter_options(key, &block)
-            Rails.cache.fetch(["ruby_llm_agents", "filter_options", key, current_tenant_id],
-              expires_in: 5.minutes, &block)
+          def cached_filter_options(column)
+            Rails.cache.fetch(["ruby_llm_agents", "filter_options", column], expires_in: 5.minutes) do
+              RubyLLM::Agents::Execution.distinct_values(column)
+            end
           end
         end)
       end

@@ -82,6 +82,31 @@ class CreateRubyLLMAgentsExecutions < ActiveRecord::Migration<%= migration_versi
     add_index :ruby_llm_agents_executions, [:model_id, :status]
     add_index :ruby_llm_agents_executions, [:cache_hit, :created_at]
 
+    # Covering index behind the dashboard's aggregate queries. They read a
+    # time range and only these columns, so with this index they are answered
+    # without fetching the (much wider) table rows. PostgreSQL keeps the extra
+    # columns out of the key with INCLUDE; SQLite takes them as key columns.
+    analytics_columns = %w[
+      agent_type model_id chosen_model_id status error_class tenant_id parent_execution_id
+      total_cost total_tokens input_tokens output_tokens duration_ms cache_hit streaming
+    ]
+    case connection.adapter_name.downcase
+    when /postg/
+      reversible do |dir|
+        dir.up do
+          execute "CREATE INDEX idx_executions_analytics ON ruby_llm_agents_executions " \
+                  "(created_at) INCLUDE (#{analytics_columns.join(", ")})"
+        end
+        # Dropped explicitly: both this and the plain created_at index are
+        # keyed on created_at alone, so reverting that one by column would
+        # otherwise be ambiguous.
+        dir.down { execute "DROP INDEX IF EXISTS idx_executions_analytics" }
+      end
+    when /sqlite/
+      add_index :ruby_llm_agents_executions, ["created_at", *analytics_columns],
+                name: "idx_executions_analytics"
+    end
+
     # Foreign keys for execution hierarchy
     add_foreign_key :ruby_llm_agents_executions, :ruby_llm_agents_executions,
                     column: :parent_execution_id, on_delete: :nullify

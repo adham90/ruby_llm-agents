@@ -38,14 +38,27 @@ module RubyLLM
 
       # Shows a single tenant's budget details
       #
+      # Usage figures cover the current month, from one grouped scan of it
+      # (see Execution.breakdown). A tenant's executions are scattered across
+      # the whole table, so the all-time versions of these figures were the
+      # most expensive queries in the dashboard.
+      #
       # @return [void]
       def show
         @tenant = TenantBudget.find(params[:id])
-        @executions = tenant_executions(@tenant.tenant_id).recent.limit(10)
-        @usage_stats = calculate_usage_stats(@tenant)
-        @usage_by_agent = @tenant.usage_by_agent(period: nil)
-        @usage_by_model = @tenant.usage_by_model(period: nil)
-        load_tenant_analytics
+        @executions = tenant_executions(@tenant.tenant_id).preload(:error_detail).recent(10)
+
+        month = Execution::Breakdown.new(cached_tenant_stats(:month) do
+          @tenant.executions.where(created_at: Time.current.all_month).breakdown.rows
+        end)
+        @usage_stats = calculate_usage_stats(@tenant, month)
+        @usage_by_agent = month.agent_stats.transform_values do |stats|
+          {cost: stats[:total_cost], tokens: stats[:total_tokens], count: stats[:count]}
+        end
+        @usage_by_model = month.configured_model_usage.to_h do |usage|
+          [usage[:model_id], {cost: usage[:cost], tokens: usage[:tokens], count: usage[:runs]}]
+        end
+        load_tenant_analytics(month)
       end
 
       # Renders the edit form for a tenant budget
@@ -101,45 +114,56 @@ module RubyLLM
         Execution.by_tenant(tenant_id)
       end
 
+      # Caches one of the tenant page's figures
+      def cached_tenant_stats(name, expires_in: 5.minutes, &block)
+        cached_stats(:tenant, @tenant.tenant_id, name, expires_in: expires_in, &block)
+      end
+
       # Calculates usage statistics for a tenant
       #
       # @param tenant [TenantBudget] The tenant budget record
-      # @return [Hash] Usage statistics
-      def calculate_usage_stats(tenant)
-        scope = tenant_executions(tenant.tenant_id)
-        today_scope = scope.where("created_at >= ?", Time.current.beginning_of_day)
-        month_scope = scope.where("created_at >= ?", Time.current.beginning_of_month)
-
-        daily_spend = today_scope.sum(:total_cost) || 0
-        monthly_spend = month_scope.sum(:total_cost) || 0
-        daily_tokens = today_scope.sum(:total_tokens) || 0
-        monthly_tokens = month_scope.sum(:total_tokens) || 0
+      # @param month [Execution::Breakdown] The tenant's executions this month
+      # @return [Hash] Usage statistics; the total_* keys cover this month
+      def calculate_usage_stats(tenant, month)
+        totals = month.totals
+        daily_spend, daily_tokens = tenant_executions(tenant.tenant_id)
+          .where("created_at >= ?", Time.current.beginning_of_day)
+          .pick(Arel.sql("COALESCE(SUM(total_cost), 0)"), Arel.sql("COALESCE(SUM(total_tokens), 0)"))
 
         {
           daily_spend: daily_spend,
-          monthly_spend: monthly_spend,
+          monthly_spend: totals[:cost],
           daily_tokens: daily_tokens,
-          monthly_tokens: monthly_tokens,
+          monthly_tokens: totals[:tokens],
           daily_spend_percentage: percentage_used(daily_spend, tenant.effective_daily_limit),
-          monthly_spend_percentage: percentage_used(monthly_spend, tenant.effective_monthly_limit),
+          monthly_spend_percentage: percentage_used(totals[:cost], tenant.effective_monthly_limit),
           daily_token_percentage: percentage_used(daily_tokens, tenant.effective_daily_token_limit),
-          monthly_token_percentage: percentage_used(monthly_tokens, tenant.effective_monthly_token_limit),
-          total_executions: scope.count,
-          total_cost: scope.sum(:total_cost) || 0,
-          total_tokens: scope.sum(:total_tokens) || 0
+          monthly_token_percentage: percentage_used(totals[:tokens], tenant.effective_monthly_token_limit),
+          total_executions: totals[:total],
+          total_cost: totals[:cost],
+          total_tokens: totals[:tokens],
+          success_count: totals[:success]
         }
       end
 
       # Loads trend data and period comparison for the tenant analytics section.
       #
+      # @param month [Execution::Breakdown] The tenant's executions this month
       # @return [void]
-      def load_tenant_analytics
+      def load_tenant_analytics(month)
         # 30-day daily cost/tokens trend
-        @daily_trend = @tenant.usage_by_day(period: 30.days.ago..Time.current)
+        @daily_trend = cached_tenant_stats(:daily_trend) do
+          @tenant.usage_by_day(period: 30.days.ago..Time.current)
+        end
 
-        # Period comparison: this month vs last month
-        this_month = @tenant.usage_summary(period: :this_month)
-        last_month = @tenant.usage_summary(period: :last_month)
+        # Period comparison: this month vs last month. Last month no longer
+        # changes, so one aggregate of it is kept for an hour.
+        totals = month.totals
+        last = cached_tenant_stats(:last_month, expires_in: 1.hour) do
+          @tenant.executions.where(created_at: 1.month.ago.all_month).totals
+        end
+        this_month = {cost: totals[:cost], tokens: totals[:tokens], executions: totals[:total]}
+        last_month = {cost: last[:total_cost], tokens: last[:total_tokens], executions: last[:total_count]}
         @period_comparison = {
           this_month: this_month,
           last_month: last_month,
@@ -153,10 +177,10 @@ module RubyLLM
           @period_comparison[:avg_cost_last], @period_comparison[:avg_cost_this]
         )
 
-        # Error cost: money spent on failed executions
-        error_scope = @tenant.executions.where(status: "error")
-        @error_cost = error_scope.sum(:total_cost) || 0
-        @error_count = error_scope.count
+        # Error cost: money spent on failed executions this month
+        error_cost = month.error_cost
+        @error_cost = error_cost[:total_cost]
+        @error_count = error_cost[:total_count]
       end
 
       # Calculates percentage change between two values
@@ -167,25 +191,21 @@ module RubyLLM
         ((new_val.to_f - old_val.to_f) / old_val.to_f * 100).round(1)
       end
 
-      # Preloads cost and last-execution data for all tenants in one query each,
-      # avoiding N+1 queries in the index view.
+      # Builds the cost and last-execution lookups for the index view
+      #
+      # Read from the counter columns each tenant row already carries (they
+      # are updated on every execution), rather than by grouping the whole
+      # executions table by tenant. Cost is month-to-date; a counter that has
+      # not been reset yet this month belongs to an earlier one.
       #
       # @return [void]
       def preload_tenant_index_data
-        @tenant_costs = {}
-        @tenant_last_executions = {}
-        tenant_ids = @tenants.map(&:tenant_id)
-        return if tenant_ids.empty?
+        month_start = Date.current.beginning_of_month
 
-        # Batch-load total cost per tenant
-        @tenant_costs = Execution.where(tenant_id: tenant_ids)
-          .group(:tenant_id)
-          .sum(:total_cost)
-
-        # Batch-load last execution time per tenant
-        @tenant_last_executions = Execution.where(tenant_id: tenant_ids)
-          .group(:tenant_id)
-          .maximum(:created_at)
+        @tenant_costs = @tenants.to_h do |tenant|
+          [tenant.tenant_id, (tenant.monthly_reset_date == month_start) ? tenant.monthly_cost_spent : 0]
+        end
+        @tenant_last_executions = @tenants.to_h { |tenant| [tenant.tenant_id, tenant.last_execution_at] }
       end
 
       # Parses and validates sort parameters for tenants list

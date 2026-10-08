@@ -51,7 +51,7 @@
         class: "w-20 flex-shrink-0 text-right hidden sm:block hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('monthly_limit')}" %>
     <%= link_to "enforcement#{sort_arrow.call('enforcement')}".html_safe, sort_url.call("enforcement"),
         class: "w-16 flex-shrink-0 hidden md:block hover:text-gray-600 dark:hover:text-gray-300 #{sort_active.call('enforcement')}" %>
-    <span class="w-16 flex-shrink-0 text-right hidden md:block">cost</span>
+    <span class="w-16 flex-shrink-0 text-right hidden md:block" title="Cost this month">cost/mo</span>
     <span class="w-24 flex-shrink-0 text-right">last run</span>
   </div>
 

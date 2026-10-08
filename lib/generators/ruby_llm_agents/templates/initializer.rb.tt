@@ -132,6 +132,11 @@ RubyLLM::Agents.configure do |config|
   # Number of recent executions shown on the dashboard home
   # config.recent_executions_limit = 10
 
+  # Seconds a single dashboard query may run before the database cancels it
+  # (PostgreSQL only). Keeps a wide time range on a large executions table from
+  # tying up a web worker and the database; nil disables it.
+  # config.dashboard_query_timeout = 5
+
   # ============================================
   # Reliability Defaults
   # ============================================

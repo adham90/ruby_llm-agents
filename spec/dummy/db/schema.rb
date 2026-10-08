@@ -83,6 +83,10 @@ ActiveRecord::Schema.define do
   add_index :ruby_llm_agents_executions, [:status, :created_at]
   add_index :ruby_llm_agents_executions, [:model_id, :status]
   add_index :ruby_llm_agents_executions, [:cache_hit, :created_at]
+  add_index :ruby_llm_agents_executions,
+    %i[created_at agent_type model_id chosen_model_id status error_class tenant_id parent_execution_id
+      total_cost total_tokens input_tokens output_tokens duration_ms cache_hit streaming],
+    name: "idx_executions_analytics"
 
   # Execution details table (large payloads)
   create_table :ruby_llm_agents_execution_details, force: :cascade do |t|

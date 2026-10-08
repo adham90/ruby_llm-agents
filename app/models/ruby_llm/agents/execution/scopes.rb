@@ -153,9 +153,9 @@ module RubyLLM
                 joined.where("json_extract(#{detail_table}.parameters, ?) IS NOT NULL", "$.#{key}")
               end
             elsif value
-              joined.where("#{detail_table}.parameters @> ?", {key => value}.to_json)
+              joined.where("#{detail_table}.parameters::jsonb @> ?", {key => value}.to_json)
             else
-              joined.where("#{detail_table}.parameters ? :key", key: key.to_s)
+              joined.where("#{detail_table}.parameters::jsonb ? :key", key: key.to_s)
             end
           end
 
@@ -338,7 +338,7 @@ module RubyLLM
             if connection.adapter_name.downcase.include?("sqlite")
               where("json_extract(metadata, ?) = 1", "$.#{key}")
             else
-              where("metadata @> ?", {key.to_s => true}.to_json)
+              where("metadata::jsonb @> ?", {key.to_s => true}.to_json)
             end
           end
 
@@ -353,6 +353,42 @@ module RubyLLM
             else
               where("metadata->>? = ?", key.to_s, value.to_s)
             end
+          end
+
+          # Distinct non-null values of a column, sorted
+          #
+          # `SELECT DISTINCT col` reads every row (or every index entry) to
+          # return a handful of values, which takes seconds on a table with
+          # millions of executions, and PostgreSQL before 18 has no skip scan
+          # to avoid it. When an index leads with the column this walks the
+          # index instead: take the smallest value, then repeatedly the
+          # smallest value greater than the last one. The cost is one index
+          # probe per distinct value, whatever the row count.
+          #
+          # Falls back to a plain DISTINCT when called on anything narrower
+          # than the whole table (the walk would ignore the filter) or when no
+          # index leads with the column (each probe would be a full scan).
+          #
+          # @param column [Symbol, String] A column of the executions table
+          # @return [Array] Sorted distinct values, nil excluded
+          def distinct_values(column)
+            column = column.to_s
+            raise ArgumentError, "Unknown column: #{column}" unless column_names.include?(column)
+
+            walkable = all.to_sql == unscoped.to_sql &&
+              connection.schema_cache.indexes(table_name).any? { |index| Array(index.columns).first == column }
+            return where.not(column => nil).distinct.pluck(column).sort unless walkable
+
+            col = connection.quote_column_name(column)
+            connection.select_values(<<~SQL.squish, "#{name} Distinct Values").sort
+              WITH RECURSIVE walk(v) AS (
+                SELECT MIN(#{col}) FROM #{quoted_table_name}
+                UNION ALL
+                SELECT (SELECT MIN(#{col}) FROM #{quoted_table_name} WHERE #{col} > walk.v)
+                FROM walk WHERE walk.v IS NOT NULL
+              )
+              SELECT v FROM walk WHERE v IS NOT NULL
+            SQL
           end
 
           # Returns sum of total_cost for the current scope

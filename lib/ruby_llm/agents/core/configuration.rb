@@ -109,6 +109,14 @@ module RubyLLM
       #   Number of recent executions shown on the dashboard home.
       #   @return [Integer] Limit for recent executions (default: 10)
 
+      # @!attribute [rw] dashboard_query_timeout
+      #   Seconds a single dashboard query may run before the database cancels
+      #   it. A cancelled query renders a "narrow the time range" notice
+      #   instead of leaving the request (and the database) grinding on a scan
+      #   of the whole executions table. Enforced on PostgreSQL only; a
+      #   stricter statement_timeout already set on the connection wins.
+      #   @return [Numeric, nil] Timeout in seconds, or nil to disable (default: 5)
+
       # @!attribute [rw] job_retry_attempts
       #   Number of retry attempts for the async logging job on failure.
       #   @return [Integer] Retry attempts (default: 3)
@@ -494,6 +502,7 @@ module RubyLLM
         :anomaly_duration_threshold,
         :per_page,
         :recent_executions_limit,
+        :dashboard_query_timeout,
         :job_retry_attempts,
         :messages_summary_max_length,
         :dashboard_auth,
@@ -558,6 +567,15 @@ module RubyLLM
       def recent_executions_limit=(value)
         validate_positive!(:recent_executions_limit, value)
         @recent_executions_limit = value
+      end
+
+      # Sets dashboard_query_timeout with validation
+      #
+      # @param value [Numeric, nil] Seconds (must be > 0), or nil to disable
+      # @raise [ArgumentError] If value is not positive
+      def dashboard_query_timeout=(value)
+        validate_positive!(:dashboard_query_timeout, value) unless value.nil?
+        @dashboard_query_timeout = value
       end
 
       # Sets job_retry_attempts with validation
@@ -702,6 +720,7 @@ module RubyLLM
         @basic_auth_password = nil
         @per_page = 25
         @recent_executions_limit = 10
+        @dashboard_query_timeout = 5
         @job_retry_attempts = 3
 
         # Reliability defaults (all disabled by default for backward compatibility)
@@ -1031,6 +1050,7 @@ module RubyLLM
           dashboard: {
             per_page: per_page,
             recent_executions_limit: recent_executions_limit,
+            dashboard_query_timeout: dashboard_query_timeout,
             dashboard_parent_controller: dashboard_parent_controller,
             basic_auth_username: basic_auth_username,
             dashboard_auth: dashboard_auth&.class&.name

@@ -213,6 +213,7 @@ config.anomaly_duration_threshold = 5_000
 | `dashboard_parent_controller` | `"ApplicationController"` | Parent controller class |
 | `dashboard_per_page` | `25` | Items per page in lists |
 | `dashboard_recent_executions` | `10` | Recent executions on overview |
+| `dashboard_query_timeout` | `5` | Seconds a dashboard query may run before the database cancels it (PostgreSQL only; `nil` disables) |
 
 ```ruby
 # Require admin access
@@ -389,6 +390,7 @@ end
 | `dashboard_auth` | Proc | `->(_) { true }` | Custom auth lambda |
 | `dashboard_per_page` | Integer | `25` | Dashboard records per page |
 | `dashboard_recent_executions` | Integer | `10` | Dashboard recent executions |
+| `dashboard_query_timeout` | Numeric | `5` | Dashboard query time limit in seconds (PostgreSQL) |
 | `anomaly_cost_threshold` | Float | `5.00` | Cost anomaly threshold (USD) |
 | `anomaly_duration_threshold` | Integer | `10_000` | Duration anomaly threshold (ms) |
 | `job_retry_attempts` | Integer | `3` | Background job retries |

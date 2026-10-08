@@ -156,13 +156,18 @@
         <%# Stats %>
         <div id="filter-stats" class="flex items-center justify-between md:justify-end gap-2 py-2 px-3 md:p-0 bg-gray-50 md:bg-transparent dark:bg-gray-700/50 md:dark:bg-transparent rounded-lg md:rounded-none">
           <span class="text-xs text-gray-400 dark:text-gray-500 md:hidden">Results</span>
-          <div class="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
-            <span class="tabular-nums"><%= number_to_human_short(filter_stats[:total_count]) %><span class="md:hidden"> executions</span></span>
-            <span class="text-gray-300 dark:text-gray-600">/</span>
-            <span class="tabular-nums"><%= number_to_human_short(filter_stats[:total_cost], prefix: "$", precision: 2) %></span>
-            <span class="hidden md:inline text-gray-300 dark:text-gray-600">/</span>
-            <span class="hidden md:inline tabular-nums"><%= number_to_human_short(filter_stats[:total_tokens]) %>t</span>
-          </div>
+          <% if filter_stats %>
+            <div class="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+              <span class="tabular-nums"><%= number_to_human_short(filter_stats[:total_count]) %><span class="md:hidden"> executions</span></span>
+              <span class="text-gray-300 dark:text-gray-600">/</span>
+              <span class="tabular-nums"><%= number_to_human_short(filter_stats[:total_cost], prefix: "$", precision: 2) %></span>
+              <span class="hidden md:inline text-gray-300 dark:text-gray-600">/</span>
+              <span class="hidden md:inline tabular-nums"><%= number_to_human_short(filter_stats[:total_tokens]) %>t</span>
+            </div>
+          <% else %>
+            <span class="text-xs text-gray-400 dark:text-gray-500 cursor-help"
+                  title="Too many executions match to total them quickly. Pick a time range to see totals.">totals: pick a time range</span>
+          <% end %>
         </div>
 
         <%# Actions %>

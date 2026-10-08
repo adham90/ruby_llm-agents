@@ -21,6 +21,14 @@ module RubyLLM
     #
     # @api public
     class AgentRegistry
+      # Window the per-agent stats in {.all_with_details} cover
+      #
+      # All-time stats mean reading the whole executions table, which stops
+      # being viable in the millions of rows. A recent window keeps the list
+      # proportional to current traffic, and is the more useful health signal
+      # anyway.
+      STATS_WINDOW = 30.days
+
       class << self
         # Returns all unique agent type names
         #
@@ -47,10 +55,18 @@ module RubyLLM
 
         # Returns detailed info about all agents
         #
+        # Usage figures (:execution_count, :total_cost, :total_tokens,
+        # :avg_duration_ms, :success_rate, :error_rate) cover the last
+        # STATS_WINDOW and come from one grouped query shared by every agent.
+        # They are nil when that query could not finish within
+        # config.dashboard_query_timeout. :last_executed is all-time.
+        #
         # @return [Array<Hash>] Agent info hashes with configuration and stats
         def all_with_details
+          recent = recent_usage
+
           all.map do |agent_type|
-            build_agent_info(agent_type)
+            build_agent_info(agent_type, recent)
           end
         end
 
@@ -183,15 +199,16 @@ module RubyLLM
 
         # Finds agent types from execution history
         #
-        # Cached briefly: this is an unbounded DISTINCT scan of the executions
-        # table, and it only exists to keep deleted agents visible, so a few
-        # minutes of staleness is invisible.
+        # Cached briefly: it only exists to keep deleted agents visible, so a
+        # few minutes of staleness is invisible.
         #
         # @return [Array<String>] Agent class names with execution records
         def execution_agents
           Rails.cache.fetch(["ruby_llm_agents", "agent_registry", "execution_agents"], expires_in: 5.minutes) do
-            Execution.distinct.pluck(:agent_type).compact
+            Execution.distinct_values(:agent_type)
           end
+        rescue ::ActiveRecord::QueryCanceled
+          raise
         rescue => e
           Rails.logger.error("[RubyLLM::Agents] Error loading agents from executions: #{e.message}")
           []
@@ -219,10 +236,11 @@ module RubyLLM
         # Builds detailed info hash for an agent
         #
         # @param agent_type [String] The agent class name
+        # @param recent [Execution::Breakdown, nil] Usage over STATS_WINDOW
         # @return [Hash] Agent info including config and stats
-        def build_agent_info(agent_type)
+        def build_agent_info(agent_type, recent)
           agent_class = find(agent_type)
-          stats = fetch_stats(agent_type)
+          stats = fetch_stats(agent_type, recent)
 
           # Detect the agent type (agent, embedder, speaker, transcriber, image_generator)
           detected_type = detect_agent_type(agent_class)
@@ -246,7 +264,7 @@ module RubyLLM
             avg_duration_ms: stats[:avg_duration_ms],
             success_rate: stats[:success_rate],
             error_rate: stats[:error_rate],
-            last_executed: last_execution_time(agent_type)
+            last_executed: stats[:last_seen] || last_execution_time(agent_type)
           }
         end
 
@@ -264,22 +282,61 @@ module RubyLLM
           nil
         end
 
-        # Fetches statistics for an agent
+        # Usage of every agent over STATS_WINDOW, from one grouped query
+        #
+        # Cached, since the agents list is the same for everyone looking at
+        # it, and best-effort: nil (also cached) when the database cannot
+        # answer within config.dashboard_query_timeout.
+        #
+        # @return [Execution::Breakdown, nil]
+        def recent_usage
+          rows = Rails.cache.fetch(["ruby_llm_agents", "agent_registry", "recent_usage"], expires_in: 5.minutes) do
+            Execution.best_effort(timeout: RubyLLM::Agents.configuration.dashboard_query_timeout) do
+              Execution.where("created_at >= ?", STATS_WINDOW.ago).breakdown.rows
+            end
+          end
+
+          rows && Execution::Breakdown.new(rows)
+        rescue => e
+          Rails.logger.error("[RubyLLM::Agents] Error loading agent stats: #{e.message}")
+          nil
+        end
+
+        # Picks one agent's statistics out of the shared usage breakdown
+        #
+        # Executions recorded under the agent's previous names (aliases) count
+        # towards it.
         #
         # @param agent_type [String] The agent class name
-        # @return [Hash] Statistics hash
-        def fetch_stats(agent_type)
-          Execution.stats_for(agent_type, period: :all_time)
-        rescue
-          {count: 0, total_cost: 0, total_tokens: 0, avg_duration_ms: 0, success_rate: 0, error_rate: 0}
+        # @param recent [Execution::Breakdown, nil] Usage over STATS_WINDOW
+        # @return [Hash] Statistics hash; values are nil when usage is unavailable
+        def fetch_stats(agent_type, recent)
+          return {} unless recent
+
+          totals = recent.for_agents(Execution.resolve_agent_names(agent_type)).totals
+
+          {
+            count: totals[:total],
+            total_cost: totals[:cost],
+            total_tokens: totals[:tokens],
+            avg_duration_ms: totals[:avg_duration_ms],
+            success_rate: totals[:success_rate],
+            error_rate: totals[:error_rate],
+            last_seen: totals[:last_seen]
+          }
         end
 
         # Gets the timestamp of the last execution for an agent
         #
+        # Only needed for agents with no runs inside STATS_WINDOW. One index
+        # probe per name the agent has gone by.
+        #
         # @param agent_type [String] The agent class name
         # @return [Time, nil] Last execution time or nil
         def last_execution_time(agent_type)
-          Execution.by_agent(agent_type).order(created_at: :desc).first&.created_at
+          Execution.resolve_agent_names(agent_type)
+            .filter_map { |name| Execution.where(agent_type: name).maximum(:created_at) }
+            .max
         rescue
           nil
         end

@@ -1,0 +1,50 @@
+# frozen_string_literal: true
+
+# Migration to add the covering index behind the dashboard's aggregate queries
+#
+# Dashboard, analytics and agent stats all aggregate executions over a time
+# range, reading a handful of narrow columns from each row. Fetching those
+# rows from the table drags the wide ones along (metadata JSON, in practice
+# most of each row), so the cost of every figure grows with the size of the
+# range: seconds for 30 days on a table with millions of executions.
+#
+# This index stores the aggregated columns next to created_at, so those
+# queries are answered from the index alone. PostgreSQL keeps them out of the
+# key with INCLUDE; SQLite takes them as trailing key columns.
+#
+# The index is built CONCURRENTLY on PostgreSQL so executions keep being
+# recorded while it builds. On a large table that takes a while; an
+# interrupted build leaves an invalid index behind, which re-running this
+# migration replaces.
+class AddExecutionsAnalyticsIndex < ActiveRecord::Migration<%= migration_version %>
+  disable_ddl_transaction!
+
+  TABLE = :ruby_llm_agents_executions
+  INDEX = "idx_executions_analytics"
+  COVERED = %i[
+    agent_type model_id chosen_model_id status error_class tenant_id parent_execution_id
+    total_cost total_tokens input_tokens output_tokens duration_ms cache_hit streaming
+  ].freeze
+
+  def up
+    covered = COVERED.select { |column| column_exists?(TABLE, column) }
+
+    case connection.adapter_name.downcase
+    when /postg/
+      execute "DROP INDEX CONCURRENTLY IF EXISTS #{INDEX}"
+      execute "CREATE INDEX CONCURRENTLY #{INDEX} ON #{TABLE} (created_at) INCLUDE (#{covered.join(", ")})"
+    when /sqlite/
+      add_index TABLE, [:created_at, *covered], name: INDEX, if_not_exists: true
+    else
+      say "Skipping #{INDEX}: covering index is only defined for PostgreSQL and SQLite"
+    end
+  end
+
+  def down
+    if connection.adapter_name.downcase.include?("postg")
+      execute "DROP INDEX CONCURRENTLY IF EXISTS #{INDEX}"
+    else
+      remove_index TABLE, name: INDEX, if_exists: true
+    end
+  end
+end

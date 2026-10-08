@@ -13,6 +13,10 @@ module RubyLLM
       VALID_RANGES = %w[7d 30d 90d custom].freeze
       DEFAULT_RANGE = "30d"
 
+      # Every section covers the same filtered range, so they are all derived
+      # from one Breakdown of it: the page scans the range once, plus one
+      # aggregate each for the prior period and the month to date. Results
+      # are cached, since these ranges are wide and move slowly.
       def index
         @selected_range = sanitize_range(params[:range])
         @days = range_to_days(@selected_range)
@@ -21,12 +25,13 @@ module RubyLLM
         load_filter_options
         base = apply_filters(time_scoped(tenant_scoped_executions))
         prior = apply_filters(prior_period_scope(tenant_scoped_executions))
+        breakdown = Execution::Breakdown.new(cached_analytics(:breakdown) { base.breakdown.rows })
 
-        load_summary(base, prior)
+        load_summary(breakdown, cached_analytics(:prior) { aggregate(prior) })
         load_projection(base)
-        load_savings_opportunity(base)
-        load_efficiency(base)
-        load_error_cost(base)
+        load_savings_opportunity(breakdown)
+        @efficiency = breakdown.model_stats
+        load_error_cost(breakdown)
       end
 
       # Returns chart JSON: current period + prior period overlay
@@ -39,7 +44,7 @@ module RubyLLM
         current_scope = apply_filters(time_scoped(tenant_scoped_executions))
         prior_scope = apply_filters(prior_period_scope(tenant_scoped_executions))
 
-        render json: build_overlay_chart_json(current_scope, prior_scope)
+        render json: cached_analytics(:chart) { build_overlay_chart_json(current_scope, prior_scope) }
       end
 
       private
@@ -136,18 +141,23 @@ module RubyLLM
 
       # ── Data loaders ──────────────────────────
 
-      def load_summary(base, prior)
-        current_agg = aggregate(base)
-        prior_agg = aggregate(prior)
+      # Caches one of the page's figures under the selected range and filters
+      def cached_analytics(name, &block)
+        cached_stats(:analytics, name, @selected_range, @custom_from, @custom_to,
+          @filter_agent, @filter_model, @filter_tenant, expires_in: 5.minutes, &block)
+      end
+
+      def load_summary(breakdown, prior_agg)
+        totals = breakdown.totals
 
         @summary = {
-          total_cost: current_agg[:cost],
-          total_runs: current_agg[:count],
-          total_tokens: current_agg[:tokens],
-          avg_cost: (current_agg[:count] > 0) ? (current_agg[:cost].to_f / current_agg[:count]) : 0,
-          avg_tokens: (current_agg[:count] > 0) ? (current_agg[:tokens].to_f / current_agg[:count]).round : 0,
-          cost_change: pct_change(prior_agg[:cost], current_agg[:cost]),
-          runs_change: pct_change(prior_agg[:count], current_agg[:count]),
+          total_cost: totals[:cost],
+          total_runs: totals[:total],
+          total_tokens: totals[:tokens],
+          avg_cost: (totals[:total] > 0) ? (totals[:cost] / totals[:total]) : 0,
+          avg_tokens: (totals[:total] > 0) ? (totals[:tokens].to_f / totals[:total]).round : 0,
+          cost_change: pct_change(prior_agg[:cost], totals[:cost]),
+          runs_change: pct_change(prior_agg[:count], totals[:total]),
           prior_cost: prior_agg[:cost],
           prior_runs: prior_agg[:count]
         }
@@ -159,8 +169,10 @@ module RubyLLM
         # Calculate daily burn rate and project to end of month
         daily_rate = @summary[:total_cost].to_f / @days
         days_left = (Date.current.end_of_month - Date.current).to_i
-        month_so_far = base.where("created_at >= ?", Date.current.beginning_of_month.beginning_of_day)
-          .sum(:total_cost).to_f
+        month_so_far = cached_analytics(:month_so_far) do
+          base.where("created_at >= ?", Date.current.beginning_of_month.beginning_of_day)
+            .sum(:total_cost).to_f
+        end
 
         @projection = {
           daily_rate: daily_rate,
@@ -170,31 +182,9 @@ module RubyLLM
         }
       end
 
-      def load_savings_opportunity(base)
+      def load_savings_opportunity(breakdown)
         # Find the most expensive model and suggest switching to the cheapest
-        models = base.where.not(model_id: nil)
-          .select(
-            :model_id,
-            Arel.sql("COUNT(*) AS exec_count"),
-            Arel.sql("COALESCE(SUM(total_cost), 0) AS sum_cost"),
-            Arel.sql("COALESCE(SUM(total_tokens), 0) AS sum_tokens")
-          )
-          .group(:model_id)
-          .order(Arel.sql("sum_cost DESC"))
-
-        model_data = models.map do |row|
-          count = row["exec_count"].to_i
-          cost = row["sum_cost"].to_f
-          tokens = row["sum_tokens"].to_i
-          {
-            model_id: row.model_id,
-            runs: count,
-            cost: cost,
-            tokens: tokens,
-            cost_per_run: (count > 0) ? (cost / count) : 0,
-            cost_per_1k_tokens: (tokens > 0) ? (cost / tokens * 1000) : 0
-          }
-        end
+        model_data = breakdown.configured_model_usage
 
         @savings = nil
         return if model_data.size < 2
@@ -218,35 +208,12 @@ module RubyLLM
         }
       end
 
-      def load_efficiency(base)
-        @efficiency = Execution.model_stats(scope: base)
-      end
+      def load_error_cost(breakdown)
+        error_cost = breakdown.error_cost(limit: 10)
 
-      def load_error_cost(base)
-        error_scope = base.where(status: "error")
-        @error_total_cost = error_scope.sum(:total_cost) || 0
-        @error_total_count = error_scope.count
-
-        @error_breakdown = error_scope
-          .select(
-            :error_class,
-            :agent_type,
-            Arel.sql("COUNT(*) AS err_count"),
-            Arel.sql("COALESCE(SUM(total_cost), 0) AS err_cost"),
-            Arel.sql("MAX(created_at) AS last_seen")
-          )
-          .group(:error_class, :agent_type)
-          .order(Arel.sql("err_cost DESC"))
-          .limit(10)
-          .map do |row|
-            {
-              error_class: row.error_class || "Unknown",
-              agent_type: row.agent_type,
-              count: row["err_count"].to_i,
-              cost: row["err_cost"].to_f,
-              last_seen: row["last_seen"]
-            }
-          end
+        @error_total_cost = error_cost[:total_cost]
+        @error_total_count = error_cost[:total_count]
+        @error_breakdown = error_cost[:breakdown]
       end
 
       # ── Helpers ──────────────────────────

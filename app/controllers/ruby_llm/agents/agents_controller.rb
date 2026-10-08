@@ -21,6 +21,13 @@ module RubyLLM
       DEFAULT_AGENT_SORT_COLUMN = "name"
       DEFAULT_AGENT_SORT_DIRECTION = "asc"
 
+      # Days of history behind the agent page's headline stats and trend chart
+      STATS_WINDOW_DAYS = 30
+
+      # Seconds the executions table may spend counting before it renders
+      # with prev/next links only
+      TOTALS_TIMEOUT = 1
+
       # Lists all registered agents with their details
       #
       # Uses AgentRegistry to discover agents from both file system
@@ -56,6 +63,10 @@ module RubyLLM
 
         @agent_count = @agents.size
         @deleted_count = @deleted_agents.size
+        @stats_window_days = AgentRegistry::STATS_WINDOW.in_days.to_i
+        @stats_available = all_agents.empty? || all_agents.any? { |a| a[:execution_count] }
+      rescue ::ActiveRecord::QueryCanceled
+        raise
       rescue => e
         Rails.logger.error("[RubyLLM::Agents] Error loading agents: #{e.message}")
         @agents = []
@@ -64,6 +75,8 @@ module RubyLLM
         @agent_count = 0
         @deleted_count = 0
         @sort_params = {column: DEFAULT_AGENT_SORT_COLUMN, direction: DEFAULT_AGENT_SORT_DIRECTION}
+        @stats_window_days = AgentRegistry::STATS_WINDOW.in_days.to_i
+        @stats_available = true
         flash.now[:alert] = "Error loading agents list"
       end
 
@@ -80,7 +93,6 @@ module RubyLLM
         @agent_active = @agent_class.present?
 
         load_agent_stats
-        load_filter_options
         load_filtered_executions
         load_chart_data
 
@@ -89,6 +101,8 @@ module RubyLLM
           # Load circuit breaker status for agents that support reliability
           load_circuit_breaker_status if @agent_type_kind.in?(%w[agent router])
         end
+      rescue ::ActiveRecord::QueryCanceled
+        raise
       rescue => e
         Rails.logger.error("[RubyLLM::Agents] Error loading agent #{@agent_type}: #{e.message}")
         redirect_to ruby_llm_agents.agents_path, alert: "Error loading agent details"
@@ -152,54 +166,46 @@ module RubyLLM
 
       private
 
-      # Loads all-time and today's statistics for the agent
+      # Loads the agent's headline statistics
+      #
+      # @stats covers the last STATS_WINDOW_DAYS rather than all time: an
+      # agent's whole history can be millions of rows, and each figure here
+      # used to be its own scan of it. Both hashes come from one query each.
       #
       # @return [void]
       def load_agent_stats
-        base = tenant_scoped_executions
-        @stats = base.stats_for(@agent_type, period: :all_time)
-        @stats_today = base.stats_for(@agent_type, period: :today)
+        agent_scope = tenant_scoped_executions.by_agent(@agent_type)
 
-        # Additional stats for new schema fields
-        agent_scope = base.by_agent(@agent_type)
-        @cache_hit_rate = agent_scope.cache_hit_rate
-        @streaming_rate = agent_scope.streaming_rate
-        @avg_ttft = agent_scope.avg_time_to_first_token
+        @stats_window_days = STATS_WINDOW_DAYS
+        @stats = cached_stats(:agent_summary, @agent_type, expires_in: 5.minutes) do
+          agent_scope.last_n_days(STATS_WINDOW_DAYS).usage_summary
+        end
+        @stats_today = cached_stats(:agent_today, @agent_type, expires_in: 30.seconds) do
+          agent_scope.today.usage_summary
+        end
+        @cache_hit_rate = @stats[:cache_hit_rate]
+        @streaming_rate = @stats[:streaming_rate]
       end
 
-      # Loads available filter options from execution history
+      # Loads paginated and filtered executions
       #
-      # Uses a single optimized query to fetch all filter values
-      # (versions, models, temperatures) avoiding N+1 queries.
-      #
-      # @return [void]
-      def load_filter_options
-        # Single DISTINCT query for all filter options. Without DISTINCT this
-        # plucked one row per execution the agent has ever run.
-        base = tenant_scoped_executions.by_agent(@agent_type)
-        filter_data = base
-          .where.not(model_id: nil)
-          .or(base.where.not(temperature: nil))
-          .distinct
-          .pluck(:model_id, :temperature)
-
-        @models = filter_data.map(&:first).compact.uniq.sort
-        @temperatures = filter_data.map(&:last).compact.uniq.sort
-      end
-
-      # Loads paginated and filtered executions with statistics
-      #
-      # Sets @executions, @pagination, and @filter_stats for the view.
+      # Sets @executions, @pagination, and @filter_stats for the view. The
+      # count behind the page numbers is best-effort, as on the executions
+      # index: unfiltered, it is a count of the agent's entire history.
       #
       # @return [void]
       def load_filtered_executions
         base_scope = build_filtered_scope
-        @filter_stats = base_scope.totals
+
+        filters = request.query_parameters.except("page")
+        @filter_stats = cached_stats(:agent_totals, @agent_type, filters.to_query) do
+          Execution.best_effort(timeout: TOTALS_TIMEOUT) { base_scope.totals }
+        end
 
         # error_detail: the table renders error_message per row, and the full
         # detail row carries every prompt and response payload.
         result = paginate(base_scope.preload(:error_detail),
-          total_count: @filter_stats[:total_count])
+          total_count: @filter_stats&.fetch(:total_count))
         @executions = result[:records]
         @pagination = result[:pagination]
       end
@@ -230,16 +236,13 @@ module RubyLLM
         apply_time_filter(scope, days)
       end
 
-      # Loads chart data for agent performance visualization
-      #
-      # Fetches 30-day trend analysis and status/finish_reason distribution for charts.
+      # Loads the 30-day trend for the agent's chart
       #
       # @return [void]
       def load_chart_data
-        base = tenant_scoped_executions
-        @trend_data = base.trend_analysis(agent_type: @agent_type, days: 30)
-        @status_distribution = base.by_agent(@agent_type).group(:status).count
-        @finish_reason_distribution = base.by_agent(@agent_type).finish_reason_distribution
+        @trend_data = cached_stats(:agent_trend, @agent_type, expires_in: 5.minutes) do
+          tenant_scoped_executions.trend_analysis(agent_type: @agent_type, days: STATS_WINDOW_DAYS)
+        end
       end
 
       # Loads the current agent class configuration

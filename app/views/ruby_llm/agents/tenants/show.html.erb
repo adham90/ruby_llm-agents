@@ -8,7 +8,7 @@
   total_executions = @usage_stats[:total_executions]
   total_cost = @usage_stats[:total_cost]
   total_tokens = @usage_stats[:total_tokens]
-  success_count = @tenant.executions.where(status: "success").count
+  success_count = @usage_stats[:success_count]
   success_rate = total_executions > 0 ? (success_count.to_f / total_executions * 100).round : 100
 
   has_any_limit = @tenant.effective_daily_limit || @tenant.effective_monthly_limit ||
@@ -64,6 +64,7 @@
   <!-- Right: stats -->
   <div class="flex-shrink-0 text-right font-mono text-xs text-gray-400 dark:text-gray-500 space-y-1">
     <div class="flex items-center justify-end gap-x-4">
+      <span class="text-gray-300 dark:text-gray-700">this month</span>
       <span><span class="text-gray-800 dark:text-gray-200"><%= number_with_delimiter(total_executions) %></span> runs</span>
       <span class="<%= success_rate >= 95 ? 'text-green-500' : success_rate >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= success_rate %>% ok</span>
       <span><span class="text-gray-800 dark:text-gray-200">$<%= number_with_precision(total_cost, precision: 4) %></span> cost</span>
@@ -127,10 +128,10 @@
   <% if @error_count > 0 %>
     <div class="mt-3 font-mono text-xs text-gray-500 dark:text-gray-400">
       <span class="text-red-500">$<%= number_with_precision(@error_cost, precision: 4) %></span>
-      wasted on <span class="text-red-500"><%= number_with_delimiter(@error_count) %></span> failed executions
+      wasted on <span class="text-red-500"><%= number_with_delimiter(@error_count) %></span> failed executions this month
       <% error_pct = total_cost.to_f > 0 ? (@error_cost.to_f / total_cost * 100).round(1) : 0 %>
       <% if error_pct > 0 %>
-        (<%= error_pct %>% of total cost)
+        (<%= error_pct %>% of this month's cost)
       <% end %>
     </div>
   <% end %>
@@ -321,7 +322,7 @@
 <% if @usage_by_agent.present? %>
   <!-- ── usage by agent ──────────────────── -->
   <div class="flex items-center gap-3 mt-6 mb-3">
-    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">usage by agent</span>
+    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">usage by agent &middot; this month</span>
     <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
   </div>
 
@@ -359,7 +360,7 @@
 <% if @usage_by_model.present? %>
   <!-- ── usage by model ──────────────────── -->
   <div class="flex items-center gap-3 mt-6 mb-3">
-    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">usage by model</span>
+    <span class="text-[10px] font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest font-mono">usage by model &middot; this month</span>
     <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
   </div>
 

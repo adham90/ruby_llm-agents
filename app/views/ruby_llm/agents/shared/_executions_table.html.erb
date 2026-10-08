@@ -63,56 +63,5 @@
     <% end %>
   </div>
 
-  <%# Pagination %>
-  <% if pagination[:total_pages] > 1 %>
-    <%
-      current_page = pagination[:current_page]
-      total_pages = pagination[:total_pages]
-      total_count = pagination[:total_count]
-      per_page = pagination[:per_page]
-      from_record = ((current_page - 1) * per_page) + 1
-      to_record = [current_page * per_page, total_count].min
-    %>
-    <div class="flex items-center justify-between font-mono text-xs mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
-      <span class="text-gray-400 dark:text-gray-600"><%= from_record %>-<%= to_record %> of <%= number_with_delimiter(total_count) %></span>
-      <nav class="flex items-center gap-1">
-        <% if current_page > 1 %>
-          <%= link_to "prev", url_for(request.query_parameters.merge(page: current_page - 1)),
-              class: "px-2 py-0.5 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" %>
-        <% else %>
-          <span class="px-2 py-0.5 text-gray-300 dark:text-gray-700">prev</span>
-        <% end %>
-
-        <%
-          window = 2
-          pages_to_show = []
-          (1..total_pages).each do |page|
-            if page <= 1 || page >= total_pages || (page >= current_page - window && page <= current_page + window)
-              pages_to_show << page
-            elsif pages_to_show.last != :gap
-              pages_to_show << :gap
-            end
-          end
-        %>
-
-        <% pages_to_show.each do |page| %>
-          <% if page == :gap %>
-            <span class="px-1 text-gray-400 dark:text-gray-600">...</span>
-          <% elsif page == current_page %>
-            <span class="px-2 py-0.5 text-gray-900 dark:text-gray-100"><%= page %></span>
-          <% else %>
-            <%= link_to page, url_for(request.query_parameters.merge(page: page)),
-                class: "px-2 py-0.5 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" %>
-          <% end %>
-        <% end %>
-
-        <% if current_page < total_pages %>
-          <%= link_to "next", url_for(request.query_parameters.merge(page: current_page + 1)),
-              class: "px-2 py-0.5 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" %>
-        <% else %>
-          <span class="px-2 py-0.5 text-gray-300 dark:text-gray-700">next</span>
-        <% end %>
-      </nav>
-    </div>
-  <% end %>
+  <%= render "ruby_llm/agents/shared/pagination", pagination: pagination, shown: executions.size %>
 <% end %>

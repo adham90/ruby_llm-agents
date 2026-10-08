@@ -42,6 +42,11 @@
       <span x-text="currentCount"></span>
       <%= render "ruby_llm/agents/shared/doc_link" %>
     </div>
+    <% if @stats_available %>
+      <span class="font-mono text-[10px] text-gray-400 dark:text-gray-600">runs, cost and ok% cover the last <%= @stats_window_days %> days</span>
+    <% else %>
+      <span class="font-mono text-[10px] text-yellow-600 dark:text-yellow-500" role="status">usage stats took too long to load and were skipped</span>
+    <% end %>
     <div class="flex-1 border-t border-gray-200 dark:border-gray-800"></div>
     <div class="flex font-mono text-xs gap-0.5">
       <button type="button" @click="activeSubTab = null; updateUrl()"
@@ -108,7 +113,7 @@
             "activeSubTab !== 'deleted' && (activeSubTab === null || activeSubTab === '#{agent[:agent_type]}')"
           end
           success_rate = agent[:success_rate] || 0
-          dot_color = agent[:active] ? (success_rate >= 95 ? 'bg-green-500' : success_rate >= 80 ? 'bg-yellow-500' : 'bg-red-500') : 'bg-gray-400'
+          dot_color = !agent[:active] || !@stats_available ? 'bg-gray-400' : (success_rate >= 95 ? 'bg-green-500' : success_rate >= 80 ? 'bg-yellow-500' : 'bg-red-500')
         %>
         <div x-show="<%= show_condition %>"
              class="group flex items-center gap-3 py-1.5 px-2 -mx-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer"
@@ -120,9 +125,15 @@
           <span class="flex-1 min-w-0 truncate text-gray-500 dark:text-gray-400 hidden sm:inline"><%= agent[:agent_type]&.to_s || 'agent' %></span>
           <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 <%= dot_color %>"></span>
           <span class="flex-[2] min-w-0 truncate text-gray-400 dark:text-gray-600 hidden lg:inline"><%= agent[:model]&.split("/")&.last || "—" %></span>
-          <span class="w-14 flex-shrink-0 text-right text-gray-500 dark:text-gray-400"><%= number_with_delimiter(agent[:execution_count] || 0) %><span class="text-gray-400 dark:text-gray-600">r</span></span>
-          <span class="w-16 flex-shrink-0 text-right text-gray-500 dark:text-gray-400 hidden md:inline">$<%= number_with_precision(agent[:total_cost] || 0, precision: 2) %></span>
-          <span class="w-12 flex-shrink-0 text-right <%= success_rate >= 95 ? 'text-green-500' : success_rate >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= success_rate.round %>%</span>
+          <% if @stats_available %>
+            <span class="w-14 flex-shrink-0 text-right text-gray-500 dark:text-gray-400"><%= number_with_delimiter(agent[:execution_count] || 0) %><span class="text-gray-400 dark:text-gray-600">r</span></span>
+            <span class="w-16 flex-shrink-0 text-right text-gray-500 dark:text-gray-400 hidden md:inline">$<%= number_with_precision(agent[:total_cost] || 0, precision: 2) %></span>
+            <span class="w-12 flex-shrink-0 text-right <%= success_rate >= 95 ? 'text-green-500' : success_rate >= 80 ? 'text-yellow-500' : 'text-red-500' %>"><%= success_rate.round %>%</span>
+          <% else %>
+            <span class="w-14 flex-shrink-0 text-right text-gray-400 dark:text-gray-600">—</span>
+            <span class="w-16 flex-shrink-0 text-right text-gray-400 dark:text-gray-600 hidden md:inline">—</span>
+            <span class="w-12 flex-shrink-0 text-right text-gray-400 dark:text-gray-600">—</span>
+          <% end %>
           <span class="w-24 flex-shrink-0 text-gray-400 dark:text-gray-600 text-right whitespace-nowrap">
             <% if agent[:last_executed] %>
               <%= time_ago_in_words(agent[:last_executed]) %>
@@ -144,9 +155,15 @@
           <span class="flex-1 min-w-0 truncate text-gray-400 dark:text-gray-600 hidden sm:inline"><%= agent[:agent_type]&.to_s || 'agent' %></span>
           <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-gray-400 dark:bg-gray-600"></span>
           <span class="flex-[2] min-w-0 truncate text-gray-400 dark:text-gray-600 hidden lg:inline"><%= agent[:model]&.split("/")&.last || "—" %></span>
-          <span class="w-14 flex-shrink-0 text-right text-gray-400 dark:text-gray-600"><%= number_with_delimiter(agent[:execution_count] || 0) %><span class="text-gray-400 dark:text-gray-600">r</span></span>
-          <span class="w-16 flex-shrink-0 text-right text-gray-400 dark:text-gray-600 hidden md:inline">$<%= number_with_precision(agent[:total_cost] || 0, precision: 2) %></span>
-          <span class="w-12 flex-shrink-0 text-right text-gray-400 dark:text-gray-600"><%= success_rate.round %>%</span>
+          <% if @stats_available %>
+            <span class="w-14 flex-shrink-0 text-right text-gray-400 dark:text-gray-600"><%= number_with_delimiter(agent[:execution_count] || 0) %><span class="text-gray-400 dark:text-gray-600">r</span></span>
+            <span class="w-16 flex-shrink-0 text-right text-gray-400 dark:text-gray-600 hidden md:inline">$<%= number_with_precision(agent[:total_cost] || 0, precision: 2) %></span>
+            <span class="w-12 flex-shrink-0 text-right text-gray-400 dark:text-gray-600"><%= success_rate.round %>%</span>
+          <% else %>
+            <span class="w-14 flex-shrink-0 text-right text-gray-400 dark:text-gray-600">—</span>
+            <span class="w-16 flex-shrink-0 text-right text-gray-400 dark:text-gray-600 hidden md:inline">—</span>
+            <span class="w-12 flex-shrink-0 text-right text-gray-400 dark:text-gray-600">—</span>
+          <% end %>
           <span class="w-24 flex-shrink-0 text-gray-400 dark:text-gray-600 text-right whitespace-nowrap">
             <% if agent[:last_executed] %>
               <%= time_ago_in_words(agent[:last_executed]) %>

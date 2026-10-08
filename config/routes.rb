@@ -2,7 +2,7 @@
 
 RubyLLM::Agents::Engine.routes.draw do
   root to: "dashboard#index"
-  get "chart_data", to: "dashboard#chart_data"
+  get "chart_data", to: "dashboard#chart_data", defaults: {format: :json}
 
   resources :agents, only: [:index, :show, :update] do
     member do
@@ -26,6 +26,6 @@ RubyLLM::Agents::Engine.routes.draw do
   end
 
   get "analytics", to: "analytics#index", as: :analytics
-  get "analytics/chart_data", to: "analytics#chart_data", as: :analytics_chart_data
+  get "analytics/chart_data", to: "analytics#chart_data", as: :analytics_chart_data, defaults: {format: :json}
   resource :system_config, only: [:show], controller: "system_config"
 end
