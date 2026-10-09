@@ -14,6 +14,8 @@ module RubyLLM
 
       belongs_to :execution, class_name: "RubyLLM::Agents::Execution"
 
+      has_many_attached :user_attachments
+
       validates :execution_id, presence: true
     end
   end
