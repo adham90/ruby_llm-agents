@@ -25,7 +25,10 @@ RSpec.describe RubyLLM::Agents::AgentRegistry do
     end
 
     it "returns sorted names" do
-      expect(described_class.all).to eq(described_class.all.sort)
+      # Compare one snapshot: the registry reads Class#descendants, and GC can
+      # collect other specs' throwaway agent classes between two calls.
+      result = described_class.all
+      expect(result).to eq(result.sort)
     end
   end
 
