@@ -211,6 +211,109 @@ RSpec.describe RubyLLM::Agents::BaseAgent, "usage accounting across tool loops" 
     end
   end
 
+  describe "cache and reasoning tokens across the tool loop" do
+    # Every round re-reads the cached prefix and may reason again, so these
+    # are billed per round just like plain input/output tokens.
+    def round(model: "gpt-4o", **tokens)
+      RubyLLM::Message.new(role: :assistant, content: "working", model_id: model, **tokens)
+    end
+
+    def run_loop(appended, error: nil)
+      client = build_looping_client(appended, error: error)
+      response = agent.send(:execute_llm_call, client, context)
+      agent.send(:capture_response, response, context)
+    end
+
+    let(:pricing) { RubyLLM::Models.find("gpt-4o").pricing.text_tokens }
+
+    it "sums cache reads from every round and prices them all" do
+      run_loop([
+        round(input_tokens: 100, output_tokens: 20, cached_tokens: 50_000),
+        user_message,
+        round(input_tokens: 100, output_tokens: 30, cached_tokens: 60_000)
+      ])
+
+      expect(context.cached_tokens).to eq(110_000)
+      expect(context[:cached_tokens]).to eq(110_000)
+
+      cache_read = (110_000 / 1_000_000.0) * pricing.cache_read_input
+      expect(context[:cost_breakdown][:cache_read]).to be_within(1e-9).of(cache_read)
+      expect(context.total_cost).to be_within(1e-9).of(
+        (context.input_cost + context.output_cost + cache_read).round(6)
+      )
+    end
+
+    it "bills a cache read from an earlier round when the final round has none" do
+      run_loop([
+        round(input_tokens: 100, output_tokens: 20, cached_tokens: 50_000),
+        user_message,
+        round(input_tokens: 100, output_tokens: 30)
+      ])
+
+      expect(context.cached_tokens).to eq(50_000)
+      expect(context[:cost_breakdown][:cache_read]).to be_within(1e-9).of(
+        (50_000 / 1_000_000.0) * pricing.cache_read_input
+      )
+    end
+
+    it "sums cache writes from every round" do
+      run_loop([
+        round(input_tokens: 100, output_tokens: 20, cache_creation_tokens: 4_000),
+        user_message,
+        round(input_tokens: 100, output_tokens: 30, cache_creation_tokens: 1_000)
+      ])
+
+      expect(context.cache_creation_tokens).to eq(5_000)
+      expect(context[:cache_creation_tokens]).to eq(5_000)
+    end
+
+    it "leaves cache counters unset when no round used the cache" do
+      run_loop([round(input_tokens: 100, output_tokens: 20), user_message, round(input_tokens: 100, output_tokens: 30)])
+
+      expect(context.cached_tokens).to be_nil
+      expect(context.cache_creation_tokens).to be_nil
+      expect(context[:cost_breakdown]).to be_nil
+    end
+
+    it "recovers summed cache reads when the loop raises" do
+      expect {
+        run_loop(
+          [
+            round(input_tokens: 100, output_tokens: 20, cached_tokens: 50_000),
+            user_message,
+            round(input_tokens: 100, output_tokens: 30, cached_tokens: 60_000)
+          ],
+          error: tool_error.new("tool timed out")
+        )
+      }.to raise_error(tool_error)
+
+      expect(context.cached_tokens).to eq(110_000)
+      expect(context[:cost_breakdown][:cache_read]).to be_within(1e-9).of(
+        (110_000 / 1_000_000.0) * pricing.cache_read_input
+      )
+    end
+
+    it "charges reasoning from every round at the reasoning rate, not twice" do
+      # A registry model that prices reasoning apart from output.
+      reasoning_model = "perplexity/sonar-deep-research"
+      reasoning_pricing = RubyLLM::Models.find(reasoning_model).pricing.text_tokens
+      expect(reasoning_pricing.reasoning_output).not_to eq(reasoning_pricing.output)
+
+      run_loop([
+        round(model: reasoning_model, input_tokens: 100, output_tokens: 500, thinking_tokens: 300),
+        user_message,
+        round(model: reasoning_model, input_tokens: 100, output_tokens: 400, thinking_tokens: 200)
+      ])
+
+      # 500 of the 900 output tokens are reasoning, billed only at that rate.
+      expect(context.output_tokens).to eq(900)
+      expect(context.output_cost).to be_within(1e-12).of((400 / 1_000_000.0) * reasoning_pricing.output)
+      expect(context[:cost_breakdown][:thinking]).to be_within(1e-9).of(
+        (500 / 1_000_000.0) * reasoning_pricing.reasoning_output
+      )
+    end
+  end
+
   describe "#execute" do
     it "sums usage across the loop through the full execution path" do
       client = build_looping_client(
