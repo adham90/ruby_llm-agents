@@ -1021,6 +1021,12 @@ module RubyLLM
       # in metadata (the prompt size of the final request is the current
       # context fill), and costs are recalculated from the sums.
       #
+      # Cache reads/writes and reasoning tokens are summed too: every round
+      # re-reads the cached prefix, so pricing only the last round's would
+      # drop most of a long loop's cache spend. The attempt is priced as one
+      # response carrying the summed counters, which keeps #calculate_costs
+      # the single place that knows how each component is billed.
+      #
       # Retries and fallbacks re-baseline per attempt (see
       # #execute_llm_call), so the numbers always describe the last attempt
       # — the billed one — never a cross-attempt double count.
@@ -1034,14 +1040,30 @@ module RubyLLM
         return if billed.empty?
 
         last = billed.last
-        context.input_tokens = billed.sum { |message| message.input_tokens.to_i }
-        context.output_tokens = billed.sum { |message| message.output_tokens.to_i }
+        counters = %i[input_tokens output_tokens cached_tokens cache_creation_tokens thinking_tokens]
+        totals = counters.to_h do |counter|
+          [counter, billed.sum { |message| message.public_send(counter).to_i }]
+        end
+
+        context.input_tokens = totals[:input_tokens]
+        context.output_tokens = totals[:output_tokens]
+        if totals[:cached_tokens].positive?
+          context.cached_tokens = totals[:cached_tokens]
+          context[:cached_tokens] = totals[:cached_tokens]
+        end
+        if totals[:cache_creation_tokens].positive?
+          context.cache_creation_tokens = totals[:cache_creation_tokens]
+          context[:cache_creation_tokens] = totals[:cache_creation_tokens]
+        end
         context[:llm_usage] = {
           "requests" => billed.size,
           "last_input_tokens" => last.input_tokens.to_i,
           "last_output_tokens" => last.output_tokens.to_i
         }
-        calculate_costs(last, context)
+        calculate_costs(
+          RubyLLM::Message.new(role: :assistant, content: "", model_id: last.model_id, **totals),
+          context
+        )
       rescue => e
         log_cost_warning("accumulate_attempt_usage", e)
       end

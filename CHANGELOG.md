@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Tool loops recorded only the final round's tokens and cost** — a run with several provider requests billed every round but persisted one. Input and output tokens are now summed across the rounds of the attempt, with the last request's own usage kept in `metadata["llm_usage"]` (#35, thanks @symphony-stream)
+- **Failed runs recorded zero tokens and $0** even when earlier rounds of the tool loop had completed and been billed. Usage up to the failure is now recovered before the error propagates (#35, thanks @symphony-stream)
+- **Cache reads, cache writes and reasoning tokens in a tool loop were priced from the final round only** — every round re-reads the cached prefix, so long loops under-reported most of their cache spend. These are now summed across rounds like input and output tokens
+
 ## [3.16.0] - 2026-10-09
 
 Makes the dashboard usable on executions tables with millions of rows. See
