@@ -1,0 +1,66 @@
+<%#
+  Pagination links for a list page.
+
+  pagination: the hash built by Paginatable#paginate. When :total_count is
+  known this renders "1-25 of 1,234" with numbered pages; when it is not
+  (counting was skipped or timed out on a very large table) it renders the
+  current range with prev/next only.
+%>
+<%
+  current_page = pagination[:current_page]
+  per_page = pagination[:per_page]
+  total_count = pagination[:total_count]
+  total_pages = pagination[:total_pages]
+  has_next = total_pages ? current_page < total_pages : pagination[:next_page]
+  from_record = ((current_page - 1) * per_page) + 1
+  link_class = "px-2 py-0.5 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+%>
+<% if current_page > 1 || has_next %>
+  <div class="flex items-center justify-between font-mono text-xs mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+    <span class="text-gray-400 dark:text-gray-600">
+      <% if total_count %>
+        <%= from_record %>-<%= [current_page * per_page, total_count].min %> of <%= number_with_delimiter(total_count) %>
+      <% else %>
+        <%= number_with_delimiter(from_record) %>-<%= number_with_delimiter(from_record + local_assigns.fetch(:shown, per_page) - 1) %>
+      <% end %>
+    </span>
+    <nav class="flex items-center gap-1" aria-label="Pagination">
+      <% if current_page > 1 %>
+        <%= link_to "prev", url_for(request.query_parameters.merge(page: current_page - 1)), class: link_class %>
+      <% else %>
+        <span class="px-2 py-0.5 text-gray-300 dark:text-gray-700">prev</span>
+      <% end %>
+
+      <% if total_pages %>
+        <%
+          window = 2
+          pages_to_show = []
+          (1..total_pages).each do |page|
+            if page <= 1 || page >= total_pages || (page >= current_page - window && page <= current_page + window)
+              pages_to_show << page
+            elsif pages_to_show.last != :gap
+              pages_to_show << :gap
+            end
+          end
+        %>
+        <% pages_to_show.each do |page| %>
+          <% if page == :gap %>
+            <span class="px-1 text-gray-400 dark:text-gray-600">...</span>
+          <% elsif page == current_page %>
+            <span class="px-2 py-0.5 text-gray-900 dark:text-gray-100" aria-current="page"><%= page %></span>
+          <% else %>
+            <%= link_to page, url_for(request.query_parameters.merge(page: page)), class: link_class %>
+          <% end %>
+        <% end %>
+      <% else %>
+        <span class="px-2 py-0.5 text-gray-900 dark:text-gray-100" aria-current="page"><%= current_page %></span>
+      <% end %>
+
+      <% if has_next %>
+        <%= link_to "next", url_for(request.query_parameters.merge(page: current_page + 1)), class: link_class %>
+      <% else %>
+        <span class="px-2 py-0.5 text-gray-300 dark:text-gray-700">next</span>
+      <% end %>
+    </nav>
+  </div>
+<% end %>

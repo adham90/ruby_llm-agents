@@ -444,6 +444,33 @@ RSpec.describe RubyLLM::Agents::Configuration do
       end
     end
 
+    describe "#dashboard_query_timeout=" do
+      it "defaults to 5 seconds" do
+        expect(config.dashboard_query_timeout).to eq(5)
+      end
+
+      it "accepts positive values, including fractions" do
+        expect { config.dashboard_query_timeout = 30 }.not_to raise_error
+        expect { config.dashboard_query_timeout = 0.5 }.not_to raise_error
+      end
+
+      it "accepts nil to disable the limit" do
+        config.dashboard_query_timeout = nil
+        expect(config.dashboard_query_timeout).to be_nil
+      end
+
+      it "raises ArgumentError for zero and negative values" do
+        expect { config.dashboard_query_timeout = 0 }.to raise_error(
+          ArgumentError, "dashboard_query_timeout must be greater than 0"
+        )
+        expect { config.dashboard_query_timeout = -1 }.to raise_error(ArgumentError)
+      end
+
+      it "is reported in the dashboard section of #to_h" do
+        expect(config.to_h[:dashboard]).to include(dashboard_query_timeout: 5)
+      end
+    end
+
     describe "#recent_executions_limit=" do
       it "accepts positive values" do
         expect { config.recent_executions_limit = 1 }.not_to raise_error

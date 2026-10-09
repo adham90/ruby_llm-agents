@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Makes the dashboard usable on executions tables with millions of rows. See
+`changelog/2026-10-08-dashboard-on-large-executions-tables.md` for measurements.
+
+**Upgrading:** run `rails generate ruby_llm_agents:upgrade` and migrate to add
+the `idx_executions_analytics` covering index (built concurrently on PostgreSQL).
+
+### Fixed
+
+- **Executions and agents lists timed out on large tables** — both aggregated the whole executions table on every view (the agents list once per agent). The executions list now renders from an index walk with best-effort, cached totals, and the agents list computes every agent's stats with one grouped query
+- **Dashboard and analytics scanned the selected range once per section** — every section is now derived from a single grouped scan (`Execution.breakdown`), cached per range and filters
+- **Requests list aggregated every tracked execution to show the latest 25** — the page is now found in a recent window and only its requests are aggregated
+- **Tenants list grouped the whole executions table by tenant** — cost and last run now come from the counter columns on the tenant row
+- **Request detail page raised on PostgreSQL** (`DISTINCT` with `ORDER BY`); it now loads the request's executions once
+- **`rate_limited`, `retryable_errors` and `with_parameter` scopes raised on PostgreSQL** — `jsonb` operators were applied to `json` columns
+
+### Added
+
+- **`config.dashboard_query_timeout`** (default 5 seconds, PostgreSQL only) — a dashboard query that runs longer is cancelled by the database and the page explains what to narrow, instead of the request timing out with the query still running
+- **`idx_executions_analytics` covering index** so range aggregates are answered from the index alone
+- **`Execution.breakdown`, `Execution.usage_summary`, `Execution.distinct_values`, `Execution.with_statement_timeout`, `Execution.best_effort`**
+
+### Changed
+
+- **Some all-time figures are now windowed** and labelled in the UI: agents list stats and agent page headline stats cover the last 30 days; tenant page totals and usage tables cover the current month; tenants list cost is month to date
+- **Executions list shows prev/next instead of page numbers** when the total cannot be counted within a second; pick a time range to get totals back
+- **Dashboard figures are cached** for 30 seconds ("today") to 5 minutes (wider ranges)
+- **Filter dropdowns list agent types and models across all tenants**
+
 ## [3.15.1] - 2026-07-30
 
 ### Fixed

@@ -361,8 +361,11 @@ module RubyLLM
       # instead of ~15 individual count/sum/average queries.
       #
       # @param range [String] Time range: "today", "7d", "30d", or "90d"
+      # @param current [Hash, nil] Stats for the current period, when the caller
+      #   already has them (a {Breakdown#totals} of the same window) — saves
+      #   scanning that window a second time
       # @return [Hash] Now strip metrics with period-over-period comparisons
-      def self.now_strip_data(range: "today")
+      def self.now_strip_data(range: "today", current: nil)
         current_scope = case range
         when "7d" then last_n_days(7)
         when "30d" then last_n_days(30)
@@ -377,7 +380,7 @@ module RubyLLM
         else yesterday
         end
 
-        curr = aggregate_period_stats(current_scope)
+        curr = current || aggregate_period_stats(current_scope)
         prev = aggregate_period_stats(previous_scope)
 
         {
@@ -408,15 +411,17 @@ module RubyLLM
       #
       # @param from [Date] Start date (inclusive)
       # @param to [Date] End date (inclusive)
+      # @param current [Hash, nil] Precomputed stats for the selected range (see
+      #   {.now_strip_data})
       # @return [Hash] Now strip metrics with period-over-period comparisons
-      def self.now_strip_data_for_dates(from:, to:)
+      def self.now_strip_data_for_dates(from:, to:, current: nil)
         span_days = (to - from).to_i + 1
         current_scope = where(created_at: from.beginning_of_day..to.end_of_day)
         previous_from = from - span_days.days
         previous_to = from - 1.day
         previous_scope = where(created_at: previous_from.beginning_of_day..previous_to.end_of_day)
 
-        curr = aggregate_period_stats(current_scope)
+        curr = current || aggregate_period_stats(current_scope)
         prev = aggregate_period_stats(previous_scope)
 
         {

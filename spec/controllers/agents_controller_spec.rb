@@ -136,10 +136,36 @@ RSpec.describe RubyLLM::Agents::AgentsController, type: :controller do
     context "query shape" do
       before { create_list(:execution, 3, agent_type: "TestAgent") }
 
-      it "loads filter options with a DISTINCT query instead of one row per execution" do
+      it "bounds every stats query to a recent window instead of the agent's whole history" do
         queries = capture_sql { get :show, params: {id: "TestAgent"} }
 
-        expect(queries.grep(/SELECT DISTINCT .*"temperature"/)).to be_present
+        # The paginated table and its (best-effort) count are the only
+        # statements allowed to range over all of the agent's executions.
+        aggregates = queries.grep(/FROM "ruby_llm_agents_executions"/)
+          .grep(/COUNT\(|SUM\(|AVG\(|DISTINCT/)
+          .reject { |sql| sql.match?(/COUNT\(\*\), COALESCE\(SUM\(total_cost\), 0\), COALESCE\(SUM\(total_tokens\), 0\) FROM/) }
+
+        expect(aggregates).to be_present
+        expect(aggregates).to all(match(/created_at/))
+      end
+
+      it "does not query for data the page never renders" do
+        queries = capture_sql { get :show, params: {id: "TestAgent"} }
+
+        expect(queries.grep(/"temperature"/)).to be_empty
+        expect(queries.grep(/finish_reason/)).to be_empty
+        expect(queries.grep(/time_to_first_token_ms/)).to be_empty
+      end
+
+      it "covers the last 30 days in the headline stats" do
+        create(:execution, agent_type: "TestAgent", created_at: 45.days.ago)
+
+        get :show, params: {id: "TestAgent"}
+
+        recent = RubyLLM::Agents::Execution.where(agent_type: "TestAgent").where("created_at >= ?", 30.days.ago).count
+        expect(assigns(:stats)[:count]).to eq(recent)
+        expect(assigns(:stats)[:count]).to eq(RubyLLM::Agents::Execution.where(agent_type: "TestAgent").count - 1)
+        expect(assigns(:stats_window_days)).to eq(30)
       end
 
       it "runs one totals query and no standalone COUNT or SUM scans of the agent's history" do
@@ -246,7 +272,7 @@ RSpec.describe RubyLLM::Agents::AgentsController, type: :controller do
 
     context "when an error occurs" do
       before do
-        allow(RubyLLM::Agents::Execution).to receive(:stats_for)
+        allow(RubyLLM::Agents::Execution).to receive(:usage_summary)
           .and_raise(StandardError.new("Test error"))
       end
 

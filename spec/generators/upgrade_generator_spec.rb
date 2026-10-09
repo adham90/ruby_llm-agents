@@ -152,6 +152,55 @@ RSpec.describe RubyLlmAgents::UpgradeGenerator, type: :generator do
     end
   end
 
+  describe "executions analytics index" do
+    before do
+      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
+        .with(:ruby_llm_agents_executions)
+        .and_return(true)
+      allow(ActiveRecord::Base.connection).to receive(:table_exists?)
+        .with(:ruby_llm_agents_execution_details)
+        .and_return(true)
+      allow(ActiveRecord::Base.connection).to receive(:column_exists?).and_return(false)
+      allow(ActiveRecord::Base.connection).to receive(:column_exists?)
+        .with(:ruby_llm_agents_execution_details, :assistant_prompt)
+        .and_return(true)
+      allow(ActiveRecord::Base.connection).to receive(:column_exists?)
+        .with(:ruby_llm_agents_tenants, :monthly_cost_spent)
+        .and_return(true)
+    end
+
+    context "when the index is missing" do
+      before do
+        allow(ActiveRecord::Base.connection).to receive(:index_name_exists?)
+          .with(:ruby_llm_agents_executions, "idx_executions_analytics")
+          .and_return(false)
+        run_generator
+      end
+
+      it "creates the migration" do
+        migration_files = Dir[file("db/migrate/*_add_executions_analytics_index.rb")]
+        expect(migration_files.size).to eq(1)
+      end
+
+      it "builds the index without blocking writes" do
+        content = File.read(Dir[file("db/migrate/*_add_executions_analytics_index.rb")].first)
+
+        expect(content).to include("class AddExecutionsAnalyticsIndex < ActiveRecord::Migration[")
+        expect(content).to include("disable_ddl_transaction!")
+        expect(content).to include("CREATE INDEX CONCURRENTLY")
+        expect(content).to include("idx_executions_analytics")
+      end
+    end
+
+    context "when the index already exists" do
+      before { run_generator }
+
+      it "skips the migration" do
+        expect(Dir[file("db/migrate/*_add_executions_analytics_index.rb")]).to be_empty
+      end
+    end
+  end
+
   describe "tenant_budgets to tenants rename" do
     context "when old tenant_budgets exists and new tenants does not" do
       before do

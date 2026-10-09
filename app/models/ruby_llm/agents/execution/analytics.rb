@@ -78,35 +78,46 @@ module RubyLLM
           # @param period [Symbol] Time scope (:today, :this_week, :this_month, :all_time)
           # @return [Hash] Statistics including count, costs, tokens, duration, rates
           def stats_for(agent_type, period: :today)
-            scope = by_agent(agent_type).public_send(period)
+            {agent_type: agent_type, period: period}
+              .merge(by_agent(agent_type).public_send(period).usage_summary)
+          end
 
-            # One aggregate query. The agents index calls this once per agent,
-            # so the eight separate count/sum/avg scans it used to run became
-            # eight full scans of that agent's history per row.
-            count, cost, tokens, avg_tok, avg_dur, successful, failed = scope.pick(
+          # Usage and reliability figures for the current scope, in one query
+          #
+          # @example An agent's last 30 days
+          #   Execution.by_agent("SearchAgent").last_n_days(30).usage_summary
+          #
+          # @return [Hash] :count, :total_cost, :avg_cost, :total_tokens,
+          #   :avg_tokens, :avg_duration_ms, :success_rate, :error_rate,
+          #   :cache_hit_rate, :streaming_rate
+          def usage_summary
+            count, cost, tokens, avg_tok, avg_dur, successful, failed, cache_hits, streamed = pick(
               Arel.sql("COUNT(*)"),
               Arel.sql("COALESCE(SUM(total_cost), 0)"),
               Arel.sql("COALESCE(SUM(total_tokens), 0)"),
               Arel.sql("AVG(total_tokens)"),
               Arel.sql("AVG(duration_ms)"),
               Arel.sql("SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END)"),
-              Arel.sql("SUM(CASE WHEN status IN ('error', 'timeout') THEN 1 ELSE 0 END)")
+              Arel.sql("SUM(CASE WHEN status IN ('error', 'timeout') THEN 1 ELSE 0 END)"),
+              Arel.sql("SUM(CASE WHEN #{true_condition("cache_hit")} THEN 1 ELSE 0 END)"),
+              Arel.sql("SUM(CASE WHEN #{true_condition("streaming")} THEN 1 ELSE 0 END)")
             )
 
             count = count.to_i
             total_cost = (cost || 0).to_d.round(6)
+            percent = ->(part, digits) { (count > 0) ? (part.to_f / count * 100).round(digits) : 0.0 }
 
             {
-              agent_type: agent_type,
-              period: period,
               count: count,
               total_cost: total_cost,
               avg_cost: (count > 0) ? (total_cost / count).round(6) : 0,
               total_tokens: tokens.to_i,
               avg_tokens: avg_tok&.round || 0,
               avg_duration_ms: avg_dur&.round || 0,
-              success_rate: (count > 0) ? (successful.to_f / count * 100).round(2) : 0.0,
-              error_rate: (count > 0) ? (failed.to_f / count * 100).round(2) : 0.0
+              success_rate: percent.call(successful, 2),
+              error_rate: percent.call(failed, 2),
+              cache_hit_rate: percent.call(cache_hits, 1),
+              streaming_rate: percent.call(streamed, 1)
             }
           end
 
@@ -121,6 +132,86 @@ module RubyLLM
             )
 
             {total_count: count.to_i, total_cost: (cost || 0).to_d.round(6), total_tokens: tokens.to_i}
+          end
+
+          # Everything the dashboard shows about the current scope, from one scan
+          #
+          # Reads the scope once, grouped by agent, model, status and error
+          # class. The returned {Breakdown} derives totals, per-agent and
+          # per-model stats, top errors, error cost and cache savings from
+          # those groups, so a page that shows all of them costs one pass over
+          # the time window instead of one per section.
+          #
+          # @return [Execution::Breakdown]
+          def breakdown
+            # Spend belongs to the model that actually ran, not the one that
+            # was configured — a fallback's cost must not be billed to the
+            # primary. Older rows predate chosen_model_id.
+            billed_model = Arel.sql("COALESCE(chosen_model_id, model_id)")
+            hit = cache_hit_condition
+
+            Breakdown.new(group(:agent_type, :model_id, billed_model, :status, :error_class).pluck(
+              :agent_type, :model_id, billed_model, :status, :error_class,
+              Arel.sql("COUNT(*)"),
+              Arel.sql("COALESCE(SUM(total_cost), 0)"),
+              Arel.sql("COALESCE(SUM(total_tokens), 0)"),
+              Arel.sql("COALESCE(SUM(duration_ms), 0)"),
+              Arel.sql("COUNT(duration_ms)"),
+              Arel.sql("SUM(CASE WHEN #{hit} THEN 1 ELSE 0 END)"),
+              Arel.sql("COALESCE(SUM(CASE WHEN #{hit} THEN 0 ELSE total_cost END), 0)"),
+              Arel.sql("MAX(created_at)")
+            ))
+          end
+
+          # Runs a block with the database's statement timeout lowered
+          #
+          # Dashboard queries aggregate over whatever window the user picked,
+          # so on a large table a wide window can run for minutes — long after
+          # the web server has given up on the request, and with the database
+          # still working on it. Under a statement timeout the database
+          # cancels the query instead and the block raises
+          # ActiveRecord::QueryCanceled.
+          #
+          # PostgreSQL only; elsewhere the block simply runs. A stricter
+          # timeout already in force is left alone. Uses SET LOCAL inside a
+          # (sub)transaction, so the setting never outlives the block and is
+          # safe behind a transaction-pooling proxy.
+          #
+          # @param seconds [Numeric, nil] Timeout; nil runs the block unguarded
+          # @yield Queries to guard. They must run inside the block — load
+          #   relations before returning them.
+          # @return [Object] The block's value
+          # @raise [ActiveRecord::QueryCanceled] When a statement is cancelled
+          def with_statement_timeout(seconds)
+            return yield unless seconds && connection.adapter_name.downcase.include?("postg")
+
+            transaction(requires_new: true) do
+              current = connection.select_value("SELECT setting FROM pg_settings WHERE name = 'statement_timeout'").to_i
+              wanted = (seconds * 1000).ceil
+              next yield if current.positive? && current <= wanted
+
+              connection.execute("SET LOCAL statement_timeout = #{wanted}")
+              result = yield
+              # Releasing a savepoint keeps its SET LOCAL, so restore by hand;
+              # after a cancellation the rollback restores it instead.
+              connection.execute("SET LOCAL statement_timeout = #{current}")
+              result
+            end
+          end
+
+          # Runs a block of queries that the page can live without
+          #
+          # For figures that are nice to have next to the real content (the
+          # totals strip above a list, say): if the database cannot answer
+          # within the timeout the caller gets nil and renders a placeholder,
+          # rather than the whole page waiting on an aggregate.
+          #
+          # @param timeout [Numeric] Seconds to allow (PostgreSQL only)
+          # @return [Object, nil] The block's value, or nil if it was cancelled
+          def best_effort(timeout:, &block)
+            with_statement_timeout(timeout, &block)
+          rescue ::ActiveRecord::QueryCanceled
+            nil
           end
 
           # Compares performance between two agent versions
@@ -553,47 +644,11 @@ module RubyLLM
           end
 
           # Builds per-model statistics for model comparison
-          # Optimized: Single SQL GROUP BY with conditional aggregation
           #
           # @param scope [ActiveRecord::Relation] Pre-filtered scope
           # @return [Array<Hash>] Model stats sorted by total cost descending
           def model_stats(scope: all)
-            # Attribute spend to the model that actually ran, not the one that
-            # was configured — otherwise a fallback's cost is billed to the
-            # primary in the comparison table. Older rows predate
-            # chosen_model_id, so fall back to model_id for those.
-            billed_model = Arel.sql("COALESCE(chosen_model_id, model_id)")
-
-            rows = scope.where.not(model_id: nil)
-              .select(
-                Arel.sql("#{billed_model} AS billed_model_id"),
-                Arel.sql("COUNT(*) AS exec_count"),
-                Arel.sql("COALESCE(SUM(total_cost), 0) AS sum_cost"),
-                Arel.sql("COALESCE(SUM(total_tokens), 0) AS sum_tokens"),
-                Arel.sql("AVG(duration_ms) AS avg_dur"),
-                Arel.sql("SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS success_cnt")
-              )
-              .group(billed_model)
-
-            total_cost = rows.sum { |r| r["sum_cost"].to_f }
-
-            rows.map do |row|
-              count = row["exec_count"].to_i
-              model_cost = row["sum_cost"].to_f
-              model_tokens = row["sum_tokens"].to_i
-              successful = row["success_cnt"].to_i
-
-              {
-                model_id: row["billed_model_id"],
-                executions: count,
-                total_cost: model_cost,
-                total_tokens: model_tokens,
-                avg_duration_ms: row["avg_dur"].to_i,
-                success_rate: (count > 0) ? (successful.to_f / count * 100).round(1) : 0,
-                cost_per_1k_tokens: (model_tokens > 0) ? (model_cost / model_tokens * 1000).round(4) : 0,
-                cost_percentage: (total_cost > 0) ? (model_cost / total_cost * 100).round(1) : 0
-              }
-            end.sort_by { |m| -(m[:total_cost] || 0) }
+            scope.breakdown.model_stats
           end
 
           # Builds top errors list from error executions
@@ -602,87 +657,23 @@ module RubyLLM
           # @param limit [Integer] Max errors to return
           # @return [Array<Hash>] Top error classes with counts
           def top_errors(scope: all, limit: 5)
-            error_scope = scope.where(status: "error")
-            total_errors = error_scope.count
-
-            error_scope.group(:error_class)
-              .select("error_class, COUNT(*) as count, MAX(created_at) as last_seen")
-              .order("count DESC")
-              .limit(limit)
-              .map do |row|
-                {
-                  error_class: row.error_class || "Unknown Error",
-                  count: row.count,
-                  percentage: (total_errors > 0) ? (row.count.to_f / total_errors * 100).round(1) : 0,
-                  last_seen: row.last_seen
-                }
-            end
+            scope.breakdown.top_errors(limit: limit)
           end
 
           # Builds cache savings statistics
-          # Optimized: Single SQL query with conditional aggregation
           #
           # @param scope [ActiveRecord::Relation] Pre-filtered scope
           # @return [Hash] Cache savings data
           def cache_savings(scope: all)
-            cond = cache_hit_condition
-            total_count, cache_count, miss_count, miss_cost = scope.pick(
-              Arel.sql("COUNT(*)"),
-              Arel.sql("SUM(CASE WHEN #{cond} THEN 1 ELSE 0 END)"),
-              Arel.sql("SUM(CASE WHEN #{cond} THEN 0 ELSE 1 END)"),
-              Arel.sql("COALESCE(SUM(CASE WHEN #{cond} THEN 0 ELSE total_cost END), 0)")
-            )
-
-            total_count = total_count.to_i
-            cache_count = cache_count.to_i
-            miss_count = miss_count.to_i
-
-            return {count: 0, estimated_savings: 0, hit_rate: 0, total_executions: 0} if total_count.zero?
-
-            # Savings are the cost AVOIDED, not the cost recorded: a cache hit
-            # makes no API call, so its own total_cost is always 0 and summing
-            # those rows reported $0.00 saved forever. Estimate each hit at the
-            # mean cost of the misses in this same scope.
-            #
-            # ponytail: scope-wide mean, not per-agent. Group by agent_type if
-            # a mixed dashboard scope ever skews this enough to matter.
-            avg_miss_cost = miss_count.positive? ? (miss_cost.to_f / miss_count) : 0.0
-
-            {
-              count: cache_count,
-              estimated_savings: (cache_count * avg_miss_cost).round(6),
-              hit_rate: (cache_count.to_f / total_count * 100).round(1),
-              total_executions: total_count
-            }
+            scope.breakdown.cache_savings
           end
 
           # Batch fetches execution stats grouped by agent type
-          # Optimized: Single SQL GROUP BY with conditional aggregation
           #
           # @param scope [ActiveRecord::Relation] Pre-filtered scope
           # @return [Hash<String, Hash>] Agent type => stats hash
           def batch_agent_stats(scope: all)
-            rows = scope.select(
-              :agent_type,
-              Arel.sql("COUNT(*) AS exec_count"),
-              Arel.sql("COALESCE(SUM(total_cost), 0) AS sum_cost"),
-              Arel.sql("AVG(duration_ms) AS avg_dur"),
-              Arel.sql("SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS success_cnt")
-            ).group(:agent_type)
-
-            rows.each_with_object({}) do |row, hash|
-              count = row["exec_count"].to_i
-              total_cost = row["sum_cost"].to_f
-              successful = row["success_cnt"].to_i
-
-              hash[row.agent_type] = {
-                count: count,
-                total_cost: total_cost,
-                avg_cost: (count > 0) ? (total_cost / count).round(6) : 0,
-                avg_duration_ms: row["avg_dur"].to_i,
-                success_rate: (count > 0) ? (successful.to_f / count * 100).round(1) : 0
-              }
-            end
+            scope.breakdown.agent_stats
           end
 
           # Cached daily statistics for dashboard

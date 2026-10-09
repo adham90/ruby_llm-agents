@@ -13,8 +13,12 @@ module RubyLLM
     class DashboardController < ApplicationController
       # Renders the main dashboard view
       #
-      # Loads now strip data, critical alerts, hourly activity,
-      # recent executions, agent comparison, and top errors.
+      # Loads now strip data, critical alerts, recent executions, agent and
+      # model comparison, top errors and cache savings.
+      #
+      # Every section that covers the selected range is derived from a single
+      # Breakdown of it, so the page scans that window once (twice, counting
+      # the previous-period comparison) however many sections it shows.
       #
       # @return [void]
       def index
@@ -22,14 +26,15 @@ module RubyLLM
         @days = range_to_days(@selected_range)
         parse_custom_dates if @selected_range == "custom"
         base_scope = tenant_scoped_executions
-        @now_strip = build_now_strip(base_scope)
+        breakdown = load_breakdown(base_scope)
+        @now_strip = build_now_strip(base_scope, breakdown)
         @critical_alerts = load_critical_alerts(base_scope)
         @recent_executions = base_scope.preload(:error_detail).recent(10)
-        @agent_stats = build_agent_comparison(base_scope)
-        @top_errors = build_top_errors(base_scope)
+        @agent_stats = build_agent_comparison(breakdown)
+        @top_errors = breakdown.top_errors
         @tenant_budget = load_tenant_budget(base_scope)
-        @model_stats = build_model_stats(base_scope)
-        @cache_savings = build_cache_savings(base_scope)
+        @model_stats = breakdown.model_stats
+        @cache_savings = breakdown.cache_savings
         @top_tenants = build_top_tenants
       end
 
@@ -40,19 +45,19 @@ module RubyLLM
       def chart_data
         range = sanitize_range(params[:range])
         scope = tenant_scoped_executions
+        from = parse_date(params[:from])
+        to = parse_date(params[:to])
+        custom = range == "custom" && from && to
+        from, to = [from, to].sort if custom
 
-        data = if range == "custom"
-          from = parse_date(params[:from])
-          to = parse_date(params[:to])
-          if from && to
-            from, to = [from, to].sort
-            to = [to, Date.current].min
-            scope.activity_chart_json_for_dates(from: from, to: to)
-          else
+        data = cached_stats(:dashboard_chart, range, (from if custom), (to if custom), expires_in: stats_ttl(range)) do
+          if custom
+            scope.activity_chart_json_for_dates(from: from, to: [to, Date.current].min)
+          elsif range == "custom"
             scope.activity_chart_json(range: "today")
+          else
+            scope.activity_chart_json(range: range)
           end
-        else
-          scope.activity_chart_json(range: range)
         end
 
         render json: data
@@ -131,16 +136,51 @@ module RubyLLM
         end
       end
 
-      # Routes to the correct now_strip_data method based on range
+      # How long the figures for a range may be served from cache
+      #
+      # "today" is the live view, so it stays close to real time. The wider
+      # ranges move slowly and are the expensive ones to recompute.
+      #
+      # @param range [String] Sanitized range
+      # @return [ActiveSupport::Duration]
+      def stats_ttl(range)
+        (range == "today") ? 30.seconds : 5.minutes
+      end
+
+      # Scans the selected range once, grouped for every section of the page
       #
       # @param base_scope [ActiveRecord::Relation] Base scope
+      # @return [Execution::Breakdown]
+      def load_breakdown(base_scope)
+        rows = cached_stats(:dashboard_breakdown, @selected_range, @custom_from, @custom_to,
+          expires_in: stats_ttl(@selected_range)) { time_scoped(base_scope).breakdown.rows }
+
+        Execution::Breakdown.new(rows)
+      end
+
+      # Builds the now strip, reusing the breakdown for the current period
+      #
+      # The strip's current period is the breakdown's window for every range
+      # except "today" (the strip counts from midnight, the other sections
+      # cover the last 24 hours), so only "today" scans it separately. The
+      # running count is always read live.
+      #
+      # @param base_scope [ActiveRecord::Relation] Base scope
+      # @param breakdown [Execution::Breakdown] Breakdown of the selected range
       # @return [Hash] Now strip metrics
-      def build_now_strip(base_scope)
-        if @selected_range == "custom" && @custom_from && @custom_to
-          base_scope.now_strip_data_for_dates(from: @custom_from, to: @custom_to)
-        else
-          base_scope.now_strip_data(range: @selected_range)
+      def build_now_strip(base_scope, breakdown)
+        strip = cached_stats(:dashboard_now_strip, @selected_range, @custom_from, @custom_to,
+          expires_in: stats_ttl(@selected_range)) do
+          if @selected_range == "custom" && @custom_from && @custom_to
+            base_scope.now_strip_data_for_dates(from: @custom_from, to: @custom_to, current: breakdown.totals)
+          elsif @selected_range == "today"
+            base_scope.now_strip_data(range: "today")
+          else
+            base_scope.now_strip_data(range: @selected_range, current: breakdown.totals)
+          end
         end
+
+        strip.merge(running: base_scope.running.count)
       end
 
       # Builds per-agent comparison statistics for all agent types
@@ -152,22 +192,18 @@ module RubyLLM
       # - @speaker_stats: Speakers
       # - @image_generator_stats: Image generators
       #
-      # @param base_scope [ActiveRecord::Relation] Base scope to filter from
+      # @param breakdown [Execution::Breakdown] Breakdown of the selected range
       # @return [Array<Hash>] Array of base agent stats (for backward compatibility)
-      def build_agent_comparison(base_scope = Execution)
-        scope = time_scoped(base_scope)
-
+      def build_agent_comparison(breakdown)
         # Get ALL agents from registry (file system + execution history)
         all_agent_types = AgentRegistry.all
-
-        # Batch fetch stats for executed agents (4 queries total)
-        execution_stats = batch_fetch_agent_stats(scope)
+        execution_stats = breakdown.agent_stats
 
         all_stats = all_agent_types.map do |agent_type|
           agent_class = AgentRegistry.find(agent_type)
           detected_type = AgentRegistry.send(:detect_agent_type, agent_class)
 
-          # Get stats from batch or use zeros for never-executed agents
+          # Zeros for agents with no executions in the range
           stats = execution_stats[agent_type] || {
             count: 0, total_cost: 0, avg_cost: 0, avg_duration_ms: 0, success_rate: 0
           }
@@ -192,16 +228,6 @@ module RubyLLM
 
         # Return base agents for backward compatibility
         @agent_stats
-      end
-
-      # Delegates to Execution.model_stats with time scoping
-      def build_model_stats(base_scope = Execution)
-        Execution.model_stats(scope: time_scoped(base_scope))
-      end
-
-      # Delegates to Execution.top_errors with time scoping
-      def build_top_errors(base_scope = Execution)
-        Execution.top_errors(scope: time_scoped(base_scope))
       end
 
       # Loads budget status for display on dashboard
@@ -346,19 +372,9 @@ module RubyLLM
         alerts.take(3)
       end
 
-      # Delegates to Execution.cache_savings with time scoping
-      def build_cache_savings(base_scope)
-        Execution.cache_savings(scope: time_scoped(base_scope))
-      end
-
       # Delegates to Tenant.top_by_spend
       def build_top_tenants
         Tenant.top_by_spend(limit: 5)
-      end
-
-      # Delegates to Execution.batch_agent_stats with pre-filtered scope
-      def batch_fetch_agent_stats(scope)
-        Execution.batch_agent_stats(scope: scope)
       end
     end
   end

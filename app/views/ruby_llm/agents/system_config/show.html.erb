@@ -107,6 +107,10 @@
     <span class="text-gray-900 dark:text-gray-200"><%= @config.recent_executions_limit %></span>
   </div>
   <div class="flex items-center gap-3 py-0.5">
+    <span class="w-36 flex-shrink-0 text-gray-500 dark:text-gray-400">query timeout</span>
+    <span class="text-gray-900 dark:text-gray-200"><%= @config.dashboard_query_timeout ? "#{@config.dashboard_query_timeout}s" : "off" %></span>
+  </div>
+  <div class="flex items-center gap-3 py-0.5">
     <span class="w-36 flex-shrink-0 text-gray-500 dark:text-gray-400">parent controller</span>
     <span class="text-gray-900 dark:text-gray-200"><%= @config.dashboard_parent_controller %></span>
   </div>

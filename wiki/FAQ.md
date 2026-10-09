@@ -228,9 +228,10 @@ After 10 errors in 60 seconds, requests are blocked for 5 minutes.
 
 ### Why is the dashboard slow?
 
-1. Too much data: Set `config.retention_period = 30.days`
-2. Missing indexes: Run `rails generate ruby_llm_agents:upgrade`
-3. Complex queries: Reduce `config.dashboard_per_page`
+1. Missing indexes: Run `rails generate ruby_llm_agents:upgrade` and migrate. This adds the covering index the dashboard's aggregates read from
+2. Too much data: Set `config.retention_period = 30.days`
+3. Wide time ranges: every figure aggregates the selected range, so 90 days costs far more than today. Queries that run past `config.dashboard_query_timeout` (default 5 seconds, PostgreSQL) are cancelled and the page asks for a narrower range
+4. No cache store: dashboard figures are cached in `Rails.cache`; with a `NullStore` every view recomputes them
 
 ---
 

@@ -85,6 +85,63 @@ RSpec.describe RubyLLM::Agents::AgentRegistry do
       expect(result[:execution_count]).to be >= 1
     end
 
+    it "computes stats for every agent with one grouped query" do
+      create(:execution, agent_type: "OtherAgent")
+
+      queries = capture_sql { described_class.all_with_details }
+
+      grouped = queries.grep(/FROM "ruby_llm_agents_executions"/).grep(/GROUP BY/)
+      expect(grouped.size).to eq(1)
+      expect(queries.grep(/SUM\(/).size).to eq(1)
+    end
+
+    it "reports usage over the stats window" do
+      create(:execution, :failed, agent_type: "TestAgent", input_cost: 0.5, output_cost: 0)
+      create(:execution, agent_type: "TestAgent", created_at: (described_class::STATS_WINDOW + 5.days).ago)
+
+      result = described_class.all_with_details.find { |a| a[:name] == "TestAgent" }
+
+      expect(result[:execution_count]).to eq(2)
+      expect(result[:total_cost]).to be_within(1e-6).of(1.5)
+      expect(result[:success_rate]).to eq(50.0)
+      expect(result[:error_rate]).to eq(50.0)
+      expect(result[:last_executed]).to be_within(5.seconds).of(Time.current)
+    end
+
+    it "reports zero usage but the true last run for an agent idle since before the window" do
+      last_run = (described_class::STATS_WINDOW + 10.days).ago
+      create(:execution, agent_type: "DormantAgent", created_at: last_run)
+
+      result = described_class.all_with_details.find { |a| a[:name] == "DormantAgent" }
+
+      expect(result[:execution_count]).to eq(0)
+      expect(result[:total_cost]).to eq(0)
+      expect(result[:last_executed]).to be_within(1.second).of(last_run)
+    end
+
+    it "counts executions recorded under an agent's previous names" do
+      stub_const("RenamedAgent", Class.new(RubyLLM::Agents::Base) { aliases "LegacyAgent" })
+      create(:execution, agent_type: "RenamedAgent", input_cost: 1.0, output_cost: 0)
+      create(:execution, agent_type: "LegacyAgent", input_cost: 2.0, output_cost: 0)
+
+      result = described_class.all_with_details.find { |a| a[:name] == "RenamedAgent" }
+
+      expect(result[:execution_count]).to eq(2)
+      expect(result[:total_cost]).to be_within(1e-6).of(3.0)
+    end
+
+    it "leaves the stats nil, and still lists every agent, when the stats query is cancelled" do
+      allow(RubyLLM::Agents::Execution).to receive(:breakdown)
+        .and_raise(ActiveRecord::QueryCanceled, "canceling statement due to statement timeout")
+
+      result = described_class.all_with_details.find { |a| a[:name] == "TestAgent" }
+
+      expect(result[:active]).to be true
+      expect(result[:execution_count]).to be_nil
+      expect(result[:total_cost]).to be_nil
+      expect(result[:last_executed]).to be_within(5.seconds).of(Time.current)
+    end
+
     context "for inactive agents (deleted but have history)" do
       before do
         create(:execution, agent_type: "DeletedAgent")
@@ -101,13 +158,14 @@ RSpec.describe RubyLLM::Agents::AgentRegistry do
   describe "error handling" do
     context "when database query fails" do
       before do
-        allow(RubyLLM::Agents::Execution).to receive(:distinct)
+        allow(RubyLLM::Agents::Execution).to receive(:distinct_values)
           .and_raise(StandardError.new("Database error"))
       end
 
       it "returns empty array for execution_agents" do
         # Should not raise and should return agents from file system only
         expect { described_class.all }.not_to raise_error
+        expect(described_class.all).to include("TestAgent")
       end
     end
 

@@ -22,6 +22,9 @@ module RubyLLM
       CSV_COLUMNS = %w[id agent_type status model_id total_tokens total_cost
         duration_ms created_at error_class error_message].freeze
 
+      # Seconds the totals strip may spend before the list renders without it
+      TOTALS_TIMEOUT = 1
+
       # Lists all executions with filtering and pagination
       #
       # @return [void]
@@ -129,18 +132,28 @@ module RubyLLM
       # Sets @executions, @pagination, @sort_params, and @filter_stats instance variables
       # for use in views.
       #
+      # The list itself is an index walk and stays fast at any table size. The
+      # totals strip is not: it sums every execution the filters match, which
+      # with no time range is the whole table. So the totals are best-effort
+      # and cached — when the database cannot produce them in TOTALS_TIMEOUT
+      # the strip shows a placeholder and pagination falls back to prev/next,
+      # instead of the page waiting on (or timing out behind) an aggregate.
+      #
       # @return [void]
       def load_executions_with_stats
         @sort_params = parse_sort_params
         scope = filtered_executions
 
-        # One aggregate query for the stats strip; its count is reused for
-        # pagination, so the page costs one aggregate query instead of four.
-        @filter_stats = scope.totals
+        filters = request.query_parameters.except("page", "sort", "direction")
+        @filter_stats = cached_stats(:executions_totals, filters.to_query) do
+          Execution.best_effort(timeout: TOTALS_TIMEOUT) { scope.totals }
+        end
 
+        # The count from the same aggregate drives pagination, so a page
+        # never runs a separate COUNT.
         result = paginate(scope.preload(:error_detail),
           sort_params: @sort_params,
-          total_count: @filter_stats[:total_count])
+          total_count: @filter_stats&.fetch(:total_count))
         @executions = result[:records]
         @pagination = result[:pagination]
       end
