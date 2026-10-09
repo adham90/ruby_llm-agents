@@ -1,0 +1,11 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+gem "ruby_llm-agents", path: "../.."
+gem "ruby_llm-mcp", "~> 1.0.1"
+
+group :test do
+  gem "minitest", "~> 5.0"
+  gem "webmock", "~> 3.0"
+end
