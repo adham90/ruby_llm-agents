@@ -5,13 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.16.0] - 2026-10-09
 
 Makes the dashboard usable on executions tables with millions of rows. See
 `changelog/2026-10-08-dashboard-on-large-executions-tables.md` for measurements.
 
 **Upgrading:** run `rails generate ruby_llm_agents:upgrade` and migrate to add
-the `idx_executions_analytics` covering index (built concurrently on PostgreSQL).
+the `idx_executions_analytics` covering index (built concurrently on PostgreSQL)
+and the `[parent_execution_id, created_at]` index behind the executions list.
 
 ### Fixed
 
@@ -19,13 +20,19 @@ the `idx_executions_analytics` covering index (built concurrently on PostgreSQL)
 - **Dashboard and analytics scanned the selected range once per section** — every section is now derived from a single grouped scan (`Execution.breakdown`), cached per range and filters
 - **Requests list aggregated every tracked execution to show the latest 25** — the page is now found in a recent window and only its requests are aggregated
 - **Tenants list grouped the whole executions table by tenant** — cost and last run now come from the counter columns on the tenant row
+- **Executions list loaded every prompt and response payload on the page** just to render the error message on error rows, which could pull megabytes per view. List views now preload only `error_message` (`Execution#error_detail`)
+- **Cost and token totals on the executions list were inflated** once per child execution, by a join without `DISTINCT`. They now cover exactly the root executions the list shows
+- **Requests list raised on PostgreSQL** (`GROUP_CONCAT` does not exist there)
 - **Request detail page raised on PostgreSQL** (`DISTINCT` with `ORDER BY`); it now loads the request's executions once
+- **A finishing execution could overwrite a concurrent status change** — completion wrote through the record loaded when the pipeline started, so a timeout sweep or cancellation recorded meanwhile was silently replaced. The row is now locked and re-read, and the completion is dropped if it already left `running` (#36, thanks @symphony-stream)
+- **Tracker `request_id` and tags were lost when an execution completed** — the completion rebuilt `metadata` without them (#37, thanks @symphony-stream)
 - **`rate_limited`, `retryable_errors` and `with_parameter` scopes raised on PostgreSQL** — `jsonb` operators were applied to `json` columns
 
 ### Added
 
 - **`config.dashboard_query_timeout`** (default 5 seconds, PostgreSQL only) — a dashboard query that runs longer is cancelled by the database and the page explains what to narrow, instead of the request timing out with the query still running
 - **`idx_executions_analytics` covering index** so range aggregates are answered from the index alone
+- **`[parent_execution_id, created_at]` index** behind the executions list
 - **`Execution.breakdown`, `Execution.usage_summary`, `Execution.distinct_values`, `Execution.with_statement_timeout`, `Execution.best_effort`**
 
 ### Changed
@@ -996,6 +1003,7 @@ Several fixes change existing behaviour — read **Changed** before upgrading.
 - Shared stat_card partial for consistent UI
 - Hourly activity charts
 
+[3.16.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.15.1...v3.16.0
 [3.15.1]: https://github.com/adham90/ruby_llm-agents/compare/v3.15.0...v3.15.1
 [3.15.0]: https://github.com/adham90/ruby_llm-agents/compare/v3.14.1...v3.15.0
 [3.14.1]: https://github.com/adham90/ruby_llm-agents/compare/v3.14.0...v3.14.1
