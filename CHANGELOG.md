@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Tool loops recorded only the final round's tokens and cost** — a run with several provider requests billed every round but persisted one. Input and output tokens are now summed across the rounds of the attempt, with the last request's own usage kept in `metadata["llm_usage"]` (#35, thanks @symphony-stream)
 - **Failed runs recorded zero tokens and $0** even when earlier rounds of the tool loop had completed and been billed. Usage up to the failure is now recovered before the error propagates (#35, thanks @symphony-stream)
 - **Cache reads, cache writes and reasoning tokens in a tool loop were priced from the final round only** — every round re-reads the cached prefix, so long loops under-reported most of their cache spend. These are now summed across rounds like input and output tokens
+- **Saving a tenant from the dashboard failed with 400 Bad Request** (`param is missing … tenant_budget`) — the edit form posts its fields under `tenant` since `TenantBudget` became an alias of `Tenant`, while the controller still required `tenant_budget`. Both keys are now accepted
 
 ## [3.16.0] - 2026-10-09
 

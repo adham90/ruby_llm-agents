@@ -98,10 +98,14 @@ RSpec.describe RubyLLM::Agents::TenantsController, type: :controller do
   end
 
   describe "PATCH #update" do
+    # The edit form is built with `form_with model: tenant`, which names its
+    # fields after the model (Tenant; TenantBudget is only an alias).
+    let(:form_key) { tenant.model_name.param_key }
+
     it "updates budget limits" do
       patch :update, params: {
-        id: tenant.id,
-        tenant_budget: {daily_limit: 100.0, monthly_limit: 1000.0}
+        :id => tenant.id,
+        form_key => {daily_limit: 100.0, monthly_limit: 1000.0}
       }
       tenant.reload
       expect(tenant.daily_limit).to eq(100.0)
@@ -110,11 +114,19 @@ RSpec.describe RubyLLM::Agents::TenantsController, type: :controller do
 
     it "updates enforcement mode" do
       patch :update, params: {
-        id: tenant.id,
-        tenant_budget: {enforcement: "hard"}
+        :id => tenant.id,
+        form_key => {enforcement: "hard"}
       }
       tenant.reload
       expect(tenant.enforcement).to eq("hard")
+    end
+
+    it "still accepts params under the legacy tenant_budget key" do
+      patch :update, params: {
+        id: tenant.id,
+        tenant_budget: {enforcement: "hard"}
+      }
+      expect(tenant.reload.enforcement).to eq("hard")
     end
   end
 end

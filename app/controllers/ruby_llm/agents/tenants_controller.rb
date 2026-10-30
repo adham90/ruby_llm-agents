@@ -97,9 +97,13 @@ module RubyLLM
 
       # Strong parameters for tenant budget
       #
+      # The edit form posts them under +tenant+ (TenantBudget is an alias of
+      # Tenant); +tenant_budget+ is still accepted from older clients.
+      #
       # @return [ActionController::Parameters] Permitted parameters
       def tenant_params
-        params.require(:tenant_budget).permit(
+        key = params.key?(:tenant) ? :tenant : :tenant_budget
+        params.require(key).permit(
           :name, :daily_limit, :monthly_limit,
           :daily_token_limit, :monthly_token_limit,
           :enforcement
